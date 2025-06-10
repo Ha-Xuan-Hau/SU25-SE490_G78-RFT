@@ -19,6 +19,10 @@ public class BookedTimeSlot {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
+    @ManyToOne
+    @JoinColumn(name = "vehicle_id")
+    private Vehicle vehicle;
+
     @Column(name = "time_from")
     private Instant timeFrom;
 

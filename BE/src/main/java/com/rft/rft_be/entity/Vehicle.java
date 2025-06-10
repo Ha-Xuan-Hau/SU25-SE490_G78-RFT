@@ -1,10 +1,8 @@
 package com.rft.rft_be.entity;
 
 import jakarta.persistence.*;
-import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -21,15 +19,15 @@ public class Vehicle {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "brand_id")
     private Brand brand;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "model_id")
     private Model model;
 
@@ -76,6 +74,7 @@ public class Vehicle {
     @Column(name = "cost_per_day", precision = 10, scale = 2)
     private BigDecimal costPerDay;
 
+    @Enumerated(EnumType.STRING)
     @ColumnDefault("'available'")
     @Lob
     @Column(name = "status")
