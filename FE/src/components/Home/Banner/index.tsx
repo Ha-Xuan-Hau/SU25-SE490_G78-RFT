@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { useState } from "react";
 
-const Hero: React.FC = () => {
+const Banner: React.FC = () => {
   const [activeTab, setActiveTab] = useState("self-drive");
   const [vehicleType, setVehicleType] = useState("car");
   const [location, setLocation] = useState("Hà Nội");
@@ -202,7 +202,7 @@ const Hero: React.FC = () => {
             </div>
 
             {/* Price Range Selection */}
-            <div className="mb-4">
+            {/* <div className="mb-4">
               <label className="text-base text-gray-500 mb-2 block">
                 Khoảng giá
               </label>
@@ -242,7 +242,7 @@ const Hero: React.FC = () => {
                   </span>
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Search Button */}
             <button className="w-full bg-primary hover:bg-primary/90 text-white rounded-md py-3 px-6 text-lg font-medium transition duration-300 mb-6">
@@ -255,4 +255,4 @@ const Hero: React.FC = () => {
   );
 };
 
-export default Hero;
+export default Banner;

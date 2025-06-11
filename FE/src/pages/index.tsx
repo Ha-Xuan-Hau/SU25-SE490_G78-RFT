@@ -1,12 +1,12 @@
-import Hero from "@/components/Home/Banner";
 import Vehicle from "@/components/Home/Vehicle";
 import FAQ from "@/components/Home/FAG";
 import More from "@/components/Home/More";
+import Banner from "@/components/Home/Banner";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <main>
-      <Hero />
+      <Banner />
       <Vehicle />
       <More />
       <FAQ />

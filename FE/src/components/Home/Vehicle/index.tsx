@@ -1,5 +1,5 @@
 import VehicleCard from "./Card/Card";
-import { vehicleCar } from "@/app/api/vehicles";
+import { vehicleCar } from "@/apis/vehicles";
 
 const Vehicle: React.FC = () => {
   return (
