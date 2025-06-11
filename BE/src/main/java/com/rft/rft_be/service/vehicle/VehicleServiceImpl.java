@@ -1,4 +1,4 @@
-package com.rft.rft_be.service;
+package com.rft.rft_be.service.vehicle;
 
 import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.dto.VehicleDTO;

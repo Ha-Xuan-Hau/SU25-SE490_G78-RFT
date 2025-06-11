@@ -1,7 +1,7 @@
 package com.rft.rft_be.controller;
 
 import com.rft.rft_be.dto.UserDTO;
-import com.rft.rft_be.service.UserService;
+import com.rft.rft_be.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

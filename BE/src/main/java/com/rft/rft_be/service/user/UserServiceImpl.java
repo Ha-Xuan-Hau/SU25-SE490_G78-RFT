@@ -1,5 +1,6 @@
 package com.rft.rft_be.service.user;
 
+import com.rft.rft_be.dto.UserDTO;
 import com.rft.rft_be.dto.user.UserDetailDto;
 import com.rft.rft_be.dto.user.UserRegisterDto;
 import com.rft.rft_be.entity.User;
@@ -32,5 +33,11 @@ public class UserServiceImpl implements  UserService{
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
 
         return userMapper.userToUserDetailDto(userRepository.save(user));
+    }
+    @Override
+    public UserDTO getProfile(String id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        return userMapper.toDTO(user);
     }
 }
