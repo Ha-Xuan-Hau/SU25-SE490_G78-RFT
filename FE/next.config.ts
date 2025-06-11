@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactStrictMode: true,
+  swcMinify: true,
+  // Explicitly tell Next.js where your pages are located
+  pageExtensions: ["ts", "tsx", "js", "jsx"],
 };
 
 export default nextConfig;

@@ -1,4 +1,4 @@
-import { Vehicle } from "@/types/vehicle";
+import { VehicleCar } from "@/types/vehicle";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,7 +15,7 @@ import Link from "next/link";
 //   images: PropertyImage[];
 // };
 
-const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
+const VehicleCard: React.FC<{ item: VehicleCar }> = ({ item }) => {
   const {
     name,
     slug,
@@ -34,7 +34,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
     <div>
       <div className="relative rounded-2xl border border-dark/10 dark:border-white/10 group hover:shadow-3xl duration-300 dark:hover:shadow-white/20">
         <div className="overflow-hidden rounded-t-2xl">
-          <Link href={`/properties/${slug}`}>
+          <Link href={`/vehicles/${slug}`}>
             {mainImage && (
               <Image
                 src={mainImage}
@@ -58,7 +58,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
         <div className="p-6">
           <div className="flex flex-col mobile:flex-row gap-5 mobile:gap-0 justify-between mb-6">
             <div>
-              <Link href={`/properties/${slug}`}>
+              <Link href={`/vehicles/${slug}`}>
                 <h3 className="text-xl font-medium text-black dark:text-white duration-300 group-hover:text-primary line-clamp-1">
                   {name}
                 </h3>

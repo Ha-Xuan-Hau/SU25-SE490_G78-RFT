@@ -1,4 +1,6 @@
-export type Vehicle = {
+export type VehicleCar = {
+  vehicleType: string;
+  brand: string;
   name: string;
   slug: string;
   location: string;

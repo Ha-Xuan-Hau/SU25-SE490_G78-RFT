@@ -1,9 +1,11 @@
-import { Vehicle } from "@/types/vehicle";
+import { VehicleCar } from "@/types/vehicle";
 
-export const vehicleCar: Vehicle[] = [
+export const vehicleCar: VehicleCar[] = [
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "MG5 LUXURY 2022",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "1033K",
     transmission: "Số tự động",
@@ -26,8 +28,10 @@ export const vehicleCar: Vehicle[] = [
     ],
   },
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "KIA SONET LUXURY 2024",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "900K",
     transmission: "Số Tự động",
@@ -50,8 +54,10 @@ export const vehicleCar: Vehicle[] = [
     ],
   },
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "TOYOTA CAMRY 2.0E 2013",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "1033K",
     transmission: "Số tự động",
@@ -74,8 +80,10 @@ export const vehicleCar: Vehicle[] = [
     ],
   },
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "FORD EVEREST TITANIUM 2020",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "1033K",
     transmission: "Số tự động",
@@ -98,8 +106,10 @@ export const vehicleCar: Vehicle[] = [
     ],
   },
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "BMW 750LI 2011",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "1033K",
     transmission: "Số tự động",
@@ -122,8 +132,10 @@ export const vehicleCar: Vehicle[] = [
     ],
   },
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "VINFAST VF3 2024",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "1033K",
     transmission: "Số tự động",
@@ -146,8 +158,10 @@ export const vehicleCar: Vehicle[] = [
     ],
   },
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "VINFAST VF3 2024",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "1033K",
     transmission: "Số tự động",
@@ -170,8 +184,10 @@ export const vehicleCar: Vehicle[] = [
     ],
   },
   {
+    vehicleType: "Car",
+    brand: "MG",
     name: "VINFAST VF3 2024",
-    slug: "serenity-height-villas",
+    slug: "demo-car",
     location: "Quận Hoàn Kiếm, Hà Nội",
     price: "1033K",
     transmission: "Số tự động",
