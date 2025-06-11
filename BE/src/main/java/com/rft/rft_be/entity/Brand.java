@@ -1,4 +1,4 @@
-package com.rft.rft_be.entity;
+package com.rft.rft_be.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
