@@ -16,19 +16,17 @@ const More: React.FC = () => {
             <div className="mb-6 relative w-60 h-60">
               <Image
                 src="/more1.svg"
-                alt="Lái xe an toàn cùng Mioto"
+                alt="Lái xe an toàn cùng RFT"
                 fill
                 className="object-contain"
                 unoptimized={true}
               />
             </div>
-            <h1 className="text-4xl font-bold mb-3">
-              Lái xe an toàn cùng Mioto
-            </h1>
+            <h1 className="text-4xl font-bold mb-3">Lái xe an toàn cùng RFT</h1>
             <p className="text-xl text-gray-600">
-              Chuyến đi trên Mioto được bảo vệ với Gói bảo hiểm thuê xe từ lái
-              từ MIC & VNI. Khách thuê sẽ chi bồi thường tối đa 2.000.000VNĐ
-              trong trường hợp có sự cố ngoài ý muốn.
+              Chuyến đi trên RFT được bảo vệ với Gói bảo hiểm thuê xe từ lái từ
+              MIC & VNI. Khách thuê sẽ chi bồi thường tối đa 2.000.000VNĐ trong
+              trường hợp có sự cố ngoài ý muốn.
             </p>
           </div>
 

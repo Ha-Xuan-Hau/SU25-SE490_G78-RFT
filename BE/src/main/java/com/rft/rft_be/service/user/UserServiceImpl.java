@@ -4,6 +4,8 @@ import com.rft.rft_be.dto.UserDTO;
 import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.dto.user.UserDetailDto;
 import com.rft.rft_be.dto.user.UserRegisterDto;
+import com.rft.rft_be.dto.user.UserDetailDTO;
+import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.repository.UserRepository;
@@ -11,7 +13,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +24,7 @@ public class UserServiceImpl implements  UserService{
     UserRepository userRepository;
     PasswordEncoder passwordEncoder;
     UserMapper userMapper;
-    public UserDetailDto register(UserRegisterDto dto){
+    public UserDetailDTO register(UserRegisterDTO dto){
         if(userRepository.existsByEmail(dto.getEmail())){
             throw new RuntimeException("Email Already Exists");
         }

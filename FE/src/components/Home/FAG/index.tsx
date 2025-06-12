@@ -22,7 +22,7 @@ const FAQ: React.FC = () => {
 
             <div className="mt-4 grid grid-cols-1 grid-rows-4 gap-6">
               <div className="flex gap-4 items-center">
-                <div className="shrink-0 w-12 h-12 rounded-full bg-green-300 flex justify-center items-center text-3xl text-white font-bold">
+                <div className="shrink-0 w-12 h-12 rounded-full bg-primary flex justify-center items-center text-3xl text-white font-bold">
                   01
                 </div>
                 <div>
@@ -33,7 +33,7 @@ const FAQ: React.FC = () => {
               </div>
 
               <div className="flex gap-4 items-center">
-                <div className="shrink-0 w-12 h-12 rounded-full bg-green-300 flex justify-center items-center text-3xl text-white font-bold">
+                <div className="shrink-0 w-12 h-12 rounded-full bg-primary flex justify-center items-center text-3xl text-white font-bold">
                   02
                 </div>
                 <div>
@@ -44,7 +44,7 @@ const FAQ: React.FC = () => {
               </div>
 
               <div className="flex gap-4 items-center">
-                <div className="shrink-0 w-12 h-12 rounded-full bg-green-300 flex justify-center items-center text-3xl text-white font-bold">
+                <div className="shrink-0 w-12 h-12 rounded-full bg-primary flex justify-center items-center text-3xl text-white font-bold">
                   03
                 </div>
                 <div>
@@ -55,7 +55,7 @@ const FAQ: React.FC = () => {
               </div>
 
               <div className="flex gap-4 items-center">
-                <div className="shrink-0 w-12 h-12 rounded-full bg-green-300 flex justify-center items-center text-3xl text-white font-bold">
+                <div className="shrink-0 w-12 h-12 rounded-full bg-primary flex justify-center items-center text-3xl text-white font-bold">
                   04
                 </div>
                 <div>

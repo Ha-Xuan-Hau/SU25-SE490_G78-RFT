@@ -13,7 +13,7 @@ const Footer = () => {
             <div className="md:col-span-3 sm:col-span-6 col-span-8">
               <div className="mb-6">
                 <Image
-                  src="/images/rft-logo.png"
+                  src="/images/rft-logo2.png"
                   alt="Rent For Travel Logo"
                   width={150}
                   height={68}

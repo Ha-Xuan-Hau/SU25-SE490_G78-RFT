@@ -1,7 +1,25 @@
+import { useQuery } from "@tanstack/react-query";
 import VehicleCard from "./Card/Card";
-import { vehicleCar } from "@/apis/vehicles";
+import { getVehicles } from "@/apis/vehicle.api";
+import LoadingSpinner from "@/components/LoadingSpriner";
 
 const Vehicle: React.FC = () => {
+  const {
+    data: vehicles,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["vehicles"],
+    queryFn: getVehicles,
+  });
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error)
+    return <div className="text-center py-10">Có lỗi khi tải dữ liệu xe</div>;
+
   return (
     <section>
       <div className="container max-w-8xl mx-auto px-5 2xl:px-0">
@@ -12,8 +30,8 @@ const Vehicle: React.FC = () => {
           </h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-          {vehicleCar.slice(0, 8).map((item, index) => (
-            <div key={index} className="h-[500px]">
+          {vehicles?.slice(0, 8).map((item: any) => (
+            <div key={item.id} className="h-[500px]">
               <VehicleCard item={item} />
             </div>
           ))}

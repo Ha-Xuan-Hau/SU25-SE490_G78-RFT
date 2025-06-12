@@ -6,7 +6,7 @@ import com.rft.rft_be.dto.user.UserDetailDto;
 import com.rft.rft_be.dto.user.UserRegisterDto;
 
 public interface UserService {
-    UserDetailDto register(UserRegisterDto dto);
+    UserDetailDTO register(UserRegisterDTO dto);
     UserDTO getProfile(String id);
     UserProfileDTO updateProfile(String id, UserProfileDTO dto);
 }

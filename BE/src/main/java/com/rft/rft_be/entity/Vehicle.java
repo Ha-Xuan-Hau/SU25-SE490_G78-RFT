@@ -43,6 +43,10 @@ public class Vehicle {
     @Column(name = "vehicle_features")
     private String vehicleFeatures;
 
+    @Lob
+    @Column(name = "vehicle_image")
+    private String VehicleImages;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "insurance_status")
     private InsuranceStatus insuranceStatus = InsuranceStatus.NO;

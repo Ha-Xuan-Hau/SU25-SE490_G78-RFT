@@ -1,44 +1,56 @@
-import { VehicleCar } from "@/types/vehicle";
+import { Vehicle } from "@/types/vehicle";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
 
-// export type PropertyHomes = {
-//   name: string;
-//   slug: string;
-//   location: string;
-//   price: string;
+// export interface Vehicle {
+//   id: string;
+//   licensePlate: string;
+//   vehicleTypes: string;
+//   vehicleFeatures: VehicleFeature[];
+//   description: string;
+//   costPerDay: number;
+//   status: string;
+//   thumb: string;
+//   numberSeat: number;
+//   yearManufacture: number;
 //   transmission: string;
-//   rate: number;
-//   seat: number;
-//   fuel: string;
-//   images: PropertyImage[];
-// };
+//   fuelType: string;
+//   brandName: string;
+//   modelName: string;
+//   vehicleImages: VehicleImage[];
+// }
 
-const VehicleCard: React.FC<{ item: VehicleCar }> = ({ item }) => {
+const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
   const {
-    name,
-    slug,
-    location,
-    price,
+    id,
+    licensePlate,
+    vehicleTypes,
+    vehicleFeatures,
+    description,
+    costPerDay,
+    status,
+    thumb,
+    numberSeat,
+    yearManufacture,
     transmission,
-    rate,
-    seat,
-    fuel,
-    images,
+    fuelType,
+    brandName,
+    modelName,
+    vehicleImages,
   } = item;
 
-  const mainImage = images[0]?.src;
+  const mainImage = vehicleImages[0]?.imageUrl;
 
   return (
     <div>
       <div className="relative rounded-2xl border border-dark/10 dark:border-white/10 group hover:shadow-3xl duration-300 dark:hover:shadow-white/20">
         <div className="overflow-hidden rounded-t-2xl">
-          <Link href={`/vehicles/${slug}`}>
+          <Link href={`/vehicles/${id}`}>
             {mainImage && (
               <Image
                 src={mainImage}
-                alt={name}
+                alt={`${thumb}`}
                 width={440}
                 height={300}
                 className="w-full rounded-t-xl"
@@ -58,13 +70,13 @@ const VehicleCard: React.FC<{ item: VehicleCar }> = ({ item }) => {
         <div className="p-6">
           <div className="flex flex-col mobile:flex-row gap-5 mobile:gap-0 justify-between mb-6">
             <div>
-              <Link href={`/vehicles/${slug}`}>
+              <Link href={`/vehicles/${id}`}>
                 <h3 className="text-xl font-medium text-black dark:text-white duration-300 group-hover:text-primary line-clamp-1">
-                  {name}
+                  {thumb}
                 </h3>
               </Link>
               <p className="text-base font-normal text-black/50 dark:text-white/50">
-                {location}
+                {add}
               </p>
             </div>
           </div>
@@ -80,13 +92,13 @@ const VehicleCard: React.FC<{ item: VehicleCar }> = ({ item }) => {
             <div className="flex items-center gap-1">
               <Icon icon={"mdi:car-seat"} width={20} height={20} />
               <p className="text-sm font-normal text-black dark:text-white">
-                {seat} chỗ
+                {numberSeat} chỗ
               </p>
             </div>
             <div className="flex items-center gap-1">
               <Icon icon={"mdi:fuel"} width={20} height={20} />
               <p className="text-sm font-normal text-black dark:text-white">
-                {fuel}
+                {fuelType}
               </p>
             </div>
           </div>
@@ -110,7 +122,7 @@ const VehicleCard: React.FC<{ item: VehicleCar }> = ({ item }) => {
 
             {/* Price - Right Side */}
             <button className="text-base font-medium text-primary px-5 py-2 rounded-full bg-primary/10">
-              {price.toLocaleString()} VND
+              {costPerDay.toLocaleString()} VND
             </button>
           </div>
         </div>

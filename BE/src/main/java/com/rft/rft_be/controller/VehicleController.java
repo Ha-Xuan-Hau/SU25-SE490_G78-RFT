@@ -1,7 +1,8 @@
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.VehicleDTO;
+import com.rft.rft_be.dto.vehicle.VehicleDTO;
 import com.rft.rft_be.dto.CategoryDTO;
+import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
 import com.rft.rft_be.service.vehicle.VehicleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,11 @@ public class VehicleController {
     @GetMapping("/{id}")
     public ResponseEntity<VehicleDTO> getVehicleById(@PathVariable String id) {
         return ResponseEntity.ok(vehicleService.getVehicleById(id));
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<VehicleDetailDTO> getVehicleDetail(@PathVariable String id) {
+        return ResponseEntity.ok(vehicleService.getVehicleDetailById(id));
     }
 
     @GetMapping("/getAllByCategory")

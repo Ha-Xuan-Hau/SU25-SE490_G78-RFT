@@ -1,6 +1,5 @@
 package com.rft.rft_be.dto.user;
 
-import com.rft.rft_be.entity.User;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -12,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserDetailDto {
+public class UserDetailDTO {
     String id;
     String email;
     String password;
