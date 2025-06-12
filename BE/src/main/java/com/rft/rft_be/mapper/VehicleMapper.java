@@ -26,6 +26,8 @@ public interface VehicleMapper {
     @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
     @Mapping(source = "vehicleFeatures", target = "vehicleFeatures", qualifiedByName = "stringToFeatureList")
     @Mapping(source = "vehicleImages", target = "vehicleImages", qualifiedByName = "jsonToImageList")
+    @Mapping(source = "user.address", target = "address", qualifiedByName = "extractDistrictAndCity")
+    // @Mapping(source = "totalRatings", target = "rating")
     VehicleDTO toDTO(Vehicle vehicle);
 
     @Mapping(source = "brand.name", target = "brandName")
@@ -61,14 +63,30 @@ public interface VehicleMapper {
             return List.of(); //return null if string is null
         }
         ObjectMapper objectMapper = new ObjectMapper();
-        try{
-            List<String> imageUrls = objectMapper.readValue(jsonString, new TypeReference<List<String>>() {});
+        try {
+            List<String> imageUrls = objectMapper.readValue(jsonString, new TypeReference<List<String>>() {
+            });
             return imageUrls.stream()
                     .map(VehicleImageDTO::new)
                     .collect(Collectors.toList());
-        } catch (JsonProcessingException e){
+        } catch (JsonProcessingException e) {
             System.err.println("Error parsing vehicle_image JSON: " + e.getMessage());
             return List.of(); // return null
+        }
+    }
+
+    @Named("extractDistrictAndCity")
+    static String extractDistrictAndCity(String fullAddress) {
+        if (fullAddress == null || fullAddress.trim().isEmpty()) {
+            return "";
+        }
+        String[] parts = fullAddress.split(",");
+        if (parts.length >= 3) {
+            return parts[parts.length - 2].trim() + ", " + parts[parts.length - 1].trim();
+        } else if (parts.length == 2) {
+            return fullAddress;
+        } else {
+            return fullAddress;
         }
     }
 }

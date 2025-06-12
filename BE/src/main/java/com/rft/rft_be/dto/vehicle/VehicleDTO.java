@@ -30,4 +30,5 @@ public class VehicleDTO {
     String brandName;
     String modelName;
     int rating;
+    String address;
 }

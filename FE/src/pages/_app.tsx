@@ -5,6 +5,8 @@ import { ThemeProvider } from "next-themes";
 import Header from "@/components/Layout/Header";
 import Footer from "@/components/Layout/Footer";
 import NextTopLoader from "nextjs-toploader";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/apis/client";
 
 import Head from "next/head";
 
@@ -13,16 +15,22 @@ export default function MyApp({
   pageProps: { session, ...pageProps },
 }: AppProps) {
   return (
-    <SessionProvider session={session}>
-      <ThemeProvider attribute="class" enableSystem={true} defaultTheme="light">
-        <NextTopLoader color="#07be8a" />
-        <Head>
-          <title>RFT - Rent For Travel</title>
-        </Head>
-        <Header />
-        <Component {...pageProps} />
-        <Footer />
-      </ThemeProvider>
-    </SessionProvider>
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider session={session}>
+        <ThemeProvider
+          attribute="class"
+          enableSystem={true}
+          defaultTheme="light"
+        >
+          <NextTopLoader color="#07be8a" />
+          <Head>
+            <title>RFT - Rent For Travel</title>
+          </Head>
+          <Header />
+          <Component {...pageProps} />
+          <Footer />
+        </ThemeProvider>
+      </SessionProvider>
+    </QueryClientProvider>
   );
 }

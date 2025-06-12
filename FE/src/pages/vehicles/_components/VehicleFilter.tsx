@@ -1,65 +1,38 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { Dispatch, SetStateAction } from "react";
-
-export type FilterState = {
-  vehicleType: string | null;
-  carType: string | null; // For car's type (sedan, SUV, etc.)
-  bicycleType: string | null; // For bicycle's type
-  transmission: string | null; // For transmission type
-  brand: string | null;
-  rate: boolean;
-  delivery: boolean;
-  hourly: boolean;
-  instantBooking: boolean;
-  noDeposit: boolean;
-  discount: boolean;
-};
+import { VehicleFilters } from "@/types/vehicle"; // Sử dụng interface có sẵn
 
 interface VehicleFilterProps {
-  filters: FilterState;
-  setFilters: Dispatch<SetStateAction<FilterState>>;
+  filters: VehicleFilters;
+  setFilters: Dispatch<SetStateAction<VehicleFilters>>;
 }
 
 const VehicleFilter: React.FC<VehicleFilterProps> = ({
   filters,
   setFilters,
 }) => {
-  const toggleFilter = (key: keyof FilterState, value?: any) => {
-    if (typeof value !== "undefined") {
-      setFilters({ ...filters, [key]: value });
-    } else if (typeof filters[key] === "boolean") {
-      setFilters({ ...filters, [key]: !filters[key] });
-    }
-  };
-
-  // Function to clear all type-specific filters when changing vehicle type
-  const handleVehicleTypeChange = (newType: string | null) => {
-    setFilters({
-      ...filters,
-      vehicleType: newType,
-      carType: null,
-      bicycleType: null,
-      transmission: null,
-      brand: null,
-    });
+  // Hàm để cập nhật filters
+  const handleFilterChange = (key: keyof VehicleFilters, value: any) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
-    <div className="bg-white p-4 rounded shadow-sm">
-      {/* Type of vehicle */}
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+      {/* Loại xe */}
       <div className="mb-6">
-        <h3 className="font-semibold mb-3">Chọn xe</h3>
+        <h3 className="font-semibold text-lg mb-3 dark:text-white">Loại xe</h3>
         <div className="grid grid-cols-3 gap-3">
           <button
-            className={`flex flex-col items-center justify-center p-3 border rounded ${
-              filters.vehicleType === "Car"
+            className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
+              filters.vehicleTypes === "Car"
                 ? "bg-primary/10 border-primary text-primary"
-                : ""
+                : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
-              handleVehicleTypeChange(
-                filters.vehicleType === "Car" ? null : "Car"
+              handleFilterChange(
+                "vehicleTypes",
+                filters.vehicleTypes === "Car" ? undefined : "Car"
               )
             }
           >
@@ -67,14 +40,15 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             <p className="text-sm">Ô tô</p>
           </button>
           <button
-            className={`flex flex-col items-center justify-center p-3 border rounded ${
-              filters.vehicleType === "Motorcycle"
+            className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
+              filters.vehicleTypes === "Motorcycle"
                 ? "bg-primary/10 border-primary text-primary"
-                : ""
+                : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
-              handleVehicleTypeChange(
-                filters.vehicleType === "Motorcycle" ? null : "Motorcycle"
+              handleFilterChange(
+                "vehicleTypes",
+                filters.vehicleTypes === "Motorcycle" ? undefined : "Motorcycle"
               )
             }
           >
@@ -82,14 +56,15 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             <p className="text-sm">Xe máy</p>
           </button>
           <button
-            className={`flex flex-col items-center justify-center p-3 border rounded ${
-              filters.vehicleType === "Bicycle"
+            className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
+              filters.vehicleTypes === "BICYCLE"
                 ? "bg-primary/10 border-primary text-primary"
-                : ""
+                : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
-              handleVehicleTypeChange(
-                filters.vehicleType === "Bicycle" ? null : "Bicycle"
+              handleFilterChange(
+                "vehicleTypes",
+                filters.vehicleTypes === "Bicycle" ? undefined : "Bicycle"
               )
             }
           >
@@ -99,147 +74,126 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         </div>
       </div>
 
-      {/* Car specific filters */}
-      {filters.vehicleType === "Car" && (
-        <>
-          {/* Car type */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">Loại xe</h3>
-            <select
-              className="w-full p-2 border rounded"
-              onChange={(e) =>
-                setFilters({ ...filters, carType: e.target.value || null })
-              }
-              value={filters.carType || ""}
-            >
-              <option value="">Tất cả các loại</option>
-              <option value="sedan">Sedan</option>
-              <option value="suv">SUV</option>
-              <option value="hatchback">Hatchback</option>
-              <option value="mpv">MPV</option>
-            </select>
-          </div>
-
-          {/* Transmission */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">Hộp số</h3>
-            <select
-              className="w-full p-2 border rounded"
-              onChange={(e) =>
-                setFilters({ ...filters, transmission: e.target.value || null })
-              }
-              value={filters.transmission || ""}
-            >
-              <option value="">Tất cả hộp số</option>
-              <option value="auto">Tự động</option>
-              <option value="manual">Số sàn</option>
-              <option value="cvt">CVT</option>
-            </select>
-          </div>
-
-          {/* Car brand */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">Hãng xe</h3>
-            <select
-              className="w-full p-2 border rounded"
-              onChange={(e) =>
-                setFilters({ ...filters, brand: e.target.value || null })
-              }
-              value={filters.brand || ""}
-            >
-              <option value="">Tất cả các hãng</option>
-              <option value="toyota">Toyota</option>
-              <option value="hyundai">Hyundai</option>
-              <option value="kia">Kia</option>
-              <option value="mazda">Mazda</option>
-              <option value="honda">Honda</option>
-            </select>
-          </div>
-        </>
-      )}
-
-      {/* Motorcycle specific filters */}
-      {filters.vehicleType === "Motorcycle" && (
-        <>
-          {/* Transmission */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">Hộp số</h3>
-            <select
-              className="w-full p-2 border rounded"
-              onChange={(e) =>
-                setFilters({ ...filters, transmission: e.target.value || null })
-              }
-              value={filters.transmission || ""}
-            >
-              <option value="">Tất cả hộp số</option>
-              <option value="auto">Tự động</option>
-              <option value="manual">Số côn</option>
-            </select>
-          </div>
-
-          {/* Motorcycle brand */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">Hãng xe</h3>
-            <select
-              className="w-full p-2 border rounded"
-              onChange={(e) =>
-                setFilters({ ...filters, brand: e.target.value || null })
-              }
-              value={filters.brand || ""}
-            >
-              <option value="">Tất cả các hãng</option>
-              <option value="honda">Honda</option>
-              <option value="yamaha">Yamaha</option>
-              <option value="suzuki">Suzuki</option>
-              <option value="kawasaki">Kawasaki</option>
-            </select>
-          </div>
-        </>
-      )}
-
-      {/* Bicycle specific filters */}
-      {filters.vehicleType === "Bicycle" && (
-        <>
-          {/* Bicycle type */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">Loại xe</h3>
-            <select
-              className="w-full p-2 border rounded"
-              onChange={(e) =>
-                setFilters({ ...filters, bicycleType: e.target.value || null })
-              }
-              value={filters.bicycleType || ""}
-            >
-              <option value="">Tất cả các loại</option>
-              <option value="mountain">Xe đạp thông dụng</option>
-              <option value="city">Xe đạp thể thao</option>
-              <option value="folding">Xe đạp thể thao cao cấp</option>
-            </select>
-          </div>
-        </>
-      )}
-
-      {/* Location - always show */}
+      {/* Hãng xe */}
       <div className="mb-6">
-        <h3 className="font-semibold mb-3">Khu vực</h3>
-        <select className="w-full p-2 border rounded">
-          <option>Hà Nội</option>
+        <h3 className="font-semibold text-lg mb-3 dark:text-white">Hãng xe</h3>
+        <select
+          className="w-full p-2.5 border rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+          value={filters.brand || ""}
+          onChange={(e) =>
+            handleFilterChange("brand", e.target.value || undefined)
+          }
+        >
+          <option value="">Tất cả các hãng</option>
+          <option value="toyota">Toyota</option>
+          <option value="honda">Honda</option>
+          <option value="hyundai">Hyundai</option>
+          <option value="kia">Kia</option>
+          <option value="mazda">Mazda</option>
+          <option value="ford">Ford</option>
+          <option value="vinfast">VinFast</option>
         </select>
       </div>
 
-      {/* District - always show */}
+      {/* Số chỗ ngồi */}
       <div className="mb-6">
-        <h3 className="font-semibold mb-3">Chọn quận/huyện</h3>
-        <select className="w-full p-2 border rounded">
-          <option>Tất cả</option>
-          <option>Cầu Giấy</option>
-          <option>Hoàng Mai</option>
-          <option>Đống Đa</option>
-        </select>
+        <h3 className="font-semibold text-lg mb-3 dark:text-white">
+          Số chỗ ngồi
+        </h3>
+        <div className="grid grid-cols-4 gap-2">
+          {[4, 5, 7, 16].map((seat) => (
+            <button
+              key={seat}
+              className={`p-2 border rounded-md text-center ${
+                filters.seats === seat
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white"
+              }`}
+              onClick={() =>
+                handleFilterChange(
+                  "seats",
+                  filters.seats === seat ? undefined : seat
+                )
+              }
+            >
+              {seat} chỗ
+            </button>
+          ))}
+        </div>
       </div>
 
-      <button className="w-full bg-primary text-white py-2 rounded">
-        Áp dụng
+      {/* Tùy chọn khác */}
+      <div className="mb-6">
+        <h3 className="font-semibold text-lg mb-3 dark:text-white">Tùy chọn</h3>
+        <div className="space-y-3">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="minRating"
+              checked={!!filters.minRating}
+              onChange={(e) =>
+                handleFilterChange(
+                  "minRating",
+                  e.target.checked ? 4 : undefined
+                )
+              }
+              className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            <label htmlFor="minRating" className="dark:text-white">
+              Đánh giá từ 4 sao trở lên
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="homeDelivery"
+              checked={!!filters.shipToAddress}
+              onChange={(e) =>
+                handleFilterChange("shipToAddress", e.target.checked)
+              }
+              className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            <label htmlFor="homeDelivery" className="dark:text-white">
+              Giao xe tận nơi
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="hasDiscount"
+              checked={!!filters.hasDiscount}
+              onChange={(e) =>
+                handleFilterChange("hasDiscount", e.target.checked)
+              }
+              className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            <label htmlFor="hasDiscount" className="dark:text-white">
+              Có khuyến mãi
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Nút áp dụng */}
+      <button className="w-full bg-primary hover:bg-primary-dark text-white py-2.5 rounded-lg transition-colors font-medium">
+        Áp dụng bộ lọc
+      </button>
+
+      {/* Nút xóa bộ lọc */}
+      <button
+        className="w-full mt-2 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        onClick={() =>
+          setFilters({
+            vehicleTypes: undefined,
+            brand: undefined,
+            seats: undefined,
+            minRating: undefined,
+            shipToAddress: false,
+            hasDiscount: false,
+          })
+        }
+      >
+        Xóa bộ lọc
       </button>
     </div>
   );
