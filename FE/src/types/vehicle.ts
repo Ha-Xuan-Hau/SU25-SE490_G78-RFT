@@ -1,17 +1,40 @@
-export type VehicleCar = {
-  vehicleType: string;
-  brand: string;
-  name: string;
-  slug: string;
-  location: string;
-  price: string;
+export interface Vehicle {
+  id: string;
+  licensePlate: string;
+  vehicleTypes: string;
+  vehicleFeatures: VehicleFeature[];
+  description: string;
+  costPerDay: number;
+  status: string;
+  thumb: string;
+  numberSeat: number;
+  yearManufacture: number;
   transmission: string;
-  rate: number;
-  seat: number;
-  fuel: string;
-  images: VehicleImage[];
-};
+  fuelType: string;
+  brandName: string;
+  modelName: string;
+  vehicleImages: VehicleImage[];
+}
+
+export interface VehicleFeature {
+  name: string;
+}
 
 interface VehicleImage {
-  src: string;
+  imageUrl: string;
+}
+
+export interface Brand {
+  id: string;
+  brandName: string;
+}
+
+export interface VehicleFilters {
+  vehicleTypes?: string;
+  brand?: string;
+  seats?: number;
+  minRating?: number;
+  homeDelivery?: boolean;
+  mortgageFree?: boolean;
+  hasDiscount?: boolean;
 }

@@ -16,16 +16,31 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {
-            "/auth/**"
+            "/api/auth/**",
+            "/api/**"
     };
+
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+//        httpSecurity.authorizeHttpRequests(request ->
+//                request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+//                        .anyRequest().authenticated());
+//        httpSecurity.csrf(AbstractHttpConfigurer::disable);
+//    return httpSecurity.build();
+//    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.authorizeHttpRequests(request ->
-                request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated());
-        httpSecurity.csrf(AbstractHttpConfigurer::disable);
-    return httpSecurity.build();
+        httpSecurity
+                .cors(cors -> cors.disable()) // Tắt CORS trong Security
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(request ->
+                        request
+                                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                                .anyRequest().authenticated()
+                );
+
+        return httpSecurity.build();
     }
     @Bean
     PasswordEncoder passwordEncoder() {return new BCryptPasswordEncoder(10);}

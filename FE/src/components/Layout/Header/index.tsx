@@ -26,15 +26,15 @@ const Header: React.FC = () => {
 
   return (
     <header
-      className={`fixed h-20 py-2 z-50 w-full bg-white transition-all duration-300 shadow-sm ${
+      className={`fixed h-18 py-1 z-50 w-full bg-white transition-all duration-300 shadow-sm ${
         sticky ? "top-0" : "top-0"
       }`}
     >
-      <nav className="container mx-auto max-w-8xl flex items-center justify-between py-2 px-4 lg:px-0">
+      <nav className="container mx-auto max-w-8xl flex items-start justify-between py-2 px-4 lg:px-0">
         <div className="flex items-center">
           <Link href="/">
             <Image
-              src="/images/rft-logo.png"
+              src="/images/rft-logo2.png"
               alt="Car Rental Logo"
               width={120}
               height={42}
@@ -45,7 +45,7 @@ const Header: React.FC = () => {
         </div>
 
         {/* Auth Buttons */}
-        <div className="hidden lg:flex items-center space-x-10">
+        <div className="hidden lg:flex items-center space-x-10 mt-1">
           <Link
             href="/about"
             className={`text-base font-medium ${
