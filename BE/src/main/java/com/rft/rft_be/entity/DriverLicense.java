@@ -13,7 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DriverLicens {
+public class DriverLicense {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -29,8 +29,8 @@ public class DriverLicens {
     @Column(name = "class", length = 20)
     private String classField;
 
-    @ColumnDefault("'valid'")
-    @Lob
+    @ColumnDefault("0")
+    @Enumerated(EnumType.ORDINAL)  // Sử dụng ORDINAL
     @Column(name = "status")
     private Status status = Status.VALID;
 
@@ -46,7 +46,19 @@ public class DriverLicens {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    public enum Status{
-        VALID, EXPIRED
+    public enum Status {
+        EXPIRED,    // 0
+        VALID// 1
     }
 }
+//update database
+
+//UPDATE driver_licenses SET status = 0 WHERE status = 'VALID';
+//UPDATE driver_licenses SET status = 1 WHERE status = 'EXPIRED';
+//
+//-- Đảm bảo column type là số
+//ALTER TABLE driver_licenses MODIFY COLUMN status TINYINT DEFAULT 0;
+//        SELECT id, status FROM driver_licenses WHERE status NOT IN (0, 1);
+//
+//-- Clean data không hợp lệ (set về VALID = 0)
+//UPDATE driver_licenses SET status = 0 WHERE status NOT IN (0, 1);
