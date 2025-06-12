@@ -44,7 +44,7 @@ public class Vehicle {
     private String vehicleFeatures;
 
     @Lob
-    @Column(name = "vehicle_image")
+    @Column(name = "vehicle_images")
     private String VehicleImages;
 
     @Enumerated(EnumType.STRING)
