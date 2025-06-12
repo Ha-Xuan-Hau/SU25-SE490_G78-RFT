@@ -2,7 +2,7 @@ package com.rft.rft_be.controller;
 
 import com.rft.rft_be.dto.VehicleDTO;
 import com.rft.rft_be.dto.CategoryDTO;
-import com.rft.rft_be.service.VehicleService;
+import com.rft.rft_be.service.vehicle.VehicleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

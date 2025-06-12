@@ -30,7 +30,7 @@ public class User {
     private String fullName;
 
     @Lob
-    @Column(name = "profilePicture")
+    @Column(name = "profile_picture")
     private String profilePicture;
 
     @Column(name = "date_of_birth")

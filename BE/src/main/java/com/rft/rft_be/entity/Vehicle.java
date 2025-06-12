@@ -1,8 +1,10 @@
 package com.rft.rft_be.entity;
 
 import jakarta.persistence.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -75,8 +77,6 @@ public class Vehicle {
     private BigDecimal costPerDay;
 
     @Enumerated(EnumType.STRING)
-    @ColumnDefault("'available'")
-    @Lob
     @Column(name = "status")
     private Status status = Status.AVAILABLE;
 

@@ -7,7 +7,7 @@ CREATE TABLE `users` (
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `full_name` nvarchar(100) DEFAULT NULL,
-  `profilePicture` text,
+  `profile_picture` text,
   `date_of_birth` date DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` nvarchar(255) NOT NULL,
@@ -49,6 +49,7 @@ CREATE TABLE `vehicles` (
   `license_plate` varchar(20) DEFAULT NULL,
   `vehicle_types` varchar(50) DEFAULT NULL,
   `vehicle_features` text,
+  `vehicle_image` text,
   `insurance_status` enum('YES','NO') DEFAULT 'NO',
   `ship_to_address` enum('YES','NO') DEFAULT 'NO',
   `number_seat` int DEFAULT NULL,
@@ -192,5 +193,3 @@ CREATE TABLE `booked_time_slots` (
   KEY `vehicle_id` (`vehicle_id`),
   CONSTRAINT `booked_time_slots_ibfk_1` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-
