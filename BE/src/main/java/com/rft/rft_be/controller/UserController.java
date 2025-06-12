@@ -1,6 +1,7 @@
 package com.rft.rft_be.controller;
 
 import com.rft.rft_be.dto.UserDTO;
+import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,5 +19,13 @@ public class UserController {
     @GetMapping("/{id}/profile")
     public ResponseEntity<UserDTO> viewProfile(@PathVariable String id) {
         return ResponseEntity.ok(userService.getProfile(id));
+    }
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<UserProfileDTO> updateProfile(
+            @PathVariable String id,
+            @RequestBody UserProfileDTO dto
+    ) {
+        UserProfileDTO updated = userService.updateProfile(id, dto);
+        return ResponseEntity.ok(updated);
     }
 }

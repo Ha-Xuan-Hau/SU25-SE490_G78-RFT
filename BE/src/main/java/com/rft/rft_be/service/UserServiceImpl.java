@@ -1,6 +1,7 @@
 package com.rft.rft_be.service;
 
 import com.rft.rft_be.dto.UserDTO;
+import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.repository.UserRepository;
@@ -21,6 +22,17 @@ public class UserServiceImpl implements UserService {
     public UserDTO getProfile(String id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-        return userMapper.toDTO(user);
+        return userMapper.toUserDTO(user);
+    }
+
+    @Override
+    public UserProfileDTO updateProfile(String id, UserProfileDTO dto) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        userMapper.updateUserFromDTO(dto, user);
+        User updated = userRepository.save(user);
+
+        return userMapper.toUserProfileDTO(updated);
     }
 }
