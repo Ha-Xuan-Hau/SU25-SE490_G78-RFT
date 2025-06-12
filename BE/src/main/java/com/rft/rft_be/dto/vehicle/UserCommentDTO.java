@@ -1,4 +1,4 @@
-package com.rft.rft_be.dto;
+package com.rft.rft_be.dto.vehicle;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -8,6 +8,9 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class VehicleImageDTO {
-    String imageUrl;
+public class UserCommentDTO {
+    String userName;
+    String userImage;
+    String comment;
+    Integer star;
 }

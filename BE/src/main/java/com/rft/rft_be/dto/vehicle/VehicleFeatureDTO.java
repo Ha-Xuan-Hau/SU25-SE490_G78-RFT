@@ -1,4 +1,4 @@
-package com.rft.rft_be.dto;
+package com.rft.rft_be.dto.vehicle;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 

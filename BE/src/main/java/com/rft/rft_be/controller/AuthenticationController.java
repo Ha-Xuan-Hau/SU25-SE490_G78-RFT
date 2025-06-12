@@ -5,17 +5,15 @@ import com.rft.rft_be.dto.authentication.AuthenticationRequest;
 import com.rft.rft_be.dto.authentication.AuthenticationResponse;
 import com.rft.rft_be.dto.authentication.IntrospectRequest;
 import com.rft.rft_be.dto.authentication.IntrospectResponse;
-import com.rft.rft_be.dto.user.UserDetailDto;
-import com.rft.rft_be.dto.user.UserRegisterDto;
-import com.rft.rft_be.entity.User;
+import com.rft.rft_be.dto.user.UserDetailDTO;
+import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.mapper.UserMapper;
-import com.rft.rft_be.service.AuthenticationService.AuthenticationService;
+import com.rft.rft_be.service.authenticationService.AuthenticationService;
 import com.rft.rft_be.service.user.UserService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,8 +44,8 @@ public class AuthenticationController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserDetailDto> register(@RequestBody UserRegisterDto request){
-        UserDetailDto createdUser =userService.register(request);
+    public ResponseEntity<UserDetailDTO> register(@RequestBody UserRegisterDTO request){
+        UserDetailDTO createdUser =userService.register(request);
 
         return ResponseEntity.ok(createdUser);
     }

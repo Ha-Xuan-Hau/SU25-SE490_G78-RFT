@@ -1,10 +1,10 @@
 package com.rft.rft_be.service.user;
 
 import com.rft.rft_be.dto.UserDTO;
-import com.rft.rft_be.dto.user.UserDetailDto;
-import com.rft.rft_be.dto.user.UserRegisterDto;
+import com.rft.rft_be.dto.user.UserDetailDTO;
+import com.rft.rft_be.dto.user.UserRegisterDTO;
 
 public interface UserService {
-    UserDetailDto register(UserRegisterDto dto);
+    UserDetailDTO register(UserRegisterDTO dto);
     UserDTO getProfile(String id);
 }
