@@ -13,7 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DriverLicens {
+public class DriverLicense {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -29,8 +29,7 @@ public class DriverLicens {
     @Column(name = "class", length = 20)
     private String classField;
 
-    @ColumnDefault("'valid'")
-    @Lob
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private Status status = Status.VALID;
 
