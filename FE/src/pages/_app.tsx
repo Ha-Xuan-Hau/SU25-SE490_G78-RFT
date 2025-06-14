@@ -7,6 +7,7 @@ import Footer from "@/components/Layout/Footer";
 import NextTopLoader from "nextjs-toploader";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/apis/client";
+import { AuthProvider } from "@/context/AuthContext";
 
 import Head from "next/head";
 
@@ -22,13 +23,15 @@ export default function MyApp({
           enableSystem={true}
           defaultTheme="light"
         >
-          <NextTopLoader color="#07be8a" />
-          <Head>
-            <title>RFT - Rent For Travel</title>
-          </Head>
-          <Header />
-          <Component {...pageProps} />
-          <Footer />
+          <AuthProvider>
+            <NextTopLoader color="#07be8a" />
+            <Head>
+              <title>RFT - Rent For Travel</title>
+            </Head>
+            <Header />
+            <Component {...pageProps} />
+            <Footer />
+          </AuthProvider>
         </ThemeProvider>
       </SessionProvider>
     </QueryClientProvider>
