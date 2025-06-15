@@ -6,6 +6,8 @@ import {
   loginSchema,
   registerSchema,
   forgotPasswordSchema,
+  verifyOTPSchema,
+  resetPasswordSchema,
 } from "@/lib/validations/auth";
 import { z } from "zod";
 import { Icon } from "@iconify/react";
@@ -13,7 +15,12 @@ import { Icon } from "@iconify/react";
 interface AuthPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  initialMode?: "login" | "register" | "forgot-password";
+  initialMode?:
+    | "login"
+    | "register"
+    | "forgot-password"
+    | "verify-otp"
+    | "reset-password";
 }
 
 export function AuthPopup({
@@ -23,6 +30,7 @@ export function AuthPopup({
 }: AuthPopupProps) {
   const { mode, openAuthPopup } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -30,6 +38,7 @@ export function AuthPopup({
     confirmPassword: "",
     email: "",
     referralCode: "",
+    otp: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,6 +52,7 @@ export function AuthPopup({
       confirmPassword: "",
       email: "",
       referralCode: "",
+      otp: "",
     });
     setErrors({});
   }, [mode, isOpen]);
@@ -58,6 +68,12 @@ export function AuthPopup({
           break;
         case "forgot-password":
           forgotPasswordSchema.parse(formData);
+          break;
+        case "verify-otp":
+          verifyOTPSchema.parse(formData);
+          break;
+        case "reset-password":
+          resetPasswordSchema.parse(formData);
           break;
       }
       setErrors({});
@@ -97,6 +113,60 @@ export function AuthPopup({
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      // TODO: Implement API call to send OTP
+      console.log("Sending OTP to:", {
+        email: formData.email,
+        phone: formData.phone,
+      });
+      openAuthPopup("verify-otp");
+    } catch (err) {
+      setErrors({ submit: "Có lỗi xảy ra. Vui lòng thử lại." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      // TODO: Implement API call to verify OTP
+      console.log("Verifying OTP:", formData.otp);
+      openAuthPopup("reset-password");
+    } catch (err) {
+      setErrors({ submit: "Có lỗi xảy ra. Vui lòng thử lại." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      // TODO: Implement API call to reset password
+      console.log("Resetting password:", {
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      });
+      openAuthPopup("login");
+    } catch (err) {
+      setErrors({ submit: "Có lỗi xảy ra. Vui lòng thử lại." });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -324,7 +394,25 @@ export function AuthPopup({
 
       case "forgot-password":
         return (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Số điện thoại
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                  errors.phone ? "border-red-500" : "border-gray-300"
+                }`}
+                required
+              />
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+              )}
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Email
@@ -361,6 +449,121 @@ export function AuthPopup({
             </div>
           </form>
         );
+
+      case "verify-otp":
+        return (
+          <form onSubmit={handleVerifyOTP} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Mã OTP
+              </label>
+              <input
+                type="text"
+                name="otp"
+                value={formData.otp}
+                onChange={handleInputChange}
+                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                  errors.otp ? "border-red-500" : "border-gray-300"
+                }`}
+                required
+              />
+              {errors.otp && (
+                <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-md bg-primary py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+            >
+              {isLoading ? "Đang xử lý..." : "Xác thực OTP"}
+            </button>
+            <div className="text-center text-sm">
+              <button
+                type="button"
+                onClick={() => openAuthPopup("forgot-password")}
+                className="text-dark hover:text-primary transition duration-300"
+              >
+                Quay lại
+              </button>
+            </div>
+          </form>
+        );
+
+      case "reset-password":
+        return (
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Mật khẩu mới
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                    errors.password ? "border-red-500" : "border-gray-300"
+                  }`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Xác nhận mật khẩu mới
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                    errors.confirmPassword
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-md bg-primary py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+            >
+              {isLoading ? "Đang xử lý..." : "Đặt lại mật khẩu"}
+            </button>
+          </form>
+        );
     }
   };
 
@@ -387,7 +590,11 @@ export function AuthPopup({
                   ? "Đăng nhập"
                   : mode === "register"
                   ? "Đăng ký"
-                  : "Quên mật khẩu"}
+                  : mode === "forgot-password"
+                  ? "Quên mật khẩu"
+                  : mode === "verify-otp"
+                  ? "Xác thực OTP"
+                  : "Đặt lại mật khẩu"}
               </h2>
               <button
                 onClick={onClose}

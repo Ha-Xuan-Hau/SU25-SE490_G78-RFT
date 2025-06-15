@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState } from "react";
 
-type AuthMode = "login" | "register" | "forgot-password";
+export type AuthMode =
+  | "login"
+  | "register"
+  | "forgot-password"
+  | "verify-otp"
+  | "reset-password";
 
 interface AuthContextType {
   isOpen: boolean;
