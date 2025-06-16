@@ -2,7 +2,7 @@ package com.rft.rft_be.controller;
 
 import com.rft.rft_be.dto.vehicle.VehicleDTO;
 import com.rft.rft_be.dto.CategoryDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDTO_1;
+import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
 import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
 import com.rft.rft_be.service.vehicle.VehicleService;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class VehicleController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getVehiclesByUserId(@PathVariable String userId) {
         try {
-            List<VehicleDTO_1> vehicles = vehicleService.getVehiclesByUserId(userId);
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByUserId(userId);
             return ResponseEntity.ok(vehicles);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -58,7 +58,7 @@ public class VehicleController {
     @GetMapping("/status/{status}")
     public ResponseEntity<?> getVehiclesByStatus(@PathVariable String status) {
         try {
-            List<VehicleDTO_1> vehicles = vehicleService.getVehiclesByStatus(status);
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByStatus(status);
             return ResponseEntity.ok(vehicles);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
@@ -74,7 +74,7 @@ public class VehicleController {
     @GetMapping("/vehicle-type/{vehicleType}")
     public ResponseEntity<?> getVehiclesByVehicleType(@PathVariable String vehicleType) {
         try {
-            List<VehicleDTO_1> vehicles = vehicleService.getVehiclesByVehicleType(vehicleType);
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByVehicleType(vehicleType);
             return ResponseEntity.ok(vehicles);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -86,7 +86,7 @@ public class VehicleController {
     @GetMapping("/brand/{brandId}")
     public ResponseEntity<?> getVehiclesByBrandId(@PathVariable String brandId) {
         try {
-            List<VehicleDTO_1> vehicles = vehicleService.getVehiclesByBrandId(brandId);
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByBrandId(brandId);
             return ResponseEntity.ok(vehicles);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -98,7 +98,7 @@ public class VehicleController {
     @GetMapping("/model/{modelId}")
     public ResponseEntity<?> getVehiclesByModelId(@PathVariable String modelId) {
         try {
-            List<VehicleDTO_1> vehicles = vehicleService.getVehiclesByModelId(modelId);
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByModelId(modelId);
             return ResponseEntity.ok(vehicles);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -110,7 +110,7 @@ public class VehicleController {
     @GetMapping("/license-plate/{licensePlate}")
     public ResponseEntity<?> getVehicleByLicensePlate(@PathVariable String licensePlate) {
         try {
-            VehicleDTO_1 vehicle = vehicleService.getVehicleByLicensePlate(licensePlate);
+            VehicleGetDTO vehicle = vehicleService.getVehicleByLicensePlate(licensePlate);
             return ResponseEntity.ok(vehicle);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
@@ -126,7 +126,7 @@ public class VehicleController {
     @PostMapping
     public ResponseEntity<?> createVehicle(@RequestBody com.rft.rft_be.dto.vehicle.CreateVehicleDTO createVehicleDTO) {
         try {
-            VehicleDTO_1 createdVehicle = vehicleService.createVehicle(createVehicleDTO);
+            VehicleGetDTO createdVehicle = vehicleService.createVehicle(createVehicleDTO);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
@@ -140,9 +140,9 @@ public class VehicleController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateVehicle(@PathVariable String id, @RequestBody VehicleDTO_1 vehicleDTO_1) {
+    public ResponseEntity<?> updateVehicle(@PathVariable String id, @RequestBody VehicleGetDTO vehicleGetDTO_) {
         try {
-            VehicleDTO_1 updatedVehicle = vehicleService.updateVehicle(id, vehicleDTO_1);
+            VehicleGetDTO updatedVehicle = vehicleService.updateVehicle(id, vehicleGetDTO_);
             return ResponseEntity.ok(updatedVehicle);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
@@ -207,7 +207,7 @@ public class VehicleController {
     @GetMapping("/count/status/{status}")
     public ResponseEntity<?> getVehicleCountByStatus(@PathVariable String status) {
         try {
-            List<VehicleDTO_1> vehicles = vehicleService.getVehiclesByStatus(status);
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByStatus(status);
             Map<String, Object> response = new HashMap<>();
             response.put("status", status.toUpperCase());
             response.put("count", vehicles.size());
