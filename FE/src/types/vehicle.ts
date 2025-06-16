@@ -14,6 +14,8 @@ export interface Vehicle {
   brandName: string;
   modelName: string;
   vehicleImages: VehicleImage[];
+  totalRating: number;
+  address: string;
 }
 
 export interface VehicleFeature {
@@ -34,7 +36,6 @@ export interface VehicleFilters {
   brand?: string;
   seats?: number;
   minRating?: number;
-  homeDelivery?: boolean;
-  mortgageFree?: boolean;
+  shipToAddress?: boolean;
   hasDiscount?: boolean;
 }

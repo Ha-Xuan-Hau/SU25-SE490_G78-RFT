@@ -13,7 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DriverLicens {
+public class DriverLicense {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)

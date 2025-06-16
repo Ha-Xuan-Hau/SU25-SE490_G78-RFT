@@ -38,6 +38,8 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
     brandName,
     modelName,
     vehicleImages,
+    totalRating,
+    address,
   } = item;
 
   const mainImage = vehicleImages[0]?.imageUrl;
@@ -76,7 +78,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
                 </h3>
               </Link>
               <p className="text-base font-normal text-black/50 dark:text-white/50">
-                {add}
+                {address}
               </p>
             </div>
           </div>
@@ -109,15 +111,23 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
           <div className="flex justify-between items-center">
             {/* Rating - Left Side */}
             <div className="flex items-center">
-              <p className="font-medium text-black dark:text-white flex items-center">
-                {rate}
-                <Icon
-                  icon={"material-symbols:star-rate-rounded"}
-                  width={20}
-                  height={20}
-                  className="ml-0.5 text-yellow-400"
-                />
-              </p>
+              <div className="flex items-center">
+                {totalRating > 0 ? (
+                  <p className="font-medium text-black dark:text-white flex items-center">
+                    {totalRating}
+                    <Icon
+                      icon={"material-symbols:star-rate-rounded"}
+                      width={20}
+                      height={20}
+                      className="ml-0.5 text-yellow-400"
+                    />
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">
+                    Chưa có đánh giá
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Price - Right Side */}

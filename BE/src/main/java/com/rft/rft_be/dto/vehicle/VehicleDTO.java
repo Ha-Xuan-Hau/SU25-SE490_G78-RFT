@@ -15,7 +15,7 @@ public class VehicleDTO {
 
     String id;
     String licensePlate;
-    String vehicleTypes;
+    String vehicleType;
 //    String vehicleFeatures;
     List<VehicleFeatureDTO> vehicleFeatures;
     List<VehicleImageDTO> vehicleImages;
@@ -30,4 +30,5 @@ public class VehicleDTO {
     String brandName;
     String modelName;
     int rating;
+    String address;
 }

@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import { apiClient } from './client';
 
 export async function getVehicles() {
     const data = await apiClient.request({
@@ -7,7 +7,7 @@ export async function getVehicles() {
         url: '/vehicles',
     });
 
-    return data;
+    return Array.isArray(data) ? data : data.content || data.items || data.data || [];
 }
 
 export async function getVehicleById(vehicleId) {

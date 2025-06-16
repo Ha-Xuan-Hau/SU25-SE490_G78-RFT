@@ -1,18 +1,46 @@
 "use client";
 import React, { useState } from "react";
-import { vehicleCar } from "@/apis/vehicles";
-import { useParams } from "next/navigation";
+import { getVehicleById } from "@/apis/vehicle.api";
+import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import Image from "next/image";
+import LoadingSpinner from "@/components/ui/LoadingSpriner";
+import ErrorMessage from "@/components/ui/ErrorMessage";
+import { useRouter } from "next/router";
+import { VehicleFeature } from "@/types/vehicle";
 
 export default function VehicleDetail() {
-  const params = useParams();
-  const slug = params?.slug as string;
+  const router = useRouter();
+  const { id } = router.query;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const item = vehicleCar.find((item) => item?.slug === slug);
-  const images = item?.images || [];
+  const {
+    data: vehicle,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["vehicle", id],
+    queryFn: () => getVehicleById(id as string),
+    enabled: !!id,
+  });
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (isError) {
+    return <ErrorMessage message="Không thể tải thông tin xe" />;
+  }
+
+  // Nếu không có dữ liệu
+  if (!vehicle) {
+    return <div className="text-center py-16">Không tìm thấy thông tin xe</div>;
+  }
+
+  const images = vehicle.vehicleImages || [];
+
+  const features: VehicleFeature[] = vehicle?.vehicleFeatures || [];
 
   const goToPrevImage = () => {
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -28,11 +56,11 @@ export default function VehicleDetail() {
         <div className="grid grid-cols-12 mt-8 gap-8">
           {/* Tăng độ rộng của hình ảnh chính */}
           <div className="lg:col-span-8 col-span-12 row-span-2 lg:block hidden">
-            {item?.images && item?.images[0] && (
+            {images.length > 0 && (
               <div className="">
                 <Image
-                  src={item.images[0]?.src}
-                  alt="Main Property Image"
+                  src={images[0]?.imageUrl}
+                  alt={`${vehicle.brandName} ${vehicle.modelName}`}
                   width={800} // Tăng kích thước ảnh
                   height={600} // Tăng kích thước ảnh
                   className="rounded-2xl w-full h-[600px] object-cover" // Tăng chiều cao ảnh và thêm object-cover
@@ -42,10 +70,10 @@ export default function VehicleDetail() {
             )}
           </div>
           <div className="lg:col-span-4 lg:block hidden">
-            {item?.images && item?.images[1] && (
+            {images.length > 1 && (
               <Image
-                src={item.images[1]?.src}
-                alt="Property Image 2"
+                src={images[1]?.imageUrl}
+                alt={`${vehicle.brandName} ${vehicle.modelName}`}
                 width={500} // Tăng kích thước ảnh
                 height={600} // Tăng kích thước ảnh
                 className="rounded-2xl w-full h-full object-cover" // Thêm object-cover
@@ -54,10 +82,10 @@ export default function VehicleDetail() {
             )}
           </div>
           <div className="lg:col-span-2 col-span-6 lg:block hidden">
-            {item?.images && item?.images[2] && (
+            {images.length > 2 && (
               <Image
-                src={item.images[2]?.src}
-                alt="Property Image 3"
+                src={images[2]?.imageUrl}
+                alt={`${vehicle.brandName} ${vehicle.modelName}`}
                 width={400}
                 height={500}
                 className="rounded-2xl w-full h-full object-cover" // Thêm object-cover
@@ -66,10 +94,10 @@ export default function VehicleDetail() {
             )}
           </div>
           <div className="lg:col-span-2 col-span-6 lg:block hidden">
-            {item?.images && item?.images[3] && (
+            {images.length > 3 && (
               <Image
-                src={item.images[3]?.src}
-                alt="Property Image 4"
+                src={images[3]?.imageUrl}
+                alt={`${vehicle.brandName} ${vehicle.modelName}`}
                 width={400}
                 height={500}
                 className="rounded-2xl w-full h-full object-cover" // Thêm object-cover
@@ -81,10 +109,13 @@ export default function VehicleDetail() {
 
         {/* Mobile Carousel */}
         <div className="lg:hidden relative mt-8">
-          {item?.images && item?.images.length > 0 && (
+          {images.length > 0 && (
             <div className="relative h-[350px] w-full">
               <Image
-                src={item.images[currentImageIndex]?.src}
+                src={
+                  images[currentImageIndex]?.imageUrl ||
+                  "/default-car-image.jpg"
+                }
                 alt={`Vehicle Image ${currentImageIndex + 1}`}
                 fill
                 className="rounded-xl object-cover"
@@ -120,7 +151,7 @@ export default function VehicleDetail() {
         <div className="grid grid-cols-12 items-end gap-8 mt-10">
           <div className="lg:col-span-8 col-span-12">
             <h1 className="lg:text-5xl text-4xl font-semibold text-dark dark:text-white">
-              {item?.name}
+              {vehicle?.thumb}
             </h1>
             <div className="flex gap-2.5 mt-3">
               <Icon
@@ -129,7 +160,9 @@ export default function VehicleDetail() {
                 height={24}
                 className="text-primary"
               />
-              <p className="text-lg text-dark dark:text-white">{item?.rate}</p>
+              <p className="text-lg text-dark dark:text-white">
+                {vehicle?.totalRating}
+              </p>
               <Icon
                 icon="ph:map-pin"
                 width={24}
@@ -137,7 +170,7 @@ export default function VehicleDetail() {
                 className="text-dark/50 dark:text-white/50"
               />
               <p className="text-dark/50 dark:text-white/50 text-lg">
-                {item?.location}
+                {vehicle?.address}
               </p>
             </div>
           </div>
@@ -153,13 +186,13 @@ export default function VehicleDetail() {
                 <div className="flex items-center gap-1">
                   <Icon icon={"solar:bed-linear"} width={24} height={24} />
                   <p className="text-xl font-normal text-black dark:text-white">
-                    {item?.transmission}
+                    {vehicle?.transmission}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Icon icon={"solar:bath-linear"} width={24} height={24} />
                   <p className="text-xl font-normal text-black dark:text-white">
-                    {item?.seat} Ghế ngồi
+                    {vehicle?.numberSeat} Ghế ngồi
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -169,7 +202,7 @@ export default function VehicleDetail() {
                     height={24}
                   />
                   <p className="text-xl font-normal text-black dark:text-white">
-                    {item?.fuel}
+                    {vehicle?.fuelType}
                   </p>
                 </div>
               </div>
@@ -179,77 +212,29 @@ export default function VehicleDetail() {
             <div className="flex flex-col gap-6">
               <h3 className="text-3xl font-semibold">Mô tả</h3>
               <p className="text-dark dark:text-white text-lg leading-relaxed">
-                Mô tả của xe sẽ ở đây
+                {vehicle?.description}
               </p>
             </div>
 
             {/* Tăng khoảng cách và kích thước phần tính năng */}
             <div className="py-10 mt-10 border-t border-dark/5 dark:border-white/15">
               <h3 className="text-2xl font-medium">Các tiện nghi khác</h3>
-              <div className="grid grid-cols-3 mt-8 gap-8">
-                <div className="flex items-center gap-3">
-                  <Icon
-                    icon="ph:aperture"
-                    width={28}
-                    height={28}
-                    className="text-dark dark:text-white"
-                  />
-                  <p className="text-lg dark:text-white text-dark">Bản đồ</p>
+
+              {features && features.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 mt-8 gap-8">
+                  {features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <p className="text-lg dark:text-white text-dark">
+                        {feature.name}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-3">
-                  <Icon
-                    icon="ph:chart-pie-slice"
-                    width={28}
-                    height={28}
-                    className="text-dark dark:text-white"
-                  />
-                  <p className="text-lg dark:text-white text-dark">Bluetooth</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Icon
-                    icon="ph:television-simple"
-                    width={28}
-                    height={28}
-                    className="text-dark dark:text-white"
-                  />
-                  <p className="text-lg dark:text-white text-dark">
-                    Camera hành trình
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Icon
-                    icon="ph:sun"
-                    width={28}
-                    height={28}
-                    className="text-dark dark:text-white"
-                  />
-                  <p className="text-lg dark:text-white text-dark">
-                    Camera lùi
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Icon
-                    icon="ph:video-camera"
-                    width={28}
-                    height={28}
-                    className="text-dark dark:text-white"
-                  />
-                  <p className="text-lg dark:text-white text-dark">
-                    Cảm biến va chạm
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Icon
-                    icon="ph:cloud"
-                    width={28}
-                    height={28}
-                    className="text-dark dark:text-white"
-                  />
-                  <p className="text-lg dark:text-white text-dark">
-                    Định vị GPS
-                  </p>
-                </div>
-              </div>
+              ) : (
+                <p className="mt-4 text-dark/60 dark:text-white/60">
+                  Không có tiện nghi được cung cấp
+                </p>
+              )}
             </div>
 
             <div className="py-10 mt-10 border-t border-gray-200 dark:border-white/15">
@@ -313,7 +298,7 @@ export default function VehicleDetail() {
           <div className="lg:col-span-4 col-span-12">
             <div className="bg-primary/10 p-10 rounded-2xl relative z-10 overflow-hidden">
               <h4 className="text-dark text-4xl font-medium dark:text-white mb-6">
-                {item?.price} VND/Ngày
+                {vehicle?.costPerDay} VND/Ngày
               </h4>
 
               {/* Ngày và giờ thuê xe */}
