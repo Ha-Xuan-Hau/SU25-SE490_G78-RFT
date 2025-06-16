@@ -40,8 +40,8 @@ public class Vehicle {
     private String vehicleType;
 
     @Lob
-    @Column(name = "vehicle_features")
-    private String vehicleFeatures;
+    @Column(name = "vehicle_feature")
+    private String vehicleFeature;
 
     @Lob
     @Column(name = "vehicle_images")
