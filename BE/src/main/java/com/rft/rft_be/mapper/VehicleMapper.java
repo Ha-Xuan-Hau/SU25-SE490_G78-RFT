@@ -48,6 +48,8 @@ public interface VehicleMapper {
     @Mapping(source = "fuelType", target = "fuelType", qualifiedByName = "enumToString")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
+
+
     @Named("stringToFeatureList")
     static List<VehicleFeatureDTO> stringToFeatureList(String features) {
         if (features == null || features.trim().isEmpty()) {
