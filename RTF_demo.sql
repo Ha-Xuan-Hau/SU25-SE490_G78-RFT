@@ -49,7 +49,7 @@ CREATE TABLE `vehicles` (
   `license_plate` varchar(20) DEFAULT NULL,
   `vehicle_types` varchar(50) DEFAULT NULL,
   `vehicle_features` text,
-  `vehicle_images` text,
+  `vehicle_image` text,
   `insurance_status` enum('YES','NO') DEFAULT 'NO',
   `ship_to_address` enum('YES','NO') DEFAULT 'NO',
   `number_seat` int DEFAULT NULL,
