@@ -9,7 +9,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VehicleDTO_1 {
+public class VehicleGetDTO {
     private String id;
     private String userId;
     private String userName;
