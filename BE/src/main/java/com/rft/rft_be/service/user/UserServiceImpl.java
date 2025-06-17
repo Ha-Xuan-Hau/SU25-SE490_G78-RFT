@@ -4,8 +4,6 @@ import com.rft.rft_be.dto.UserDTO;
 import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
-import com.rft.rft_be.dto.user.UserDetailDTO;
-import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.repository.UserRepository;
