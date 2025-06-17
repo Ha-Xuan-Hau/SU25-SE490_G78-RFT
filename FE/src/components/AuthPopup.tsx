@@ -11,6 +11,8 @@ import {
 } from "@/lib/validations/auth";
 import { z } from "zod";
 import { Icon } from "@iconify/react";
+import { login as apiLogin } from "@/apis/auth";
+import { toast } from "react-toastify";
 
 interface AuthPopupProps {
   isOpen: boolean;
@@ -42,6 +44,8 @@ export function AuthPopup({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { login } = useAuth();
 
   // Reset form data when mode changes or popup opens/closes
   useEffect(() => {
@@ -98,10 +102,37 @@ export function AuthPopup({
 
     setIsLoading(true);
     try {
-      // TODO: Implement API calls based on mode
-      console.log("Form submitted:", { mode, formData });
-    } catch (err) {
-      setErrors({ submit: "Có lỗi xảy ra. Vui lòng thử lại." });
+      if (mode === "login") {
+        const response = await apiLogin({
+          email: formData.phone,
+          password: formData.password,
+        });
+
+        // Kiểm tra dữ liệu trả về từ API
+        if (response && response.access_token) {
+          // Đảm bảo có result trước khi gọi hàm login
+          const userData = response.result || {};
+
+          // Sử dụng hàm login từ context
+          login(userData, response.access_token);
+
+          toast.success("Đăng nhập thành công!");
+          onClose();
+          window.location.reload();
+        } else {
+          // Xử lý trường hợp response không đúng định dạng
+          throw new Error("Định dạng phản hồi không hợp lệ");
+        }
+      }
+    } catch (err: any) {
+      // Xử lý lỗi cải tiến hơn cho JavaScript
+      const errorMessage =
+        err.message ||
+        err.response?.data?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+
+      setErrors({ submit: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -177,7 +208,7 @@ export function AuthPopup({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Số điện thoại
+                Email
               </label>
               <input
                 type="tel"
