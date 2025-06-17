@@ -1,11 +1,11 @@
-package com.rft.rft_be.service.vehicle_rent;
+package com.rft.rft_be.service.vehicleRent;
 
 import com.rft.rft_be.dto.vehicle.VehicleDTO;
 import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
 import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
-import com.rft.rft_be.dto.vehicle.vehicle_rent.PageResponseDTO;
-import com.rft.rft_be.dto.vehicle.vehicle_rent.VehicleRentCreateDTO;
-import com.rft.rft_be.dto.vehicle.vehicle_rent.VehicleRentUpdateDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.PageResponseDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
 
 
 public interface VehicleRentService {

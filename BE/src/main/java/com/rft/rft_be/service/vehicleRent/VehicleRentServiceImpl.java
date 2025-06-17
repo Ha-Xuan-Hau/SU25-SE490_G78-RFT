@@ -1,8 +1,8 @@
-package com.rft.rft_be.service.vehicle_rent;
+package com.rft.rft_be.service.vehicleRent;
 
 
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.dto.vehicle.vehicle_rent.*;
+import com.rft.rft_be.dto.vehicle.vehicleRent.*;
 import com.rft.rft_be.entity.Brand;
 import com.rft.rft_be.entity.Model;
 import com.rft.rft_be.entity.User;

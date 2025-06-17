@@ -1,11 +1,11 @@
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.vehicle.vehicle_rent.ApiResponseDTO;
-import com.rft.rft_be.dto.vehicle.vehicle_rent.PageResponseDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.ApiResponseDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.PageResponseDTO;
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.dto.vehicle.vehicle_rent.VehicleRentCreateDTO;
-import com.rft.rft_be.dto.vehicle.vehicle_rent.VehicleRentUpdateDTO;
-import com.rft.rft_be.service.vehicle_rent.VehicleRentService;
+import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
+import com.rft.rft_be.service.vehicleRent.VehicleRentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

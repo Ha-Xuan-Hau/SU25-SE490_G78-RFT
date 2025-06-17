@@ -1,4 +1,4 @@
-package com.rft.rft_be.dto.vehicle.vehicle_rent;
+package com.rft.rft_be.dto.vehicle.vehicleRent;
 
 
 import jakarta.validation.constraints.*;
