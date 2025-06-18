@@ -190,7 +190,7 @@ public class BookingServiceImpl implements BookingService {
         VehicleForBookingDTO dto = VehicleForBookingDTO.builder()
                 .id(vehicle.getId())
                 .licensePlate(vehicle.getLicensePlate())
-                .vehicleTypes(vehicle.getVehicleTypes())
+                .vehicleTypes(vehicle.getVehicleType())
                 .thumb(vehicle.getThumb())
                 .costPerDay(vehicle.getCostPerDay())
                 .status(vehicle.getStatus().name())
