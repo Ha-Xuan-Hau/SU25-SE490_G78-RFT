@@ -3,7 +3,7 @@ import axios from "axios";
 
 export const apiClient = axios.create({
     baseURL: `${process.env.NEXT_PUBLIC_REACT_APP_BACKEND_URL}`,
-    timeout: 1000,
+    timeout: 10000,
 });
 
 // apiClient.interceptors.request.use(function (config) {
@@ -17,6 +17,30 @@ export const apiClient = axios.create({
 
 //   return config;
 // });
+
+apiClient.interceptors.request.use(function (config) {
+    try {
+        const tokenStr = localStorage.getItem("access_token");
+
+        if (!tokenStr) {
+            return config;
+        }
+
+        // Parse token nếu đã được stringify
+        let token;
+        try {
+            token = JSON.parse(tokenStr);
+        } catch {
+            token = tokenStr; // Nếu không parse được, sử dụng nguyên bản
+        }
+
+        config.headers.Authorization = `Bearer ${token}`;
+    } catch (error) {
+        console.error("Error adding auth token:", error);
+    }
+
+    return config;
+});
 
 export const queryClient = new QueryClient({
     defaultOptions: {

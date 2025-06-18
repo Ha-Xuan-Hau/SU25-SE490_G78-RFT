@@ -37,7 +37,7 @@ public class Vehicle {
     private String licensePlate;
 
     @Column(name = "vehicle_type", length = 50)
-    private String vehicleTypes;
+    private String vehicleType;
 
     @Lob
     @Column(name = "vehicle_features")
