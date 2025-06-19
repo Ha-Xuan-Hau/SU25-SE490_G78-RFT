@@ -1,5 +1,9 @@
 package com.rft.rft_be.service.user;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import java.text.ParseException;
 import com.rft.rft_be.dto.UserDTO;
 import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.dto.user.UserDetailDTO;
@@ -13,6 +17,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +56,23 @@ public class UserServiceImpl implements  UserService{
         User updated = userRepository.save(user);
 
         return userMapper.toUserProfileDTO(updated);
+    }
+
+    @Override
+    public String getUserIdFromToken(String token) {
+        try {
+            // Parse JWT token
+            SignedJWT signedJWT = SignedJWT.parse(token);
+
+            // Get the claims from the token
+            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+
+            String userId = claimsSet.getStringClaim("userId");
+
+            return userId;
+        } catch (ParseException e) {
+            throw new RuntimeException("Invalid token format", e);
+        }
     }
 }
 

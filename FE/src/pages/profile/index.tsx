@@ -3,7 +3,7 @@ import useLocalStorage from "@/hooks/useLocalStorage";
 import { useUserState } from "@/recoils/user.state.js";
 import { Typography, Button, Spin, Avatar } from "antd";
 import { EditOutlined, UserOutlined } from "@ant-design/icons";
-import { getUserProfile } from "@/apis/user";
+import { getUserProfile } from "@/apis/user.api";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 // import EditProfileModal from "@/components/EditProfileModal";
 // import { UploadProfilePicture } from "@/components/UploadProfilePicture";

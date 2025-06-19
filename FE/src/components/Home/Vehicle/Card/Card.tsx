@@ -3,40 +3,14 @@ import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
 
-// export interface Vehicle {
-//   id: string;
-//   licensePlate: string;
-//   vehicleTypes: string;
-//   vehicleFeatures: VehicleFeature[];
-//   description: string;
-//   costPerDay: number;
-//   status: string;
-//   thumb: string;
-//   numberSeat: number;
-//   yearManufacture: number;
-//   transmission: string;
-//   fuelType: string;
-//   brandName: string;
-//   modelName: string;
-//   vehicleImages: VehicleImage[];
-// }
-
 const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
   const {
     id,
-    licensePlate,
-    vehicleTypes,
-    vehicleFeatures,
-    description,
     costPerDay,
-    status,
     thumb,
     numberSeat,
-    yearManufacture,
     transmission,
     fuelType,
-    brandName,
-    modelName,
     vehicleImages,
     totalRating,
     address,

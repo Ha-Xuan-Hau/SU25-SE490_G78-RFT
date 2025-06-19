@@ -11,7 +11,7 @@ import { Button, Form, notification, Modal, Input, Select } from "antd";
 // Định nghĩa interface cho props
 interface RegisterDriverModalProps {
   openRegisterDriver: boolean;
-  handleCancleRegisterDriver: () => void;
+  handleCancelRegisterDriver: () => void;
 }
 
 // Định nghĩa kiểu dữ liệu cho values form
@@ -24,7 +24,7 @@ interface DriverFormValues {
 
 function RegisterDriverModal({
   openRegisterDriver,
-  handleCancleRegisterDriver,
+  handleCancelRegisterDriver,
 }: RegisterDriverModalProps) {
   const [form] = Form.useForm<DriverFormValues>();
   const [user, setUser] = useUserState();
@@ -62,7 +62,7 @@ function RegisterDriverModal({
         console.log(response.data);
         setDriver({ ...response.data });
         setProfile({ ...response.data });
-        handleCancleRegisterDriver();
+        handleCancelRegisterDriver();
         const successMessage =
           driver || user?.result?.driverLicenses
             ? "Cập nhật thành công"
@@ -96,7 +96,7 @@ function RegisterDriverModal({
   return (
     <Modal
       open={openRegisterDriver}
-      onCancel={handleCancleRegisterDriver}
+      onCancel={handleCancelRegisterDriver}
       footer={[
         <Button
           key="submit"

@@ -11,7 +11,7 @@ import {
 } from "@/lib/validations/auth";
 import { z } from "zod";
 import { Icon } from "@iconify/react";
-import { login as apiLogin } from "@/apis/auth";
+import { login as apiLogin } from "@/apis/auth.api";
 import { toast } from "react-toastify";
 
 interface AuthPopupProps {
