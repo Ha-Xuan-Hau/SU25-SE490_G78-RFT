@@ -27,6 +27,10 @@ private CouponService couponService;
     public ResponseEntity<CouponDTO> update(@PathVariable String id, @RequestBody CouponDTO dto) {
         return ResponseEntity.ok(couponService.updateCoupon(id, dto));
     }
+    @PostMapping
+    public ResponseEntity<CouponDTO> createCoupon(@RequestBody CouponDTO dto) {
+        return ResponseEntity.ok(couponService.createCoupon(dto));
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         couponService.deleteCouponById(id);
