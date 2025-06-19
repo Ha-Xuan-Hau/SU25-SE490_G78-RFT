@@ -36,15 +36,15 @@ public class Vehicle {
     @Column(name = "license_plate", length = 20)
     private String licensePlate;
 
-    @Column(name = "vehicle_types", length = 50)
-    private String vehicleTypes;
+    @Column(name = "vehicle_type", length = 50)
+    private String vehicleType;
 
     @Lob
     @Column(name = "vehicle_features")
     private String vehicleFeatures;
 
     @Lob
-    @Column(name = "vehicle_image")
+    @Column(name = "vehicle_images")
     private String VehicleImages;
 
     @Enumerated(EnumType.STRING)
