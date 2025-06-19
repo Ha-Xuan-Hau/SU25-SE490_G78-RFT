@@ -1,11 +1,11 @@
 package com.rft.rft_be.dto.admin;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CouponDTO {
@@ -14,39 +14,32 @@ public class CouponDTO {
     String name;
     BigDecimal discount;
     String description;
-    LocalDateTime timeExpired;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
+    Instant timeExpired;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
+    Instant createdAt;
 
-    public String getId() {
-        return id;
-    }
-    public void setId(String id) {
-        this.id = id;
-    }
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
+    Instant updatedAt;
 
-    public String getName() {
-        return name;
-    }
-    public void setName(String name) {
-        this.name = name;
-    }
 
-    public BigDecimal getDiscount() {
-        return discount;
-    }
-    public void setDiscount(BigDecimal discount) {
-        this.discount = discount;
-    }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public String getDescription() {
-        return description;
-    }
-    public void setDescription(String description) {
-        this.description = description;
-    }
-    public LocalDateTime getTimeExpired() {
-        return timeExpired;
-    }
-    public void setTimeExpired(LocalDateTime timeExpired) {
-        this.timeExpired = timeExpired;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public BigDecimal getDiscount() { return discount; }
+    public void setDiscount(BigDecimal discount) { this.discount = discount; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public Instant getTimeExpired() { return timeExpired; }
+    public void setTimeExpired(Instant timeExpired) { this.timeExpired = timeExpired; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }
