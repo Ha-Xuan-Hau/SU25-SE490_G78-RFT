@@ -24,6 +24,10 @@ public class Booking {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id")
+    private Vehicle vehicle;
+
     @Column(name = "time_booking_start")
     private Instant timeBookingStart;
 

@@ -1,19 +1,16 @@
 package com.rft.rft_be.service.vehicle;
 
-import ch.qos.logback.core.model.Model;
 import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.dto.vehicle.CreateVehicleDTO;
 import com.rft.rft_be.dto.vehicle.VehicleDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDTO_1;
+import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
 import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
 import com.rft.rft_be.entity.Brand;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.mapper.RatingMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
-import com.rft.rft_be.mapper.VehicleMapper_1;
 import com.rft.rft_be.repository.*;
-import com.rft.rft_be.service.rating.RatingService;
 import com.rft.rft_be.service.rating.RatingServiceImpl;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
@@ -21,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -36,14 +34,15 @@ import java.util.stream.Collectors;
 public class VehicleServiceImpl implements VehicleService {
 
 
-
+    private final BookedTimeSlotRepository bookedTimeSlotsRepository;
     private final UserRepository userRepository;
     private final BrandRepository brandRepository;
     private final ModelRepository modelRepository;
-
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
     VehicleRepository vehicleRepository;
     VehicleMapper vehicleMapper;
-    VehicleMapper_1 vehicleMapper_1;
+
     RatingRepository ratingRepository;
     RatingMapper ratingMapper;
     private final RatingServiceImpl ratingServiceImpl;
@@ -93,20 +92,20 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public List<VehicleDTO_1> getVehiclesByUserId(String userId) {
+    public List<VehicleGetDTO> getVehiclesByUserId(String userId) {
         List<Vehicle> vehicles = vehicleRepository.findByUserId(userId);
         return vehicles.stream()
-                .map(vehicleMapper_1::toDTO)
+                .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<VehicleDTO_1> getVehiclesByStatus(String status) {
+    public List<VehicleGetDTO> getVehiclesByStatus(String status) {
         try {
             Vehicle.Status vehicleStatus = Vehicle.Status.valueOf(status.toUpperCase());
             List<Vehicle> vehicles = vehicleRepository.findByStatus(vehicleStatus);
             return vehicles.stream()
-                    .map(vehicleMapper_1::toDTO)
+                    .map(vehicleMapper::vehicleGet)
                     .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid status: " + status + ". Valid values are: AVAILABLE, UNAVAILABLE");
@@ -114,39 +113,39 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public List<VehicleDTO_1> getVehiclesByVehicleType(String vehicleType) {
+    public List<VehicleGetDTO> getVehiclesByVehicleType(String vehicleType) {
         List<Vehicle> vehicles = vehicleRepository.findByVehicleType(vehicleType);
         return vehicles.stream()
-                .map(vehicleMapper_1::toDTO)
+                .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<VehicleDTO_1> getVehiclesByBrandId(String brandId) {
+    public List<VehicleGetDTO> getVehiclesByBrandId(String brandId) {
         List<Vehicle> vehicles = vehicleRepository.findByBrandId(brandId);
         return vehicles.stream()
-                .map(vehicleMapper_1::toDTO)
+                .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<VehicleDTO_1> getVehiclesByModelId(String modelId) {
+    public List<VehicleGetDTO> getVehiclesByModelId(String modelId) {
         List<Vehicle> vehicles = vehicleRepository.findByModelId(modelId);
         return vehicles.stream()
-                .map(vehicleMapper_1::toDTO)
+                .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public VehicleDTO_1 getVehicleByLicensePlate(String licensePlate) {
+    public VehicleGetDTO getVehicleByLicensePlate(String licensePlate) {
         Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with license plate: " + licensePlate));
-        return vehicleMapper_1.toDTO(vehicle);
+        return vehicleMapper.vehicleGet(vehicle);
     }
 
     @Override
     @Transactional
-    public VehicleDTO_1 createVehicle(CreateVehicleDTO createVehicleDTO) {
+    public VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO) {
         // Validate required fields
         if (createVehicleDTO.getLicensePlate() == null || createVehicleDTO.getLicensePlate().trim().isEmpty()) {
             throw new RuntimeException("License plate is required");
@@ -249,59 +248,59 @@ public class VehicleServiceImpl implements VehicleService {
 
         // Save vehicle
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
-        return vehicleMapper_1.toDTO(savedVehicle);
+        return vehicleMapper.vehicleGet(savedVehicle);
     }
 
     @Override
     @Transactional
-    public VehicleDTO_1 updateVehicle(String id, VehicleDTO_1 vehicleDTO_1) {
+    public VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleGetDTO_) {
         Vehicle existingVehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
 
         // Update fields (only update non-null values from DTO)
-        if (vehicleDTO_1.getLicensePlate() != null) {
-            existingVehicle.setLicensePlate(vehicleDTO_1.getLicensePlate());
+        if (vehicleGetDTO_.getLicensePlate() != null) {
+            existingVehicle.setLicensePlate(vehicleGetDTO_.getLicensePlate());
         }
-        if (vehicleDTO_1.getVehicleType() != null) {
-            existingVehicle.setVehicleType(vehicleDTO_1.getVehicleType());
+        if (vehicleGetDTO_.getVehicleType() != null) {
+            existingVehicle.setVehicleType(vehicleGetDTO_.getVehicleType());
         }
-        if (vehicleDTO_1.getVehicleFeatures() != null) {
-            existingVehicle.setVehicleFeatures(vehicleDTO_1.getVehicleFeatures());
+        if (vehicleGetDTO_.getVehicleFeatures() != null) {
+            existingVehicle.setVehicleFeatures(vehicleGetDTO_.getVehicleFeatures());
         }
-        if (vehicleDTO_1.getDescription() != null) {
-            existingVehicle.setDescription(vehicleDTO_1.getDescription());
+        if (vehicleGetDTO_.getDescription() != null) {
+            existingVehicle.setDescription(vehicleGetDTO_.getDescription());
         }
-        if (vehicleDTO_1.getCostPerDay() != null) {
-            existingVehicle.setCostPerDay(vehicleDTO_1.getCostPerDay());
+        if (vehicleGetDTO_.getCostPerDay() != null) {
+            existingVehicle.setCostPerDay(vehicleGetDTO_.getCostPerDay());
         }
-        if (vehicleDTO_1.getStatus() != null) {
+        if (vehicleGetDTO_.getStatus() != null) {
             try {
-                existingVehicle.setStatus(Vehicle.Status.valueOf(vehicleDTO_1.getStatus().toUpperCase()));
+                existingVehicle.setStatus(Vehicle.Status.valueOf(vehicleGetDTO_.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid status value: " + vehicleDTO_1.getStatus());
+                throw new RuntimeException("Invalid status value: " + vehicleGetDTO_.getStatus());
             }
         }
-        if (vehicleDTO_1.getThumb() != null) {
-            existingVehicle.setThumb(vehicleDTO_1.getThumb());
+        if (vehicleGetDTO_.getThumb() != null) {
+            existingVehicle.setThumb(vehicleGetDTO_.getThumb());
         }
-        if (vehicleDTO_1.getNumberSeat() != null) {
-            existingVehicle.setNumberSeat(vehicleDTO_1.getNumberSeat());
+        if (vehicleGetDTO_.getNumberSeat() != null) {
+            existingVehicle.setNumberSeat(vehicleGetDTO_.getNumberSeat());
         }
-        if (vehicleDTO_1.getYearManufacture() != null) {
-            existingVehicle.setYearManufacture(vehicleDTO_1.getYearManufacture());
+        if (vehicleGetDTO_.getYearManufacture() != null) {
+            existingVehicle.setYearManufacture(vehicleGetDTO_.getYearManufacture());
         }
-        if (vehicleDTO_1.getTransmission() != null) {
+        if (vehicleGetDTO_.getTransmission() != null) {
             try {
-                existingVehicle.setTransmission(Vehicle.Transmission.valueOf(vehicleDTO_1.getTransmission().toUpperCase()));
+                existingVehicle.setTransmission(Vehicle.Transmission.valueOf(vehicleGetDTO_.getTransmission().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid transmission value: " + vehicleDTO_1.getTransmission());
+                throw new RuntimeException("Invalid transmission value: " + vehicleGetDTO_.getTransmission());
             }
         }
-        if (vehicleDTO_1.getFuelType() != null) {
+        if (vehicleGetDTO_.getFuelType() != null) {
             try {
-                existingVehicle.setFuelType(Vehicle.FuelType.valueOf(vehicleDTO_1.getFuelType().toUpperCase()));
+                existingVehicle.setFuelType(Vehicle.FuelType.valueOf(vehicleGetDTO_.getFuelType().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid fuel type value: " + vehicleDTO_1.getFuelType());
+                throw new RuntimeException("Invalid fuel type value: " + vehicleGetDTO_.getFuelType());
             }
         }
 
@@ -310,17 +309,47 @@ public class VehicleServiceImpl implements VehicleService {
 
         // Save and return updated vehicle
         Vehicle updatedVehicle = vehicleRepository.save(existingVehicle);
-        return vehicleMapper_1.toDTO(updatedVehicle);
+        return vehicleMapper.vehicleGet(updatedVehicle);
     }
 
     @Override
     @Transactional
     public void deleteVehicle(String id) {
-        boolean exists = vehicleRepository.existsById(id);
-        if (!exists) {
+        if (!vehicleRepository.existsById(id)) {
             throw new RuntimeException("Vehicle not found with id: " + id);
         }
-        vehicleRepository.deleteById(id);
+
+        try {
+            // Delete in correct order using native SQL to avoid JPA relationship issues
+
+            // 1. Delete final_contracts (deepest dependency)
+            jdbcTemplate.update(
+                    "DELETE fc FROM final_contracts fc " +
+                            "INNER JOIN contracts c ON fc.contract_id = c.id " +
+                            "INNER JOIN bookings b ON c.booking_id = b.id " +
+                            "WHERE b.vehicle_id = ?", id);
+
+            // 2. Delete contracts
+            jdbcTemplate.update(
+                    "DELETE c FROM contracts c " +
+                            "INNER JOIN bookings b ON c.booking_id = b.id " +
+                            "WHERE b.vehicle_id = ?", id);
+
+            // 3. Delete ratings
+            jdbcTemplate.update("DELETE FROM ratings WHERE vehicle_id = ?", id);
+
+            // 4. Delete bookings
+            jdbcTemplate.update("DELETE FROM bookings WHERE vehicle_id = ?", id);
+
+            // 5. Delete booked_time_slots
+            jdbcTemplate.update("DELETE FROM booked_time_slots WHERE vehicle_id = ?", id);
+
+            // 6. Final delete the vehicle
+            vehicleRepository.deleteById(id);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete vehicle: " + e.getMessage());
+        }
     }
 
 

@@ -127,3 +127,7 @@ section {
 .blog-details p {
   @apply text-dark dark:text-white text-xm leading-[1.2]
 }
+
+.upload-image-dragger .ant-upload-btn {
+  padding: 0 !important;
+}
