@@ -9,14 +9,13 @@ const Banner: React.FC = () => {
   const [activeTab, setActiveTab] = useState("self-drive");
   const [vehicleType, setVehicleType] = useState("car");
   const [location, setLocation] = useState("Hà Nội");
-  const [priceRange, setPriceRange] = useState("0-500");
 
   return (
     <section className="relative min-h-[600px] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 w-full h-full">
         <Image
-          src="/images/bg-demo.png"
+          src="/images/bg-landing.png"
           alt="RFT Background"
           fill
           priority={true}
@@ -205,8 +204,11 @@ const Banner: React.FC = () => {
             </div>
 
             {/* Search Button */}
-            <button className="w-full bg-primary hover:bg-primary/90 text-white rounded-md py-3 px-6 text-lg font-medium transition duration-300 mb-6">
-              <Link href={`/vehicles`}>Tìm kiếm</Link>
+            <button
+              className="w-full bg-primary hover:bg-primary/90 text-white rounded-md py-3 px-6 text-lg font-medium transition duration-300 mb-6"
+              onClick={() => (window.location.href = "/vehicles")}
+            >
+              Tìm kiếm
             </button>
           </div>
         </div>
