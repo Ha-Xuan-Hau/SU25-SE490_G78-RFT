@@ -37,8 +37,16 @@ public class SecurityConfig {
         return http.build();
     }
 
+
+    PasswordEncoder passwordEncoder() {return new BCryptPasswordEncoder(10);}
+
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
+    JwtDecoder jwtDecoder(){
+        SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");
+        return NimbusJwtDecoder
+                .withSecretKey(secretKeySpec)
+                .macAlgorithm(MacAlgorithm.HS512)
+                .build();
     }
 }
+
