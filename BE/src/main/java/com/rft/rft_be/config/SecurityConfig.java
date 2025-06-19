@@ -22,8 +22,7 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {
-            "/api/auth/**",
-            "/api/**"
+            "/api/auth/**"
     };
     @Value("${jwt.signerKey}")
     private String signerKey;
@@ -40,7 +39,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .cors(cors -> cors.disable()) // Tắt CORS trong Security
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request ->
                         request

@@ -2,8 +2,8 @@ package com.rft.rft_be.service.user;
 
 import com.rft.rft_be.dto.UserDTO;
 import com.rft.rft_be.dto.UserProfileDTO;
-import com.rft.rft_be.dto.user.UserDetailDto;
-import com.rft.rft_be.dto.user.UserRegisterDto;
+import com.rft.rft_be.dto.user.UserDetailDTO;
+import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.entity.User;
