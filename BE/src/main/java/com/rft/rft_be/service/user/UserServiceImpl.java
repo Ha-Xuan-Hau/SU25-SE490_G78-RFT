@@ -6,6 +6,11 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import java.text.ParseException;
 import com.rft.rft_be.dto.UserDTO;
 import com.rft.rft_be.dto.UserProfileDTO;
+<<<<<<< HEAD
+=======
+import com.rft.rft_be.dto.user.UserDetailDTO;
+import com.rft.rft_be.dto.user.UserRegisterDTO;
+>>>>>>> 718b499 (fix dto file name)
 import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.entity.User;

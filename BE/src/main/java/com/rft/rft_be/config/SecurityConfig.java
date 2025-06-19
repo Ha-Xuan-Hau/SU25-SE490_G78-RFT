@@ -23,15 +23,24 @@ import javax.crypto.spec.SecretKeySpec;
 public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINTS = {
+<<<<<<< HEAD
         "/api/auth/**",
         "/api/**"
+=======
+            "/api/auth/**"
+>>>>>>> 718b499 (fix dto file name)
     };
     @Value("${jwt.signerKey}")
     private String signerKey;
 
     @Bean
+<<<<<<< HEAD
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+=======
+    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+        httpSecurity
+>>>>>>> 718b499 (fix dto file name)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.disable())
                 .authorizeHttpRequests(auth -> auth
