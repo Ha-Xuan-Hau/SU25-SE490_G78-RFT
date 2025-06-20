@@ -48,6 +48,10 @@ public class Vehicle {
     private String VehicleImages;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "have_driver")
+    private  HaveDriver haveDriver = HaveDriver.NO;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "insurance_status")
     private InsuranceStatus insuranceStatus = InsuranceStatus.NO;
 
@@ -104,6 +108,9 @@ public class Vehicle {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    public enum HaveDriver {
+        YES, NO
+    }
     public enum InsuranceStatus {
         YES, NO
     }
