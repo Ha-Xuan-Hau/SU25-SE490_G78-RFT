@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS `demo_rent` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `demo_rent`;
+CREATE DATABASE IF NOT EXISTS `demo_rent2` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+USE `demo_rent2`;
 
 -- Table structure for table `users`
 CREATE TABLE `users` (
@@ -17,6 +17,15 @@ CREATE TABLE `users` (
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `user_register_vehicle` (
+	`id` varchar(255) NOT NULL,
+    `user_id` varchar(255) NOT NULL,
+    `vehicle_type` varchar(50) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `user_id` (`user_id`),
+    CONSTRAINT `user_register_vehicle_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `brands`
@@ -49,7 +58,8 @@ CREATE TABLE `vehicles` (
   `license_plate` varchar(20) DEFAULT NULL,
   `vehicle_type` varchar(50) DEFAULT NULL,
   `vehicle_features` text,
-  `vehicle_image` text,
+  `vehicle_images` text,
+  `have_driver` enum('YES', 'NO') DEFAULT 'NO',
   `insurance_status` enum('YES','NO') DEFAULT 'NO',
   `ship_to_address` enum('YES','NO') DEFAULT 'NO',
   `number_seat` int DEFAULT NULL,
@@ -96,9 +106,22 @@ CREATE TABLE `coupons` (
   `discount` decimal(10,2) DEFAULT NULL,
   `description` text,
   `time_expired` datetime DEFAULT NULL,
+  `status` enum('VALID','EXPIRED') DEFAULT 'VALID',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Table structure for table `used_coupons`
+CREATE TABLE `used_coupons` (
+  `id` varchar(225) NOT NULL,
+  `user_id` varchar(225) NOT NULL,
+  `coupon_id` varchar(225) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `coupon_id` (`coupon_id`),
+  CONSTRAINT `used_coupons_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `used_coupons_ibfk_2` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `bookings`
@@ -195,7 +218,7 @@ CREATE TABLE `booked_time_slots` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Sample data for demo_rent database
-USE demo_rent;
+USE demo_rent2;
 
 -- Insert sample users
 INSERT INTO users (id, email, password, full_name, profile_picture, date_of_birth, phone, address, status, role) VALUES
