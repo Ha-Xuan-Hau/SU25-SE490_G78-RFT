@@ -2,16 +2,16 @@ import { Image, Spin, Upload, message } from "antd";
 import { CloudUploadOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { useState } from "react";
+import type { CSSProperties } from "react";
 
 interface UploadImageProps {
   value?: string;
   onChange?: (url: string) => void;
 }
 
-const uploadStyle = {
-  ".ant-upload-btn": {
-    padding: 0,
-  },
+// Sửa lại định nghĩa style
+const uploadStyle: CSSProperties = {
+  padding: 0,
 };
 
 export const UploadImage = ({ value, onChange }: UploadImageProps) => {
@@ -28,7 +28,7 @@ export const UploadImage = ({ value, onChange }: UploadImageProps) => {
       <Upload.Dragger
         listType="picture-card"
         showUploadList={false}
-        className="aspect-square p-0 upload-image-dragger"
+        className="aspect-square p-0 upload-image-dragger ant-upload-btn-no-padding" // Thêm custom class
         style={uploadStyle}
         customRequest={async ({ file }) => {
           setLoading(true);

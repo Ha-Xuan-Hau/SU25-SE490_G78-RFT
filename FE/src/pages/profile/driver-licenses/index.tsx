@@ -24,7 +24,7 @@ import {
 
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import RegisterDriverModal from "@/components/RegisterDriverModal";
-import { getUserDriverLicenses } from "@/apis/driver-licenses";
+import { getUserDriverLicenses } from "@/apis/driver-licenses.api";
 import { DriverLicense } from "@/types/driverLicense";
 
 const { Title } = Typography;
@@ -116,7 +116,7 @@ export default function DriverPage() {
             </Button>
             <RegisterDriverModal
               openRegisterDriver={openRegisterDriver}
-              handleCancleRegisterDriver={handleCancleRegisterDriver}
+              handleCancelRegisterDriver={handleCancleRegisterDriver}
             />
           </div>
         </div>

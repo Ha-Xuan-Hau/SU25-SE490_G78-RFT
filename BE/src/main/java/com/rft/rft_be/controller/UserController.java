@@ -28,4 +28,17 @@ public class UserController {
         UserProfileDTO updated = userService.updateProfile(id, dto);
         return ResponseEntity.ok(updated);
     }
+
+    @GetMapping("/get-user")
+    public ResponseEntity<UserDTO> getCurrentUser(
+            @RequestHeader("Authorization") String authHeader) {
+        // Extract token from "Bearer <token>"
+        String token = authHeader.substring(7);
+
+        // Get user ID from token
+        String userId = userService.getUserIdFromToken(token);
+
+        // Use existing service to get user profile
+        return ResponseEntity.ok(userService.getProfile(userId));
+    }
 }
