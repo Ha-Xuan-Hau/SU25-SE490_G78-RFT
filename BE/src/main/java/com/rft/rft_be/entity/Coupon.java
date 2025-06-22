@@ -32,7 +32,7 @@ public class Coupon {
     private String description;
 
     @Column(name = "time_expired")
-    private LocalDateTime timeExpired;
+    private Instant timeExpired;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at")
@@ -40,12 +40,7 @@ public class Coupon {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    private Instant updatedAt;
+
 
 }

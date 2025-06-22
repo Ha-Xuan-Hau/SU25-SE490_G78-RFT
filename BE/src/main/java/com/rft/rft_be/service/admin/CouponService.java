@@ -10,5 +10,6 @@ public interface CouponService {
     List<CouponDTO> getAllCoupons();
     CouponDTO getCouponById(@Param("id") String id);
     CouponDTO updateCoupon(@Param("id") String id, @Param("dto")  CouponDTO dto );
+    CouponDTO createCoupon(@Param("dto")  CouponDTO dto);
     void deleteCouponById(@Param("id") String id);
 }
