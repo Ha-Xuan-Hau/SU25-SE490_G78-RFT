@@ -1,3 +1,4 @@
+
 package com.rft.rft_be.config;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
+
 
 @Configuration
 @EnableWebSecurity
@@ -64,4 +66,6 @@ public class SecurityConfig {
                 .macAlgorithm(MacAlgorithm.HS512)
                 .build();
     }
+
 }
+

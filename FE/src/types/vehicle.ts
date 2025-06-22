@@ -1,7 +1,7 @@
 export interface Vehicle {
   id: string;
   licensePlate: string;
-  vehicleTypes: string;
+  vehicleType: string;
   vehicleFeatures: VehicleFeature[];
   description: string;
   costPerDay: number;
@@ -32,7 +32,7 @@ export interface Brand {
 }
 
 export interface VehicleFilters {
-  vehicleTypes?: string;
+  vehicleType?: string;
   brand?: string;
   seats?: number;
   minRating?: number;

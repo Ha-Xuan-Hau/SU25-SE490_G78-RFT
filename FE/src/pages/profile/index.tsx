@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
-import useLocalStorage from "@/hooks/useLocalStorage";
-import { useUserState } from "@/recoils/user.state.js";
+import { useUserState, useRefreshUser } from "@/recoils/user.state";
 import { Typography, Button, Spin, Avatar } from "antd";
 import { EditOutlined, UserOutlined } from "@ant-design/icons";
-import { getUserProfile } from "@/apis/user";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 // import EditProfileModal from "@/components/EditProfileModal";
-// import { UploadProfilePicture } from "@/components/UploadProfilePicture";
 
 const { Title } = Typography;
 
@@ -16,7 +13,20 @@ export default function AccountPage() {
   const handleCancleEditModal = () => setOpenEditModal(false);
 
   const [user, setUser] = useUserState();
-  const [loading, setLoading] = useState(false);
+  const refreshUser = useRefreshUser();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to refresh user data when component mounts
+    const loadData = async () => {
+      if (!user) {
+        await refreshUser();
+      }
+      setLoading(false);
+    };
+
+    loadData();
+  }, [user, refreshUser]);
 
   // Hàm format ngày sinh từ mảng [năm, tháng, ngày]
   const formatDOB = (dateArray: number[] | undefined | null): string => {
@@ -44,37 +54,21 @@ export default function AccountPage() {
       .padStart(2, "0")}/${date.getFullYear()}`;
   };
 
+  // Check if user data is loading or already loaded
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const tokenStr = window.localStorage.getItem("access_token");
+    // If user data is already available, we can stop loading
+    if (user) {
+      setLoading(false);
+      return;
+    }
 
-        if (!tokenStr) return;
+    // If no user data, we wait a bit to let Recoil finish its async fetch
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1500); // Give Recoil some time to fetch data
 
-        // Giải mã JWT để lấy userId
-        const token = JSON.parse(tokenStr);
-        const tokenParts = token.split(".");
-        if (tokenParts.length !== 3) {
-          throw new Error("Invalid token format");
-        }
-
-        const payload = tokenParts[1];
-        const decodedData = JSON.parse(atob(payload));
-        const userId = decodedData.userId;
-
-        const data = await getUserProfile(userId);
-        console.log("Profile data:", data);
-        setUser(data);
-      } catch (error) {
-        console.error("Failed to fetch profile:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [setUser]);
+    return () => clearTimeout(timer);
+  }, [user]);
 
   if (loading) {
     return (
@@ -112,7 +106,7 @@ export default function AccountPage() {
           </div>
 
           <div className="flex w-full flex-col justify-center items-center mx-auto">
-            {user?.profilePicture ? (
+            {user && user.profilePicture ? (
               <Avatar src={user.profilePicture} size={120} />
             ) : (
               <Avatar icon={<UserOutlined />} size={120} />
@@ -121,7 +115,7 @@ export default function AccountPage() {
 
           <div className="flex flex-col mt-4 text-center">
             <h5 className="text-xl font-semibold mt-1 mb-2">
-              {user?.fullName || "Người dùng"}
+              {user && user.fullName ? user.fullName : "Người dùng"}
             </h5>
             <p className="text-gray-500 mb-1">
               {user?.role === "USER" ? "Người dùng" : "Quản trị viên"}
@@ -133,19 +127,6 @@ export default function AccountPage() {
         </div>
 
         <div className="flex flex-col w-[calc(100%-30%)] mt-8">
-          {/* ID Người dùng */}
-          {/* <div className="flex flex-col mb-4">
-            <div className="flex flex-row">
-              <p className="m-0 text-base font-semibold flex w-full">
-                ID Người dùng
-              </p>
-              <p className="m-0 text-base text-gray-500 flex w-full">
-                {user?.id}
-              </p>
-            </div>
-            <hr className="w-full my-2 opacity-25" />
-          </div> */}
-
           {/* Email */}
           <div className="flex flex-col mb-4">
             <div className="flex flex-row w-full">

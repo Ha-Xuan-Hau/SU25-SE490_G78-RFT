@@ -5,7 +5,7 @@ import { VehicleFilters } from "@/types/vehicle"; // Sử dụng interface có s
 
 const ListVehiclePage = () => {
   const [filters, setFilters] = useState<VehicleFilters>({
-    vehicleTypes: undefined,
+    vehicleType: undefined,
     brand: undefined,
     seats: undefined,
     minRating: undefined,

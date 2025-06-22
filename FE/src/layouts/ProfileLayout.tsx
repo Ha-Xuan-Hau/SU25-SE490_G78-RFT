@@ -30,9 +30,15 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
       label: "Giấy phép lái xe",
     },
     {
+      key: "my-cars",
+      path: "/profile/my-vehicles",
+      icon: "mdi:car",
+      label: "Xe của tôi",
+    },
+    {
       key: "car-rental",
       path: "/profile/car-rental",
-      icon: "mdi:car",
+      icon: "mdi:car-multiple",
       label: "Lịch sử thuê xe",
     },
     {

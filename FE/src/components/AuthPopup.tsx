@@ -11,8 +11,9 @@ import {
 } from "@/lib/validations/auth";
 import { z } from "zod";
 import { Icon } from "@iconify/react";
-import { login as apiLogin } from "@/apis/auth";
+import { login as apiLogin } from "@/apis/auth.api";
 import { toast } from "react-toastify";
+import { useUserState } from "@/recoils/user.state";
 
 interface AuthPopupProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export function AuthPopup({
   const { mode, openAuthPopup } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [, setRecoilUser] = useUserState();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -110,15 +112,19 @@ export function AuthPopup({
 
         // Kiểm tra dữ liệu trả về từ API
         if (response && response.access_token) {
-          // Đảm bảo có result trước khi gọi hàm login
+          // Existing code
           const userData = response.result || {};
 
-          // Sử dụng hàm login từ context
+          // Update auth context
           login(userData, response.access_token);
+
+          // Also update Recoil state
+          setRecoilUser(userData);
 
           toast.success("Đăng nhập thành công!");
           onClose();
-          window.location.reload();
+          // Don't reload the page - let React handle state updates
+          // window.location.reload();
         } else {
           // Xử lý trường hợp response không đúng định dạng
           throw new Error("Định dạng phản hồi không hợp lệ");
