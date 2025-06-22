@@ -1,9 +1,4 @@
-import {
-  createVehicle,
-  getVehicles,
-  getVehicleById,
-  updateVehicle,
-} from "@/apis/vehicle.api";
+import { createVehicle, updateVehicle } from "@/apis/vehicle.api";
 import { getUserVehicleById, getUserVehicles } from "@/apis/user-vehicles.api";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import { useUserState } from "@/recoils/user.state";
@@ -36,19 +31,20 @@ import {
   Tag,
   Tabs,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Vehicle } from "@/types/vehicle";
 import { UploadImage } from "@/components/UploadImage";
 import { UploadMultipleImage } from "@/components/UploadMultipleImage";
+import { VehicleFeature } from "@/types/vehicle";
 
 const { Title, Text } = Typography;
 const { Step } = Steps;
 const { TabPane } = Tabs;
 enum VehicleType {
-  CAR = "CAR",
-  MOTORBIKE = "MOTORBIKE",
-  BICYCLE = "BICYCLE",
+  CAR = "Car",
+  MOTORBIKE = "Motorbike",
+  BICYCLE = "Bicycle",
 }
 
 interface RegisterVehicleFormProps {
@@ -77,6 +73,24 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
     mutationFn: updateVehicle,
   });
 
+  const featureOptions = [
+    { label: "GPS", value: "GPS" },
+    { label: "Bluetooth", value: "Bluetooth" },
+    { label: "Điều hoà khí", value: "Air Conditioning" },
+    { label: "Ghế da", value: "Leather Seats" },
+    { label: "Cảm biến đỗ xe", value: "Parking Sensors" },
+    { label: "Camera hành trình", value: "Backup Camera" },
+    { label: "Kính chống nắng", value: "Sunroof" },
+    { label: "Ghế sưởi", value: "Heated Seats" },
+  ];
+
+  const fuelTypeOptions = [
+    { value: "GASOLINE", label: "Xăng" },
+    { value: "DIESEL", label: "Dầu" },
+    { value: "ELECTRIC", label: "Điện" },
+    { value: "HYBRID", label: "Hybrid" },
+  ];
+
   const brandOptions = [
     { value: "toyota", label: "Toyota" },
     { value: "honda", label: "Honda" },
@@ -88,18 +102,87 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
     { value: "specialized", label: "Specialized" },
     // Thêm các hãng xe phổ biến cho cả xe máy và xe đạp
   ];
+  // Set form data when vehicle detail is loaded
+  // Update the useEffect to handle images correctly
+  useEffect(() => {
+    if (vehicleDetail.data?.data) {
+      const vehicle = vehicleDetail.data.data;
+
+      // Better detection of vehicle type
+      let type = VehicleType.CAR; // Default to car
+
+      if (vehicle.vehicleType) {
+        if (
+          vehicle.vehicleType === "MOTORBIKE" ||
+          vehicle.vehicleType === "Motorbike"
+        ) {
+          type = VehicleType.MOTORBIKE;
+        } else if (
+          vehicle.vehicleType === "BICYCLE" ||
+          vehicle.vehicleType === "Bicycle"
+        ) {
+          type = VehicleType.BICYCLE;
+        }
+      }
+      // If no explicit type, infer from properties
+      else {
+        if (!vehicle.numberSeat && !vehicle.licensePlate) {
+          type = VehicleType.BICYCLE;
+        } else if (!vehicle.numberSeat && vehicle.licensePlate) {
+          type = VehicleType.MOTORBIKE;
+        }
+      }
+
+      setVehicleType(type);
+
+      // Fix TypeScript errors by using your defined types
+      const imageUrls =
+        vehicle.vehicleImages?.map(
+          (img: { imageUrl: string }) => img.imageUrl
+        ) || [];
+
+      const featureNames =
+        vehicle.vehicleFeatures?.map(
+          (feature: { name: string }) => feature.name
+        ) || [];
+
+      // Set all form values
+      form.setFieldsValue({
+        brandName: vehicle.brandName,
+        modelName: vehicle.modelName,
+        thumb: vehicle.thumb,
+        numberSeat: vehicle.numberSeat?.toString(),
+        transmission: vehicle.transmission,
+        licensePlate: vehicle.licensePlate,
+        yearOfManufacture: vehicle.yearManufacture,
+        costPerDay: vehicle.costPerDay,
+        description: vehicle.description,
+        images: imageUrls, // Changed: Set just the URLs
+        vehicleFeatures: featureNames, // Changed: Set just the feature names
+        fuelType: vehicle.fuelType,
+      });
+
+      console.log("Form values set:", form.getFieldsValue());
+    }
+  }, [vehicleDetail.data, form]);
 
   const handleVehicleTypeChange = (type: VehicleType) => {
     setVehicleType(type);
 
     // Reset các trường không liên quan khi đổi loại xe
     if (type === VehicleType.MOTORBIKE) {
-      form.setFieldsValue({ numberSeat: undefined });
+      form.setFieldsValue({
+        numberSeat: undefined,
+        // Keep other fields that apply to motorcycles
+        // Don't reset vehicleFeatures and fuelType for motorcycles
+      });
     } else if (type === VehicleType.BICYCLE) {
       form.setFieldsValue({
         numberSeat: undefined,
         licensePlate: undefined,
         transmission: undefined,
+        vehicleFeatures: undefined, // Reset for bicycles
+        fuelType: undefined, // Reset for bicycles
       });
     }
   };
@@ -118,11 +201,16 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
       }}
       onFinish={async (values) => {
         try {
+          // Fix for TypeScript error by adding explicit type annotation
+          const formattedFeatures =
+            values.vehicleFeatures?.map((name: string) => ({ name })) || [];
+
           // Thêm loại phương tiện vào dữ liệu gửi đi
           const submitData = {
             ...values,
+            vehicleFeatures: formattedFeatures, // Use formatted features
             vehicleType,
-            user: user?.result?.id,
+            user: user?.id || user?.result?.id,
           };
 
           if (isInsert) {
@@ -151,13 +239,23 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
       {/* Tab chọn loại phương tiện */}
       <Tabs
         activeKey={vehicleType}
-        onChange={(key) => handleVehicleTypeChange(key as VehicleType)}
+        onChange={
+          !vehicleId
+            ? (key) => handleVehicleTypeChange(key as VehicleType)
+            : undefined
+        }
         className="mb-4"
+        tabBarStyle={
+          vehicleId ? { pointerEvents: "none", opacity: 0.6 } : undefined
+        }
       >
         <TabPane
           tab={
             <>
               <CarFilled /> Ô tô
+              {vehicleId &&
+                vehicleType === VehicleType.CAR &&
+                " (Đang chỉnh sửa)"}
             </>
           }
           key={VehicleType.CAR}
@@ -166,6 +264,9 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
           tab={
             <>
               <CarFilled /> Xe máy
+              {vehicleId &&
+                vehicleType === VehicleType.MOTORBIKE &&
+                " (Đang chỉnh sửa)"}
             </>
           }
           key={VehicleType.MOTORBIKE}
@@ -174,12 +275,24 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
           tab={
             <>
               <CarFilled /> Xe đạp
+              {vehicleId &&
+                vehicleType === VehicleType.BICYCLE &&
+                " (Đang chỉnh sửa)"}
             </>
           }
           key={VehicleType.BICYCLE}
         />
       </Tabs>
-
+      {/* Add warning message when editing */}
+      {vehicleId && (
+        <Alert
+          message="Đang chỉnh sửa xe"
+          description="Bạn không thể thay đổi loại xe khi đang chỉnh sửa. Nếu muốn đổi loại xe, vui lòng xóa xe này và đăng ký mới."
+          type="info"
+          showIcon
+          className="mb-4"
+        />
+      )}
       <div className="md:flex gap-6">
         <div className="md:w-2/5">
           <Card title="Hình ảnh xe" className="mb-4">
@@ -202,6 +315,62 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         <div className="md:w-3/5">
           <Card title="Thông tin xe" className="mb-4">
             <div className="grid md:grid-cols-2 gap-4">
+              <Form.Item
+                label="Tên hiển thị xe"
+                name="thumb"
+                rules={[
+                  {
+                    required: true,
+                    message: "Vui lòng nhập tên hiển thị cho xe",
+                  },
+                ]}
+              >
+                <Input placeholder="Ví dụ: Toyota Camry 2022 - Sang trọng, đầy đủ tiện nghi" />
+              </Form.Item>
+
+              {(vehicleType === VehicleType.CAR ||
+                vehicleType === VehicleType.MOTORBIKE) && (
+                <Form.Item
+                  label="Loại nhiên liệu"
+                  name="fuelType"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Vui lòng chọn loại nhiên liệu",
+                    },
+                  ]}
+                >
+                  <Select
+                    placeholder="Chọn loại nhiên liệu"
+                    options={fuelTypeOptions}
+                  />
+                </Form.Item>
+              )}
+              {(vehicleType === VehicleType.CAR ||
+                vehicleType === VehicleType.MOTORBIKE) && (
+                <Form.Item
+                  label="Tiện ích xe"
+                  name="vehicleFeatures"
+                  className="md:col-span-2"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Vui lòng chọn ít nhất một tiện ích",
+                    },
+                  ]}
+                  tooltip="Chọn các tiện ích có sẵn trên xe của bạn"
+                >
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn các tiện ích của xe"
+                    options={featureOptions}
+                    optionFilterProp="label"
+                    style={{ width: "100%" }}
+                    tokenSeparators={[","]}
+                    allowClear
+                  />
+                </Form.Item>
+              )}
               <Form.Item
                 label="Hãng xe"
                 name="brandName"

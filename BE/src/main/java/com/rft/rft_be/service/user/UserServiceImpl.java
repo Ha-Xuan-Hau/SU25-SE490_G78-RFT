@@ -1,40 +1,37 @@
 package com.rft.rft_be.service.user;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jwt.SignedJWT;
-import com.nimbusds.jwt.JWTClaimsSet;
 import java.text.ParseException;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import com.rft.rft_be.dto.UserDTO;
 import com.rft.rft_be.dto.UserProfileDTO;
-<<<<<<< HEAD
-=======
-import com.rft.rft_be.dto.user.UserDetailDTO;
-import com.rft.rft_be.dto.user.UserRegisterDTO;
->>>>>>> 718b499 (fix dto file name)
 import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.repository.UserRepository;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-import java.text.ParseException;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class UserServiceImpl implements  UserService{
+public class UserServiceImpl implements UserService {
+
     UserRepository userRepository;
     PasswordEncoder passwordEncoder;
     UserMapper userMapper;
-    public UserDetailDTO register(UserRegisterDTO dto){
-        if(userRepository.existsByEmail(dto.getEmail())){
+
+    public UserDetailDTO register(UserRegisterDTO dto) {
+        if (userRepository.existsByEmail(dto.getEmail())) {
             throw new RuntimeException("Email Already Exists");
         }
         User user = new User();
@@ -45,6 +42,7 @@ public class UserServiceImpl implements  UserService{
 
         return userMapper.userToUserDetailDto(userRepository.save(user));
     }
+
     @Override
     public UserDTO getProfile(String id) {
         User user = userRepository.findById(id)
@@ -80,5 +78,3 @@ public class UserServiceImpl implements  UserService{
         }
     }
 }
-
-

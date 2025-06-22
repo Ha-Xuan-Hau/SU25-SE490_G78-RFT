@@ -1,7 +1,7 @@
 import { Image, Spin, Upload, message } from "antd";
 import { CloseCircleFilled, CloudUploadOutlined } from "@ant-design/icons";
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Định nghĩa interface cho props
 interface UploadMultipleImageProps {
@@ -19,6 +19,14 @@ export const UploadMultipleImage = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [images, setImages] = useState<string[]>([]);
   const computedValue = value ?? images;
+
+  useEffect(() => {
+    // If value prop is updated from outside the component, update our local state
+    if (value && Array.isArray(value)) {
+      setImages(value);
+      console.log("Setting images from props:", value);
+    }
+  }, [value]);
 
   return (
     <>

@@ -1,3 +1,4 @@
+
 package com.rft.rft_be.config;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -17,51 +18,48 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
 
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-
     private final String[] PUBLIC_ENDPOINTS = {
-<<<<<<< HEAD
-        "/api/auth/**",
-        "/api/**"
-=======
             "/api/auth/**"
->>>>>>> 718b499 (fix dto file name)
     };
     @Value("${jwt.signerKey}")
     private String signerKey;
 
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+//        httpSecurity.authorizeHttpRequests(request ->
+//                request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+//                        .anyRequest().authenticated());
+//        httpSecurity.csrf(AbstractHttpConfigurer::disable);
+//    return httpSecurity.build();
+//    }
+
     @Bean
-<<<<<<< HEAD
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-=======
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
->>>>>>> 718b499 (fix dto file name)
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.disable())
-                .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .anyRequest().authenticated()
+                .authorizeHttpRequests(request ->
+                        request
+                                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
+                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                                .anyRequest().authenticated()
                 );
-        httpSecurity.oauth2ResourceServer(oauth2
-                -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()))
-        );
+        httpSecurity.oauth2ResourceServer(oauth2 ->
+                oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()))
+    );
 
-        return http.build();
+        return httpSecurity.build();
     }
-
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
-    }
+    @Bean
+    PasswordEncoder passwordEncoder() {return new BCryptPasswordEncoder(10);}
 
     @Bean
-    JwtDecoder jwtDecoder() {
+    JwtDecoder jwtDecoder(){
         SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");
         return NimbusJwtDecoder
                 .withSecretKey(secretKeySpec)

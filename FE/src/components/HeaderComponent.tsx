@@ -152,7 +152,7 @@ const HeaderComponent: React.FC = () => {
                       <Avatar icon={<UserOutlined />} />
                     )}
                     <span className="font-medium">
-                      {user?.name || user?.role}
+                      {user?.fullName || user?.email}
                     </span>
                   </div>
                 </Dropdown>
@@ -233,7 +233,7 @@ const HeaderComponent: React.FC = () => {
                       <Avatar icon={<UserOutlined />} />
                     )}
                     <span className="font-medium">
-                      {user?.name || user?.id}
+                      {user?.fullName || user?.email}
                     </span>
                   </div>
                   <button
