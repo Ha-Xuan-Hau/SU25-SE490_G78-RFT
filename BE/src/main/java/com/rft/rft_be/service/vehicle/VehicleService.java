@@ -1,10 +1,8 @@
 package com.rft.rft_be.service.vehicle;
 
 import com.rft.rft_be.dto.CategoryDTO;
-import com.rft.rft_be.dto.vehicle.CreateVehicleDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDTO;
-import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
+import com.rft.rft_be.dto.vehicle.*;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -14,7 +12,7 @@ public interface VehicleService {
     List<CategoryDTO> getAllVehiclesByCategory();
     VehicleDetailDTO getVehicleDetailById(String id);
 
-
+    Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req);
     List<VehicleGetDTO> getVehiclesByUserId(String userId);
     List<VehicleGetDTO> getVehiclesByStatus(String status);
     List<VehicleGetDTO> getVehiclesByVehicleType(String vehicleType);
