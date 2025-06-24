@@ -94,31 +94,22 @@ const HeaderComponent: React.FC = () => {
               href="/about"
               className={`text-base font-medium ${
                 pathname === "/about"
-                  ? "text-primary"
-                  : "text-dark hover:text-primary"
-              }`}
+                  ? "text-primary font-semibold"
+                  : "text-dark" // Đã đúng, giữ nguyên
+              } hover:text-primary`}
             >
               Về RFT
             </Link>
+
             <Link
               href="/vehicles"
               className={`text-base font-medium ${
                 pathname === "/vehicles"
-                  ? "text-primary"
-                  : "text-dark hover:text-primary"
-              }`}
+                  ? "text-primary font-semibold"
+                  : "text-dark" // Đã đúng, giữ nguyên
+              } hover:text-primary`}
             >
               Danh sách xe
-            </Link>
-            <Link
-              href="/locations"
-              className={`text-base font-medium ${
-                pathname === "/locations"
-                  ? "text-primary"
-                  : "text-dark hover:text-primary"
-              }`}
-            >
-              Trở thành chủ xe
             </Link>
 
             {/* Hiển thị nút đăng nhập/đăng ký hoặc avatar người dùng */}
@@ -183,21 +174,33 @@ const HeaderComponent: React.FC = () => {
             <div className="flex flex-col space-y-4">
               <Link
                 href="/about"
-                className="text-base font-medium text-dark hover:text-primary"
+                className={`text-base font-medium ${
+                  pathname === "/about"
+                    ? "text-primary font-semibold"
+                    : "text-dark"
+                } hover:text-primary`}
                 onClick={() => setNavbarOpen(false)}
               >
                 Về RFT
               </Link>
               <Link
                 href="/vehicles"
-                className="text-base font-medium text-dark hover:text-primary"
+                className={`text-base font-medium ${
+                  pathname === "/vehicles"
+                    ? "text-primary font-semibold"
+                    : "text-dark"
+                } hover:text-primary`}
                 onClick={() => setNavbarOpen(false)}
               >
                 Danh sách xe
               </Link>
               <Link
                 href="/locations"
-                className="text-base font-medium text-dark hover:text-primary"
+                className={`text-base font-medium text-dark ${
+                  pathname === "/locations"
+                    ? "text-primary font-semibold"
+                    : "text-dark"
+                } hover:text-primary`}
                 onClick={() => setNavbarOpen(false)}
               >
                 Trở thành chủ xe
@@ -219,7 +222,7 @@ const HeaderComponent: React.FC = () => {
                       setNavbarOpen(false);
                       openAuthPopup("register");
                     }}
-                    className="text-base font-medium text-primary hover:text-primary/80 text-left"
+                    className="text-base font-medium text-dark hover:text-primary/80 text-left"
                   >
                     Đăng ký
                   </button>
