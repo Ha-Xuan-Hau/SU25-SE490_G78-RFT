@@ -32,7 +32,7 @@ CREATE TABLE `user_register_vehicle` (
 CREATE TABLE `brands` (
   `id` varchar(255) NOT NULL,
   `name` nvarchar(100) DEFAULT NULL,
-  `vehicle_type` varchar(50) DEFAULT NULL,
+  `vehicle_type` enum('CAR','MOTORBIKE') DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -54,7 +54,7 @@ CREATE TABLE `vehicles` (
   `brand_id` varchar(255) DEFAULT NULL,
   `model_id` varchar(255) DEFAULT NULL,
   `license_plate` varchar(20) DEFAULT NULL,
-  `vehicle_type` varchar(50) DEFAULT NULL,
+  `vehicle_type` enum('CAR','MOTORBIKE', 'BICYCLE') DEFAULT NULL,
   `vehicle_features` text,
   `vehicle_images` text,
   `have_driver` enum('YES', 'NO') DEFAULT 'NO',
