@@ -22,6 +22,10 @@ public class Brand {
     @Column(name = "name", length = 100)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vehicle_type")
+    private VehicleType vehicleType;
+
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at")
     private Instant createdAt;
@@ -30,4 +34,7 @@ public class Brand {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    public enum VehicleType{
+        CAR, MOTORBIKE, BICYCLE
+    }
 }

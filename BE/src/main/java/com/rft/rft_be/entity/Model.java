@@ -19,10 +19,6 @@ public class Model {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "brand_id")
-    private Brand brand;
-
     @Column(name = "name", length = 100)
     private String name;
 

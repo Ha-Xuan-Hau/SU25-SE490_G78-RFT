@@ -62,22 +62,22 @@ public class VehicleServiceImpl implements VehicleService {
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
     }
 
-    @Override
-    public List<CategoryDTO> getAllVehiclesByCategory() {
-        List<Vehicle> vehicles = vehicleRepository.findAll();
-
-        Map<String, List<Vehicle>> grouped = vehicles.stream()
-                .collect(Collectors.groupingBy(Vehicle::getVehicleType));
-
-        return grouped.entrySet().stream()
-                .map(entry -> CategoryDTO.builder()
-                        .categoryName(entry.getKey())
-                        .vehicles(entry.getValue().stream()
-                                .map(vehicleMapper::toDTO)
-                                .collect(Collectors.toList()))
-                        .build())
-                .collect(Collectors.toList());
-    }
+//    @Override
+//    public List<CategoryDTO> getAllVehiclesByCategory() {
+//        List<Vehicle> vehicles = vehicleRepository.findAll();
+//
+//        Map<String, List<Vehicle>> grouped = vehicles.stream()
+//                .collect(Collectors.groupingBy(Vehicle::getVehicleType));
+//
+//        return grouped.entrySet().stream()
+//                .map(entry -> CategoryDTO.builder()
+//                        .categoryName(entry.getKey())
+//                        .vehicles(entry.getValue().stream()
+//                                .map(vehicleMapper::toDTO)
+//                                .collect(Collectors.toList()))
+//                        .build())
+//                .collect(Collectors.toList());
+//    }
 
     @Override
     public VehicleDetailDTO getVehicleDetailById(String id) {

@@ -82,10 +82,6 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Model model = modelRepository.findById(request.getModelId())
                 .orElseThrow(() -> new RuntimeException("Model not found with id: " + request.getModelId()));
 
-        if (!model.getBrand().getId().equals(request.getBrandId())) {
-            throw new RuntimeException("Model does not belong to the specified brand");
-        }
-
         // Check if license plate already exists for this user
         if (vehicleRepository.existsByLicensePlateAndUserId(request.getLicensePlate(), userId)) {
             throw new RuntimeException("License plate already exists for this user");

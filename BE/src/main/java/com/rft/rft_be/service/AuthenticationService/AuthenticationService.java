@@ -11,16 +11,23 @@ import com.rft.rft_be.dto.authentication.IntrospectRequest;
 import com.rft.rft_be.dto.authentication.IntrospectResponse;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.service.mail.EmailSenderService;
+import com.rft.rft_be.service.otp.OtpService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -32,7 +39,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationService {
+    SecureRandom random = new SecureRandom();
     UserRepository userRepository;
+    OtpService otpService;
+    EmailSenderService emailSenderService;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -72,6 +82,27 @@ public class AuthenticationService {
         return AuthenticationResponse.builder()
                 .token(token)
                 .build();
+    }
+
+    public void sendForgotPasswordOtpEmail(String email) {
+        User user =userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("The email address doesn’t exist. Please try again."));
+
+
+        String otp = generateOtp();
+        otpService.saveOtp(email, otp);
+        String subject = "Mã OTP: "+otp;
+
+        String template;
+        try {
+            template = Files.readString(Path.of("src/main/resources/templates/otp_template.html"));
+        } catch (IOException e) {
+            throw new RuntimeException("Không thể đọc file template email", e);
+        }
+
+        String filled = template.replace("${otpCode}", otp);
+
+        emailSenderService.sendHtmlEmail(email, subject, filled);
     }
 
     public void logout(IntrospectRequest request) {
@@ -119,5 +150,10 @@ public class AuthenticationService {
             throw new RuntimeException("UNAUTHENTICATED");
 
         return signedJWT;
+    }
+
+    private String generateOtp() {
+        int otp = 100000 + random.nextInt(900000); // tạo số từ 100000 đến 999999
+        return String.valueOf(otp);
     }
 }
