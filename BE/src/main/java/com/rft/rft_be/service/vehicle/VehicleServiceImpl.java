@@ -421,7 +421,7 @@ public class VehicleServiceImpl implements VehicleService {
         return result.map(vehicle -> VehicleSearchResultDTO.builder()
                 .id(vehicle.getId())
                 .licensePlate(vehicle.getLicensePlate())
-                .vehicleTypes(vehicle.getVehicleType())
+                .vehicleTypes(vehicle.getVehicleType().name())
                 .thumb(vehicle.getThumb())
                 .costPerDay(vehicle.getCostPerDay())
                 .status(vehicle.getStatus().name())
