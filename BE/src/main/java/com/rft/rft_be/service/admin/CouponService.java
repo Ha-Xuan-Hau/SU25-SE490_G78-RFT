@@ -7,9 +7,13 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface CouponService {
+    void restoreCouponToValid(String id);
+
     List<CouponDTO> getAllCoupons();
     CouponDTO getCouponById(@Param("id") String id);
     CouponDTO updateCoupon(@Param("id") String id, @Param("dto")  CouponDTO dto );
     CouponDTO createCoupon(@Param("dto")  CouponDTO dto);
     void deleteCouponById(@Param("id") String id);
+
+    List<CouponDTO> getValidCouponsForUser(String userId);
 }

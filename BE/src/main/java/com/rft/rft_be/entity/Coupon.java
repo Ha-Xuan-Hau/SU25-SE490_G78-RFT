@@ -38,9 +38,15 @@ public class Coupon {
     @Column(name = "created_at")
     private Instant createdAt;
 
+    @Enumerated(EnumType.STRING)
+    private CouponStatus status;
+
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-
+    public enum CouponStatus {
+        VALID,
+        EXPIRED
+    }
 }
