@@ -1,11 +1,7 @@
 package com.rft.rft_be.service.vehicle;
 
-import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.entity.Brand;
-import com.rft.rft_be.entity.Rating;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Vehicle;
+import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.RatingMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 import com.rft.rft_be.repository.*;
@@ -27,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -101,6 +96,8 @@ public class VehicleServiceImpl implements VehicleService {
                 .collect(Collectors.toList());
     }
 
+
+
     @Override
     public List<VehicleGetDTO> getVehiclesByStatus(String status) {
         try {
@@ -116,10 +113,42 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public List<VehicleGetDTO> getVehiclesByVehicleType(String vehicleType) {
-        List<Vehicle> vehicles = vehicleRepository.findByVehicleType(vehicleType);
-        return vehicles.stream()
-                .map(vehicleMapper::vehicleGet)
-                .collect(Collectors.toList());
+        try {
+            Vehicle.VehicleType type = Vehicle.VehicleType.valueOf(vehicleType.toUpperCase());
+            List<Vehicle> vehicles = vehicleRepository.findByVehicleType(type);
+            return vehicles.stream()
+                    .map(vehicleMapper::vehicleGet)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid vehicle type: " + vehicleType + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
+        }
+    }
+
+    @Override
+    public List<VehicleGetDTO> getVehiclesByHaveDriver(String haveDriver) {
+        try {
+            Vehicle.HaveDriver driver = Vehicle.HaveDriver.valueOf(haveDriver.toUpperCase());
+            List<Vehicle> vehicles = vehicleRepository.findByHaveDriver(driver);
+            return vehicles.stream()
+                    .map(vehicleMapper::vehicleGet)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid have driver: " + haveDriver + ". Valid values are: YES, NO");
+        }
+    }
+
+    @Override
+    public List<VehicleGetDTO> getVehiclesByVehicleTypeAndStatus(String vehicleType, String status) {
+        try {
+            Vehicle.VehicleType type = Vehicle.VehicleType.valueOf(vehicleType.toUpperCase());
+            Vehicle.Status vehicleStatus = Vehicle.Status.valueOf(status.toUpperCase());
+            List<Vehicle> vehicles = vehicleRepository.findByVehicleTypeAndStatus(type, vehicleStatus);
+            return vehicles.stream()
+                    .map(vehicleMapper::vehicleGet)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid vehicle type or status. Valid types: CAR, MOTORBIKE, BICYCLE. Valid statuses: AVAILABLE, UNAVAILABLE");
+        }
     }
 
     @Override
@@ -157,26 +186,26 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         // Check if license plate already exists
-        if (vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate())) {
+        boolean exists = vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate());
+        if (exists) {
             throw new RuntimeException("Vehicle with license plate " + createVehicleDTO.getLicensePlate() + " already exists");
         }
 
         // Validate foreign key references (optional - can be null)
         User user = null;
-        if (createVehicleDTO.getUserId() != null) {
+        if (createVehicleDTO.getUserId() != null && !createVehicleDTO.getUserId().trim().isEmpty()) {
             user = userRepository.findById(createVehicleDTO.getUserId())
                     .orElseThrow(() -> new RuntimeException("User not found with id: " + createVehicleDTO.getUserId()));
         }
 
         Brand brand = null;
-        if (createVehicleDTO.getBrandId() != null) {
+        if (createVehicleDTO.getBrandId() != null && !createVehicleDTO.getBrandId().trim().isEmpty()) {
             brand = brandRepository.findById(createVehicleDTO.getBrandId())
                     .orElseThrow(() -> new RuntimeException("Brand not found with id: " + createVehicleDTO.getBrandId()));
         }
 
-        // Explicitly use the correct Model class from your entity package
-        com.rft.rft_be.entity.Model model = null;
-        if (createVehicleDTO.getModelId() != null) {
+        Model model = null;
+        if (createVehicleDTO.getModelId() != null && !createVehicleDTO.getModelId().trim().isEmpty()) {
             model = modelRepository.findById(createVehicleDTO.getModelId())
                     .orElseThrow(() -> new RuntimeException("Model not found with id: " + createVehicleDTO.getModelId()));
         }
@@ -187,8 +216,8 @@ public class VehicleServiceImpl implements VehicleService {
                 .brand(brand)
                 .model(model)
                 .licensePlate(createVehicleDTO.getLicensePlate())
-                .vehicleType(createVehicleDTO.getVehicleType())
                 .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
+                .VehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
                 .numberSeat(createVehicleDTO.getNumberSeat())
                 .yearManufacture(createVehicleDTO.getYearManufacture())
                 .description(createVehicleDTO.getDescription())
@@ -202,47 +231,65 @@ public class VehicleServiceImpl implements VehicleService {
                 .build();
 
         // Set enum values with validation
-        if (createVehicleDTO.getInsuranceStatus() != null) {
+        if (createVehicleDTO.getVehicleType() != null && !createVehicleDTO.getVehicleType().trim().isEmpty()) {
+            try {
+                vehicle.setVehicleType(Vehicle.VehicleType.valueOf(createVehicleDTO.getVehicleType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid vehicle type: " + createVehicleDTO.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
+            }
+        }
+
+        if (createVehicleDTO.getHaveDriver() != null && !createVehicleDTO.getHaveDriver().trim().isEmpty()) {
+            try {
+                vehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(createVehicleDTO.getHaveDriver().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid have driver: " + createVehicleDTO.getHaveDriver() + ". Valid values are: YES, NO");
+            }
+        } else {
+            vehicle.setHaveDriver(Vehicle.HaveDriver.NO);
+        }
+
+        if (createVehicleDTO.getInsuranceStatus() != null && !createVehicleDTO.getInsuranceStatus().trim().isEmpty()) {
             try {
                 vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(createVehicleDTO.getInsuranceStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid insurance status: " + createVehicleDTO.getInsuranceStatus());
+                throw new RuntimeException("Invalid insurance status: " + createVehicleDTO.getInsuranceStatus() + ". Valid values are: YES, NO");
             }
         } else {
             vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.NO);
         }
 
-        if (createVehicleDTO.getShipToAddress() != null) {
+        if (createVehicleDTO.getShipToAddress() != null && !createVehicleDTO.getShipToAddress().trim().isEmpty()) {
             try {
                 vehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(createVehicleDTO.getShipToAddress().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid ship to address: " + createVehicleDTO.getShipToAddress());
+                throw new RuntimeException("Invalid ship to address: " + createVehicleDTO.getShipToAddress() + ". Valid values are: YES, NO");
             }
         } else {
             vehicle.setShipToAddress(Vehicle.ShipToAddress.NO);
         }
 
-        if (createVehicleDTO.getTransmission() != null) {
+        if (createVehicleDTO.getTransmission() != null && !createVehicleDTO.getTransmission().trim().isEmpty()) {
             try {
                 vehicle.setTransmission(Vehicle.Transmission.valueOf(createVehicleDTO.getTransmission().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid transmission: " + createVehicleDTO.getTransmission());
+                throw new RuntimeException("Invalid transmission: " + createVehicleDTO.getTransmission() + ". Valid values are: MANUAL, AUTOMATIC");
             }
         }
 
-        if (createVehicleDTO.getFuelType() != null) {
+        if (createVehicleDTO.getFuelType() != null && !createVehicleDTO.getFuelType().trim().isEmpty()) {
             try {
                 vehicle.setFuelType(Vehicle.FuelType.valueOf(createVehicleDTO.getFuelType().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid fuel type: " + createVehicleDTO.getFuelType());
+                throw new RuntimeException("Invalid fuel type: " + createVehicleDTO.getFuelType() + ". Valid values are: GASOLINE, ELECTRIC");
             }
         }
 
-        if (createVehicleDTO.getStatus() != null) {
+        if (createVehicleDTO.getStatus() != null && !createVehicleDTO.getStatus().trim().isEmpty()) {
             try {
                 vehicle.setStatus(Vehicle.Status.valueOf(createVehicleDTO.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid status: " + createVehicleDTO.getStatus());
+                throw new RuntimeException("Invalid status: " + createVehicleDTO.getStatus() + ". Valid values are: AVAILABLE, UNAVAILABLE");
             }
         } else {
             vehicle.setStatus(Vehicle.Status.AVAILABLE);
@@ -255,54 +302,109 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     @Transactional
-    public VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleGetDTO_) {
+    public VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleDTO) {
+        // Find existing vehicle
         Vehicle existingVehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
 
         // Update fields (only update non-null values from DTO)
-        if (vehicleGetDTO_.getLicensePlate() != null) {
-            existingVehicle.setLicensePlate(vehicleGetDTO_.getLicensePlate());
+        if (vehicleDTO.getLicensePlate() != null && !vehicleDTO.getLicensePlate().trim().isEmpty()) {
+            // Check if new license plate already exists (excluding current record)
+            if (!existingVehicle.getLicensePlate().equals(vehicleDTO.getLicensePlate())) {
+                boolean exists = vehicleRepository.existsByLicensePlate(vehicleDTO.getLicensePlate());
+                if (exists) {
+                    throw new RuntimeException("Vehicle with license plate " + vehicleDTO.getLicensePlate() + " already exists");
+                }
+            }
+            existingVehicle.setLicensePlate(vehicleDTO.getLicensePlate());
         }
-        if (vehicleGetDTO_.getVehicleType() != null) {
-            existingVehicle.setVehicleType(vehicleGetDTO_.getVehicleType());
+
+        if (vehicleDTO.getVehicleFeatures() != null) {
+            existingVehicle.setVehicleFeatures(vehicleDTO.getVehicleFeatures());
         }
-        if (vehicleGetDTO_.getVehicleFeatures() != null) {
-            existingVehicle.setVehicleFeatures(vehicleGetDTO_.getVehicleFeatures());
+
+        if (vehicleDTO.getVehicleImages() != null) {
+            existingVehicle.setVehicleImages(vehicleDTO.getVehicleImages());
         }
-        if (vehicleGetDTO_.getDescription() != null) {
-            existingVehicle.setDescription(vehicleGetDTO_.getDescription());
+
+        if (vehicleDTO.getNumberSeat() != null) {
+            existingVehicle.setNumberSeat(vehicleDTO.getNumberSeat());
         }
-        if (vehicleGetDTO_.getCostPerDay() != null) {
-            existingVehicle.setCostPerDay(vehicleGetDTO_.getCostPerDay());
+
+        if (vehicleDTO.getYearManufacture() != null) {
+            existingVehicle.setYearManufacture(vehicleDTO.getYearManufacture());
         }
-        if (vehicleGetDTO_.getStatus() != null) {
+
+        if (vehicleDTO.getDescription() != null) {
+            existingVehicle.setDescription(vehicleDTO.getDescription());
+        }
+
+        if (vehicleDTO.getNumberVehicle() != null) {
+            existingVehicle.setNumberVehicle(vehicleDTO.getNumberVehicle());
+        }
+
+        if (vehicleDTO.getCostPerDay() != null) {
+            existingVehicle.setCostPerDay(vehicleDTO.getCostPerDay());
+        }
+
+        if (vehicleDTO.getThumb() != null) {
+            existingVehicle.setThumb(vehicleDTO.getThumb());
+        }
+
+        // Update enum fields
+        if (vehicleDTO.getVehicleType() != null && !vehicleDTO.getVehicleType().trim().isEmpty()) {
             try {
-                existingVehicle.setStatus(Vehicle.Status.valueOf(vehicleGetDTO_.getStatus().toUpperCase()));
+                existingVehicle.setVehicleType(Vehicle.VehicleType.valueOf(vehicleDTO.getVehicleType().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid status value: " + vehicleGetDTO_.getStatus());
+                throw new RuntimeException("Invalid vehicle type: " + vehicleDTO.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
             }
         }
-        if (vehicleGetDTO_.getThumb() != null) {
-            existingVehicle.setThumb(vehicleGetDTO_.getThumb());
-        }
-        if (vehicleGetDTO_.getNumberSeat() != null) {
-            existingVehicle.setNumberSeat(vehicleGetDTO_.getNumberSeat());
-        }
-        if (vehicleGetDTO_.getYearManufacture() != null) {
-            existingVehicle.setYearManufacture(vehicleGetDTO_.getYearManufacture());
-        }
-        if (vehicleGetDTO_.getTransmission() != null) {
+
+        if (vehicleDTO.getHaveDriver() != null && !vehicleDTO.getHaveDriver().trim().isEmpty()) {
             try {
-                existingVehicle.setTransmission(Vehicle.Transmission.valueOf(vehicleGetDTO_.getTransmission().toUpperCase()));
+                existingVehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(vehicleDTO.getHaveDriver().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid transmission value: " + vehicleGetDTO_.getTransmission());
+                throw new RuntimeException("Invalid have driver: " + vehicleDTO.getHaveDriver() + ". Valid values are: YES, NO");
             }
         }
-        if (vehicleGetDTO_.getFuelType() != null) {
+
+        if (vehicleDTO.getInsuranceStatus() != null && !vehicleDTO.getInsuranceStatus().trim().isEmpty()) {
             try {
-                existingVehicle.setFuelType(Vehicle.FuelType.valueOf(vehicleGetDTO_.getFuelType().toUpperCase()));
+                existingVehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(vehicleDTO.getInsuranceStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid fuel type value: " + vehicleGetDTO_.getFuelType());
+                throw new RuntimeException("Invalid insurance status: " + vehicleDTO.getInsuranceStatus() + ". Valid values are: YES, NO");
+            }
+        }
+
+        if (vehicleDTO.getShipToAddress() != null && !vehicleDTO.getShipToAddress().trim().isEmpty()) {
+            try {
+                existingVehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(vehicleDTO.getShipToAddress().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid ship to address: " + vehicleDTO.getShipToAddress() + ". Valid values are: YES, NO");
+            }
+        }
+
+        if (vehicleDTO.getTransmission() != null && !vehicleDTO.getTransmission().trim().isEmpty()) {
+            try {
+                existingVehicle.setTransmission(Vehicle.Transmission.valueOf(vehicleDTO.getTransmission().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid transmission: " + vehicleDTO.getTransmission() + ". Valid values are: MANUAL, AUTOMATIC");
+            }
+        }
+
+        if (vehicleDTO.getFuelType() != null && !vehicleDTO.getFuelType().trim().isEmpty()) {
+            try {
+                existingVehicle.setFuelType(Vehicle.FuelType.valueOf(vehicleDTO.getFuelType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid fuel type: " + vehicleDTO.getFuelType() + ". Valid values are: GASOLINE, ELECTRIC");
+            }
+        }
+
+        if (vehicleDTO.getStatus() != null && !vehicleDTO.getStatus().trim().isEmpty()) {
+            try {
+                existingVehicle.setStatus(Vehicle.Status.valueOf(vehicleDTO.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid status: " + vehicleDTO.getStatus() + ". Valid values are: AVAILABLE, UNAVAILABLE");
             }
         }
 
@@ -317,41 +419,11 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public void deleteVehicle(String id) {
-        if (!vehicleRepository.existsById(id)) {
+        boolean exists = vehicleRepository.existsById(id);
+        if (!exists) {
             throw new RuntimeException("Vehicle not found with id: " + id);
         }
-
-        try {
-            // Delete in correct order using native SQL to avoid JPA relationship issues
-
-            // 1. Delete final_contracts (deepest dependency)
-            jdbcTemplate.update(
-                    "DELETE fc FROM final_contracts fc " +
-                            "INNER JOIN contracts c ON fc.contract_id = c.id " +
-                            "INNER JOIN bookings b ON c.booking_id = b.id " +
-                            "WHERE b.vehicle_id = ?", id);
-
-            // 2. Delete contracts
-            jdbcTemplate.update(
-                    "DELETE c FROM contracts c " +
-                            "INNER JOIN bookings b ON c.booking_id = b.id " +
-                            "WHERE b.vehicle_id = ?", id);
-
-            // 3. Delete ratings
-            jdbcTemplate.update("DELETE FROM ratings WHERE vehicle_id = ?", id);
-
-            // 4. Delete bookings
-            jdbcTemplate.update("DELETE FROM bookings WHERE vehicle_id = ?", id);
-
-            // 5. Delete booked_time_slots
-            jdbcTemplate.update("DELETE FROM booked_time_slots WHERE vehicle_id = ?", id);
-
-            // 6. Final delete the vehicle
-            vehicleRepository.deleteById(id);
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete vehicle: " + e.getMessage());
-        }
+        vehicleRepository.deleteById(id);
     }
 
     @Override
@@ -421,7 +493,7 @@ public class VehicleServiceImpl implements VehicleService {
         return result.map(vehicle -> VehicleSearchResultDTO.builder()
                 .id(vehicle.getId())
                 .licensePlate(vehicle.getLicensePlate())
-                .vehicleTypes(vehicle.getVehicleType())
+                .vehicleTypes(String.valueOf(vehicle.getVehicleType()))
                 .thumb(vehicle.getThumb())
                 .costPerDay(vehicle.getCostPerDay())
                 .status(vehicle.getStatus().name())

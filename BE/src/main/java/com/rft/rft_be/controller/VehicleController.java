@@ -37,10 +37,10 @@ public class VehicleController {
         return ResponseEntity.ok(vehicleService.getVehicleDetailById(id));
     }
 
-    @GetMapping("/getAllByCategory")
-    public ResponseEntity<List<CategoryDTO>> getAllVehiclesByCategory() {
-        return ResponseEntity.ok(vehicleService.getAllVehiclesByCategory());
-    }
+//    @GetMapping("/getAllByCategory")
+//    public ResponseEntity<List<CategoryDTO>> getAllVehiclesByCategory() {
+//        return ResponseEntity.ok(vehicleService.getAllVehiclesByCategory());
+//    }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getVehiclesByUserId(@PathVariable String userId) {
@@ -75,9 +75,45 @@ public class VehicleController {
         try {
             List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByVehicleType(vehicleType);
             return ResponseEntity.ok(vehicles);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to retrieve vehicles by type: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @GetMapping("/have-driver/{haveDriver}")
+    public ResponseEntity<?> getVehiclesByHaveDriver(@PathVariable String haveDriver) {
+        try {
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByHaveDriver(haveDriver);
+            return ResponseEntity.ok(vehicles);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to retrieve vehicles by driver availability: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @GetMapping("/vehicle-type/{vehicleType}/status/{status}")
+    public ResponseEntity<?> getVehiclesByVehicleTypeAndStatus(@PathVariable String vehicleType, @PathVariable String status) {
+        try {
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByVehicleTypeAndStatus(vehicleType, status);
+            return ResponseEntity.ok(vehicles);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to retrieve vehicles by type and status: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
@@ -123,7 +159,7 @@ public class VehicleController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createVehicle(@RequestBody com.rft.rft_be.dto.vehicle.CreateVehicleDTO createVehicleDTO) {
+    public ResponseEntity<?> createVehicle(@RequestBody CreateVehicleDTO createVehicleDTO) {
         try {
             VehicleGetDTO createdVehicle = vehicleService.createVehicle(createVehicleDTO);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
@@ -139,9 +175,9 @@ public class VehicleController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateVehicle(@PathVariable String id, @RequestBody VehicleGetDTO vehicleGetDTO_) {
+    public ResponseEntity<?> updateVehicle(@PathVariable String id, @RequestBody VehicleGetDTO vehicleDTO) {
         try {
-            VehicleGetDTO updatedVehicle = vehicleService.updateVehicle(id, vehicleGetDTO_);
+            VehicleGetDTO updatedVehicle = vehicleService.updateVehicle(id, vehicleDTO);
             return ResponseEntity.ok(updatedVehicle);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
