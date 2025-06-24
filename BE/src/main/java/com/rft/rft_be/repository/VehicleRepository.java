@@ -2,8 +2,11 @@ package com.rft.rft_be.repository;
 
 import com.rft.rft_be.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -15,7 +18,7 @@ import org.springframework.stereotype.Repository;
 
 
 @Repository
-public interface VehicleRepository extends JpaRepository<Vehicle, String> {
+public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSpecificationExecutor<Vehicle> {
     @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId")
     List<Vehicle> findByUserId(@Param("userId") String userId);
 
@@ -67,4 +70,32 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String> {
 
     @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.user.id = :userId")
     long countByUserId(@Param("userId") String userId);
+
+    @Query("""
+    SELECT v FROM Vehicle v
+    JOIN Rating r ON v.id = r.vehicle.id
+    WHERE (:vehicleTypes IS NULL OR v.vehicleType IN :vehicleTypes)
+      AND (:addresses IS NULL OR v.user.address IN :addresses)
+      AND (:haveDriver IS NULL OR v.haveDriver = :haveDriver)
+      AND (:shipToAddress IS NULL OR v.shipToAddress = :shipToAddress)
+      AND (:brandId IS NULL OR v.brand.id = :brandId)
+      AND (:modelId IS NULL OR v.model.id = :modelId)
+      AND (:numberSeat IS NULL OR v.numberSeat = :numberSeat)
+      AND (:costFrom IS NULL OR v.costPerDay >= :costFrom)
+      AND (:costTo IS NULL OR v.costPerDay <= :costTo)
+    GROUP BY v.id
+    HAVING AVG(r.star) = 5
+""")
+    Page<Vehicle> findVehiclesWithAverageRatingFive(
+            @Param("vehicleTypes") List<String> vehicleTypes,
+            @Param("addresses") List<String> addresses,
+            @Param("haveDriver") Boolean haveDriver,
+            @Param("shipToAddress") Vehicle.ShipToAddress shipToAddress,
+            @Param("brandId") String brandId,
+            @Param("modelId") String modelId,
+            @Param("numberSeat") Integer numberSeat,
+            @Param("costFrom") BigDecimal costFrom,
+            @Param("costTo") BigDecimal costTo,
+            Pageable pageable
+    );
 }
