@@ -7,13 +7,16 @@ import com.rft.rft_be.repository.CouponRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
+
 @Service
 public class CouponServiceImpl implements CouponService {
+
     @Autowired
     private CouponRepository couponRepository;
+
     @Override
     public List<CouponDTO> getAllCoupons() {
         return couponRepository.findAll().stream()
@@ -37,11 +40,17 @@ public class CouponServiceImpl implements CouponService {
         coupon.setDescription(dto.getDescription());
         coupon.setDiscount(dto.getDiscount());
         coupon.setTimeExpired(dto.getTimeExpired());
-        coupon.setUpdatedAt(LocalDateTime.now());
+        coupon.setUpdatedAt(Instant.now()); //
 
         return CouponMapper.toDTO(couponRepository.save(coupon));
     }
-
+    @Override
+    public CouponDTO createCoupon(CouponDTO dto) {
+        Coupon coupon = CouponMapper.toEntity(dto);
+        coupon.setCreatedAt(Instant.now());
+        coupon.setUpdatedAt(Instant.now());
+        return CouponMapper.toDTO(couponRepository.save(coupon));
+    }
     @Override
     public void deleteCouponById(String id) {
         if (!couponRepository.existsById(id)) {
@@ -49,5 +58,4 @@ public class CouponServiceImpl implements CouponService {
         }
         couponRepository.deleteById(id);
     }
-    }
-
+}

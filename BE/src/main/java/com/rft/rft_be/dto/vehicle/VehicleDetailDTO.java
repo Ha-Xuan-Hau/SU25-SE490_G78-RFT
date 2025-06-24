@@ -14,7 +14,7 @@ import java.util.List;
 public class VehicleDetailDTO {
     String id;
     String licensePlate;
-    String vehicleTypes;
+    String vehicleType;
     //    String vehicleFeatures;
     List<VehicleFeatureDTO> vehicleFeatures;
     List<VehicleImageDTO> vehicleImages;

@@ -28,10 +28,10 @@ export function UserWebLayout({ children }: UserWebLayoutProps) {
   }, [user, pathname, push]);
 
   return (
-    <Layout className="bg-white min-h-screen">
+    <>
       <HeaderComponent />
       <Content className="bg-white py-2">{children}</Content>
       <FooterComponent />
-    </Layout>
+    </>
   );
 }

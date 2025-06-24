@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import { jwtDecode } from "jwt-decode";
+import { fetchUserProfile } from "../recoils/user.state";
 
 export async function login(credentials) {
     try {
@@ -13,17 +14,37 @@ export async function login(credentials) {
             // Lưu token
             localStorage.setItem("access_token", JSON.stringify(data.token));
 
-            // Giải mã token để lấy thông tin user
+            // Giải mã token để lấy thông tin user cơ bản
             const decodedToken = jwtDecode(data.token);
 
             // Tạo đối tượng user từ token
-            const userData = {
+            let userData = {
                 id: decodedToken.userId,
                 email: decodedToken.sub,
                 phone: decodedToken.phone,
                 role: decodedToken.scope,
                 // Các thông tin khác từ token
             };
+
+            try {
+                // Lấy thông tin user đầy đủ từ API
+                const fullUserData = await apiClient.request({
+                    method: "GET",
+                    url: "/users/get-user",
+                    headers: {
+                        Authorization: `Bearer ${data.token}`,
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                if (fullUserData.data) {
+                    // Cập nhật userData với đầy đủ thông tin
+                    userData = fullUserData.data;
+                }
+            } catch (profileError) {
+                console.warn("Could not fetch complete profile:", profileError);
+                // Tiếp tục với thông tin cơ bản từ token
+            }
 
             // Lưu thông tin user
             localStorage.setItem("user_profile", JSON.stringify(userData));

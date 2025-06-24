@@ -28,11 +28,11 @@ const VehicleListing: React.FC<VehicleListingProps> = ({ filters }) => {
     let result = [...allVehicles];
 
     // Lọc theo loại phương tiện
-    if (filters.vehicleTypes) {
+    if (filters.vehicleType) {
       result = result.filter(
         (vehicle) =>
-          vehicle.vehicleTypes?.toLowerCase() ===
-          filters.vehicleTypes?.toLowerCase()
+          vehicle.vehicleType?.toLowerCase() ===
+          filters.vehicleType?.toLowerCase()
       );
     }
 
