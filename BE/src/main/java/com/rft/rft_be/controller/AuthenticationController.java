@@ -1,10 +1,7 @@
 package com.rft.rft_be.controller;
 
 import com.nimbusds.jose.JOSEException;
-import com.rft.rft_be.dto.authentication.AuthenticationRequest;
-import com.rft.rft_be.dto.authentication.AuthenticationResponse;
-import com.rft.rft_be.dto.authentication.IntrospectRequest;
-import com.rft.rft_be.dto.authentication.IntrospectResponse;
+import com.rft.rft_be.dto.authentication.*;
 import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.mapper.UserMapper;
@@ -43,10 +40,24 @@ public class AuthenticationController {
         return result;
     }
 
+    @PostMapping("/send-otp")
+    public ResponseEntity<String> sendOtp(@RequestBody ForgotPasswordRequest request) {
+        authenticationService.sendForgotPasswordOtpEmail(request.getEmail());
+        // Gửi mail ở đây
+        return ResponseEntity.ok("OTP sent: " + request.getEmail());
+    }
+
+//    @PostMapping("/api/verify-otp")
+//    public ResponseEntity<?> verifyOtp(@RequestBody String email, String otp) {
+//        boolean isValid = otpService.verifyOtp(email, otp);
+//        return ResponseEntity.ok(isValid ? "OTP verified" : "OTP invalid");
+//    }
+
     @PostMapping("/register")
     public ResponseEntity<UserDetailDTO> register(@RequestBody UserRegisterDTO request){
         UserDetailDTO createdUser =userService.register(request);
 
         return ResponseEntity.ok(createdUser);
     }
+
 }

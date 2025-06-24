@@ -1,26 +1,30 @@
 package com.rft.rft_be.service.vehicle;
 
 import com.rft.rft_be.dto.CategoryDTO;
-import com.rft.rft_be.dto.vehicle.CreateVehicleDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDTO;
-import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
+import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.entity.Brand;
+import com.rft.rft_be.entity.Rating;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.mapper.RatingMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 import com.rft.rft_be.repository.*;
 import com.rft.rft_be.service.rating.RatingServiceImpl;
+import jakarta.persistence.criteria.*;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +36,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class VehicleServiceImpl implements VehicleService {
-
 
     private final BookedTimeSlotRepository bookedTimeSlotsRepository;
     private final UserRepository userRepository;
@@ -62,22 +65,22 @@ public class VehicleServiceImpl implements VehicleService {
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
     }
 
-    @Override
-    public List<CategoryDTO> getAllVehiclesByCategory() {
-        List<Vehicle> vehicles = vehicleRepository.findAll();
-
-        Map<String, List<Vehicle>> grouped = vehicles.stream()
-                .collect(Collectors.groupingBy(Vehicle::getVehicleType));
-
-        return grouped.entrySet().stream()
-                .map(entry -> CategoryDTO.builder()
-                        .categoryName(entry.getKey())
-                        .vehicles(entry.getValue().stream()
-                                .map(vehicleMapper::toDTO)
-                                .collect(Collectors.toList()))
-                        .build())
-                .collect(Collectors.toList());
-    }
+//    @Override
+//    public List<CategoryDTO> getAllVehiclesByCategory() {
+//        List<Vehicle> vehicles = vehicleRepository.findAll();
+//
+//        Map<String, List<Vehicle>> grouped = vehicles.stream()
+//                .collect(Collectors.groupingBy(Vehicle::getVehicleType));
+//
+//        return grouped.entrySet().stream()
+//                .map(entry -> CategoryDTO.builder()
+//                        .categoryName(entry.getKey())
+//                        .vehicles(entry.getValue().stream()
+//                                .map(vehicleMapper::toDTO)
+//                                .collect(Collectors.toList()))
+//                        .build())
+//                .collect(Collectors.toList());
+//    }
 
     @Override
     public VehicleDetailDTO getVehicleDetailById(String id) {
@@ -85,7 +88,6 @@ public class VehicleServiceImpl implements VehicleService {
         VehicleDetailDTO vehicleDetailDTO = vehicle.map(vehicleMapper::vehicleToVehicleDetail)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
         vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicle_Id(id)));
-
 
 
         return vehicleDetailDTO;
@@ -352,5 +354,84 @@ public class VehicleServiceImpl implements VehicleService {
         }
     }
 
+    @Override
+    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req) {
+        Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
 
+        Specification<Vehicle> spec = (root, query, cb) -> cb.conjunction();
+
+
+        if (req.getVehicleTypes() != null && !req.getVehicleTypes().isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleTypes()));
+        }
+
+        if (req.getAddresses() != null && !req.getAddresses().isEmpty()) {
+            spec = spec.and((root, query, cb) -> {
+                Join<Vehicle, User> userJoin = root.join("user", JoinType.INNER);
+                Predicate combinedPredicate = cb.disjunction();
+                for (String addr : req.getAddresses()) {
+                    combinedPredicate = cb.or(combinedPredicate,
+                            cb.like(cb.lower(userJoin.get("address")), "%" + addr.toLowerCase() + "%"));
+                }
+                return combinedPredicate;
+            });
+        }
+
+        if (req.getHaveDriver() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("haveDriver"), req.getHaveDriver())
+            );
+        }
+
+        if (req.getShipToAddress() != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("shipToAddress"), req.getShipToAddress()));
+        }
+
+        if (req.getBrandId() != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("brand").get("id"), req.getBrandId()));
+        }
+
+        if (req.getModelId() != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("model").get("id"), req.getModelId()));
+        }
+
+        if (req.getNumberSeat() != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("numberSeat"), req.getNumberSeat()));
+        }
+
+        if (req.getCostFrom() != null) {
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("costPerDay"), req.getCostFrom()));
+        }
+
+        if (req.getCostTo() != null) {
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("costPerDay"), req.getCostTo()));
+        }
+
+        if (Boolean.TRUE.equals(req.getRatingFiveStarsOnly())) {
+            spec = spec.and((root, query, cb) -> {
+                Subquery<Double> subquery = query.subquery(Double.class);
+                Root<Rating> ratingRoot = subquery.from(Rating.class);
+                subquery.select(cb.avg(ratingRoot.get("star")));
+                subquery.where(cb.equal(ratingRoot.get("vehicle").get("id"), root.get("id")));
+                return cb.equal(subquery, 5.0);
+            });
+        }
+
+        Page<Vehicle> result = vehicleRepository.findAll(spec, pageable);
+        return result.map(vehicle -> VehicleSearchResultDTO.builder()
+                .id(vehicle.getId())
+                .licensePlate(vehicle.getLicensePlate())
+                .vehicleTypes(vehicle.getVehicleType())
+                .thumb(vehicle.getThumb())
+                .costPerDay(vehicle.getCostPerDay())
+                .status(vehicle.getStatus().name())
+                .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : null)
+                .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : null)
+                .numberSeat(vehicle.getNumberSeat())
+                .averageRating(ratingRepository.findAverageByVehicleId(vehicle.getId()))
+                .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : null)
+                .build()
+        );
+
+    }
 }

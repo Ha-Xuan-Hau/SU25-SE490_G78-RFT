@@ -25,14 +25,14 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         <div className="grid grid-cols-3 gap-3">
           <button
             className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
-              filters.vehicleTypes === "Car"
+              filters.vehicleType === "Car"
                 ? "bg-primary/10 border-primary text-primary"
                 : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
               handleFilterChange(
-                "vehicleTypes",
-                filters.vehicleTypes === "Car" ? undefined : "Car"
+                "vehicleType",
+                filters.vehicleType === "Car" ? undefined : "Car"
               )
             }
           >
@@ -41,14 +41,14 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           </button>
           <button
             className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
-              filters.vehicleTypes === "Motorcycle"
+              filters.vehicleType === "Motorcycle"
                 ? "bg-primary/10 border-primary text-primary"
                 : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
               handleFilterChange(
-                "vehicleTypes",
-                filters.vehicleTypes === "Motorcycle" ? undefined : "Motorcycle"
+                "vehicleType",
+                filters.vehicleType === "Motorcycle" ? undefined : "Motorcycle"
               )
             }
           >
@@ -57,14 +57,14 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           </button>
           <button
             className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
-              filters.vehicleTypes === "BICYCLE"
+              filters.vehicleType === "BICYCLE"
                 ? "bg-primary/10 border-primary text-primary"
                 : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
               handleFilterChange(
-                "vehicleTypes",
-                filters.vehicleTypes === "Bicycle" ? undefined : "Bicycle"
+                "vehicleType",
+                filters.vehicleType === "Bicycle" ? undefined : "Bicycle"
               )
             }
           >
@@ -184,7 +184,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         className="w-full mt-2 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         onClick={() =>
           setFilters({
-            vehicleTypes: undefined,
+            vehicleType: undefined,
             brand: undefined,
             seats: undefined,
             minRating: undefined,

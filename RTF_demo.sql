@@ -32,6 +32,7 @@ CREATE TABLE `user_register_vehicle` (
 CREATE TABLE `brands` (
   `id` varchar(255) NOT NULL,
   `name` nvarchar(100) DEFAULT NULL,
+  `vehicle_type` enum('CAR','MOTORBIKE') DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -40,13 +41,10 @@ CREATE TABLE `brands` (
 -- Table structure for table `models`
 CREATE TABLE `models` (
   `id` varchar(255) NOT NULL,
-  `brand_id` varchar(255) DEFAULT NULL,
   `name` nvarchar(100) DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `brand_id` (`brand_id`),
-  CONSTRAINT `models_ibfk_1` FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `vehicles`
@@ -56,7 +54,7 @@ CREATE TABLE `vehicles` (
   `brand_id` varchar(255) DEFAULT NULL,
   `model_id` varchar(255) DEFAULT NULL,
   `license_plate` varchar(20) DEFAULT NULL,
-  `vehicle_type` varchar(50) DEFAULT NULL,
+  `vehicle_type` enum('CAR','MOTORBIKE', 'BICYCLE') DEFAULT NULL,
   `vehicle_features` text,
   `vehicle_images` text,
   `have_driver` enum('YES', 'NO') DEFAULT 'NO',
@@ -230,50 +228,69 @@ INSERT INTO users (id, email, password, full_name, profile_picture, date_of_birt
 ('user-006', 'anna@example.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Anna Johnson', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150', '1993-09-12', '0906789012', '987 Đường Cách Mạng Tháng 8, Quận 10, TP.HCM', 'ACTIVE', 'USER');
 
 -- Insert sample brands
-INSERT INTO brands (id, name) VALUES
-('brand-001', 'Toyota'),
-('brand-002', 'Honda'),
-('brand-003', 'Hyundai'),
-('brand-004', 'KIA'),
-('brand-005', 'Mazda'),
-('brand-006', 'Ford'),
-('brand-007', 'Vinfast'),
-('brand-008', 'BMW'),
-('brand-009', 'Mercedes-Benz'),
-('brand-010', 'Audi');
+INSERT INTO brands (id, name, vehicle_type) VALUES
+('brand-001', 'Toyota', 'CAR'),
+('brand-002', 'Honda', 'CAR'),
+('brand-003', 'Hyundai', 'CAR'),
+('brand-004', 'Kia', 'CAR'),
+('brand-005', 'Mazda', 'CAR'),
+('brand-006', 'Ford', 'CAR'),
+('brand-007', 'Vinfast', 'CAR'),
+('brand-008', 'BMW', 'CAR'),
+('brand-009', 'Mercedes', 'CAR'),
+('brand-010', 'Audi', 'CAR'),
+('brand-011', 'Acura', 'CAR'),
+('brand-012', 'Baic', 'CAR'),
+('brand-013', 'BYD', 'CAR'),
+('brand-014', 'Chevrolet', 'CAR'),
+('brand-015', 'Daewoo', 'CAR'),
+('brand-016', 'Isuzu', 'CAR'),
+('brand-017', 'Land Rover', 'CAR'),
+('brand-018', 'Lexus', 'CAR'),
+('brand-019', 'Mitsubishi', 'CAR'),
+('brand-020', 'Morris Garages', 'CAR'),
+('brand-021', 'Nissan', 'CAR'),
+('brand-022', 'Peugeot', 'CAR'),
+('brand-023', 'Renault', 'CAR'),
+('brand-024', 'Subaru', 'CAR'),
+('brand-025', 'Suzuki', 'CAR'),
+('brand-026', 'Volkswagen', 'CAR'),
+('brand-027', 'Wuling', 'CAR'),
+('brand-028', 'Zotye', 'CAR'),
+('brand-101', 'Honda', 'MOTORBIKE'),
+('brand-102', 'Yamaha', 'MOTORBIKE'),
+('brand-103', 'Suzuki', 'MOTORBIKE'),
+('brand-104', 'Piaggio', 'MOTORBIKE'),
+('brand-105', 'Vespa', 'MOTORBIKE'),
+('brand-106', 'SYM', 'MOTORBIKE'),
+('brand-107', 'VinFast', 'MOTORBIKE'),
+('brand-108', 'Kymco', 'MOTORBIKE'),
+('brand-109', 'Ducati', 'MOTORBIKE'),
+('brand-110', 'BMW Motorrad', 'MOTORBIKE'),
+('brand-111', 'Harley-Davidson', 'MOTORBIKE'),
+('brand-112', 'Triumph', 'MOTORBIKE'),
+('brand-113', 'Royal Enfield', 'MOTORBIKE'),
+('brand-114', 'Kawasaki', 'MOTORBIKE');
 
--- Insert sample models
-INSERT INTO models (id, brand_id, name) VALUES
-('model-001', 'brand-001', 'Camry'),
-('model-002', 'brand-001', 'Corolla'),
-('model-003', 'brand-001', 'Vios'),
-('model-004', 'brand-002', 'Civic'),
-('model-005', 'brand-002', 'City'),
-('model-006', 'brand-002', 'Accord'),
-('model-007', 'brand-003', 'Elantra'),
-('model-008', 'brand-003', 'Tucson'),
-('model-009', 'brand-004', 'Cerato'),
-('model-010', 'brand-004', 'Seltos'),
-('model-011', 'brand-005', 'CX-5'),
-('model-012', 'brand-005', 'Mazda3'),
-('model-013', 'brand-006', 'EcoSport'),
-('model-014', 'brand-006', 'Everest'),
-('model-015', 'brand-007', 'VF8'),
-('model-016', 'brand-007', 'VF9'),
-('model-017', 'brand-008', 'X3'),
-('model-018', 'brand-008', '320i'),
-('model-019', 'brand-009', 'C-Class'),
-('model-020', 'brand-009', 'E-Class');
+-- Insert sample models (without brand_id)
+INSERT INTO models (id, name) VALUES
+('model-001', '4 chỗ (Mini)'),
+('model-002', '4 chỗ (Sedan)'),
+('model-003', '5 chỗ (CUV Gầm cao)'),
+('model-004', '7 chỗ (SUV gầm cao)'),
+('model-005', '7 chỗ (MPV gầm thấp)'),
+('model-006', 'Bán tải'),
+('model-007', 'Minivan');
 
 -- Insert sample vehicles
 INSERT INTO vehicles (id, user_id, brand_id, model_id, license_plate, vehicle_type, vehicle_features, vehicle_images, insurance_status, ship_to_address, number_seat, year_manufacture, transmission, fuel_type, description, number_vehicle, cost_per_day, status, thumb, total_ratings, likes) VALUES
-('vehicle-001', 'user-003', 'brand-001', 'model-001', '51A-12345', 'Car', 'GPS, Bluetooth, Air Conditioning, Leather Seats', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'YES', 5, 2022, 'AUTOMATIC', 'GASOLINE', 'Toyota Camry 2022 - Xe sang trọng, tiết kiệm nhiên liệu', 1, 800000.00, 'AVAILABLE', 'toyota23', 15, 25),
-('vehicle-002', 'user-004', 'brand-002', 'model-004', '51B-67890', 'Car', 'GPS, Bluetooth, Air Conditioning', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'NO', 5, 2021, 'MANUAL', 'GASOLINE', 'Honda Civic 2021 - Xe thể thao, vận hành mượt mà', 1, 700000.00, 'AVAILABLE', 'toyota23', 12, 18),
-('vehicle-003', 'user-005', 'brand-003', 'model-008', '51C-11111', 'Car', 'GPS, Bluetooth, Air Conditioning, Sunroof, 4WD', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'NO', 5, 2023, 'AUTOMATIC', 'GASOLINE', 'Hyundai Tucson 2023 - SUV mạnh mẽ, tiện nghi', 1, 1200000.00, 'AVAILABLE', 'toyota23', 8, 12),
-('vehicle-004', 'user-006', 'brand-007', 'model-015', '51D-22222', 'Car', 'GPS, Bluetooth, Air Conditioning, Electric Charging', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'YES', 7, 2023, 'AUTOMATIC', 'ELECTRIC', 'VinFast VF8 2023 - SUV điện hiện đại, thân thiện môi trường', 1, 1500000.00, 'AVAILABLE', 'toyota23', 5, 6),
-('vehicle-005', 'user-003', 'brand-001', 'model-003', '51E-33333', 'Car', 'GPS, Bluetooth, Air Conditioning', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'NO', 'NO', 5, 2020, 'MANUAL', 'GASOLINE', 'Toyota Vios 2020 - Xe kinh tế, phù hợp di chuyển trong thành phố', 2, 500000.00, 'AVAILABLE', 'toyota23', 20, 30),
-('vehicle-006', 'user-004', 'brand-005', 'model-011', '51F-44444', 'Car', 'GPS, Bluetooth, Air Conditioning, Sunroof', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'YES', 5, 2022, 'AUTOMATIC', 'GASOLINE', 'Mazda CX-5 2022 - SUV sang trọng, thiết kế đẹp mắt', 1, 1000000.00, 'UNAVAILABLE', 'toyota23', 10, 15),
-('vehicle-007', 'user-005', 'brand-008', 'model-018', '51G-55555', 'Car', 'GPS, Bluetooth, Air Conditioning, Leather Seats, Premium Sound', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'NO', 5, 2023, 'AUTOMATIC', 'GASOLINE', 'BMW 320i 2023 - Xe sang hạng premium, trải nghiệm lái tuyệt vời', 1, 2000000.00, 'AVAILABLE', 'toyota23', 3, 5);
+('vehicle-001', 'user-003', 'brand-001', 'model-001', '51A-12345', 'CAR', 'GPS, Bluetooth, Air Conditioning, Leather Seats', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'YES', 5, 2022, 'AUTOMATIC', 'GASOLINE', 'Toyota Camry 2022 - Xe sang trọng, tiết kiệm nhiên liệu', 1, 800000.00, 'AVAILABLE', 'toyota23', 15, 25),
+('vehicle-002', 'user-004', 'brand-002', 'model-002', '51B-67890', 'CAR', 'GPS, Bluetooth, Air Conditioning', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'NO', 5, 2021, 'MANUAL', 'GASOLINE', 'Honda Civic 2021 - Xe thể thao, vận hành mượt mà', 1, 700000.00, 'AVAILABLE', 'toyota23', 12, 18),
+('vehicle-003', 'user-005', 'brand-003', 'model-003', '51C-11111', 'CAR', 'GPS, Bluetooth, Air Conditioning, Sunroof, 4WD', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'NO', 5, 2023, 'AUTOMATIC', 'GASOLINE', 'Hyundai Tucson 2023 - SUV mạnh mẽ, tiện nghi', 1, 1200000.00, 'AVAILABLE', 'toyota23', 8, 12),
+('vehicle-004', 'user-006', 'brand-004', 'model-004', '51D-22222', 'CAR', 'GPS, Bluetooth, Air Conditioning, Electric Charging', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'YES', 7, 2023, 'AUTOMATIC', 'ELECTRIC', 'VinFast VF8 2023 - SUV điện hiện đại, thân thiện môi trường', 1, 1500000.00, 'AVAILABLE', 'toyota23', 5, 6),
+('vehicle-005', 'user-003', 'brand-002', 'model-002', '51E-33333', 'CAR', 'GPS, Bluetooth, Air Conditioning', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'NO', 'NO', 5, 2020, 'MANUAL', 'GASOLINE', 'Toyota Vios 2020 - Xe kinh tế, phù hợp di chuyển trong thành phố', 2, 500000.00, 'AVAILABLE', 'toyota23', 20, 30),
+('vehicle-006', 'user-004', 'brand-004', 'model-004', '51F-44444', 'CAR', 'GPS, Bluetooth, Air Conditioning, Sunroof', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'YES', 5, 2022, 'AUTOMATIC', 'GASOLINE', 'Mazda CX-5 2022 - SUV sang trọng, thiết kế đẹp mắt', 1, 1000000.00, 'UNAVAILABLE', 'toyota23', 10, 15),
+('vehicle-007', 'user-005', 'brand-007', 'model-007', '51G-55555', 'CAR', 'GPS, Bluetooth, Air Conditioning, Leather Seats, Premium Sound', '["https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-120-658066d5be42d.jpg?crop=1xw:1xh;center,top&resize=980:*","https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-126-658066d82048c.jpg?crop=1xw:1xh;center,top&resize=980:*"]', 'YES', 'NO', 5, 2023, 'AUTOMATIC', 'GASOLINE', 'BMW 320i 2023 - Xe sang hạng premium, trải nghiệm lái tuyệt vời', 1, 2000000.00, 'AVAILABLE', 'toyota23', 3, 5);
 -- Insert sample driver licenses
 INSERT INTO driver_licenses (id, user_id, license_number, class, status, image) VALUES
 ('license-001', 'user-003', 'B123456789', 'B2', 'VALID', 'https://example.com/license1.jpg'),

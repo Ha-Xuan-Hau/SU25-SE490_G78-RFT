@@ -1,12 +1,11 @@
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.vehicle.VehicleDTO;
+import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.CategoryDTO;
-import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
 import com.rft.rft_be.service.vehicle.VehicleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -221,5 +220,10 @@ public class VehicleController {
             error.put("error", "Failed to get count by status: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
+    }
+
+    @PostMapping("/search")
+    public Page<VehicleSearchResultDTO> search(@RequestBody VehicleSearchDTO request) {
+        return vehicleService.searchVehicles(request);
     }
 }
