@@ -346,7 +346,7 @@ export default function VehicleDetail() {
               {/* Nút đặt xe */}
               <Link
                 href="#"
-                className="py-4 px-8 bg-primary text-white rounded-full w-full block text-center hover:bg-dark duration-300 text-2xl hover:cursor-pointer font-medium"
+                className="py-4 px-8 bg-white shadow-sm text-primary border-1 border-primary rounded-2xl w-full block text-center hover:bg-primary hover:text-white duration-300 text-2xl hover:cursor-pointer font-medium"
               >
                 Thuê xe
               </Link>
