@@ -102,6 +102,13 @@ public class VehicleServiceImpl implements VehicleService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<VehicleDTO> getAllAvailableVehicles() {
+        return vehicleRepository.findByStatus(Vehicle.Status.AVAILABLE)
+                .stream()
+                .map(vehicleMapper::toDTO)
+                .collect(Collectors.toList());
+    }
 
     @Override
     public List<VehicleGetDTO> getVehiclesByStatus(String status) {
