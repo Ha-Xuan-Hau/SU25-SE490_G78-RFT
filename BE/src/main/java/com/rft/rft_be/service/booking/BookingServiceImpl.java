@@ -50,6 +50,9 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy xe với ID: " + request.getVehicleId()));
+        if (userId.equals(vehicle.getUser().getId())) { // ngăn chủ xe tự đặt xe
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn không thể đặt xe của chính mình.");
+        }
 
         Instant start = request.getTimeBookingStart();
         Instant end = request.getTimeBookingEnd();
