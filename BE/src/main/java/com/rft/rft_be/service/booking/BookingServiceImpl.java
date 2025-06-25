@@ -63,6 +63,10 @@ public class BookingServiceImpl implements BookingService {
         if (!overlaps.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã được đặt trong khoảng thời gian này.");
         }
+        boolean userHasConflictingBooking = bookingRepository.existsByUserIdAndTimeOverlap(userId, start, end);
+        if (userHasConflictingBooking) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có một booking khác trong khoảng thời gian này.");
+        }
 
         //  Tính totalCost
         long durationHours = Duration.between(start, end).toHours();
