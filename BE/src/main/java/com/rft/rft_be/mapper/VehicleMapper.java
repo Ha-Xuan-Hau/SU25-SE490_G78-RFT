@@ -3,7 +3,11 @@ package com.rft.rft_be.mapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rft.rft_be.dto.UserProfileDTO;
+import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.dto.vehicle.*;
+import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Vehicle;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -101,5 +105,70 @@ public interface VehicleMapper {
         } else {
             return fullAddress;
         }
+    }
+
+    @Named("mapToBookingResponseDTO")
+    default BookingResponseDTO mapToBookingResponseDTO(Booking booking) {
+        if (booking == null) {
+            return null;
+        }
+
+        // Tạo BookingResponseDTO và ánh xạ các trường cơ bản
+        BookingResponseDTO dto = BookingResponseDTO.builder()
+                .id(booking.getId())
+                .timeBookingStart(booking.getTimeBookingStart())
+                .timeBookingEnd(booking.getTimeBookingEnd())
+                .phoneNumber(booking.getPhoneNumber())
+                .address(booking.getAddress())
+                .codeTransaction(booking.getCodeTransaction())
+                .totalCost(booking.getTotalCost())
+                .status(booking.getStatus())
+                .createdAt(booking.getCreatedAt())
+                .updatedAt(booking.getUpdatedAt())
+                .build();
+
+        if (booking.getUser() != null) {
+            dto.setUser(mapToUserProfileDTO(booking.getUser()));
+        }
+
+        if (booking.getVehicle() != null) {
+            dto.setVehicle(mapToVehicleForBookingDTO(booking.getVehicle()));
+        }
+        return dto;
+    }
+
+    // Chuyển đổi từ User Entity sang UserDTO
+    default UserProfileDTO mapToUserProfileDTO(User user) {
+        if (user == null) {
+            return null;
+        }
+        return UserProfileDTO.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .profilePicture(user.getProfilePicture())
+                .dateOfBirth(user.getDateOfBirth())
+                .phone(user.getPhone())
+                .address(user.getAddress())
+                .build();
+    }
+
+    // Phương thức này sẽ gọi mapToUserProfileDTO cho User của Vehicle
+    default VehicleForBookingDTO mapToVehicleForBookingDTO(Vehicle vehicle) {
+        if (vehicle == null) {
+            return null;
+        }
+        VehicleForBookingDTO dto = VehicleForBookingDTO.builder()
+                .id(vehicle.getId())
+                .licensePlate(vehicle.getLicensePlate())
+                .vehicleTypes(vehicle.getVehicleType().name())
+                .thumb(vehicle.getThumb())
+                .costPerDay(vehicle.getCostPerDay())
+                .status(vehicle.getStatus().name())
+                .build();
+
+        if (vehicle.getUser() != null) {
+            dto.setUser(mapToUserProfileDTO(vehicle.getUser()));
+        }
+        return dto;
     }
 }

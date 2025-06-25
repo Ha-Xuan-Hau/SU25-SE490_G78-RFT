@@ -13,18 +13,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-
 import org.springframework.data.domain.Pageable;
+
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,6 +55,7 @@ public class VehicleServiceImpl implements VehicleService {
                 })
                 .collect(Collectors.toList());
     }
+
     @Override
     public VehicleDTO getVehicleById(String id) {
         Vehicle vehicle = vehicleRepository.findById(id)
@@ -103,7 +101,6 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
-
 
 
     @Override
@@ -307,6 +304,7 @@ public class VehicleServiceImpl implements VehicleService {
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
         return vehicleMapper.vehicleGet(savedVehicle);
     }
+
     @Override
     public int getAverageRating(String vehicleId) {
         Double avg = ratingRepository.findAverageByVehicleId(vehicleId);
@@ -517,7 +515,5 @@ public class VehicleServiceImpl implements VehicleService {
                 .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : null)
                 .build()
         );
-
-
     }
 }
