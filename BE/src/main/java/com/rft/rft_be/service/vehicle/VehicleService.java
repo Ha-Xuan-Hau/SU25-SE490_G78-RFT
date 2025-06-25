@@ -2,6 +2,7 @@ package com.rft.rft_be.service.vehicle;
 
 import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.dto.vehicle.*;
+import com.rft.rft_be.entity.Vehicle;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
@@ -9,7 +10,7 @@ import java.util.List;
 public interface VehicleService {
     List<VehicleDTO> getAllVehicles();
     VehicleDTO getVehicleById(String id);
-    List<CategoryDTO> getAllVehiclesByCategory();
+    //List<CategoryDTO> getAllVehiclesByCategory();
     VehicleDetailDTO getVehicleDetailById(String id);
 
     Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req);
@@ -20,6 +21,8 @@ public interface VehicleService {
     List<VehicleGetDTO> getVehiclesByModelId(String modelId);
     VehicleGetDTO getVehicleByLicensePlate(String licensePlate);
     VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO);
-    VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleGetDTO_);
+    VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleGetDTO);
     void deleteVehicle(String id);
+    List<VehicleGetDTO> getVehiclesByHaveDriver(String haveDriver);
+    List<VehicleGetDTO> getVehiclesByVehicleTypeAndStatus(String vehicleType, String status);
 }

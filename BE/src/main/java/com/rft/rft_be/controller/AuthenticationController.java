@@ -6,7 +6,9 @@ import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.service.authenticationService.AuthenticationService;
+import com.rft.rft_be.service.otp.OtpService;
 import com.rft.rft_be.service.user.UserService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -24,6 +26,7 @@ import java.text.ParseException;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationController {
     AuthenticationService authenticationService;
+    OtpService otpService;
     UserMapper userMapper;
     UserService userService;
 
@@ -41,17 +44,17 @@ public class AuthenticationController {
     }
 
     @PostMapping("/send-otp")
-    public ResponseEntity<String> sendOtp(@RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<?> sendOtp(@Valid @RequestBody ForgotPasswordRequest request) {
         authenticationService.sendForgotPasswordOtpEmail(request.getEmail());
         // Gửi mail ở đây
         return ResponseEntity.ok("OTP sent: " + request.getEmail());
     }
 
-//    @PostMapping("/api/verify-otp")
-//    public ResponseEntity<?> verifyOtp(@RequestBody String email, String otp) {
-//        boolean isValid = otpService.verifyOtp(email, otp);
-//        return ResponseEntity.ok(isValid ? "OTP verified" : "OTP invalid");
-//    }
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody OtpRequest request) {
+        boolean isValid = otpService.verifyOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(isValid ? "OTP verified" : "OTP invalid");
+    }
 
     @PostMapping("/register")
     public ResponseEntity<UserDetailDTO> register(@RequestBody UserRegisterDTO request){

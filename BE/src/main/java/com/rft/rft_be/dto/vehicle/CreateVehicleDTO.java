@@ -16,6 +16,7 @@ public class CreateVehicleDTO {
     private String vehicleType;
     private String vehicleFeatures;
     private String vehicleImages;
+    private String haveDriver;
     private String insuranceStatus; // YES, NO
     private String shipToAddress; // YES, NO
     private Integer numberSeat;
