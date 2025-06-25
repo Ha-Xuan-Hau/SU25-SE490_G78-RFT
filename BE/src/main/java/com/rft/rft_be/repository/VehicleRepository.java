@@ -38,6 +38,15 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
     @Query("SELECT v FROM Vehicle v WHERE v.model.id = :modelId")
     List<Vehicle> findByModelId(@Param("modelId") String modelId);
 
+    @Query("SELECT v FROM Vehicle v WHERE v.vehicleType = :vehicleType")
+    List<Vehicle> findByVehicleType(@Param("vehicleType") Vehicle.VehicleType vehicleType);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.haveDriver = :haveDriver")
+    List<Vehicle> findByHaveDriver(@Param("haveDriver") Vehicle.HaveDriver haveDriver);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.vehicleType = :vehicleType AND v.status = :status")
+    List<Vehicle> findByVehicleTypeAndStatus(@Param("vehicleType") Vehicle.VehicleType vehicleType, @Param("status") Vehicle.Status status);
+
     @Query("SELECT v FROM Vehicle v " +
             "LEFT JOIN FETCH v.brand " +
             "LEFT JOIN FETCH v.model " +

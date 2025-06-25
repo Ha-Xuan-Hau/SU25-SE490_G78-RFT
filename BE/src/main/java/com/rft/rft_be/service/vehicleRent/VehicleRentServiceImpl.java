@@ -94,7 +94,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .brand(brand)
                 .model(model)
                 .licensePlate(request.getLicensePlate())
-                .vehicleType(request.getVehicleType())
+                .vehicleType(Vehicle.VehicleType.valueOf(request.getVehicleType()))
                 .vehicleFeatures(request.getVehicleFeatures())
                 .VehicleImages(request.getVehicleImages())
                 .insuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()))
@@ -148,7 +148,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             // If both brand and model are provided, validate they match
             String brandIdToCheck = request.getBrandId() != null ? request.getBrandId() :
                     (vehicle.getBrand() != null ? vehicle.getBrand().getId() : null);
-            if (brandIdToCheck != null && !model.getBrand().getId().equals(brandIdToCheck)) {
+            if (brandIdToCheck != null ) {
                 throw new RuntimeException("Model does not belong to the specified brand");
             }
             vehicle.setModel(model);
@@ -165,7 +165,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         }
 
         // Update other fields if provided
-        if (request.getVehicleType() != null) vehicle.setVehicleType(request.getVehicleType());
+        if (request.getVehicleType() != null) vehicle.setVehicleType(Vehicle.VehicleType.valueOf(request.getVehicleType()));
         if (request.getVehicleFeatures() != null) vehicle.setVehicleFeatures(request.getVehicleFeatures());
         if (request.getVehicleImages() != null) vehicle.setVehicleImages(request.getVehicleImages());
         if (request.getInsuranceStatus() != null) vehicle.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));

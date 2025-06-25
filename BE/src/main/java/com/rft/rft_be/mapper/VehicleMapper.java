@@ -47,6 +47,8 @@ public interface VehicleMapper {
     @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
     @Mapping(source = "fuelType", target = "fuelType", qualifiedByName = "enumToString")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
+    @Mapping(source = "vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
+    @Mapping(source = "haveDriver", target = "haveDriver", qualifiedByName = "enumToString")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
 
 
