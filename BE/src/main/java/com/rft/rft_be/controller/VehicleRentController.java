@@ -82,21 +82,21 @@ public class VehicleRentController {
     /**
      * Cập nhật thông tin xe
      */
-    @PutMapping("/{vehicleId}")
-    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateVehicle(
-            @RequestHeader("User-Id") String userId,
-            @PathVariable String vehicleId,
-            @Valid @RequestBody VehicleRentUpdateDTO request) {
-
-        try {
-            VehicleGetDTO vehicle = vehicleRentService.updateVehicle(userId, vehicleId, request);
-            return ResponseEntity.ok(ApiResponseDTO.success("Vehicle updated successfully", vehicle));
-        } catch (Exception e) {
-            log.error("Error updating vehicle: {} for user: {}", vehicleId, userId, e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponseDTO.error("Failed to update vehicle: " + e.getMessage()));
-        }
-    }
+//    @PutMapping("/{vehicleId}")
+//    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateVehicle(
+//            @RequestHeader("User-Id") String userId,
+//            @PathVariable String vehicleId,
+//            @Valid @RequestBody VehicleRentUpdateDTO request) {
+//
+//        try {
+//            VehicleGetDTO vehicle = vehicleRentService.updateVehicle(userId, vehicleId, request);
+//            return ResponseEntity.ok(ApiResponseDTO.success("Vehicle updated successfully", vehicle));
+//        } catch (Exception e) {
+//            log.error("Error updating vehicle: {} for user: {}", vehicleId, userId, e);
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+//                    .body(ApiResponseDTO.error("Failed to update vehicle: " + e.getMessage()));
+//        }
+//    }
 
     /**
      * Xóa xe cho thuê

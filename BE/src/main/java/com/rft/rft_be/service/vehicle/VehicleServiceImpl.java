@@ -76,15 +76,13 @@ public class VehicleServiceImpl implements VehicleService {
 //                        .build())
 //                .collect(Collectors.toList());
 //    }
-
     @Override
     public VehicleDetailDTO getVehicleDetailById(String id) {
         Optional<Vehicle> vehicle = vehicleRepository.findById(id);
         VehicleDetailDTO vehicleDetailDTO = vehicle.map(vehicleMapper::vehicleToVehicleDetail)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
         vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicle_Id(id)));
-
-
+        vehicleDetailDTO.setRating(ratingRepository.findAverageByVehicleId(id));
         return vehicleDetailDTO;
     }
 
@@ -95,8 +93,6 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
-
-
 
     @Override
     public List<VehicleGetDTO> getVehiclesByStatus(String status) {
@@ -186,8 +182,7 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         // Check if license plate already exists
-        boolean exists = vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate());
-        if (exists) {
+        if (vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate())) {
             throw new RuntimeException("Vehicle with license plate " + createVehicleDTO.getLicensePlate() + " already exists");
         }
 
@@ -426,15 +421,96 @@ public class VehicleServiceImpl implements VehicleService {
         vehicleRepository.deleteById(id);
     }
 
+//    @Override
+//    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req) {
+//        Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
+//
+//        Specification<Vehicle> spec = (root, query, cb) -> cb.conjunction();
+//
+//
+//        if (req.getVehicleType() != null && !req.getVehicleType().isEmpty()) {
+//            spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleType()));
+//        }
+//
+//        if (req.getAddresses() != null && !req.getAddresses().isEmpty()) {
+//            spec = spec.and((root, query, cb) -> {
+//                Join<Vehicle, User> userJoin = root.join("user", JoinType.INNER);
+//                Predicate combinedPredicate = cb.disjunction();
+//                for (String addr : req.getAddresses()) {
+//                    combinedPredicate = cb.or(combinedPredicate,
+//                            cb.like(cb.lower(userJoin.get("address")), "%" + addr.toLowerCase() + "%"));
+//                }
+//                return combinedPredicate;
+//            });
+//        }
+//
+//        if (req.getHaveDriver() != null) {
+//            spec = spec.and((root, query, cb) ->
+//                    cb.equal(root.get("haveDriver"), req.getHaveDriver())
+//            );
+//        }
+//
+//        if (req.getShipToAddress() != null) {
+//            spec = spec.and((root, query, cb) -> cb.equal(root.get("shipToAddress"), req.getShipToAddress()));
+//        }
+//
+//        if (req.getBrandId() != null) {
+//            spec = spec.and((root, query, cb) -> cb.equal(root.get("brand").get("id"), req.getBrandId()));
+//        }
+//
+//        if (req.getModelId() != null) {
+//            spec = spec.and((root, query, cb) -> cb.equal(root.get("model").get("id"), req.getModelId()));
+//        }
+//
+//        if (req.getNumberSeat() != null) {
+//            spec = spec.and((root, query, cb) -> cb.equal(root.get("numberSeat"), req.getNumberSeat()));
+//        }
+//
+//        if (req.getCostFrom() != null) {
+//            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("costPerDay"), req.getCostFrom()));
+//        }
+//
+//        if (req.getCostTo() != null) {
+//            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("costPerDay"), req.getCostTo()));
+//        }
+//
+//        if (Boolean.TRUE.equals(req.getRatingFiveStarsOnly())) {
+//            spec = spec.and((root, query, cb) -> {
+//                Subquery<Double> subquery = query.subquery(Double.class);
+//                Root<Rating> ratingRoot = subquery.from(Rating.class);
+//                subquery.select(cb.avg(ratingRoot.get("star")));
+//                subquery.where(cb.equal(ratingRoot.get("vehicle").get("id"), root.get("id")));
+//                return cb.equal(subquery, 5.0);
+//            });
+//        }
+//
+//        Page<Vehicle> result = vehicleRepository.findAll(spec, pageable);
+//        return result.map(vehicle -> VehicleSearchResultDTO.builder()
+//                .id(vehicle.getId())
+//                .licensePlate(vehicle.getLicensePlate())
+//                .vehicleType(vehicle.getVehicleType())
+//                .thumb(vehicle.getThumb())
+//                .costPerDay(vehicle.getCostPerDay())
+//                .status(vehicle.getStatus().name())
+//                .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : null)
+//                .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : null)
+//                .numberSeat(vehicle.getNumberSeat())
+//                .averageRating(ratingRepository.findAverageByVehicleId(vehicle.getId()))
+//                .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : null)
+//                .build()
+//        );
+//    }
     @Override
     public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req) {
         Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
 
         Specification<Vehicle> spec = (root, query, cb) -> cb.conjunction();
 
+        // Thêm điều kiện status AVAILABLE nếu không được chỉ định
+        spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), Vehicle.Status.AVAILABLE));
 
-        if (req.getVehicleTypes() != null && !req.getVehicleTypes().isEmpty()) {
-            spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleTypes()));
+        if (req.getVehicleType() != null && !req.getVehicleType().isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleType()));
         }
 
         if (req.getAddresses() != null && !req.getAddresses().isEmpty()) {
@@ -450,8 +526,8 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         if (req.getHaveDriver() != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("haveDriver"), req.getHaveDriver())
+            spec = spec.and((root, query, cb)
+                    -> cb.equal(root.get("haveDriver"), req.getHaveDriver())
             );
         }
 
@@ -490,20 +566,26 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         Page<Vehicle> result = vehicleRepository.findAll(spec, pageable);
-        return result.map(vehicle -> VehicleSearchResultDTO.builder()
-                .id(vehicle.getId())
-                .licensePlate(vehicle.getLicensePlate())
-                .vehicleTypes(String.valueOf(vehicle.getVehicleType()))
-                .thumb(vehicle.getThumb())
-                .costPerDay(vehicle.getCostPerDay())
-                .status(vehicle.getStatus().name())
-                .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : null)
-                .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : null)
-                .numberSeat(vehicle.getNumberSeat())
-                .averageRating(ratingRepository.findAverageByVehicleId(vehicle.getId()))
-                .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : null)
-                .build()
-        );
+        return result.map(vehicle -> {
+            // Xử lý averageRating để đảm bảo không null
+            Double avgRating = ratingRepository.findAverageByVehicleId(vehicle.getId());
 
+            return VehicleSearchResultDTO.builder()
+                    .id(vehicle.getId())
+                    .licensePlate(vehicle.getLicensePlate())
+                    .vehicleType(String.valueOf(vehicle.getVehicleType()))
+                    .thumb(vehicle.getThumb())
+                    .costPerDay(vehicle.getCostPerDay())
+                    .status(vehicle.getStatus().name())
+                    .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : "")
+                    .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : "")
+                    .numberSeat(vehicle.getNumberSeat())
+                    .totalRating(avgRating != null ? avgRating : 0.0)
+                    .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : "")
+                    .vehicleImages(VehicleMapper.jsonToImageList(vehicle.getVehicleImages()))
+                    .transmission(vehicle.getTransmission() != null ? vehicle.getTransmission().name() : null)
+                    .fuelType(vehicle.getFuelType() != null ? vehicle.getFuelType().name() : null)
+                    .build();
+        });
     }
 }

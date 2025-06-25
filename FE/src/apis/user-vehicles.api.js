@@ -91,6 +91,31 @@ export async function getVehiclesLiked(accessToken) {
 }
 
 export async function getCoupons() {
+    try {
+        const response = await apiClient.request({
+            method: "GET",
+            url: `/coupons`,
+        });
+
+        // Kiểm tra xem response.data có tồn tại không
+        if (!response.data) {
+            console.error("API response không hợp lệ:", response);
+            return { result: [] };
+        }
+
+        // Mapping dữ liệu từ API response - không cần timeExpired
+        return {
+            result: response.data.map(coupon => ({
+                id: coupon.id,
+                name: coupon.name,
+                discount: coupon.discount,
+                description: coupon.description
+            }))
+        };
+    } catch (error) {
+        console.error("Error fetching coupons:", error);
+        return { result: [] };
+    }
 }
 
 export async function registerVehicle() {

@@ -259,7 +259,22 @@ public class VehicleController {
     }
 
     @PostMapping("/search")
-    public Page<VehicleSearchResultDTO> search(@RequestBody VehicleSearchDTO request) {
-        return vehicleService.searchVehicles(request);
+    public ResponseEntity<?> search(@RequestBody VehicleSearchDTO request) {
+        try {
+            Page<VehicleSearchResultDTO> results = vehicleService.searchVehicles(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", results.getContent());
+            response.put("totalElements", results.getTotalElements());
+            response.put("totalPages", results.getTotalPages());
+            response.put("currentPage", results.getNumber());
+            response.put("size", results.getSize());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Search failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
     }
 }

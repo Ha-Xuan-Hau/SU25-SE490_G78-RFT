@@ -4,6 +4,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @Builder
@@ -13,13 +14,16 @@ import java.math.BigDecimal;
 public class VehicleSearchResultDTO {
      String id;
      String licensePlate;
-     String vehicleTypes;
+     String vehicleType;
      String thumb;
      BigDecimal costPerDay;
      String status;
      String brandName;
      String modelName;
      Integer numberSeat;
-     Double averageRating;
+     Double totalRating;
      String address;
+     List<VehicleImageDTO> vehicleImages;
+     String transmission;
+     String fuelType;
 }

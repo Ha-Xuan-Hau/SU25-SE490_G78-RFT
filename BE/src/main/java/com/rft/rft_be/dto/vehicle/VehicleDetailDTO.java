@@ -28,6 +28,7 @@ public class VehicleDetailDTO {
     String fuelType;
     String brandName;
     String modelName;
-    int rating;
+    Double rating;
+    String address;
     List<UserCommentDTO> userComments;
 }
