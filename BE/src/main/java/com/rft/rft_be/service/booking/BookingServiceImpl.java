@@ -23,8 +23,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,7 +44,6 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request, String userId) {
-        // ... (Logic tạo booking)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
@@ -60,6 +62,16 @@ public class BookingServiceImpl implements BookingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã được đặt trong khoảng thời gian này.");
         }
 
+        //  Tính totalCost
+        long durationHours = Duration.between(start, end).toHours();
+        // làm tròn lên để tính phí (ví dụ: 25 tiếng = 2 ngày)
+        BigDecimal numberOfDays = BigDecimal.valueOf(Math.ceil((double) durationHours / 24));
+        BigDecimal totalCost = (vehicle.getCostPerDay() != null) ? vehicle.getCostPerDay().multiply(numberOfDays) : BigDecimal.ZERO;
+
+        // 2. Tạo codeTransaction timeTransaction
+        String generatedCodeTransaction = "BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        Instant transactionTime = Instant.now();
+
         Booking booking = Booking.builder()
                 .user(user)
                 .phoneNumber(request.getPhoneNumber())
@@ -68,6 +80,9 @@ public class BookingServiceImpl implements BookingService {
                 .timeBookingStart(start)
                 .timeBookingEnd(end)
                 .status(Booking.Status.PENDING)
+                .totalCost(totalCost)
+                .codeTransaction(generatedCodeTransaction)
+                .timeTransaction(transactionTime)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
