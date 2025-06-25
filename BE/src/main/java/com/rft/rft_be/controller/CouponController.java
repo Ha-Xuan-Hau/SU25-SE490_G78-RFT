@@ -2,6 +2,7 @@ package com.rft.rft_be.controller;
 
 
 import com.rft.rft_be.dto.admin.CouponDTO;
+import com.rft.rft_be.dto.coupon.CouponUseDTO;
 import com.rft.rft_be.repository.CouponRepository;
 import com.rft.rft_be.service.admin.CouponService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +43,7 @@ private CouponService couponService;
         return ResponseEntity.noContent().build();
     }
     @GetMapping("/available")
-    public ResponseEntity<List<CouponDTO>> getAvailableCouponsForUser(@RequestParam String userId) {
+    public ResponseEntity<List<CouponUseDTO>> getAvailableCouponsForUser(@RequestParam String userId) {
         return ResponseEntity.ok(couponService.getValidCouponsForUser(userId));
     }
 }

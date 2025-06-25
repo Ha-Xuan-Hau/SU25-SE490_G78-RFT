@@ -1,12 +1,16 @@
 package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.CouponDTO;
+import com.rft.rft_be.dto.coupon.CouponUseDTO;
 import com.rft.rft_be.entity.Coupon;
 import com.rft.rft_be.entity.UsedCoupon;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.mapper.CouponMapper;
 import com.rft.rft_be.repository.CouponRepository;
 import com.rft.rft_be.repository.UsedCouponRepository;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +20,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Service
 public class CouponServiceImpl implements CouponService {
 
@@ -31,6 +37,7 @@ public class CouponServiceImpl implements CouponService {
 
     @Autowired
     private UsedCouponRepository usedCouponRepository;
+    CouponMapper couponMapper;
     @Override
     public List<CouponDTO> getAllCoupons() {
         return couponRepository.findAll().stream()
@@ -73,15 +80,15 @@ public class CouponServiceImpl implements CouponService {
         couponRepository.save(coupon);
     }
     @Override
-    public List<CouponDTO> getValidCouponsForUser(String userId) {
+    public List<CouponUseDTO> getValidCouponsForUser(String userId) {
         Instant now = Instant.now();
         return couponRepository.findAll().stream()
-                .filter(c -> c.getStatus().equals("VALID") &&
+                .filter(c -> c.getStatus() == Coupon.CouponStatus.VALID &&
                         c.getTimeExpired() != null &&
                         c.getTimeExpired().atZone(ZoneId.systemDefault()).toInstant().isAfter(now)
                         &&
                         !usedCouponRepository.existsByUserIdAndCouponId(userId, c.getId()))
-                .map(CouponMapper::toDTO)
+                .map(couponMapper::toCouponUseDto)
                 .collect(Collectors.toList());
     }
     public void markCouponAsUsed(String userId, String couponId) {

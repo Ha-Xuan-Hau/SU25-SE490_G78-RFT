@@ -12,6 +12,8 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, String> {
+
+    List<BookedTimeSlot> findByVehicleIdAndTimeToAfter(String vehicleId, Instant now);
     @Modifying
     @Transactional
     @Query("DELETE FROM BookedTimeSlot b WHERE b.vehicle.id = :vehicleId AND b.timeFrom = :timeFrom AND b.timeTo = :timeTo")

@@ -1,6 +1,7 @@
 package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.CouponDTO;
+import com.rft.rft_be.dto.coupon.CouponUseDTO;
 import com.rft.rft_be.entity.Coupon;
 import org.springframework.data.repository.query.Param;
 
@@ -15,5 +16,5 @@ public interface CouponService {
     CouponDTO createCoupon(@Param("dto")  CouponDTO dto);
     void deleteCouponById(@Param("id") String id);
 
-    List<CouponDTO> getValidCouponsForUser(String userId);
+    List<CouponUseDTO> getValidCouponsForUser(String userId);
 }

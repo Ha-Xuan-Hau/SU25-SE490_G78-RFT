@@ -4,7 +4,9 @@ import com.rft.rft_be.dto.admin.UsedCouponDTO;
 import com.rft.rft_be.entity.Coupon;
 import com.rft.rft_be.entity.UsedCoupon;
 import com.rft.rft_be.entity.User;
+import org.mapstruct.Mapper;
 
+@Mapper(componentModel = "spring")
 public interface UsedCouponMapper {
     public static UsedCouponDTO toDTO(UsedCoupon entity) {
         return new UsedCouponDTO(
