@@ -14,6 +14,7 @@ public class VehicleRentUpdateDTO {
     private String vehicleType;
     private String vehicleFeatures;
     private String vehicleImages;
+    private String haveDriver;
     private String insuranceStatus;
     private String shipToAddress;
 

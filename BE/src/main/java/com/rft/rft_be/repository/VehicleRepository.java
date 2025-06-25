@@ -80,7 +80,17 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
     @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.user.id = :userId")
     long countByUserId(@Param("userId") String userId);
 
-    @Query("""
+    // User-specific queries
+    @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId AND v.status = :status")
+    List<Vehicle> findByUserIdAndStatus(@Param("userId") String userId, @Param("status") Vehicle.Status status);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId AND v.vehicleType = :vehicleType")
+    List<Vehicle> findByUserIdAndVehicleType(@Param("userId") String userId, @Param("vehicleType") Vehicle.VehicleType vehicleType);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId AND v.vehicleType = :vehicleType AND v.status = :status")
+    List<Vehicle> findByUserIdAndVehicleTypeAndStatus(@Param("userId") String userId, @Param("vehicleType") Vehicle.VehicleType vehicleType, @Param("status") Vehicle.Status status);
+
+   @Query("""
     SELECT v FROM Vehicle v
     JOIN Rating r ON v.id = r.vehicle.id
     WHERE (:vehicleTypes IS NULL OR v.vehicleType IN :vehicleTypes)

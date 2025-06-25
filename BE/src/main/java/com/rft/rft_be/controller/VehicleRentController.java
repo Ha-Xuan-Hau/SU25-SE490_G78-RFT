@@ -21,9 +21,7 @@ public class VehicleRentController {
 
     private final VehicleRentService vehicleRentService;
 
-    /**
-     * Lấy danh sách xe cho thuê của người dùng
-     */
+
     @GetMapping("/my-vehicles")
     public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleDTO>>> getUserVehicles(
             @RequestHeader("User-Id") String userId,
@@ -42,9 +40,7 @@ public class VehicleRentController {
         }
     }
 
-    /**
-     * Đăng ký xe cho thuê mới
-     */
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> registerVehicle(
             @RequestHeader("User-Id") String userId,
@@ -61,9 +57,7 @@ public class VehicleRentController {
         }
     }
 
-    /**
-     * Lấy thông tin chi tiết một xe
-     */
+
     @GetMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleDetailDTO>> getVehicleById(
             @RequestHeader("User-Id") String userId,
@@ -79,9 +73,7 @@ public class VehicleRentController {
         }
     }
 
-    /**
-     * Cập nhật thông tin xe
-     */
+
     @PutMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateVehicle(
             @RequestHeader("User-Id") String userId,
@@ -98,9 +90,7 @@ public class VehicleRentController {
         }
     }
 
-    /**
-     * Xóa xe cho thuê
-     */
+
     @DeleteMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteVehicle(
             @RequestHeader("User-Id") String userId,
@@ -116,9 +106,7 @@ public class VehicleRentController {
         }
     }
 
-    /**
-     * Lấy số lượng xe của người dùng
-     */
+
     @GetMapping("/count")
     public ResponseEntity<ApiResponseDTO<Long>> countUserVehicles(
             @RequestHeader("User-Id") String userId) {

@@ -94,7 +94,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .brand(brand)
                 .model(model)
                 .licensePlate(request.getLicensePlate())
-                .vehicleType(Vehicle.VehicleType.valueOf(request.getVehicleType()))
+                .vehicleType(parseVehicleType(request.getVehicleType()))
                 .vehicleFeatures(request.getVehicleFeatures())
                 .VehicleImages(request.getVehicleImages())
                 .insuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()))
@@ -148,9 +148,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             // If both brand and model are provided, validate they match
             String brandIdToCheck = request.getBrandId() != null ? request.getBrandId() :
                     (vehicle.getBrand() != null ? vehicle.getBrand().getId() : null);
-            if (brandIdToCheck != null ) {
-                throw new RuntimeException("Model does not belong to the specified brand");
-            }
+
             vehicle.setModel(model);
         }
 
@@ -165,7 +163,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         }
 
         // Update other fields if provided
-        if (request.getVehicleType() != null) vehicle.setVehicleType(Vehicle.VehicleType.valueOf(request.getVehicleType()));
+        if (request.getVehicleType() != null) vehicle.setVehicleType(parseVehicleType(request.getVehicleType()));
         if (request.getVehicleFeatures() != null) vehicle.setVehicleFeatures(request.getVehicleFeatures());
         if (request.getVehicleImages() != null) vehicle.setVehicleImages(request.getVehicleImages());
         if (request.getInsuranceStatus() != null) vehicle.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));
@@ -323,6 +321,17 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             } catch (Exception ex) {
                 log.error("Failed to set updatedAt using setter method", ex);
             }
+        }
+    }
+    private Vehicle.VehicleType parseVehicleType(String type) {
+        if (type == null || type.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Vehicle.VehicleType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid vehicle type: {}, setting to null", type);
+            return null;
         }
     }
 }
