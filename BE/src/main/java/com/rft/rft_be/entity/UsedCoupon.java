@@ -28,4 +28,5 @@ public class UsedCoupon {
     @JoinColumn(name = "coupon_id", nullable = false)
     private Coupon coupon;
 
+
 }
