@@ -1,0 +1,10 @@
+[
+  { "value": "honda", "label": "Honda" },
+  { "value": "yamaha", "label": "Yamaha" },
+  { "value": "piaggio", "label": "Piaggio" },
+  { "value": "suzuki", "label": "Suzuki" },
+  { "value": "sym", "label": "SYM" },
+  { "value": "kymco", "label": "Kymco" },
+  { "value": "vinfast", "label": "VinFast" },
+  { "value": "other", "label": "Hãng khác" }
+]

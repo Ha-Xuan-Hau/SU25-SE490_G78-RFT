@@ -1,0 +1,382 @@
+import { useState } from "react";
+import {
+  Steps,
+  Typography,
+  Checkbox,
+  Button,
+  Form,
+  Input,
+  Radio,
+  Space,
+  Card,
+  Divider,
+  notification,
+  theme,
+} from "antd";
+import {
+  PhoneOutlined,
+  MailOutlined,
+  HomeOutlined,
+  CarOutlined,
+  UserOutlined,
+  CheckCircleOutlined,
+} from "@ant-design/icons";
+
+const { Title, Paragraph, Text } = Typography;
+const { Step } = Steps;
+
+// Services data
+const rentalServices = [
+  { id: "car", name: "Ô tô", description: "Cho thuê ô tô các loại" },
+  { id: "motorbike", name: "Xe máy", description: "Cho thuê xe máy các loại" },
+  { id: "bicycle", name: "Xe đạp", description: "Cho thuê xe đạp các loại" },
+];
+
+const BecomeProviderPage = () => {
+  const { token } = theme.useToken();
+  const [current, setCurrent] = useState(0);
+  const [form] = Form.useForm();
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Mock user data
+  const userData = {
+    fullname: "Nguyễn Văn A",
+    phone: "0987654321",
+    email: "nguyenvana@example.com",
+    address: "123 Đường ABC, Phường XYZ, Quận 1, TP. HCM",
+  };
+
+  const steps = [
+    {
+      title: "Điều khoản",
+      content: "terms-content",
+    },
+    {
+      title: "Thông tin",
+      content: "info-content",
+    },
+    {
+      title: "Dịch vụ",
+      content: "service-content",
+    },
+    {
+      title: "Hoàn tất",
+      content: "completed-content",
+    },
+  ];
+
+  const next = () => {
+    // Kiểm tra đã đồng ý điều khoản khi ở bước 0
+    if (current === 0 && !termsAccepted) {
+      notification.error({
+        message: "Cần đồng ý điều khoản",
+        description:
+          "Vui lòng đọc và đồng ý với các điều khoản và điều kiện trước khi tiếp tục.",
+      });
+      return;
+    }
+
+    if (current === 1) {
+      form
+        .validateFields()
+        .then(() => {
+          setCurrent(current + 1);
+        })
+        .catch((info) => {
+          console.log("Validate Failed:", info);
+        });
+      return;
+    }
+
+    if (current === 2 && selectedServices.length === 0) {
+      notification.error({
+        message: "Cần chọn dịch vụ",
+        description:
+          "Vui lòng chọn ít nhất một dịch vụ cho thuê xe bạn muốn cung cấp.",
+      });
+      return;
+    }
+
+    if (current === 2) {
+      setLoading(true);
+      // Simulate API call
+      setTimeout(() => {
+        setLoading(false);
+        setCurrent(current + 1);
+      }, 1500);
+      return;
+    }
+
+    setCurrent(current + 1);
+  };
+
+  const prev = () => {
+    setCurrent(current - 1);
+  };
+
+  const onServiceChange = (serviceId: string, checked: boolean) => {
+    setSelectedServices((prev) =>
+      checked ? [...prev, serviceId] : prev.filter((id) => id !== serviceId)
+    );
+  };
+
+  // Render functions for different steps
+  const renderTermsContent = () => (
+    <div className="p-6 bg-white rounded-lg shadow">
+      <Title level={4}>Điều khoản và Điều kiện Cho Thuê Xe</Title>
+      <div className="border p-4 rounded-lg h-64 overflow-y-auto mb-6 bg-gray-50">
+        <Paragraph>
+          <strong>1. Quy định chung</strong>
+          <br />
+          1.1. Người cho thuê xe (sau đây gọi là "Nhà cung cấp") phải đảm bảo xe
+          cho thuê có đầy đủ giấy tờ hợp pháp.
+          <br />
+          1.2. Nhà cung cấp phải cung cấp thông tin chính xác về xe và các điều
+          kiện cho thuê.
+          <br />
+          1.3. Nền tảng RFT sẽ thu phí hoa hồng 10% trên mỗi giao dịch thành
+          công.
+          <br />
+          <br />
+          <strong>2. Trách nhiệm của nhà cung cấp</strong>
+          <br />
+          2.1. Đảm bảo xe cho thuê trong tình trạng an toàn và vệ sinh.
+          <br />
+          2.2. Cung cấp đầy đủ giấy tờ xe theo quy định của pháp luật.
+          <br />
+          2.3. Tuân thủ lịch đặt và bàn giao xe đúng thời gian đã thỏa thuận.
+          <br />
+          <br />
+          <strong>3. Chính sách bảo hiểm và bồi thường</strong>
+          <br />
+          3.1. Nhà cung cấp nên có bảo hiểm cho xe cho thuê.
+          <br />
+          3.2. Trong trường hợp xảy ra tai nạn, hai bên sẽ giải quyết theo quy
+          định của pháp luật và điều khoản bảo hiểm.
+          <br />
+          <br />
+          <strong>4. Thông tin thanh toán</strong>
+          <br />
+          4.1. Nền tảng sẽ chuyển tiền cho Nhà cung cấp trong vòng 24 giờ sau
+          khi giao dịch hoàn tất.
+          <br />
+          4.2. Các khoản phí và thuế liên quan sẽ được trừ trực tiếp trước khi
+          thanh toán.
+          <br />
+          <br />
+          <strong>5. Hủy bỏ và hoàn tiền</strong>
+          <br />
+          5.1. Nhà cung cấp có thể bị phạt nếu hủy đơn đặt xe đã xác nhận mà
+          không có lý do chính đáng.
+          <br />
+          5.2. Các trường hợp hủy đơn và mức phạt được quy định cụ thể trong
+          chính sách hủy đơn.
+          <br />
+        </Paragraph>
+      </div>
+      <Checkbox
+        checked={termsAccepted}
+        onChange={(e) => setTermsAccepted(e.target.checked)}
+      >
+        Tôi đã đọc và đồng ý với các <Text strong>Điều khoản và Điều kiện</Text>{" "}
+        của RFT
+      </Checkbox>
+    </div>
+  );
+
+  const renderInfoContent = () => (
+    <div className="p-6 bg-white rounded-lg shadow">
+      <Title level={4}>Xác nhận thông tin cá nhân</Title>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={userData}
+        className="mt-4"
+      >
+        <Form.Item
+          name="fullname"
+          label="Họ và tên"
+          rules={[{ required: true, message: "Vui lòng nhập họ tên!" }]}
+        >
+          <Input
+            prefix={<UserOutlined className="text-gray-400" />}
+            size="large"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="phone"
+          label="Số điện thoại"
+          rules={[
+            { required: true, message: "Vui lòng nhập số điện thoại!" },
+            {
+              pattern: /^[0-9]{10}$/,
+              message: "Số điện thoại phải có 10 chữ số!",
+            },
+          ]}
+        >
+          <Input
+            prefix={<PhoneOutlined className="text-gray-400" />}
+            size="large"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="email"
+          label="Email"
+          rules={[
+            { required: true, message: "Vui lòng nhập email!" },
+            { type: "email", message: "Email không hợp lệ!" },
+          ]}
+        >
+          <Input
+            prefix={<MailOutlined className="text-gray-400" />}
+            size="large"
+            disabled
+            className="bg-gray-100 cursor-not-allowed"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="address"
+          label="Địa chỉ"
+          rules={[{ required: true, message: "Vui lòng nhập địa chỉ!" }]}
+        >
+          <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} size="large" />
+        </Form.Item>
+      </Form>
+    </div>
+  );
+
+  const renderServiceContent = () => (
+    <div className="p-6 bg-white rounded-lg shadow">
+      <Title level={4}>Chọn dịch vụ cho thuê</Title>
+      <Paragraph className="mb-4 text-gray-600">
+        Vui lòng chọn (các) dịch vụ cho thuê xe bạn muốn cung cấp trên nền tảng
+        RFT
+      </Paragraph>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        {rentalServices.map((service) => (
+          <Card
+            key={service.id}
+            className={`cursor-pointer transition-all ${
+              selectedServices.includes(service.id)
+                ? `border-2 border-${token.colorPrimary} shadow-md`
+                : "border border-gray-200"
+            }`}
+            onClick={() =>
+              onServiceChange(
+                service.id,
+                !selectedServices.includes(service.id)
+              )
+            }
+            style={{
+              borderColor: selectedServices.includes(service.id)
+                ? token.colorPrimary
+                : undefined,
+            }}
+          >
+            <div className="flex items-center">
+              <Checkbox
+                checked={selectedServices.includes(service.id)}
+                onChange={(e) => onServiceChange(service.id, e.target.checked)}
+              />
+              <div className="ml-4">
+                <Title level={5} className="mb-0">
+                  {service.name}
+                </Title>
+                <Text type="secondary">{service.description}</Text>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderCompletedContent = () => (
+    <div className="p-8 bg-white rounded-lg shadow text-center">
+      <div className="text-green-500 text-6xl mb-4">
+        <CheckCircleOutlined style={{ color: token.colorSuccess }} />
+      </div>
+      <Title level={3} style={{ color: token.colorSuccess }}>
+        Đăng ký thành công!
+      </Title>
+      <Paragraph className="text-lg mb-6">
+        Cảm ơn bạn đã đăng ký làm người cho thuê xe trên nền tảng RFT. Hồ sơ của
+        bạn đã được gửi đi và đang trong quá trình phê duyệt.
+      </Paragraph>
+      <div className="bg-gray-50 p-4 rounded-lg mb-6">
+        <Title level={5}>Thời gian dự kiến phê duyệt</Title>
+        <Paragraph>
+          Hồ sơ đăng ký của bạn sẽ được xem xét trong vòng 1-3 ngày làm việc.
+          Chúng tôi sẽ thông báo kết quả qua email và số điện thoại bạn đã đăng
+          ký.
+        </Paragraph>
+      </div>
+      <Button type="primary" size="large" href="/">
+        Trở về trang chủ
+      </Button>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (current) {
+      case 0:
+        return renderTermsContent();
+      case 1:
+        return renderInfoContent();
+      case 2:
+        return renderServiceContent();
+      case 3:
+        return renderCompletedContent();
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <section className="bg-gray-100 min-h-screen">
+      <div className="max-w-4xl mx-auto py-12 px-4">
+        <div className="text-center mb-8">
+          <Title level={2}>Đăng ký làm Người cho thuê xe</Title>
+          <Text className="text-gray-500">
+            Tham gia cung cấp dịch vụ cho thuê xe và tạo thêm thu nhập
+          </Text>
+        </div>
+
+        <div className="mb-12">
+          <Steps
+            current={current}
+            responsive={true}
+            items={steps.map((item) => ({ title: item.title }))}
+          />
+        </div>
+
+        <div className="mt-8">{renderContent()}</div>
+
+        <div className="mt-8 flex justify-between">
+          {current < steps.length - 1 && current > 0 && (
+            <Button onClick={prev}>Quay lại</Button>
+          )}
+          {current === 0 && <div></div>}
+          {current < steps.length - 1 && (
+            <Button
+              type="primary"
+              onClick={next}
+              loading={current === 2 && loading}
+              disabled={current === 0 && !termsAccepted}
+            >
+              {current === 2 ? "Hoàn tất đăng ký" : "Tiếp theo"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default BecomeProviderPage;

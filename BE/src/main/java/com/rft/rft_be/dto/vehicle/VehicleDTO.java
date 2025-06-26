@@ -29,6 +29,6 @@ public class VehicleDTO {
     String fuelType;
     String brandName;
     String modelName;
-    int rating;
+    Double rating;
     String address;
 }

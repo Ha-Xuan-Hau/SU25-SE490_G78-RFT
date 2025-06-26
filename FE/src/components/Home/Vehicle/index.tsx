@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import VehicleCard from "./Card/Card";
 import { getVehicles } from "@/apis/vehicle.api";
-import LoadingSpinner from "@/components/ui/LoadingSpriner";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 const Vehicle: React.FC = () => {
   const {

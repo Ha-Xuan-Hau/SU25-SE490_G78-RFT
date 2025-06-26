@@ -19,6 +19,7 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     @Query("SELECT b FROM Booking b JOIN FETCH b.user JOIN FETCH b.vehicle v JOIN FETCH v.user WHERE b.id = :bookingId")
     Optional<Booking> findByIdWithUserAndVehicle(@Param("bookingId") String bookingId);
 
+
     @Query("SELECT b FROM Booking b WHERE b.user.id = :userId ORDER BY b.createdAt DESC")
     List<Booking> findByUserId(@Param("userId") String userId);
 
@@ -32,5 +33,20 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     @Query("SELECT b FROM Booking b WHERE b.user.id = :userId AND b.timeBookingStart BETWEEN :startDate AND :endDate ORDER BY b.createdAt DESC")
     List<Booking> findByUserIdAndTimeBookingStartBetween(@Param("userId") String userId,
                                                          @Param("startDate") Instant startDate, @Param("endDate") Instant endDate);
+
+
+    @Query("""
+    SELECT COUNT(b) > 0 FROM Booking b
+    WHERE b.user.id = :userId
+      AND (
+        b.timeBookingStart < :end AND b.timeBookingEnd > :start
+      )
+      AND b.status IN ('PENDING', 'CONFIRMED')
+""")
+    boolean existsByUserIdAndTimeOverlap(
+            @Param("userId") String userId,
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
 
 }

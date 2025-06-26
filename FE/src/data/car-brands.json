@@ -1,0 +1,12 @@
+[
+  { "value": "vinfast", "label": "VinFast" },
+  { "value": "hyundai", "label": "Hyundai" },
+  { "value": "toyota", "label": "Toyota" },
+  { "value": "ford", "label": "Ford" },
+  { "value": "mitsubishi", "label": "Mitsubishi" },
+  { "value": "kia", "label": "KIA" },
+  { "value": "mazda", "label": "Mazda" },
+  { "value": "honda", "label": "Honda" },
+  { "value": "suzuki", "label": "Suzuki" },
+  { "value": "other", "label": "Hãng khác" }
+]

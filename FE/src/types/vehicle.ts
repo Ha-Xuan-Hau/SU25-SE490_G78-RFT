@@ -16,6 +16,7 @@ export interface Vehicle {
   vehicleImages: VehicleImage[];
   totalRating: number;
   address: string;
+  comments?: Comment[];
 }
 
 export interface VehicleFeature {
@@ -35,7 +36,21 @@ export interface VehicleFilters {
   vehicleType?: string;
   brand?: string;
   seats?: number;
-  minRating?: number;
+  maxRating?: number;
   shipToAddress?: boolean;
-  hasDiscount?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  hasDriver?: boolean;
+  city?: string;
+  district?: string;
+  ward?: string;
+}
+
+export interface Comment {
+  id?: string;
+  userName: string;
+  userImage?: string;
+  comment: string;
+  star: number;
+  timestamp?: string;
 }

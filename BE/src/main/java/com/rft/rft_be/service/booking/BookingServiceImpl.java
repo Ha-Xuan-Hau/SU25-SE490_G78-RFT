@@ -10,7 +10,11 @@ import com.rft.rft_be.entity.BookedTimeSlot;
 import com.rft.rft_be.entity.Booking;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Vehicle;
+
 import com.rft.rft_be.mapper.BookingMapper;
+
+import com.rft.rft_be.mapper.VehicleMapper;
+
 import com.rft.rft_be.repository.BookedTimeSlotRepository;
 import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.UserRepository;
@@ -28,10 +32,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+
 import java.util.Map;
+
+import java.util.UUID;
+
 import java.util.stream.Collectors;
 
 @Service
@@ -46,15 +56,18 @@ public class BookingServiceImpl implements BookingService {
     BookedTimeSlotRepository bookedTimeSlotRepository;
     UserRepository userRepository;
     VehicleRepository vehicleRepository;
+    VehicleMapper vehicleMapper;
 
     @Override
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request, String userId) {
-        // ... (Logic tạo booking)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy xe với ID: " + request.getVehicleId()));
+        if (userId.equals(vehicle.getUser().getId())) { // ngăn chủ xe tự đặt xe
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn không thể đặt xe của chính mình.");
+        }
 
         Instant start = request.getTimeBookingStart();
         Instant end = request.getTimeBookingEnd();
@@ -68,6 +81,20 @@ public class BookingServiceImpl implements BookingService {
         if (!overlaps.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã được đặt trong khoảng thời gian này.");
         }
+        boolean userHasConflictingBooking = bookingRepository.existsByUserIdAndTimeOverlap(userId, start, end);
+        if (userHasConflictingBooking) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có một booking khác trong khoảng thời gian này.");
+        }
+
+        //  Tính totalCost
+        long durationHours = Duration.between(start, end).toHours();
+        // làm tròn lên để tính phí (ví dụ: 25 tiếng = 2 ngày)
+        BigDecimal numberOfDays = BigDecimal.valueOf(Math.ceil((double) durationHours / 24));
+        BigDecimal totalCost = (vehicle.getCostPerDay() != null) ? vehicle.getCostPerDay().multiply(numberOfDays) : BigDecimal.ZERO;
+
+        // 2. Tạo codeTransaction timeTransaction
+        String generatedCodeTransaction = "BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        Instant transactionTime = Instant.now();
 
         Booking booking = Booking.builder()
                 .user(user)
@@ -77,6 +104,9 @@ public class BookingServiceImpl implements BookingService {
                 .timeBookingStart(start)
                 .timeBookingEnd(end)
                 .status(Booking.Status.PENDING)
+                .totalCost(totalCost)
+                .codeTransaction(generatedCodeTransaction)
+                .timeTransaction(transactionTime)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
@@ -91,7 +121,7 @@ public class BookingServiceImpl implements BookingService {
                 .build();
         bookedTimeSlotRepository.save(slot);
 
-        return mapToBookingResponseDTO(booking);
+        return vehicleMapper.mapToBookingResponseDTO(booking);
     }
 
     @Override
@@ -145,78 +175,12 @@ public class BookingServiceImpl implements BookingService {
         );
     }
 
-    // --- Mapper methods ---
-
-    private BookingResponseDTO mapToBookingResponseDTO(Booking booking) {
-        if (booking == null) {
-            return null;
-        }
-
-        // Tạo BookingResponseDTO và ánh xạ các trường cơ bản
-        BookingResponseDTO dto = BookingResponseDTO.builder()
-                .id(booking.getId())
-                .timeBookingStart(booking.getTimeBookingStart())
-                .timeBookingEnd(booking.getTimeBookingEnd())
-                .phoneNumber(booking.getPhoneNumber())
-                .address(booking.getAddress())
-                .codeTransaction(booking.getCodeTransaction())
-                .totalCost(booking.getTotalCost())
-                .status(booking.getStatus())
-                .createdAt(booking.getCreatedAt())
-                .updatedAt(booking.getUpdatedAt())
-                .build();
-
-        if (booking.getUser() != null) {
-            dto.setUser(mapToUserProfileDTO(booking.getUser()));
-        }
-
-        if (booking.getVehicle() != null) {
-            dto.setVehicle(mapToVehicleForBookingDTO(booking.getVehicle()));
-        }
-        return dto;
-    }
-
-    // Chuyển đổi từ User Entity sang UserDTO
-    private UserProfileDTO mapToUserProfileDTO(User user) {
-        if (user == null) {
-            return null;
-        }
-        return UserProfileDTO.builder()
-                .id(user.getId())
-                .fullName(user.getFullName())
-                .profilePicture(user.getProfilePicture())
-                .dateOfBirth(user.getDateOfBirth())
-                .phone(user.getPhone())
-                .address(user.getAddress())
-                .build();
-    }
-
-    // Phương thức này sẽ gọi mapToUserProfileDTO cho User của Vehicle
-    private VehicleForBookingDTO mapToVehicleForBookingDTO(Vehicle vehicle) {
-        if (vehicle == null) {
-            return null;
-        }
-        VehicleForBookingDTO dto = VehicleForBookingDTO.builder()
-                .id(vehicle.getId())
-                .licensePlate(vehicle.getLicensePlate())
-                .vehicleTypes(vehicle.getVehicleType().name())
-                .thumb(vehicle.getThumb())
-                .costPerDay(vehicle.getCostPerDay())
-                .status(vehicle.getStatus().name())
-                .build();
-
-        if (vehicle.getUser() != null) {
-            dto.setUser(mapToUserProfileDTO(vehicle.getUser()));
-        }
-        return dto;
-    }
-
     @Override
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getAllBookings() {
         List<Booking> bookings = bookingRepository.findAllWithUserAndVehicle();
         return bookings.stream()
-                .map(this::mapToBookingResponseDTO)
+                .map(vehicleMapper::mapToBookingResponseDTO)
                 .collect(Collectors.toList());
     }
 
@@ -225,7 +189,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponseDTO getBookingById(String bookingId) {
         Booking booking = bookingRepository.findByIdWithUserAndVehicle(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Booking với ID: " + bookingId));
-        return mapToBookingResponseDTO(booking);
+        return vehicleMapper.mapToBookingResponseDTO(booking);
     }
 
     @Override

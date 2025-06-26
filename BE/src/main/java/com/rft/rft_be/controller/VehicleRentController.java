@@ -91,6 +91,7 @@ public class VehicleRentController {
     }
 
 
+
     @DeleteMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteVehicle(
             @RequestHeader("User-Id") String userId,

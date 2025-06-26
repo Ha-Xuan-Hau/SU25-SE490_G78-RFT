@@ -27,7 +27,7 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> createBooking(@RequestBody BookingRequestDTO bookingRequestDTO, @AuthenticationPrincipal Jwt jwt) {
         String userId = jwt.getClaimAsString("userId");
         BookingResponseDTO bookingResponse = bookingService.createBooking(bookingRequestDTO, userId);
-        return new ResponseEntity<>(bookingResponse, HttpStatus.CREATED); // Trả về HttpStatus.CREATED cho việc tạo mới
+        return new ResponseEntity<>(bookingResponse, HttpStatus.CREATED);
     }
 
     @PostMapping("/{bookingId}/confirm")

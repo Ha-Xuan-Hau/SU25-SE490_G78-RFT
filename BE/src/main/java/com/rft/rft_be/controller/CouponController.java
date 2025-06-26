@@ -2,6 +2,7 @@ package com.rft.rft_be.controller;
 
 
 import com.rft.rft_be.dto.admin.CouponDTO;
+import com.rft.rft_be.dto.coupon.CouponUseDTO;
 import com.rft.rft_be.repository.CouponRepository;
 import com.rft.rft_be.service.admin.CouponService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,11 @@ import java.util.List;
 public class CouponController {
 @Autowired
 private CouponService couponService;
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<Void> restoreCouponToValid(@PathVariable String id) {
+        couponService.restoreCouponToValid(id);
+        return ResponseEntity.ok().build();
+    }
 @GetMapping
     public ResponseEntity<List<CouponDTO>> getAllCoupons() {
         return ResponseEntity.ok(couponService.getAllCoupons());
@@ -35,5 +41,9 @@ private CouponService couponService;
     public ResponseEntity<Void> delete(@PathVariable String id) {
         couponService.deleteCouponById(id);
         return ResponseEntity.noContent().build();
+    }
+    @GetMapping("/available")
+    public ResponseEntity<List<CouponUseDTO>> getAvailableCouponsForUser(@RequestParam String userId) {
+        return ResponseEntity.ok(couponService.getValidCouponsForUser(userId));
     }
 }
