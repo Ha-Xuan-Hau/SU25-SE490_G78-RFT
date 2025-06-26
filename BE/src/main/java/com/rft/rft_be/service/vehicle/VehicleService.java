@@ -25,4 +25,6 @@ public interface VehicleService {
     void deleteVehicle(String id);
     List<VehicleGetDTO> getVehiclesByHaveDriver(String haveDriver);
     List<VehicleGetDTO> getVehiclesByVehicleTypeAndStatus(String vehicleType, String status);
+    int getAverageRating(String vehicleId);
+    List<VehicleDTO> getAllAvailableVehicles();
 }

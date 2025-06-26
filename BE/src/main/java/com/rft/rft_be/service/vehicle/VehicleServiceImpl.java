@@ -13,17 +13,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-
 import org.springframework.data.domain.Pageable;
+
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +36,7 @@ public class VehicleServiceImpl implements VehicleService {
     private final ModelRepository modelRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
     VehicleRepository vehicleRepository;
     VehicleMapper vehicleMapper;
 
@@ -49,15 +48,23 @@ public class VehicleServiceImpl implements VehicleService {
     public List<VehicleDTO> getAllVehicles() {
         return vehicleRepository.findAll()
                 .stream()
-                .map(vehicleMapper::toDTO)
+                .map(vehicle -> {
+                    VehicleDTO dto = vehicleMapper.toDTO(vehicle);
+                    dto.setRating(getAverageRating(vehicle.getId()));
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
     @Override
     public VehicleDTO getVehicleById(String id) {
-        return vehicleRepository.findById(id)
-                .map(vehicleMapper::toDTO)
+        Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
+
+        VehicleDTO dto = vehicleMapper.toDTO(vehicle);
+        dto.setRating(getAverageRating(id));
+
+        return dto;
     }
 
 //    @Override
@@ -78,9 +85,9 @@ public class VehicleServiceImpl implements VehicleService {
 //    }
     @Override
     public VehicleDetailDTO getVehicleDetailById(String id) {
-        Optional<Vehicle> vehicle = vehicleRepository.findById(id);
-        VehicleDetailDTO vehicleDetailDTO = vehicle.map(vehicleMapper::vehicleToVehicleDetail)
+        Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
+        VehicleDetailDTO vehicleDetailDTO = vehicleMapper.vehicleToVehicleDetail(vehicle);
         vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicle_Id(id)));
         vehicleDetailDTO.setRating(ratingRepository.findAverageByVehicleId(id));
         return vehicleDetailDTO;
@@ -91,6 +98,14 @@ public class VehicleServiceImpl implements VehicleService {
         List<Vehicle> vehicles = vehicleRepository.findByUserId(userId);
         return vehicles.stream()
                 .map(vehicleMapper::vehicleGet)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<VehicleDTO> getAllAvailableVehicles() {
+        return vehicleRepository.findByStatus(Vehicle.Status.AVAILABLE)
+                .stream()
+                .map(vehicleMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -293,6 +308,12 @@ public class VehicleServiceImpl implements VehicleService {
         // Save vehicle
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
         return vehicleMapper.vehicleGet(savedVehicle);
+    }
+
+    @Override
+    public int getAverageRating(String vehicleId) {
+        Double avg = ratingRepository.findAverageByVehicleId(vehicleId);
+        return avg == null ? 0 : (int) Math.round(avg);
     }
 
     @Override
