@@ -13,7 +13,7 @@ export async function getVehicles() {
 export async function getVehicleById(vehicleId) {
     const { data } = await apiClient.request({
         method: "GET",
-        url: `/vehicles/${vehicleId}`,
+        url: `/vehicles/detail/${vehicleId}`,
     });
 
     return data;
@@ -31,6 +31,36 @@ export async function createVehicle({ body, accessToken }) {
     });
 
     return data;
+}
+
+export async function searchVehicles({ body }) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: `vehicles/search`,
+            headers: {
+                "Content-Type": "application/json",
+            },
+            data: body,
+        })
+        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+    } catch (error) {
+        console.error("Lỗi khi tìm kiếm xe:", error)
+        throw error
+    }
+}
+
+export async function getBookedSlotById(vehicleId) {
+    try {
+        const { data } = await apiClient.request({
+            method: "GET",
+            url: `bookedTimeSlot/vehicle/${vehicleId}`,
+        })
+        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+    } catch (error) {
+        console.error("Lỗi khi tìm kiếm xe:", error)
+        throw error
+    }
 }
 
 export async function updateVehicle({ vehicleId, body, accessToken }) {

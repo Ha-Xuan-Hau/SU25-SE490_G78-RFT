@@ -38,6 +38,7 @@ public interface VehicleMapper {
     @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
     @Mapping(source = "vehicleFeatures", target = "vehicleFeatures", qualifiedByName = "stringToFeatureList")
     @Mapping(source = "vehicleImages", target = "vehicleImages", qualifiedByName = "jsonToImageList")
+    @Mapping(source = "user.address", target = "address", qualifiedByName = "extractDistrictAndCity")
     VehicleDetailDTO vehicleToVehicleDetail(Vehicle vehicle);
 
     @Mapping(source = "user.id", target = "userId")

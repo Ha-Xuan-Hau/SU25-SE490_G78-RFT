@@ -12,6 +12,7 @@ import { UserWebLayout } from "@/layouts/UserLayout";
 import { AuthProvider } from "@/context/AuthContext";
 import "react-toastify/dist/ReactToastify.css";
 import { RecoilRoot } from "recoil";
+import { ToastContainer } from "react-toastify";
 
 // Khai báo kiểu cho page có custom layout
 type NextPageWithLayout = NextPage & {
@@ -45,6 +46,7 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
+      {/* <ToastContainer /> */}
     </RecoilRoot>
   );
 }

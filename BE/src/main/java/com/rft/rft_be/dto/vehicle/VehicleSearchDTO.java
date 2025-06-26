@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleSearchDTO {
-     List<String> vehicleTypes;
+     List<String> vehicleType;
      List<String> addresses;
      Vehicle.HaveDriver haveDriver;
      Vehicle.ShipToAddress shipToAddress;
@@ -21,8 +21,8 @@ public class VehicleSearchDTO {
      String modelId;
 
      Integer numberSeat;
-     BigDecimal costFrom;
-     BigDecimal costTo;
+     Integer costFrom;
+     Integer costTo;
 
      Boolean ratingFiveStarsOnly;
 
