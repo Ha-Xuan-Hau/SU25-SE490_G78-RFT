@@ -12,7 +12,7 @@ CREATE TABLE `users` (
   `phone` varchar(20) DEFAULT NULL,
   `address` nvarchar(255) NOT NULL,
   `status` enum('ACTIVE','INACTIVE') DEFAULT 'ACTIVE',
-  `role` enum('USER','STAFF','ADMIN') DEFAULT 'USER',
+  `role` enum('USER', 'PROVIDER' ,'STAFF','ADMIN') DEFAULT 'USER',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
