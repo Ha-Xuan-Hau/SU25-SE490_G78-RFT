@@ -29,23 +29,17 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
       icon: "mdi:id-card",
       label: "Giấy phép lái xe",
     },
-    {
-      key: "my-cars",
-      path: "/profile/my-vehicles",
-      icon: "mdi:car",
-      label: "Xe của tôi",
-    },
+    // {
+    //   key: "my-cars",
+    //   path: "/profile/my-vehicles",
+    //   icon: "mdi:car",
+    //   label: "Xe của tôi",
+    // },
     {
       key: "car-rental",
-      path: "/profile/car-rental",
+      path: "/profile/booking-history",
       icon: "mdi:car-multiple",
       label: "Lịch sử thuê xe",
-    },
-    {
-      key: "favorites",
-      path: "/profile/favorites",
-      icon: "mdi:heart",
-      label: "Xe yêu thích",
     },
     {
       key: "change-password",
