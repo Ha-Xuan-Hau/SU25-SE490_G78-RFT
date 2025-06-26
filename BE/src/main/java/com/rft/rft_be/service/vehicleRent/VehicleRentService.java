@@ -15,4 +15,5 @@ public interface VehicleRentService {
     void deleteVehicle(String userId, String vehicleId);
     VehicleDetailDTO getVehicleById(String userId, String vehicleId);
     long countUserVehicles(String userId);
+
 }

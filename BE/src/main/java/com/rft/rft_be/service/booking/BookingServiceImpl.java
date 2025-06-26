@@ -2,6 +2,7 @@ package com.rft.rft_be.service.booking;
 
 
 import com.rft.rft_be.dto.UserProfileDTO;
+import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
@@ -9,11 +10,16 @@ import com.rft.rft_be.entity.BookedTimeSlot;
 import com.rft.rft_be.entity.Booking;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Vehicle;
+
+import com.rft.rft_be.mapper.BookingMapper;
+
 import com.rft.rft_be.mapper.VehicleMapper;
+
 import com.rft.rft_be.repository.BookedTimeSlotRepository;
 import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.repository.VehicleRepository;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AccessLevel;
@@ -22,13 +28,20 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+
+import java.util.Map;
+
 import java.util.UUID;
+
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +50,8 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BookingServiceImpl implements BookingService {
 
+
+    BookingMapper bookingMapper;
     BookingRepository bookingRepository;
     BookedTimeSlotRepository bookedTimeSlotRepository;
     UserRepository userRepository;
@@ -176,4 +191,92 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Booking với ID: " + bookingId));
         return vehicleMapper.mapToBookingResponseDTO(booking);
     }
+
+    @Override
+    public List<BookingDTO> getBookingsByStatus(String status) {
+        try {
+            log.info("Getting bookings by status: {}", status);
+            Booking.Status bookingStatus = Booking.Status.valueOf(status.toUpperCase());
+            List<Booking> bookings = bookingRepository.findByStatus(bookingStatus);
+            return bookings.stream()
+                    .map(bookingMapper::toDTO)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status: " + status + ". Valid values are: PENDING, CONFIRMED, CANCELLED, COMPLETED");
+        } catch (Exception e) {
+            log.error("Error getting bookings by status: {}", status, e);
+            throw new RuntimeException("Failed to get bookings by status: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<BookingDTO> getBookingsByUserIdAndDateRange(String userId, Instant startDate, Instant endDate) {
+        try {
+            log.info("Getting bookings for user: {} between {} and {}", userId, startDate, endDate);
+            List<Booking> bookings = bookingRepository.findByUserIdAndTimeBookingStartBetween(userId, startDate, endDate);
+            return bookings.stream()
+                    .map(bookingMapper::toDTO)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error getting bookings for user: {} in date range", userId, e);
+            throw new RuntimeException("Failed to get bookings by date range: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<BookingDTO> getBookingsByUserId(String userId) {
+        try {
+            log.info("Getting all bookings for user: {}", userId);
+
+            // Validate user exists
+            if (!userRepository.existsById(userId)) {
+                throw new RuntimeException("User not found with id: " + userId);
+            }
+
+            List<Booking> bookings = bookingRepository.findByUserId(userId);
+            List<BookingDTO> bookingDTOs = bookings.stream()
+                    .map(bookingMapper::toDTO)
+                    .collect(Collectors.toList());
+
+            log.info("Found {} bookings for user: {}", bookingDTOs.size(), userId);
+            return bookingDTOs;
+
+        } catch (Exception e) {
+            log.error("Error getting bookings for user: {}", userId, e);
+            throw new RuntimeException("Failed to get bookings for user: " + e.getMessage());
+        }
+    }
+    @Override
+    public List<BookingDTO> getBookingsByUserIdAndStatus(String userId, String status) {
+        try {
+            log.info("Getting bookings for user: {} with status: {}", userId, status);
+
+            // Validate user exists
+            if (!userRepository.existsById(userId)) {
+                throw new RuntimeException("User not found with id: " + userId);
+            }
+
+            // Validate status
+            Booking.Status bookingStatus;
+            try {
+                bookingStatus = Booking.Status.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid status: " + status + ". Valid values are: PENDING, CONFIRMED, CANCELLED, COMPLETED");
+            }
+
+            List<Booking> bookings = bookingRepository.findByUserIdAndStatus(userId, bookingStatus);
+            List<BookingDTO> bookingDTOs = bookings.stream()
+                    .map(bookingMapper::toDTO)
+                    .collect(Collectors.toList());
+
+            log.info("Found {} bookings for user: {} with status: {}", bookingDTOs.size(), userId, status);
+            return bookingDTOs;
+
+        } catch (Exception e) {
+            log.error("Error getting bookings for user: {} with status: {}", userId, status, e);
+            throw new RuntimeException("Failed to get bookings: " + e.getMessage());
+        }
+    }
+
+
 }

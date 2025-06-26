@@ -22,7 +22,7 @@ public class VehicleRentCreateDTO {
 
     private String vehicleFeatures;
     private String vehicleImages;
-
+    private String haveDriver;
     private String insuranceStatus = "NO";
     private String shipToAddress = "NO";
 
@@ -42,6 +42,6 @@ public class VehicleRentCreateDTO {
 
     @DecimalMin(value = "0.0", inclusive = false, message = "Cost per day must be greater than 0")
     private BigDecimal costPerDay;
-
+    private String status;
     private String thumb;
 }
