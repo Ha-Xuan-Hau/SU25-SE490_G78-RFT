@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useUserState } from "@/recoils/user.state.js";
-import { useDriverState } from "@/recoils/driver.state";
+import { ProfileLayout } from "@/layouts/ProfileLayout";
 import {
   Typography,
   Button,
@@ -22,7 +22,6 @@ import {
   IdcardOutlined,
 } from "@ant-design/icons";
 
-import { ProfileLayout } from "@/layouts/ProfileLayout";
 import RegisterDriverModal from "@/components/RegisterDriverModal";
 import { getUserDriverLicenses } from "@/apis/driver-licenses.api";
 import { DriverLicense } from "@/types/driverLicense";
@@ -37,13 +36,12 @@ const inputStyle = {
   width: "100%",
 };
 
-export default function DriverPage() {
+export default function DriverLicensePage() {
   const [openRegisterDriver, setOpenRegisterDriver] = useState(false);
   const showModalRegister = () => setOpenRegisterDriver(true);
   const handleCancleRegisterDriver = () => setOpenRegisterDriver(false);
 
   const [user, setUser] = useUserState();
-  const [driver, setDriver] = useDriverState();
 
   // State để lưu tất cả giấy phép
   const [driverLicenses, setDriverLicenses] = useState<DriverLicense[]>([]);
@@ -188,27 +186,6 @@ export default function DriverPage() {
                       style={inputStyle}
                     />
                   </div>
-
-                  {/* <div className="flex flex-col justify-between">
-                    <Title
-                      level={5}
-                      className="flex items-center text-xs font-medium mb-2"
-                    >
-                      Trạng thái
-                    </Title>
-                    <Input
-                      disabled
-                      type="text"
-                      className={`flex items-center text-base font-semibold ${
-                        status === "Đã xác thực"
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                      size="large"
-                      value={status}
-                      style={inputStyle}
-                    />
-                  </div> */}
                 </div>
               </div>
               <div className="w-full flex flex-col">
@@ -275,4 +252,4 @@ export default function DriverPage() {
   );
 }
 
-DriverPage.Layout = ProfileLayout;
+DriverLicensePage.Layout = ProfileLayout;

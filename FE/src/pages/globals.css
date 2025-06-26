@@ -132,3 +132,56 @@ section {
 .upload-image-dragger .ant-upload-btn {
   padding: 0 !important;
 }
+
+
+/* CSS cho tabs nằm bên phải */
+.booking-tabs .ant-tabs-nav {
+  margin-bottom: 0 !important;
+}
+
+.booking-tabs .ant-tabs-tab {
+  padding: 4px 8px !important;
+  font-size: 0.875rem;
+}
+
+.booking-tabs .ant-tabs-nav-wrap {
+  justify-content: flex-end;
+}
+
+/* Làm cho card vehicle lớn hơn khi hover */
+.vehicle-card {
+  transition: transform 0.2s ease;
+}
+
+.vehicle-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Thêm vào file globals.css */
+.provider-registration-steps .ant-steps-item-title {
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .provider-registration-steps .ant-steps-item-title {
+    font-size: 12px;
+  }
+}
+
+.provider-registration-steps .ant-steps-item-active .ant-steps-item-icon {
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.provider-registration-steps .ant-steps-item-finish .ant-steps-item-icon {
+  background-color: #fff;
+  border-color: #ff4d4f;
+}
+
+.provider-registration-steps .ant-steps-item-finish .ant-steps-item-icon>.ant-steps-icon {
+  color: #ff4d4f;
+}
+
+.provider-registration-steps .ant-steps-item-finish>.ant-steps-item-container>.ant-steps-item-content>.ant-steps-item-title::after {
+  background-color: #ff4d4f;
+}

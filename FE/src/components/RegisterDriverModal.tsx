@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { useDriverState } from "@/recoils/driver.state.js";
 import { useUserState } from "@/recoils/user.state.js";
 import { useMutation } from "@tanstack/react-query";
 import { toast, ToastPosition } from "react-toastify"; // Thêm ToastPosition
@@ -30,20 +29,15 @@ function RegisterDriverModal({
   const [user, setUser] = useUserState();
   const [loading, setLoading] = useState<boolean>(false);
   const [profile, setProfile, clearProfile] = useLocalStorage("profile", "");
-  const [driver, setDriver] = useDriverState();
 
   const [accessToken, setAccessToken, clearAccessToken] =
     useLocalStorage("access_token");
-
-  useEffect(() => {
-    setDriver(profile);
-  }, [profile, setDriver]);
 
   const onSubmit = async (values: DriverFormValues) => {
     setLoading(true);
 
     try {
-      const did = driver?.result?._id || user?.result?.driverLicenses?._id;
+      const did = user?.result?.driverLicenses?._id;
 
       const response = await axios({
         method: did ? "put" : "post",
@@ -60,13 +54,11 @@ function RegisterDriverModal({
 
       if (response.status === 200) {
         console.log(response.data);
-        setDriver({ ...response.data });
         setProfile({ ...response.data });
         handleCancelRegisterDriver();
-        const successMessage =
-          driver || user?.result?.driverLicenses
-            ? "Cập nhật thành công"
-            : "Đăng kí thành công";
+        const successMessage = user?.result?.driverLicenses
+          ? "Cập nhật thành công"
+          : "Đăng kí thành công";
 
         notification.success({
           message: successMessage,
@@ -109,15 +101,13 @@ function RegisterDriverModal({
             mutate(values);
           }}
         >
-          {driver || user?.result?.driverLicenses ? "Cập nhật" : " Đăng kí"}
+          {user?.result?.driverLicenses ? "Cập nhật" : " Đăng kí"}
         </Button>,
       ]}
     >
       {/* Phần còn lại không thay đổi */}
       <p className="flex justify-center items-center w-full text-2xl font-bold">
-        {driver || user?.result?.driverLicenses
-          ? "Cập nhật GPLX"
-          : "Đăng kí GPLX"}
+        {user?.result?.driverLicenses ? "Cập nhật GPLX" : "Đăng kí GPLX"}
       </p>
 
       <Form
@@ -129,7 +119,6 @@ function RegisterDriverModal({
           mutate(values);
         }}
         initialValues={{
-          ...(driver?.result || {}),
           ...(user?.result?.driverLicenses || {}),
         }}
         autoComplete="off"

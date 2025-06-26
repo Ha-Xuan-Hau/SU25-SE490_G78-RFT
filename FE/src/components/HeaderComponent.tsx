@@ -95,7 +95,7 @@ const HeaderComponent: React.FC = () => {
               className={`text-base font-medium ${
                 pathname === "/about"
                   ? "text-primary font-semibold"
-                  : "text-dark" // Đã đúng, giữ nguyên
+                  : "text-dark"
               } hover:text-primary`}
             >
               Về RFT
@@ -106,10 +106,21 @@ const HeaderComponent: React.FC = () => {
               className={`text-base font-medium ${
                 pathname === "/vehicles"
                   ? "text-primary font-semibold"
-                  : "text-dark" // Đã đúng, giữ nguyên
+                  : "text-dark"
               } hover:text-primary`}
             >
               Danh sách xe
+            </Link>
+
+            <Link
+              href="/become-provider"
+              className={`text-base font-medium ${
+                pathname === "/vehicles"
+                  ? "text-primary font-semibold"
+                  : "text-dark"
+              } hover:text-primary`}
+            >
+              Trở thành chủ xe
             </Link>
 
             {/* Hiển thị nút đăng nhập/đăng ký hoặc avatar người dùng */}
