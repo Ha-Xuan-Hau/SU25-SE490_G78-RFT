@@ -311,9 +311,9 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public int getAverageRating(String vehicleId) {
+    public double getAverageRating(String vehicleId) {
         Double avg = ratingRepository.findAverageByVehicleId(vehicleId);
-        return avg == null ? 0 : (int) Math.round(avg);
+        return avg == null ? 0 : (double) avg;
     }
 
     @Override
