@@ -11,7 +11,7 @@ import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
 public interface VehicleRentService {
     PageResponseDTO<VehicleDTO> getUserVehicles(String userId, int page, int size, String sortBy, String sortDir);
     VehicleGetDTO createVehicle(String userId, VehicleRentCreateDTO request);
-    //VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request);
+    VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request);
     void deleteVehicle(String userId, String vehicleId);
     VehicleDetailDTO getVehicleById(String userId, String vehicleId);
     long countUserVehicles(String userId);
