@@ -15,13 +15,19 @@ export function UserWebLayout({ children }: UserWebLayoutProps) {
   const [user] = useUserState();
   const { pathname, push } = useRouter();
 
-  // Chuyển logic redirecting vào useEffect
   useEffect(() => {
     const role = user?.result?.role;
 
     if (
-      role === "admin" &&
-      !(pathname.includes("admin") || pathname.includes("_error"))
+      role === "STAFF" &&
+      !(pathname.includes("STAFF") || pathname.includes("_error"))
+    ) {
+      push("/staff/dashboard");
+    }
+
+    if (
+      role === "ADMIN" &&
+      !(pathname.includes("ADMIN") || pathname.includes("_error"))
     ) {
       push("/admin/dashboard");
     }

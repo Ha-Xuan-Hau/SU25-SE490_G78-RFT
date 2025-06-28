@@ -106,9 +106,8 @@ const BookingPage: React.FC = () => {
   // Mock dữ liệu
   const data: CarData = sampleCarData;
   const totalAmount: number =
-    totalDays * data.cost +
-    costGetCar -
-    ((totalDays * data.cost + costGetCar) * amountDiscount) / 100;
+    totalDays * data.cost - (totalDays * data.cost * amountDiscount) / 100;
+  // Đã loại bỏ costGetCar từ phép tính
 
   // Chuẩn bị giá trị mặc định
   const defaultStartDate: Dayjs = dayjs().add(1, "day");
@@ -179,8 +178,28 @@ const BookingPage: React.FC = () => {
               <form className="mt-5 mb-5 grid gap-6">
                 <Radio.Group onChange={onChange} value={costGetCar}>
                   <Space direction="vertical">
-                    <Radio value={0}>Thạch Hòa, Thạch Thất, Hà Nội</Radio>
-                    <Radio value={150000}>Giao Tận nơi</Radio>
+                    <Radio value={0}>
+                      <div>
+                        <div className="font-medium">Nhận tại văn phòng</div>
+                        <div className="text-gray-500 text-sm">
+                          Thạch Hòa, Thạch Thất, Hà Nội
+                        </div>
+                        <div className="text-green-500 text-sm font-medium">
+                          Miễn phí
+                        </div>
+                      </div>
+                    </Radio>
+                    <Radio value={1}>
+                      <div>
+                        <div className="font-medium">Giao tận nơi</div>
+                        <div className="text-gray-500 text-sm">
+                          Giao xe đến địa chỉ của bạn
+                        </div>
+                        <div className="text-green-500 text-sm font-medium">
+                          Miễn phí
+                        </div>
+                      </div>
+                    </Radio>
                   </Space>
                 </Radio.Group>
               </form>
@@ -326,18 +345,24 @@ const BookingPage: React.FC = () => {
                       <Radio name="bankCode" value="VNPAYQR">
                         Thanh toán qua ứng dụng hỗ trợ VNPAYQR
                       </Radio>
+                      <Radio name="bankATM" value="BankATM">
+                        Thanh toán qua ATM - Tài khoản ngân hàng nội địa
+                      </Radio>
+                      <Radio name="bankVisa" value="BankVisa">
+                        Thanh toán qua thẻ quốc tế
+                      </Radio>
                     </Space>
                   </Radio.Group>
                 </Form.Item>
 
-                <Form.Item name="language" label="Ngôn ngữ:">
+                {/* <Form.Item name="language" label="Ngôn ngữ:">
                   <Radio.Group name="language" className="mt-2">
                     <Space direction="vertical">
                       <Radio value="vn">Tiếng việt</Radio>
                       <Radio value="en">Tiếng anh</Radio>
                     </Space>
                   </Radio.Group>
-                </Form.Item>
+                </Form.Item> */}
 
                 <Form.Item>
                   <Space direction="horizontal" className="ml-12">

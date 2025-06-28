@@ -186,9 +186,9 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
   }, [filters.district, districts]);
 
   useEffect(() => {
-    if (filters.vehicleType === "Car") {
+    if (filters.vehicleType === "CAR") {
       setCurrentBrands(carBrandsData);
-    } else if (filters.vehicleType === "Motorbike") {
+    } else if (filters.vehicleType === "MOTORBIKE") {
       setCurrentBrands(MotorbikeBrandsData);
     } else {
       setCurrentBrands([]);
@@ -219,7 +219,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             onClick={() =>
               handleFilterChange(
                 "vehicleType",
-                filters.vehicleType === "Car" ? undefined : "Car"
+                filters.vehicleType === "CAR" ? undefined : "CAR"
               )
             }
           >
@@ -228,14 +228,14 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           </button>
           <button
             className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
-              filters.vehicleType === "Motorbike"
+              filters.vehicleType === "MOTORBIKE"
                 ? "bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-300"
                 : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
               handleFilterChange(
                 "vehicleType",
-                filters.vehicleType === "Motorbike" ? undefined : "Motorbike"
+                filters.vehicleType === "MOTORBIKE" ? undefined : "MOTORBIKE"
               )
             }
           >
@@ -244,14 +244,14 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           </button>
           <button
             className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
-              filters.vehicleType === "Bicycle"
+              filters.vehicleType === "BICYCLE"
                 ? "bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-300"
                 : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
             onClick={() =>
               handleFilterChange(
                 "vehicleType",
-                filters.vehicleType === "Bicycle" ? undefined : "Bicycle"
+                filters.vehicleType === "BICYCLE" ? undefined : "BICYCLE"
               )
             }
           >
@@ -262,8 +262,8 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       </div>
 
       {/* Hãng xe - Chỉ hiển thị cho Ô tô và Xe máy (hoặc khi chưa chọn loại xe) */}
-      {(filters.vehicleType === "Car" ||
-        filters.vehicleType === "Motorbike") && (
+      {(filters.vehicleType === "CAR" ||
+        filters.vehicleType === "MOTORBIKE") && (
         <div className="mb-6">
           <h3 className="font-semibold text-lg mb-3 dark:text-white">
             Hãng xe
@@ -288,7 +288,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       )}
 
       {/* Số chỗ ngồi - Chỉ hiển thị cho Ô tô (hoặc khi chưa chọn loại xe) */}
-      {(filters.vehicleType === undefined || filters.vehicleType === "Car") && (
+      {(filters.vehicleType === undefined || filters.vehicleType === "CAR") && (
         <div className="mb-6">
           <h3 className="font-semibold text-lg mb-3 dark:text-white">
             Số chỗ ngồi
@@ -453,8 +453,8 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           </div>
           {/* Xe có lái - Chỉ hiển thị cho Ô tô và Xe máy (hoặc khi chưa chọn loại xe) */}
           {(filters.vehicleType === undefined ||
-            filters.vehicleType === "Car" ||
-            filters.vehicleType === "Motorbike") && (
+            filters.vehicleType === "CAR" ||
+            filters.vehicleType === "MOTORBIKE") && (
             <div className="flex items-center">
               <input
                 type="checkbox"

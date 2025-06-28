@@ -1,14 +1,12 @@
-import type React from "react"; // Không cần useMemo nữa
-// import { useQuery } from "@tanstack/react-query"; // Không cần useQuery nữa
-// import { getVehicles } from "@/apis/vehicle.api"; // Không cần getVehicles nữa
+import type React from "react";
 import VehicleCard from "@/components/Home/Vehicle/Card/Card";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import type { Vehicle } from "@/types/vehicle"; // Chỉ cần Vehicle interface
+import type { Vehicle } from "@/types/vehicle";
 
 interface VehicleListingProps {
-  vehicles: Vehicle[]; // Nhận danh sách xe đã được lọc từ component cha
-  isLoading: boolean; // Nhận trạng thái tải từ component cha
-  error: string | null; // Nhận thông báo lỗi từ component cha
+  vehicles: Vehicle[];
+  isLoading: boolean;
+  error: string | null;
 }
 
 const VehicleListing: React.FC<VehicleListingProps> = ({

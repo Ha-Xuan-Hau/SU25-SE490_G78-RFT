@@ -76,8 +76,8 @@ export default function BookingDetailPage() {
 
   return (
     <section>
-      <div className="flex flex-col border-b my-6 py-2 max-w-6xl mx-auto">
-        <p className="flex justify-center items-center text-2xl font-bold mt-0">
+      <div className="flex flex-col my-6 py-2 max-w-6xl mx-auto">
+        <p className="flex justify-center items-center text-2xl font-bold mt-0 mb-8">
           Thông tin chi tiết
         </p>
         <div className="flex flex-row w-full gap-4">

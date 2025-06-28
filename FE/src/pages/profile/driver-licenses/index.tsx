@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
 import { useUserState } from "@/recoils/user.state.js";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import {
   Typography,
   Button,
-  Input,
   Image,
   Space,
-  Select,
   Tabs,
   Empty,
   Spin,
+  Card,
 } from "antd";
 import {
   EditOutlined,
@@ -24,17 +25,10 @@ import {
 
 import RegisterDriverModal from "@/components/RegisterDriverModal";
 import { getUserDriverLicenses } from "@/apis/driver-licenses.api";
-import { DriverLicense } from "@/types/driverLicense";
+import type { DriverLicense } from "@/types/driverLicense";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TabPane } = Tabs;
-
-const inputStyle = {
-  display: "flex",
-  alignItems: "center",
-  padding: "12px",
-  width: "100%",
-};
 
 export default function DriverLicensePage() {
   const [openRegisterDriver, setOpenRegisterDriver] = useState(false);
@@ -43,9 +37,7 @@ export default function DriverLicensePage() {
 
   const [user, setUser] = useUserState();
 
-  // State để lưu tất cả giấy phép
   const [driverLicenses, setDriverLicenses] = useState<DriverLicense[]>([]);
-  // State để lưu index của giấy phép đang được chọn
   const [selectedLicenseIndex, setSelectedLicenseIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -57,7 +49,6 @@ export default function DriverLicensePage() {
         console.log("Licenses data:", data);
 
         if (data && Array.isArray(data) && data.length > 0) {
-          // Lưu tất cả giấy phép
           setDriverLicenses(data);
         }
       } catch (error) {
@@ -70,13 +61,13 @@ export default function DriverLicensePage() {
     fetchLicenseInfo();
   }, []);
 
-  // Lấy giấy phép hiện tại dựa trên index đã chọn
   const currentLicense = driverLicenses[selectedLicenseIndex];
 
-  // Xử lý trạng thái để hiển thị UI
   const status =
     currentLicense?.status === "VALID" ? "Đã xác thực" : "Chưa xác thực";
   const backgroundColor = status === "Chưa xác thực" ? "#ffd0cd" : "#cff1db";
+  const textColor =
+    status === "Chưa xác thực" ? "text-red-500" : "text-green-500";
 
   if (loading) {
     return (
@@ -87,56 +78,57 @@ export default function DriverLicensePage() {
   }
 
   return (
-    <div className="flex flex-col mb-7 gap-5">
-      <div className="flex flex-col pl-10 pr-5 pb-6 relative border rounded-xl border-solid border-neutral-200 p-4">
-        <div className="flex items-center justify-between">
-          <Title className="flex items-center font-semibold text-xl" level={3}>
-            Giấy phép lái xe
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <Card className="shadow-lg rounded-lg p-8">
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <Title level={3} className="m-0 text-gray-900">
+              Giấy phép lái xe
+            </Title>
             {currentLicense && (
-              <p
-                className={`rounded-lg text-xs ml-1 ${
-                  status === "Chưa xác thực" ? "text-red-500" : "text-green-500"
-                }`}
-                style={{
-                  background: backgroundColor,
-                  borderRadius: "100px",
-                  padding: "4px 6px",
-                }}
+              <span
+                className={`rounded-full text-xs px-3 py-1 font-medium ${textColor}`}
+                style={{ background: backgroundColor }}
               >
                 {status}
-              </p>
+              </span>
             )}
-          </Title>
-          <div className="flex">
-            <Button type="default" onClick={showModalRegister}>
-              Đăng ký giấy phép mới
-              <EditOutlined />
-            </Button>
-            <RegisterDriverModal
-              openRegisterDriver={openRegisterDriver}
-              handleCancelRegisterDriver={handleCancleRegisterDriver}
-            />
           </div>
+          <Button
+            type="primary"
+            onClick={showModalRegister}
+            className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600 px-6 py-2 h-auto text-base"
+          >
+            Đăng ký giấy phép mới <EditOutlined />
+          </Button>
+          <RegisterDriverModal
+            openRegisterDriver={openRegisterDriver}
+            handleCancelRegisterDriver={handleCancleRegisterDriver}
+          />
         </div>
-        <div className="flex items-center mb-4">
-          <h1 className="text-xs font-medium">
+
+        <div className="mb-6">
+          <Text className="text-gray-600 text-base">
             Cần phải có giấy phép lái xe để sử dụng dịch vụ của RFT
-          </h1>
+          </Text>
         </div>
 
         {driverLicenses.length > 0 ? (
           <>
-            {/* Hiển thị tabs nếu có nhiều giấy phép */}
             {driverLicenses.length > 1 && (
               <Tabs
                 activeKey={selectedLicenseIndex.toString()}
-                onChange={(key) => setSelectedLicenseIndex(parseInt(key))}
-                className="mb-4"
+                onChange={(key) =>
+                  setSelectedLicenseIndex(Number.parseInt(key))
+                }
+                className="mb-6"
+                type="card"
+                tabBarStyle={{ marginBottom: 0 }}
               >
                 {driverLicenses.map((license, index) => (
                   <TabPane
                     tab={
-                      <span>
+                      <span className="px-4 py-2">
                         <IdcardOutlined /> {license.classField} -{" "}
                         {license.licenseNumber.substring(0, 8)}...
                       </span>
@@ -147,63 +139,46 @@ export default function DriverLicensePage() {
               </Tabs>
             )}
 
-            <div className="content flex flex-row">
-              <div className="w-full flex flex-col">
-                <Title level={5} className="font-semibold">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <div>
+                <p className="text-base font-semibold text-gray-800 mb-2">
                   Thông tin chung
-                </Title>
-                <div className="w-4/5 flex flex-col">
-                  <div className="flex flex-col justify-between mb-4">
-                    <Title
-                      level={5}
-                      className="flex items-center text-xs font-medium mb-2"
-                    >
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
                       Số GPLX
-                    </Title>
-                    <Input
-                      disabled
-                      type="text"
-                      className="flex items-center text-base font-semibold text-slate-950"
-                      size="large"
-                      value={currentLicense?.licenseNumber}
-                      style={inputStyle}
-                    />
+                    </p>
+                    <div className="bg-gray-100 p-3 rounded-md text-gray-700 text-base">
+                      {currentLicense?.licenseNumber || "N/A"}
+                    </div>
                   </div>
-
-                  <div className="flex flex-col justify-between mb-4">
-                    <Title
-                      level={5}
-                      className="flex items-center text-xs font-medium mb-2"
-                    >
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
                       Hạng
-                    </Title>
-                    <Input
-                      disabled
-                      type="text"
-                      className="flex items-center text-base font-semibold text-slate-950"
-                      size="large"
-                      value={currentLicense?.classField}
-                      style={inputStyle}
-                    />
+                    </p>
+                    <div className="bg-gray-100 p-3 rounded-md text-gray-700 text-base">
+                      {currentLicense?.classField || "N/A"}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="w-full flex flex-col">
-                <Title level={5} className="font-semibold">
-                  Hình ảnh
-                </Title>
 
-                <div className="flex flex-col justify-evenly h-full">
+              <div>
+                <p className="text-base font-semibold text-gray-800 mb-2">
+                  Hình ảnh
+                </p>
+                <div className="w-full h-64 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
                   <Image
-                    className="w-full object-cover"
+                    className="w-full h-full object-contain rounded-md"
                     src={
                       currentLicense?.image ||
-                      "https://res.cloudinary.com/djllhxlfc/image/upload/v1700240517/cars/default-thumbnail_ycj6n3.jpg"
+                      "/placeholder.svg?height=200&width=300" ||
+                      "/placeholder.svg" ||
+                      "/placeholder.svg"
                     }
                     alt="Driver License"
-                    width={300}
-                    height={200}
-                    fallback="data:image/png;base64,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"
+                    fallback="/placeholder.svg?height=200&width=300"
                     preview={{
                       toolbarRender: (
                         _,
@@ -242,12 +217,21 @@ export default function DriverLicensePage() {
           </>
         ) : (
           <Empty
-            description="Bạn chưa có giấy phép lái xe nào"
+            description={
+              <div>
+                <p className="text-gray-500 mb-4">
+                  Bạn chưa có giấy phép lái xe nào
+                </p>
+                <Button type="primary" onClick={showModalRegister}>
+                  Đăng ký giấy phép ngay
+                </Button>
+              </div>
+            }
             className="my-8"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         )}
-      </div>
+      </Card>
     </div>
   );
 }

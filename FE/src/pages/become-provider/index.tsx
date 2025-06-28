@@ -130,7 +130,7 @@ const BecomeProviderPage = () => {
         <Paragraph>
           <strong>1. Quy định chung</strong>
           <br />
-          1.1. Người cho thuê xe (sau đây gọi là "Nhà cung cấp") phải đảm bảo xe
+          1.1. Người cho thuê xe (sau đây gọi là Người cung cấp) phải đảm bảo xe
           cho thuê có đầy đủ giấy tờ hợp pháp.
           <br />
           1.2. Nhà cung cấp phải cung cấp thông tin chính xác về xe và các điều
