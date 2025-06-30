@@ -5,30 +5,17 @@ import com.rft.rft_be.entity.Coupon;
 import com.rft.rft_be.entity.UsedCoupon;
 import com.rft.rft_be.entity.User;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface UsedCouponMapper {
-    public static UsedCouponDTO toDTO(UsedCoupon entity) {
-        return new UsedCouponDTO(
-                entity.getId(),
-                entity.getUser().getId(),
-                entity.getCoupon().getId()
-        );
-    }
+    @Mapping(source = "user.id", target = "userId")
+    @Mapping(source = "coupon.id", target = "couponId")
+    UsedCouponDTO toDTO(UsedCoupon entity);
 
-    public static UsedCoupon toEntity(UsedCouponDTO dto) {
-        UsedCoupon entity = new UsedCoupon();
-
-        User user = new User();
-        user.setId(dto.getUserId());
-        entity.setUser(user);
-
-        Coupon coupon = new Coupon();
-        coupon.setId(dto.getCouponId());
-        entity.setCoupon(coupon);
-
-        return entity;
-    }
+    @Mapping(source = "userId", target = "user.id")
+    @Mapping(source = "couponId", target = "coupon.id")
+    UsedCoupon toEntity(UsedCouponDTO dto);
 }
 
 
