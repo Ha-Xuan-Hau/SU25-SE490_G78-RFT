@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useUserState, useRefreshUser } from "@/recoils/user.state";
-import { Typography, Button, Spin, Avatar, Card } from "antd"; // Bỏ Divider
+import { Typography, Button, Spin, Avatar, Card } from "antd"; // Import Card
 import { UserOutlined } from "@ant-design/icons";
-import { ProfileLayout } from "@/layouts/ProfileLayout";
+import { ProviderLayout } from "@/layouts/ProviderLayout";
 import EditProfileModal from "@/components/EditProfileComponent";
 
 const { Title, Text } = Typography;
 
-export default function AccountPage() {
+export default function ProviderAccountPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const showModalEdit = () => setOpenEditModal(true);
   const handleCancleEditModal = () => setOpenEditModal(false);
@@ -95,7 +95,7 @@ export default function AccountPage() {
             )}
             <div>
               <Title level={4} className="m-0 text-gray-900">
-                {user && user.fullName ? user.fullName : "Người dùng"}
+                {user && user.fullName ? user.fullName : "Người cho thuê"}
               </Title>
               <Text className="text-gray-600 text-base">{user?.email}</Text>
             </div>
@@ -114,7 +114,9 @@ export default function AccountPage() {
           {/* Grid 2 cột */}
           {/* Full Name */}
           <div>
-            <p className="text-base font-semibold text-gray-800 mb-2">Họ tên</p>
+            <p className="text-base font-semibold text-gray-800 mb-2">
+              Tên đây đủ
+            </p>
             <div className="bg-gray-100 p-3 rounded-md text-gray-700 text-base">
               {user && user.fullName ? user.fullName : "Your Full Name"}
             </div>
@@ -125,10 +127,10 @@ export default function AccountPage() {
               Vai trò
             </p>
             <div className="bg-gray-100 p-3 rounded-md text-gray-700 text-base">
-              {user?.role === "USER" ? "Người dùng" : "Quản trị viên"}
+              {user?.role === "PROVIDER" ? "Người cho thuê" : "Quản trị viên"}
             </div>
           </div>
-          {/* Phone (Simulating Gender) */}
+          {/* Phone Number (Simulating Gender) */}
           <div>
             <p className="text-base font-semibold text-gray-800 mb-2">
               Số điện thoại
@@ -175,4 +177,4 @@ export default function AccountPage() {
   );
 }
 
-AccountPage.Layout = ProfileLayout;
+ProviderAccountPage.Layout = ProviderLayout;
