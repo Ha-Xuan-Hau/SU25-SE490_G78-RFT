@@ -47,12 +47,21 @@ CREATE TABLE `models` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `penalties` (
+  `id` varchar(225) NOT NULL,
+  `penalty_type` ENUM('PERCENT', 'FIXED') NOT NULL,
+  `penalty_value` decimal(10,2) DEFAULT NULL,
+  `min_cancel_hour` int,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Table structure for table `vehicles`
 CREATE TABLE `vehicles` (
   `id` varchar(255) NOT NULL,
   `user_id` varchar(255) DEFAULT NULL,
   `brand_id` varchar(255) DEFAULT NULL,
   `model_id` varchar(255) DEFAULT NULL,
+  `penalty_id` varchar(225) DEFAULT NULL,
   `license_plate` varchar(20) DEFAULT NULL,
   `vehicle_type` enum('CAR','MOTORBIKE', 'BICYCLE') DEFAULT NULL,
   `vehicle_features` text,
@@ -77,9 +86,11 @@ CREATE TABLE `vehicles` (
   KEY `user_id` (`user_id`),
   KEY `brand_id` (`brand_id`),
   KEY `model_id` (`model_id`),
+  KEY `penalty_id` (`penalty_id`),
   CONSTRAINT `vehicles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `vehicles_ibfk_2` FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`),
-  CONSTRAINT `vehicles_ibfk_3` FOREIGN KEY (`model_id`) REFERENCES `models` (`id`)
+  CONSTRAINT `vehicles_ibfk_3` FOREIGN KEY (`model_id`) REFERENCES `models` (`id`),
+  CONSTRAINT `vehicles_ibfk_4` FOREIGN KEY (`penalty_id`) REFERENCES `penalties` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `driver_licenses`
@@ -244,6 +255,7 @@ CREATE TABLE `wallet_transactions` (
   KEY `wallet_id` (`user_id`),
   CONSTRAINT `wallet_transactions_ibfk_2` FOREIGN KEY (`wallet_id`) REFERENCES `wallets` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Sample data for demo_rent database
 USE demo_rent2;
 
@@ -348,7 +360,7 @@ INSERT INTO bookings (id, user_id, vehicle_id, time_booking_start, time_booking_
 INSERT INTO contracts (id, booking_id, user_id, image, status, cost_settlement) VALUES
 ('contract-001', 'booking-001', 'user-003', 'https://example.com/contract1.pdf', 'FINISHED', 1440000.00),
 ('contract-002', 'booking-002', 'user-004', 'https://example.com/contract2.pdf', 'FINISHED', 1260000.00),
-('contract-003', 'booking-003', 'user-005', 'https://example.com/contract3.pdf', 'DRAFT', 0.00),
+('contract-003', 'booking-003', 'user-005', 'https://example.com/contract3.pdf', 'PROCESSING', 0.00),
 ('contract-004', 'booking-004', 'user-006', 'https://example.com/contract4.pdf', 'FINISHED', 3600000.00),
 ('contract-005', 'booking-005', 'user-003', 'https://example.com/contract5.pdf', 'FINISHED', 500000.00);
 
