@@ -134,7 +134,7 @@ public class ContractServiceImpl implements ContractService {
                 throw new RuntimeException("Invalid status: " + createContractDTO.getStatus() + ". Valid values are: DRAFT, FINISHED, CANCELLED");
             }
         } else {
-            contract.setStatus(Contract.Status.DRAFT);
+            contract.setStatus(Contract.Status.PROCESSING);
         }
 
         // Save contract

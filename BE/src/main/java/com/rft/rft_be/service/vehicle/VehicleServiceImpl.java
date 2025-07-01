@@ -227,7 +227,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .model(model)
                 .licensePlate(createVehicleDTO.getLicensePlate())
                 .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
-                .VehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
+                .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
                 .numberSeat(createVehicleDTO.getNumberSeat())
                 .yearManufacture(createVehicleDTO.getYearManufacture())
                 .description(createVehicleDTO.getDescription())
