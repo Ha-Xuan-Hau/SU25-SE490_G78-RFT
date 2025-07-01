@@ -49,4 +49,14 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
             @Param("end") Instant end
     );
 
+    boolean existsByUserIdAndVehicleIdAndTimeBookingStartAndTimeBookingEndAndStatusIn(
+            String userId,
+            String vehicleId,
+            Instant start,
+            Instant end,
+            List<Booking.Status> statusList
+    );
+    List<Booking> findByStatusAndCreatedAtBefore(Booking.Status status, Instant beforeTime);
+
+
 }

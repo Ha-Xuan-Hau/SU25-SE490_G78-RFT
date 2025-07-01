@@ -27,8 +27,14 @@ public class BookingResponseDTO {
     String phoneNumber;
     String address;
     String codeTransaction;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
+    Instant timeTransaction;
     BigDecimal totalCost;
     Booking.Status status;
+    String penaltyType;
+    BigDecimal penaltyValue;
+    Integer minCancelHour;
+    String couponId;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     Instant createdAt;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")

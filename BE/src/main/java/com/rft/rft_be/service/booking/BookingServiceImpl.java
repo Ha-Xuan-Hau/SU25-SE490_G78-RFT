@@ -2,6 +2,7 @@ package com.rft.rft_be.service.booking;
 
 
 import com.rft.rft_be.dto.UserProfileDTO;
+import com.rft.rft_be.dto.booking.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
@@ -13,6 +14,7 @@ import com.rft.rft_be.entity.Vehicle;
 
 import com.rft.rft_be.mapper.BookingMapper;
 
+import com.rft.rft_be.mapper.BookingResponseMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 
 import com.rft.rft_be.repository.BookedTimeSlotRepository;
@@ -57,15 +59,19 @@ public class BookingServiceImpl implements BookingService {
     UserRepository userRepository;
     VehicleRepository vehicleRepository;
     VehicleMapper vehicleMapper;
+    BookingResponseMapper bookingResponseMapper;
+    BookingCleanupTask bookingCleanupTask;
 
     @Override
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request, String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
+
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy xe với ID: " + request.getVehicleId()));
-        if (userId.equals(vehicle.getUser().getId())) { // ngăn chủ xe tự đặt xe
+
+        if (userId.equals(vehicle.getUser().getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn không thể đặt xe của chính mình.");
         }
 
@@ -76,23 +82,31 @@ public class BookingServiceImpl implements BookingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian đặt không hợp lệ. Thời gian bắt đầu phải trước thời gian kết thúc.");
         }
 
-        List<BookedTimeSlot> overlaps = bookedTimeSlotRepository.findByVehicleIdAndTimeRange(
-                vehicle.getId(), start, end);
+        // check xe đã được đặt trong thời gian đó chưa
+        List<BookedTimeSlot> overlaps = bookedTimeSlotRepository.findByVehicleIdAndTimeRange(vehicle.getId(), start, end);
         if (!overlaps.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã được đặt trong khoảng thời gian này.");
         }
-        boolean userHasConflictingBooking = bookingRepository.existsByUserIdAndTimeOverlap(userId, start, end);
-        if (userHasConflictingBooking) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có một booking khác trong khoảng thời gian này.");
+
+        // check renter đã có booking chưa huỷ hoặc chưa bị xoá cho chuyến tương tự chưa
+        boolean hasActiveBookingForTrip = bookingRepository.existsByUserIdAndVehicleIdAndTimeBookingStartAndTimeBookingEndAndStatusIn(
+                userId,
+                vehicle.getId(),
+                start,
+                end,
+                List.of(Booking.Status.UNPAID, Booking.Status.PENDING, Booking.Status.CONFIRMED)
+        );
+        if (hasActiveBookingForTrip) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có một booking đang tồn tại cho chuyến đi này.");
         }
 
-        //  Tính totalCost
+        // Tính tổng chi phí
         long durationHours = Duration.between(start, end).toHours();
-        // làm tròn lên để tính phí (ví dụ: 25 tiếng = 2 ngày)
         BigDecimal numberOfDays = BigDecimal.valueOf(Math.ceil((double) durationHours / 24));
-        BigDecimal totalCost = (vehicle.getCostPerDay() != null) ? vehicle.getCostPerDay().multiply(numberOfDays) : BigDecimal.ZERO;
+        BigDecimal totalCost = (vehicle.getCostPerDay() != null)
+                ? vehicle.getCostPerDay().multiply(numberOfDays)
+                : BigDecimal.ZERO;
 
-        // 2. Tạo codeTransaction timeTransaction
         String generatedCodeTransaction = "BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         Instant transactionTime = Instant.now();
 
@@ -103,15 +117,20 @@ public class BookingServiceImpl implements BookingService {
                 .vehicle(vehicle)
                 .timeBookingStart(start)
                 .timeBookingEnd(end)
-                .status(Booking.Status.PENDING)
+                .status(Booking.Status.UNPAID)
                 .totalCost(totalCost)
                 .codeTransaction(generatedCodeTransaction)
                 .timeTransaction(transactionTime)
+                .penaltyType(Booking.PenaltyType.valueOf(request.getPenaltyType()))
+                .penaltyValue(request.getPenaltyValue())
+                .minCancelHour(request.getMinCancelHour())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
         bookingRepository.save(booking);
+        bookingCleanupTask.scheduleCleanup(booking.getId());
 
+        // lưu time slot đã đặt để tránh đặt trùng
         BookedTimeSlot slot = BookedTimeSlot.builder()
                 .vehicle(vehicle)
                 .timeFrom(start)
@@ -121,7 +140,7 @@ public class BookingServiceImpl implements BookingService {
                 .build();
         bookedTimeSlotRepository.save(slot);
 
-        return vehicleMapper.mapToBookingResponseDTO(booking);
+        return bookingResponseMapper.toResponseDTO(booking);
     }
 
     @Override
