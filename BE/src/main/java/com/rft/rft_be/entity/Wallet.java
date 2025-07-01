@@ -1,6 +1,7 @@
 package com.rft.rft_be.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,36 +11,36 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "contracts")
+@Table(name = "wallets")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Contract {
+public class Wallet {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id")
-    private Booking booking;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Lob
-    @Column(name = "image")
-    private String image;
+    @Column(name = "balance", precision = 18, scale = 2)
+    private BigDecimal balance = BigDecimal.ZERO;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private Status status = Status.PROCESSING;
+    @Size(max = 50)
+    @Column(name = "bank_account_number", length = 50)
+    private String bankAccountNumber;
 
-    @Column(name = "cost_settlement", precision = 10, scale = 2)
-    private BigDecimal costSettlement;
+    @Size(max = 100)
+    @Column(name = "bank_account_name", length = 100)
+    private String bankAccountName;
+
+    @Size(max = 30)
+    @Column(name = "bank_account_type", length = 30)
+    private String bankAccountType;
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -49,7 +50,4 @@ public class Contract {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    public enum Status{
-        PROCESSING, RENTING, FINISHED, CANCELLED
-    }
 }

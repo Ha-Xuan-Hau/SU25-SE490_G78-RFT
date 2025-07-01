@@ -1,4 +1,7 @@
 "use client";
+
+import type React from "react";
+
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
@@ -14,6 +17,7 @@ const HeaderComponent: React.FC = () => {
   const [navbarOpen, setNavbarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
   const {
     user,
     isAuthenticated,
@@ -30,7 +34,6 @@ const HeaderComponent: React.FC = () => {
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll);
-
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
@@ -42,11 +45,20 @@ const HeaderComponent: React.FC = () => {
       key: "0",
       label: (
         <div
-          onClick={() => router.push("/profile")}
+          onClick={() => {
+            const userRole = user?.role || user?.role;
+            if (userRole === "PROVIDER") {
+              router.push("/provider/dashboard");
+            } else {
+              router.push("/profile");
+            }
+          }}
           className="flex items-center"
         >
           <UserOutlined className="mr-2" />
-          Thông tin cá nhân
+          {(user?.role || user?.role) === "PROVIDER"
+            ? "Quản lý cho thuê"
+            : "Thông tin cá nhân"}
         </div>
       ),
     },
@@ -74,7 +86,9 @@ const HeaderComponent: React.FC = () => {
           sticky ? "top-0" : "top-0"
         }`}
       >
-        <nav className="container mx-auto max-w-8xl flex items-start justify-between py-2 px-4 lg:px-0">
+        {/* Full-width nav, logo sát trái, links sát phải */}
+        <nav className="w-full flex items-start justify-between py-2 px-4">
+          {/* Logo sát bên trái */}
           <div className="flex items-center">
             <Link href="/">
               <Image
@@ -88,7 +102,7 @@ const HeaderComponent: React.FC = () => {
             </Link>
           </div>
 
-          {/* Navigation Links and Auth Buttons */}
+          {/* Navigation Links sát bên phải */}
           <div className="hidden lg:flex items-center space-x-10 mt-1">
             <Link
               href="/about"
@@ -112,16 +126,18 @@ const HeaderComponent: React.FC = () => {
               Danh sách xe
             </Link>
 
-            <Link
-              href="/become-provider"
-              className={`text-base font-medium ${
-                pathname === "/vehicles"
-                  ? "text-primary font-semibold"
-                  : "text-dark"
-              } hover:text-primary`}
-            >
-              Trở thành chủ xe
-            </Link>
+            {(!isAuthenticated || user?.role !== "PROVIDER") && (
+              <Link
+                href="/become-provider"
+                className={`text-base font-medium ${
+                  pathname === "/become-provider"
+                    ? "text-primary font-semibold"
+                    : "text-dark"
+                } hover:text-primary`}
+              >
+                Trở thành chủ xe
+              </Link>
+            )}
 
             {/* Hiển thị nút đăng nhập/đăng ký hoặc avatar người dùng */}
             {!isAuthenticated ? (
@@ -194,6 +210,7 @@ const HeaderComponent: React.FC = () => {
               >
                 Về RFT
               </Link>
+
               <Link
                 href="/vehicles"
                 className={`text-base font-medium ${
@@ -205,17 +222,20 @@ const HeaderComponent: React.FC = () => {
               >
                 Danh sách xe
               </Link>
-              <Link
-                href="/locations"
-                className={`text-base font-medium text-dark ${
-                  pathname === "/locations"
-                    ? "text-primary font-semibold"
-                    : "text-dark"
-                } hover:text-primary`}
-                onClick={() => setNavbarOpen(false)}
-              >
-                Trở thành chủ xe
-              </Link>
+
+              {(!isAuthenticated || user?.role !== "PROVIDER") && (
+                <Link
+                  href="/locations"
+                  className={`text-base font-medium text-dark ${
+                    pathname === "/locations"
+                      ? "text-primary font-semibold"
+                      : "text-dark"
+                  } hover:text-primary`}
+                  onClick={() => setNavbarOpen(false)}
+                >
+                  Trở thành chủ xe
+                </Link>
+              )}
 
               {!isAuthenticated ? (
                 <>
@@ -253,12 +273,20 @@ const HeaderComponent: React.FC = () => {
                   <button
                     onClick={() => {
                       setNavbarOpen(false);
-                      router.push("/profile");
+                      // Kiểm tra role dựa vào cấu trúc của đối tượng user
+                      const userRole = user?.role || user?.role;
+                      if (userRole === "PROVIDER") {
+                        router.push("/provider/dashboard"); // hoặc URL chính xác cho provider
+                      } else {
+                        router.push("/profile");
+                      }
                     }}
                     className="text-base font-medium text-dark hover:text-primary text-left flex items-center"
                   >
                     <UserOutlined className="mr-2" />
-                    Thông tin cá nhân
+                    {(user?.role || user?.role) === "PROVIDER"
+                      ? "Quản lý cho thuê"
+                      : "Thông tin cá nhân"}
                   </button>
                   <button
                     onClick={() => {

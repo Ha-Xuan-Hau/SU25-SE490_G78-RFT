@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+"use client";
+
+import type React from "react";
+import { useState } from "react";
 import { Button, Tag } from "antd";
 import Image from "next/image";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format-currency";
 import moment from "moment";
 import RatingModal from "./RatingModal";
-import { Vehicle } from "@/types/vehicle";
 
 // Định nghĩa interface cho props
 interface BookingInfo {
@@ -53,22 +55,28 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   return (
     <div className="flex flex-col border rounded-xl border-solid border-neutral-200 p-4 hover:shadow-md transition-shadow">
       <div className="flex flex-col md:flex-row gap-4">
-        {/* Ảnh xe - Đã tăng kích thước và sử dụng aspect ratio */}
-        <div className="w-full md:w-1/3 h-auto">
-          <div className="relative aspect-video w-full h-full rounded-lg overflow-hidden">
+        {/* Ảnh xe - Đã điều chỉnh kích thước cố định và flex-shrink */}
+        <div className="flex-shrink-0 w-48 h-32">
+          {" "}
+          {/* Kích thước cố định: rộng 192px, cao 128px */}
+          <div className="relative w-full h-full rounded-lg overflow-hidden">
+            {" "}
+            {/* Bỏ aspect-video */}
             <Image
               src={info?.carId?.thumb || "/images/car-placeholder.jpg"}
               alt="car"
               fill
-              sizes="(max-width: 768px) 100vw, 33vw"
+              sizes="192px"
               className="object-cover rounded-lg"
               style={{ objectPosition: "center" }}
             />
           </div>
         </div>
 
-        {/* Thông tin xe */}
-        <div className="flex flex-col w-full md:w-2/3 justify-between">
+        {/* Thông tin xe - Đã điều chỉnh để chiếm phần còn lại */}
+        <div className="flex flex-col flex-grow justify-between">
+          {" "}
+          {/* Thay md:w-2/3 bằng flex-grow */}
           <div className="flex justify-between items-center">
             <h5 className="text-xl md:text-2xl line-clamp-1 font-bold mt-0 m-0">
               {info?.carId?.model?.name || "Unknown Model"}{" "}
@@ -95,11 +103,9 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
               )}
             </div>
           </div>
-
-          <h2 className="text-xl md:text-2xl line-clamp-1 text-red-500 font-bold my-2">
+          <h2 className="text-xl md:text-2xl line-clamp-1 text-green-400 font-bold my-2">
             {formatCurrency(info?.totalCost)}
           </h2>
-
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div className="space-y-1">
               <p className="line-clamp-1 font-normal m-0">

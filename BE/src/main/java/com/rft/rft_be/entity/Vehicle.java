@@ -35,6 +35,10 @@ public class Vehicle {
     @JoinColumn(name = "model_id")
     private Model model;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "penalty_id")
+    private Penalty penalty;
+
     @Column(name = "license_plate", length = 20)
     private String licensePlate;
 
@@ -48,7 +52,7 @@ public class Vehicle {
 
     @Lob
     @Column(name = "vehicle_images")
-    private String VehicleImages;
+    private String vehicleImages;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "have_driver")
