@@ -28,6 +28,10 @@ public class Penalty {
     @Column(name = "min_cancel_hour")
     private Integer minCancelHour;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     public enum PenaltyType {
         PERCENT, FIXED
     }
