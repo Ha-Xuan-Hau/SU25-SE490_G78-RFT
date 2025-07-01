@@ -1,5 +1,7 @@
+"use client";
+
 // filepath: d:\RFT\FE\src\pages\profile\booking-history\index.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import { VehicleRentalCard } from "@/components/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
@@ -138,53 +140,143 @@ export default function BookingHistoryPage() {
   ).length;
 
   return (
-    <div>
-      <div className="mb-8">
-        {/* Header với Tabs nằm bên phải */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Lịch sử thuê xe</h1>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header với background trắng và shadow */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Lịch sử thuê xe
+              </h1>
+              <p className="text-gray-600">
+                Quản lý và theo dõi các chuyến đi của bạn
+              </p>
+            </div>
 
-          <div className="flex-grow flex justify-end">
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              type="card"
-              className="booking-tabs"
-              tabBarStyle={{ marginBottom: 0 }}
-              size="small"
-            >
-              <TabPane
-                tab={`Tất cả (${mockBookingHistory.length})`}
-                key="all"
-              />
-              <TabPane tab={`Đang chờ (${waitingCount})`} key="waiting" />
-              <TabPane tab={`Đang thuê (${activeCount})`} key="active" />
-              <TabPane tab={`Hoàn thành (${completedCount})`} key="completed" />
-              <TabPane tab={`Đã hủy (${canceledCount})`} key="canceled" />
-            </Tabs>
+            {/* Tabs với styling đẹp hơn */}
+            <div className="flex-grow flex justify-end">
+              <Tabs
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                type="card"
+                className="booking-tabs-enhanced"
+                tabBarStyle={{
+                  marginBottom: 0,
+                  fontSize: "16px",
+                  fontWeight: "500",
+                }}
+                size="large"
+              >
+                <TabPane
+                  tab={
+                    <span className="px-4 py-2">
+                      Tất cả{" "}
+                      <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-sm ml-1">
+                        {mockBookingHistory.length}
+                      </span>
+                    </span>
+                  }
+                  key="all"
+                />
+                <TabPane
+                  tab={
+                    <span className="px-4 py-2">
+                      Đang chờ{" "}
+                      <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-sm ml-1">
+                        {waitingCount}
+                      </span>
+                    </span>
+                  }
+                  key="waiting"
+                />
+                <TabPane
+                  tab={
+                    <span className="px-4 py-2">
+                      Đang thuê{" "}
+                      <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full text-sm ml-1">
+                        {activeCount}
+                      </span>
+                    </span>
+                  }
+                  key="active"
+                />
+                <TabPane
+                  tab={
+                    <span className="px-4 py-2">
+                      Hoàn thành{" "}
+                      <span className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded-full text-sm ml-1">
+                        {completedCount}
+                      </span>
+                    </span>
+                  }
+                  key="completed"
+                />
+                <TabPane
+                  tab={
+                    <span className="px-4 py-2">
+                      Đã hủy{" "}
+                      <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-sm ml-1">
+                        {canceledCount}
+                      </span>
+                    </span>
+                  }
+                  key="canceled"
+                />
+              </Tabs>
+            </div>
           </div>
         </div>
 
-        {/* Danh sách các đơn hàng */}
-        <div className="flex flex-col gap-5 overflow-y-auto max-h-[700px]">
-          {filteredBookings.length > 0 ? (
-            filteredBookings.map((booking, index) => (
-              <VehicleRentalCard
-                key={index}
-                info={booking}
-                accessToken={accessToken}
-              />
-            ))
-          ) : (
-            <div className="text-center py-10 text-gray-500">
-              Không có đơn hàng nào trong trạng thái này
-            </div>
-          )}
+        {/* Content area với background trắng */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {filteredBookings.length > 0 ? (
+              filteredBookings.map((booking, index) => (
+                <div key={index}>
+                  <VehicleRentalCard info={booking} accessToken={accessToken} />
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-12 h-12 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Không có đơn hàng nào
+                </h3>
+                <p className="text-gray-500">
+                  {activeTab === "all"
+                    ? "Bạn chưa có chuyến đi nào. Hãy bắt đầu thuê xe ngay!"
+                    : `Không có đơn hàng nào trong trạng thái "${
+                        activeTab === "waiting"
+                          ? "Đang chờ"
+                          : activeTab === "active"
+                          ? "Đang thuê"
+                          : activeTab === "completed"
+                          ? "Hoàn thành"
+                          : "Đã hủy"
+                      }"`}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Set layout cho trang
 BookingHistoryPage.Layout = ProfileLayout;
