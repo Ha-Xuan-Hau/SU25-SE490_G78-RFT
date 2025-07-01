@@ -96,7 +96,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .licensePlate(request.getLicensePlate())
                 .vehicleType(parseVehicleType(request.getVehicleType()))
                 .vehicleFeatures(request.getVehicleFeatures())
-                .VehicleImages(request.getVehicleImages())
+                .vehicleImages(request.getVehicleImages())
                 .insuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()))
                 .shipToAddress(parseShipToAddress(request.getShipToAddress()))
                 .numberSeat(request.getNumberSeat())
