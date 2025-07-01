@@ -1,6 +1,7 @@
 package com.rft.rft_be.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,46 +11,46 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "contracts")
+@Table(name = "wallet_transactions")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Contract {
+public class WalletTransaction {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id")
-    private Booking booking;
+    @JoinColumn(name = "wallet_id")
+    private Wallet wallet;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Lob
-    @Column(name = "image")
-    private String image;
+    @Column(name = "amount", precision = 18, scale = 2, nullable = false)
+    private BigDecimal amount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private Status status = Status.PROCESSING;
-
-    @Column(name = "cost_settlement", precision = 10, scale = 2)
-    private BigDecimal costSettlement;
+    @Column(name = "status", nullable = false, length = 20)
+    private Status status = Status.PENDING;
 
     @CreationTimestamp
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    public enum Status{
-        PROCESSING, RENTING, FINISHED, CANCELLED
+    public enum Status {
+        PENDING,
+        PROCESSING,
+        APPROVED,
+        REJECTED,
+        CANCELLED
     }
 }

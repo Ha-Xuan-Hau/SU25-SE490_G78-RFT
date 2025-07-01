@@ -25,6 +25,23 @@ import java.util.stream.Collectors;
 @Service
 public class CouponServiceImpl implements CouponService {
 
+    CouponRepository couponRepository;
+    UsedCouponRepository usedCouponRepository;
+    CouponMapper couponMapper;
+
+    @Override
+    public void assignCouponToUser(String userId, String couponId) {
+        UsedCoupon usedCoupon = new UsedCoupon();
+        usedCoupon.setId(UUID.randomUUID().toString());
+        User user = new User();
+        user.setId(userId);
+        usedCoupon.setUser(user);
+        Coupon coupon = new Coupon();
+        coupon.setId(couponId);
+        usedCoupon.setCoupon(coupon);
+        usedCouponRepository.save(usedCoupon);
+    }
+
     @Override
     public void restoreCouponToValid(String id) {
         Coupon coupon = couponRepository.findById(id)
@@ -32,23 +49,18 @@ public class CouponServiceImpl implements CouponService {
         coupon.setStatus(Coupon.CouponStatus.VALID);
         couponRepository.save(coupon);
     }
-    @Autowired
-    private CouponRepository couponRepository;
 
-    @Autowired
-    private UsedCouponRepository usedCouponRepository;
-    CouponMapper couponMapper;
     @Override
     public List<CouponDTO> getAllCoupons() {
         return couponRepository.findAll().stream()
-                .map(CouponMapper::toDTO)
+                .map(couponMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     public CouponDTO getCouponById(String id) {
         return couponRepository.findById(id)
-                .map(CouponMapper::toDTO)
+                .map(couponMapper::toDTO)
                 .orElseThrow(() -> new RuntimeException("Coupon not found"));
     }
 
@@ -58,20 +70,23 @@ public class CouponServiceImpl implements CouponService {
                 .orElseThrow(() -> new RuntimeException("Coupon not found"));
 
         coupon.setName(dto.getName());
-        coupon.setDescription(dto.getDescription());
         coupon.setDiscount(dto.getDiscount());
+        coupon.setDescription(dto.getDescription());
         coupon.setTimeExpired(dto.getTimeExpired());
-        coupon.setUpdatedAt(Instant.now()); //
+        coupon.setUpdatedAt(Instant.now());
+        coupon.setStatus(Coupon.CouponStatus.VALID);
 
-        return CouponMapper.toDTO(couponRepository.save(coupon));
+        return couponMapper.toDTO(couponRepository.save(coupon));
     }
+
     @Override
     public CouponDTO createCoupon(CouponDTO dto) {
-        Coupon coupon = CouponMapper.toEntity(dto);
+        Coupon coupon = couponMapper.toEntity(dto);
         coupon.setCreatedAt(Instant.now());
         coupon.setUpdatedAt(Instant.now());
-        return CouponMapper.toDTO(couponRepository.save(coupon));
+        return couponMapper.toDTO(couponRepository.save(coupon));
     }
+
     @Override
     public void deleteCouponById(String id) {
         Coupon coupon = couponRepository.findById(id)
@@ -79,18 +94,20 @@ public class CouponServiceImpl implements CouponService {
         coupon.setStatus(Coupon.CouponStatus.EXPIRED);
         couponRepository.save(coupon);
     }
+
     @Override
     public List<CouponUseDTO> getValidCouponsForUser(String userId) {
         Instant now = Instant.now();
         return couponRepository.findAll().stream()
                 .filter(c -> c.getStatus() == Coupon.CouponStatus.VALID &&
                         c.getTimeExpired() != null &&
-                        c.getTimeExpired().atZone(ZoneId.systemDefault()).toInstant().isAfter(now)
-                        &&
+                        c.getTimeExpired().atZone(ZoneId.systemDefault()).toInstant().isAfter(now) &&
                         !usedCouponRepository.existsByUserIdAndCouponId(userId, c.getId()))
                 .map(couponMapper::toCouponUseDto)
                 .collect(Collectors.toList());
     }
+
+    @Override
     public void markCouponAsUsed(String userId, String couponId) {
         if (!usedCouponRepository.existsByUserIdAndCouponId(userId, couponId)) {
             UsedCoupon used = new UsedCoupon();

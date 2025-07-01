@@ -10,7 +10,7 @@ import java.util.List;
 public interface BookingService {
     BookingResponseDTO createBooking(BookingRequestDTO request, String userId);
     void confirmBooking(String bookingId, String currentUserId);
-    void cancelBooking(String bookingId, String currentUserId); // <-- THÊM currentUserId
+    void cancelBooking(String bookingId, String currentUserId); 
     List<BookingResponseDTO> getAllBookings();
     BookingResponseDTO getBookingById(String bookingId);
     List<BookingDTO> getBookingsByStatus(String status);

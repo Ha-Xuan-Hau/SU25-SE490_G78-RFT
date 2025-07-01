@@ -54,7 +54,21 @@ public class Booking {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private Status status = Status.PENDING;
+    private Status status = Status.UNPAID;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "penalty_type")
+    private PenaltyType penaltyType;
+
+    @Column(name = "penalty_value", precision = 10, scale = 2)
+    private BigDecimal penaltyValue;
+
+    @Column(name = "min_cancel_hour")
+    private Integer minCancelHour;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -64,7 +78,12 @@ public class Booking {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    public enum Status{
-            PENDING, CONFIRMED, CANCELLED, COMPLETED
+    public enum Status {
+        UNPAID, PENDING, CONFIRMED, CANCELLED, DELIVERED,
+        RECEIVED_BY_CUSTOMER, RETURNED, COMPLETED
+    }
+
+    public enum PenaltyType {
+        PERCENT, FIXED
     }
 }
