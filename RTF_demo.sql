@@ -134,7 +134,7 @@ CREATE TABLE `bookings` (
   `code_transaction` varchar(100) DEFAULT NULL,
   `time_transaction` datetime DEFAULT NULL,
   `total_cost` decimal(10,2) DEFAULT NULL,
-  `status` enum('PENDING','CONFIRMED','CANCELLED','COMPLETED') DEFAULT 'PENDING',
+  `status` enum('UNPAID','PENDING','CONFIRMED','CANCELLED','DELIVERED','RECEIVED_BY_CUSTOMER','RETURNED','COMPLETED') DEFAULT 'UNPAID',
   `coupon_id` varchar(225) DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -153,7 +153,7 @@ CREATE TABLE `contracts` (
   `booking_id` varchar(225) DEFAULT NULL,
   `user_id` varchar(225) DEFAULT NULL,
   `image` text,
-  `status` enum('DRAFT','FINISHED','CANCELLED') DEFAULT 'DRAFT',
+  `status` enum('PROCESSING', 'RENTING', 'FINISHED','CANCELLED') DEFAULT 'PROCESSING',
   `cost_settlement` decimal(10,2) DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -215,6 +215,35 @@ CREATE TABLE `booked_time_slots` (
   CONSTRAINT `booked_time_slots_ibfk_1` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Table structure for table `wallet`
+CREATE TABLE `wallets` (
+  `id` varchar(225) NOT NULL,
+  `user_id` varchar(225) DEFAULT NULL,
+  `balance` decimal(18,2) DEFAULT 0,
+  `bank_account_number` VARCHAR(50),
+  `bank_account_name` VARCHAR(100),
+  `bank_account_type` VARCHAR(30),
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `wallets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `wallet_transactions` (
+  `id` varchar(225) NOT NULL,
+  `wallet_id` varchar(225) DEFAULT NULL,
+  `amount` decimal(18,2) DEFAULT 0,
+  `status` enum('PENDING','PROCESSING','APPROVED','REJECTED','CANCELLED') DEFAULT 'PENDING',
+  `user_id` varchar(225) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `wallet_transactions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  KEY `wallet_id` (`user_id`),
+  CONSTRAINT `wallet_transactions_ibfk_2` FOREIGN KEY (`wallet_id`) REFERENCES `wallets` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 -- Sample data for demo_rent database
 USE demo_rent2;
 
