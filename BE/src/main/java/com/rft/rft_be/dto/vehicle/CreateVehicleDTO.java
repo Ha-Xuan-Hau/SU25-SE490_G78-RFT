@@ -12,6 +12,7 @@ public class CreateVehicleDTO {
     private String userId;
     private String brandId;
     private String modelId;
+    private String penaltyId;
     private String licensePlate;
     private String vehicleType;
     private String vehicleFeatures;

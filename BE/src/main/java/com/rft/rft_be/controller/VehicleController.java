@@ -23,12 +23,12 @@ public class VehicleController {
     private VehicleService vehicleService;
 
     @GetMapping
-    public ResponseEntity<List<VehicleDTO>> getAllVehicles() {
+    public ResponseEntity<List<VehicleGetDTO>> getAllVehicles() {
         return ResponseEntity.ok(vehicleService.getAllVehicles());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<VehicleDTO> getVehicleById(@PathVariable String id) {
+    public ResponseEntity<VehicleGetDTO> getVehicleById(@PathVariable String id) {
         return ResponseEntity.ok(vehicleService.getVehicleById(id));
     }
 
@@ -227,11 +227,22 @@ public class VehicleController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/penalty/{penaltyId}")
+    public ResponseEntity<?> getVehiclesByPenaltyId(@PathVariable String penaltyId) {
+        try {
+            List<VehicleGetDTO> vehicles = vehicleService.getVehiclesByPenaltyId(penaltyId);
+            return ResponseEntity.ok(vehicles);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to retrieve vehicles by penalty: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
     // Count endpoint
     @GetMapping("/count")
     public ResponseEntity<?> getVehicleCount() {
         try {
-            List<VehicleDTO> allVehicles = vehicleService.getAllVehicles();
+            List<VehicleGetDTO> allVehicles = vehicleService.getAllVehicles();
             Map<String, Object> response = new HashMap<>();
             response.put("total", allVehicles.size());
             return ResponseEntity.ok(response);

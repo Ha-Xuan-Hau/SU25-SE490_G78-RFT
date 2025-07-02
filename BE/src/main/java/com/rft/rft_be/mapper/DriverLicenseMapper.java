@@ -1,6 +1,6 @@
 package com.rft.rft_be.mapper;
 
-import com.rft.rft_be.dto.DriverLicense.DriverLicenseDTO;
+import com.rft.rft_be.dto.driverLicense.DriverLicenseDTO;
 import com.rft.rft_be.entity.DriverLicense;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
