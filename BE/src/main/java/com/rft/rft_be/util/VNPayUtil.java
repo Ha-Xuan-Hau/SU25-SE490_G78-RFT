@@ -1,4 +1,4 @@
-package com.white.apidoc.util;
+package com.rft.rft_be.util;
 
 import jakarta.servlet.http.HttpServletRequest;
 
