@@ -28,6 +28,9 @@ public class Penalty {
     @Column(name = "min_cancel_hour")
     private Integer minCancelHour;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;

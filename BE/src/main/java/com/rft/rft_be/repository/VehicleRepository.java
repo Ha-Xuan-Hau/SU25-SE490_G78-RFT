@@ -25,6 +25,9 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
     @Query("SELECT v FROM Vehicle v LEFT JOIN FETCH v.penalty LEFT JOIN FETCH v.user LEFT JOIN FETCH v.brand LEFT JOIN FETCH v.model")
     List<Vehicle> findAllWithPenalty();
 
+    @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.penalty.id = :penaltyId")
+    long countByPenaltyId(@Param("penaltyId") String penaltyId);
+
     @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId")
     List<Vehicle> findByUserId(@Param("userId") String userId);
 

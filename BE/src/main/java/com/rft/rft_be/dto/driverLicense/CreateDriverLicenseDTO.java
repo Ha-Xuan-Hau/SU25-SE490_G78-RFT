@@ -1,4 +1,4 @@
-package com.rft.rft_be.dto.DriverLicense;
+package com.rft.rft_be.dto.driverLicense;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

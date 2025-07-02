@@ -1,7 +1,7 @@
 package com.rft.rft_be.service.DriverLicense;
 
-import com.rft.rft_be.dto.DriverLicense.CreateDriverLicenseDTO;
-import com.rft.rft_be.dto.DriverLicense.DriverLicenseDTO;
+import com.rft.rft_be.dto.driverLicense.CreateDriverLicenseDTO;
+import com.rft.rft_be.dto.driverLicense.DriverLicenseDTO;
 
 import java.util.List;
 
