@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 @Getter
 @Setter
@@ -18,4 +19,7 @@ public class BookingRequestDTO {
      Instant timeBookingEnd;
      String phoneNumber;
      String address;
+     String penaltyType;
+     BigDecimal penaltyValue;
+     Integer minCancelHour;
 }
