@@ -90,7 +90,7 @@ public class VehicleServiceImpl implements VehicleService {
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
         VehicleDetailDTO vehicleDetailDTO = vehicleMapper.vehicleToVehicleDetail(vehicle);
-        vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicle_Id(id)));
+        vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicleId(id)));
         vehicleDetailDTO.setRating(ratingRepository.findAverageByVehicleId(id));
         return vehicleDetailDTO;
     }

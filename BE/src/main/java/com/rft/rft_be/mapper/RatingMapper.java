@@ -20,8 +20,8 @@ public interface RatingMapper {
     @Mapping(source = "bookingId", target = "booking.id")
     Rating toEntity(RatingDTO dto);
 
-    @Mapping(target = "userName", source = "rating.user.fullName")
-    @Mapping(target = "userImage", source = "rating.user.profilePicture")
+    @Mapping(source = "user.fullName", target = "userName")
+    @Mapping(source = "user.profilePicture", target = "userImage")
     UserCommentDTO RatingToUserCommentDTO(Rating rating);
     List<UserCommentDTO> RatingToUserListCommentDTO(List<Rating> ratings);
 }
