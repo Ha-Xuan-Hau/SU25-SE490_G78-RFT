@@ -6,7 +6,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.rft.rft_be.dto.user.*;
+import com.rft.rft_be.entity.DriverLicense;
 import com.rft.rft_be.entity.UserRegisterVehicle;
+import com.rft.rft_be.repository.DriverLicensRepository;
 import com.rft.rft_be.repository.UserRegisterVehicleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +36,7 @@ import org.springframework.web.server.ResponseStatusException;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserServiceImpl implements UserService {
 
+    DriverLicensRepository driverLicensRepository;
     UserRepository userRepository;
     PasswordEncoder passwordEncoder;
     UserMapper userMapper;
@@ -56,7 +59,14 @@ public class UserServiceImpl implements UserService {
     public UserDTO getProfile(String id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-        return userMapper.toDTO(user);
+        List<String> validLicenseClasses = driverLicensRepository.findValidByUserId(id)
+                .stream()
+                .map(DriverLicense::getClassField) // Chỉ lấy classField
+                .collect(Collectors.toList());
+        UserDTO userDTO = userMapper.toDTO(user);
+        userDTO.setValidLicenses(validLicenseClasses);
+
+        return userDTO;
     }
 
     @Override

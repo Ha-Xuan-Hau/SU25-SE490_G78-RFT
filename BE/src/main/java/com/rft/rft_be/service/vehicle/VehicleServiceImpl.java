@@ -361,9 +361,9 @@ public class VehicleServiceImpl implements VehicleService {
             existingVehicle.setVehicleFeatures(vehicleDTO.getVehicleFeatures());
         }
 
-        if (vehicleDTO.getVehicleImages() != null) {
-            existingVehicle.setVehicleImages(vehicleDTO.getVehicleImages());
-        }
+//        if (vehicleDTO.getVehicleImages() != null) {
+//            existingVehicle.setVehicleImages(vehicleDTO.getVehicleImages());
+//        }
 
         if (vehicleDTO.getNumberSeat() != null) {
             existingVehicle.setNumberSeat(vehicleDTO.getNumberSeat());

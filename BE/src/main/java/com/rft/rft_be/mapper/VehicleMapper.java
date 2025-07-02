@@ -51,6 +51,7 @@ public interface VehicleMapper {
     @Mapping(source = "penalty.penaltyType", target = "penaltyType", qualifiedByName = "enumToString")
     @Mapping(source = "penalty.penaltyValue", target = "penaltyValue")
     @Mapping(source = "penalty.minCancelHour", target = "minCancelHour")
+    @Mapping(source = "vehicleImages", target = "vehicleImages", qualifiedByName = "jsonToImageList")
     @Mapping(source = "vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
     @Mapping(source = "haveDriver", target = "haveDriver", qualifiedByName = "enumToString")
     @Mapping(source = "insuranceStatus", target = "insuranceStatus", qualifiedByName = "enumToString")

@@ -395,9 +395,9 @@ const BookingPage: React.FC = () => {
               <p className="mb-4">
                 Cám ơn bạn đã đặt xe. Mã đơn hàng của bạn là: #BK12345
               </p>
-              <Link href="/">
+              <Link href="/profile/booking-history">
                 <Button type="primary" size="large">
-                  Trở về trang chủ
+                  Xem đơn của tôi
                 </Button>
               </Link>
             </div>

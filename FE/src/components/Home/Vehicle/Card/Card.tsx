@@ -34,14 +34,14 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
               />
             )}
           </Link>
-          <div className="absolute top-6 right-6 p-4 bg-white rounded-full hidden group-hover:block">
+          {/* <div className="absolute top-6 right-6 p-4 bg-white rounded-full hidden group-hover:block">
             <Icon
               icon={"solar:arrow-right-linear"}
               width={24}
               height={24}
               className="text-black"
             />
-          </div>
+          </div> */}
         </div>
         <div className="p-6">
           <div className="flex flex-col mobile:flex-row gap-5 mobile:gap-0 justify-between mb-6">

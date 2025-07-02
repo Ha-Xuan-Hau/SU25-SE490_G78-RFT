@@ -58,6 +58,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
       label: "Tất toán hợp đồng",
     },
     {
+      key: "final-contracts",
+      path: "/provider/manage-penalties",
+      icon: "mdi:pencil-box-multiple",
+      label: "Quy định thuê xe",
+    },
+    {
       key: "change-password",
       path: "/provider/change-password",
       icon: "mdi:key",
@@ -65,20 +71,11 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
     },
   ];
 
-  const handleLogout = () => {
-    // Xóa thông tin đăng nhập
-    clearAccessToken();
-    clearUserProfile();
-    // Chuyển hướng về trang chủ
-    router.push("/");
-    // Thêm logic khác nếu cần (như clear recoil state)
-  };
-
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <HeaderComponent />
       {/* Full-width layout, sát màn hình */}
-      <section className="!pt-[88px] !pb-0 !py-0 !px-0 !m-0 w-full">
+      <section className="flex-1 w-full bg-[#f5f5f5] dark:bg-gray-900 py-0">
         <div className="flex min-h-screen w-full">
           {/* Sidebar - fixed width */}
           <div className="w-64 border-r border-gray-200 dark:border-gray-700 px-4 py-2 flex-shrink-0">
@@ -102,16 +99,6 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
                     </Link>
                   </li>
                 ))}
-                {/* Logout button */}
-                <li>
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                  >
-                    <Icon icon="mdi:logout" className="w-5 h-5 flex-shrink-0" />
-                    <span>Đăng xuất</span>
-                  </button>
-                </li>
               </ul>
             </nav>
           </div>
@@ -125,7 +112,7 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </section>
       <FooterComponent />
-    </>
+    </div>
   );
 };
 
