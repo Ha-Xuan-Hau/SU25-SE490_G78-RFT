@@ -77,11 +77,9 @@ html {
   /* Firefox */
 }
 
-section {
-  @apply py-24
-}
 
-.blog-details p, .blog-details hr {
+.blog-details p,
+.blog-details hr {
   @apply mb-8;
 }
 

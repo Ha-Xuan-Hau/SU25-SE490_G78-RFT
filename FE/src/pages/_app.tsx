@@ -38,7 +38,6 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
           defaultTheme="light"
         >
           <AuthProvider>
-            <NextTopLoader color="#07be8a" />
             <Layout>
               <Component {...pageProps} />
             </Layout>
@@ -46,7 +45,6 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
-      {/* <ToastContainer /> */}
     </RecoilRoot>
   );
 }

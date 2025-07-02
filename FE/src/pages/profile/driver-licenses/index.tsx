@@ -78,8 +78,8 @@ export default function DriverLicensePage() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <Card className="shadow-lg rounded-lg p-8">
+    <>
+      <Card className=" rounded-lg p-8">
         <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Title level={3} className="m-0 text-gray-900">
@@ -232,7 +232,7 @@ export default function DriverLicensePage() {
           />
         )}
       </Card>
-    </div>
+    </>
   );
 }
 
