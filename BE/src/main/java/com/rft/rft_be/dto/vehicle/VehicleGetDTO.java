@@ -4,6 +4,7 @@ package com.rft.rft_be.dto.vehicle;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -24,7 +25,7 @@ public class VehicleGetDTO {
     private String licensePlate;
     private String vehicleType;
     private String vehicleFeatures;
-    private String vehicleImages;
+    List<VehicleImageDTO> vehicleImages;
     private String haveDriver;
     private String insuranceStatus;
     private String shipToAddress;

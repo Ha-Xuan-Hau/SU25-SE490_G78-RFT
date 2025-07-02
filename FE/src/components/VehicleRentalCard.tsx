@@ -73,10 +73,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           </div>
         </div>
 
-        {/* Thông tin xe - Đã điều chỉnh để chiếm phần còn lại */}
         <div className="flex flex-col flex-grow justify-between">
-          {" "}
-          {/* Thay md:w-2/3 bằng flex-grow */}
           <div className="flex justify-between items-center">
             <h5 className="text-xl md:text-2xl line-clamp-1 font-bold mt-0 m-0">
               {info?.carId?.model?.name || "Unknown Model"}{" "}

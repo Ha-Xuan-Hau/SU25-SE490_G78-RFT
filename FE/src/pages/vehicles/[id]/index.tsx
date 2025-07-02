@@ -274,7 +274,44 @@ export default function VehicleDetail() {
     }
   };
 
-  // Booking handlers
+  const hasValidLicense = (
+    userLicenses: string[] | undefined,
+    vehicleType: string
+  ): boolean => {
+    // Xe đạp không yêu cầu bằng lái
+    if (vehicleType === "BICYCLE") {
+      return true;
+    }
+
+    // Nếu user không có bằng lái nào
+    if (!userLicenses || userLicenses.length === 0) {
+      return false;
+    }
+
+    // Kiểm tra theo từng loại xe
+    switch (vehicleType) {
+      case "CAR":
+        return userLicenses.some((license) => license === "B");
+      case "MOTORBIKE":
+        return userLicenses.some((license) => ["A1", "B1"].includes(license));
+      default:
+        return false;
+    }
+  };
+
+  const getLicenseRequirement = (vehicleType: string): string => {
+    switch (vehicleType) {
+      case "CAR":
+        return "bằng lái loại B";
+      case "MOTORBIKE":
+        return "bằng lái loại A1 hoặc B1";
+      case "BICYCLE":
+        return "không cần bằng lái";
+      default:
+        return "giấy phép phù hợp";
+    }
+  };
+
   // Booking handlers
   const handleRent = () => {
     if (!pickupDateTime || !returnDateTime) {
@@ -282,15 +319,33 @@ export default function VehicleDetail() {
       return;
     }
 
-    if (user === null) {
-      // Thay vì mở modal cũ
-      // setIsModalOpen(true);
+    // Lấy validLicenses từ cả hai nơi có thể chứa nó
+    const userLicenses = user?.validLicenses || user?.result?.validLicenses;
 
-      // Mở AuthPopup trực tiếp
+    if (user === null) {
+      // Mở AuthPopup cho người dùng đăng nhập
       setIsAuthPopupOpen(true);
-    } else if (user?.result?.driverLicenses === undefined) {
+    } else if (!userLicenses) {
+      // Người dùng chưa có thông tin giấy phép lái xe
       setIsModalCheckOpen(true);
     } else {
+      // Kiểm tra tính phù hợp của bằng lái xe
+      const hasProperLicense = hasValidLicense(
+        userLicenses,
+        vehicle.vehicleType
+      );
+
+      if (!hasProperLicense) {
+        // Hiển thị thông báo nếu người dùng không có bằng lái phù hợp
+        Modal.error({
+          title: "Bạn không có giấy phép phù hợp",
+          content: `Loại xe này yêu cầu ${getLicenseRequirement(
+            vehicle.vehicleType
+          )}`,
+        });
+        return;
+      }
+
       if (validationMessage === "Khoảng ngày đã được thuê.") {
         message.error("Khoảng ngày đã được thuê. Vui lòng chọn ngày khác!");
       } else {
@@ -912,15 +967,32 @@ export default function VehicleDetail() {
 
       {/* Driver license verification modal */}
       <Modal
-        title="Bạn cần xác thực giấy phái lái xe để thuê xe"
+        title="Thông tin giấy phép lái xe"
         open={isModalCheckOpen}
         onOk={handleOk1}
         onCancel={handleCancel1}
         footer={false}
       >
-        <Link href="/profile ">
-          <AntButton type="primary" className="mt-5">
-            Trang cá nhân
+        <div className="py-3">
+          <p className="mb-4">
+            Bạn cần cập nhật thông tin giấy phép lái xe để thuê{" "}
+            {vehicle.vehicleType === "CAR"
+              ? "xe ô tô"
+              : vehicle.vehicleType === "MOTORBIKE"
+              ? "xe máy"
+              : "xe"}
+            .
+          </p>
+          <p className="font-medium mb-4">Yêu cầu giấy phép:</p>
+          <ul className="list-disc pl-5 mb-4">
+            <li>Xe ô tô: Bằng lái loại B</li>
+            <li>Xe máy: Bằng lái loại A1 hoặc B1</li>
+            <li>Xe đạp: Không yêu cầu bằng lái</li>
+          </ul>
+        </div>
+        <Link href="/profile">
+          <AntButton type="primary" className="mt-2">
+            Cập nhật thông tin
           </AntButton>
         </Link>
       </Modal>
