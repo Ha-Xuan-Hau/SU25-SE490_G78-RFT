@@ -34,6 +34,7 @@ public class VehicleServiceImpl implements VehicleService {
     private final UserRepository userRepository;
     private final BrandRepository brandRepository;
     private final ModelRepository modelRepository;
+    private final PenaltyRepository penaltyRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -45,23 +46,24 @@ public class VehicleServiceImpl implements VehicleService {
     private final RatingServiceImpl ratingServiceImpl;
 
     @Override
-    public List<VehicleDTO> getAllVehicles() {
-        return vehicleRepository.findAll()
+    public List<VehicleGetDTO> getAllVehicles() {
+        return vehicleRepository.findAllWithPenalty()
                 .stream()
                 .map(vehicle -> {
-                    VehicleDTO dto = vehicleMapper.toDTO(vehicle);
+                    VehicleGetDTO dto = vehicleMapper.vehicleGet(vehicle);
                     dto.setRating(getAverageRating(vehicle.getId()));
+
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
 
     @Override
-    public VehicleDTO getVehicleById(String id) {
+    public VehicleGetDTO getVehicleById(String id) {
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
 
-        VehicleDTO dto = vehicleMapper.toDTO(vehicle);
+        VehicleGetDTO dto = vehicleMapper.vehicleGet(vehicle);
         dto.setRating(getAverageRating(id));
 
         return dto;
@@ -88,7 +90,7 @@ public class VehicleServiceImpl implements VehicleService {
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
         VehicleDetailDTO vehicleDetailDTO = vehicleMapper.vehicleToVehicleDetail(vehicle);
-        vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicle_Id(id)));
+        vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicleId(id)));
         vehicleDetailDTO.setRating(ratingRepository.findAverageByVehicleId(id));
         return vehicleDetailDTO;
     }
@@ -177,7 +179,13 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
-
+    @Override
+    public List<VehicleGetDTO> getVehiclesByPenaltyId(String penaltyId) {
+        List<Vehicle> vehicles = vehicleRepository.findByPenaltyId(penaltyId);
+        return vehicles.stream()
+                .map(vehicleMapper::vehicleGet)
+                .collect(Collectors.toList());
+    }
     @Override
     public VehicleGetDTO getVehicleByLicensePlate(String licensePlate) {
         Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate)
@@ -188,7 +196,6 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO) {
-        // Validate required fields
         if (createVehicleDTO.getLicensePlate() == null || createVehicleDTO.getLicensePlate().trim().isEmpty()) {
             throw new RuntimeException("License plate is required");
         }
@@ -197,7 +204,8 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         // Check if license plate already exists
-        if (vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate())) {
+        boolean exists = vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate());
+        if (exists) {
             throw new RuntimeException("Vehicle with license plate " + createVehicleDTO.getLicensePlate() + " already exists");
         }
 
@@ -220,11 +228,18 @@ public class VehicleServiceImpl implements VehicleService {
                     .orElseThrow(() -> new RuntimeException("Model not found with id: " + createVehicleDTO.getModelId()));
         }
 
+        Penalty penalty = null;
+        if (createVehicleDTO.getPenaltyId() != null && !createVehicleDTO.getPenaltyId().trim().isEmpty()) {
+            penalty = penaltyRepository.findById(createVehicleDTO.getPenaltyId())
+                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + createVehicleDTO.getPenaltyId()));
+        }
+
         // Create new vehicle entity
         Vehicle vehicle = Vehicle.builder()
                 .user(user)
                 .brand(brand)
                 .model(model)
+                .penalty(penalty)
                 .licensePlate(createVehicleDTO.getLicensePlate())
                 .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
                 .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
@@ -319,7 +334,7 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleDTO) {
-        // Find existing vehicle
+
         Vehicle existingVehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
 
@@ -333,6 +348,13 @@ public class VehicleServiceImpl implements VehicleService {
                 }
             }
             existingVehicle.setLicensePlate(vehicleDTO.getLicensePlate());
+        }
+
+        // Update penalty if provided
+        if (vehicleDTO.getPenaltyId() != null && !vehicleDTO.getPenaltyId().trim().isEmpty()) {
+            Penalty penalty = penaltyRepository.findById(vehicleDTO.getPenaltyId())
+                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + vehicleDTO.getPenaltyId()));
+            existingVehicle.setPenalty(penalty);
         }
 
         if (vehicleDTO.getVehicleFeatures() != null) {
@@ -424,9 +446,6 @@ public class VehicleServiceImpl implements VehicleService {
             }
         }
 
-        // Update timestamp
-        existingVehicle.setUpdatedAt(Instant.now());
-
         // Save and return updated vehicle
         Vehicle updatedVehicle = vehicleRepository.save(existingVehicle);
         return vehicleMapper.vehicleGet(updatedVehicle);
@@ -442,85 +461,6 @@ public class VehicleServiceImpl implements VehicleService {
         vehicleRepository.deleteById(id);
     }
 
-//    @Override
-//    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req) {
-//        Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
-//
-//        Specification<Vehicle> spec = (root, query, cb) -> cb.conjunction();
-//
-//
-//        if (req.getVehicleType() != null && !req.getVehicleType().isEmpty()) {
-//            spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleType()));
-//        }
-//
-//        if (req.getAddresses() != null && !req.getAddresses().isEmpty()) {
-//            spec = spec.and((root, query, cb) -> {
-//                Join<Vehicle, User> userJoin = root.join("user", JoinType.INNER);
-//                Predicate combinedPredicate = cb.disjunction();
-//                for (String addr : req.getAddresses()) {
-//                    combinedPredicate = cb.or(combinedPredicate,
-//                            cb.like(cb.lower(userJoin.get("address")), "%" + addr.toLowerCase() + "%"));
-//                }
-//                return combinedPredicate;
-//            });
-//        }
-//
-//        if (req.getHaveDriver() != null) {
-//            spec = spec.and((root, query, cb) ->
-//                    cb.equal(root.get("haveDriver"), req.getHaveDriver())
-//            );
-//        }
-//
-//        if (req.getShipToAddress() != null) {
-//            spec = spec.and((root, query, cb) -> cb.equal(root.get("shipToAddress"), req.getShipToAddress()));
-//        }
-//
-//        if (req.getBrandId() != null) {
-//            spec = spec.and((root, query, cb) -> cb.equal(root.get("brand").get("id"), req.getBrandId()));
-//        }
-//
-//        if (req.getModelId() != null) {
-//            spec = spec.and((root, query, cb) -> cb.equal(root.get("model").get("id"), req.getModelId()));
-//        }
-//
-//        if (req.getNumberSeat() != null) {
-//            spec = spec.and((root, query, cb) -> cb.equal(root.get("numberSeat"), req.getNumberSeat()));
-//        }
-//
-//        if (req.getCostFrom() != null) {
-//            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("costPerDay"), req.getCostFrom()));
-//        }
-//
-//        if (req.getCostTo() != null) {
-//            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("costPerDay"), req.getCostTo()));
-//        }
-//
-//        if (Boolean.TRUE.equals(req.getRatingFiveStarsOnly())) {
-//            spec = spec.and((root, query, cb) -> {
-//                Subquery<Double> subquery = query.subquery(Double.class);
-//                Root<Rating> ratingRoot = subquery.from(Rating.class);
-//                subquery.select(cb.avg(ratingRoot.get("star")));
-//                subquery.where(cb.equal(ratingRoot.get("vehicle").get("id"), root.get("id")));
-//                return cb.equal(subquery, 5.0);
-//            });
-//        }
-//
-//        Page<Vehicle> result = vehicleRepository.findAll(spec, pageable);
-//        return result.map(vehicle -> VehicleSearchResultDTO.builder()
-//                .id(vehicle.getId())
-//                .licensePlate(vehicle.getLicensePlate())
-//                .vehicleType(vehicle.getVehicleType())
-//                .thumb(vehicle.getThumb())
-//                .costPerDay(vehicle.getCostPerDay())
-//                .status(vehicle.getStatus().name())
-//                .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : null)
-//                .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : null)
-//                .numberSeat(vehicle.getNumberSeat())
-//                .averageRating(ratingRepository.findAverageByVehicleId(vehicle.getId()))
-//                .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : null)
-//                .build()
-//        );
-//    }
     @Override
     public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req) {
         Pageable pageable = PageRequest.of(req.getPage(), req.getSize());

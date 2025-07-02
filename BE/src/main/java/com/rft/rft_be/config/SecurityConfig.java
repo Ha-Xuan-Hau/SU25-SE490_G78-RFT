@@ -27,7 +27,7 @@ import org.springframework.web.cors.CorsConfiguration;
 public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINTS = {
-        "/api/auth/**" , "/api/bookedTimeSlot/**"
+        "/api/auth/**" , "/api/penalties/**"
     };
     @Value("${jwt.signerKey}")
     private String signerKey;

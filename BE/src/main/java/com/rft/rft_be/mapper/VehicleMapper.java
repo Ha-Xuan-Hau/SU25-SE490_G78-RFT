@@ -47,13 +47,17 @@ public interface VehicleMapper {
     @Mapping(source = "brand.name", target = "brandName")
     @Mapping(source = "model.id", target = "modelId")
     @Mapping(source = "model.name", target = "modelName")
+    @Mapping(source = "penalty.id", target = "penaltyId")
+    @Mapping(source = "penalty.penaltyType", target = "penaltyType", qualifiedByName = "enumToString")
+    @Mapping(source = "penalty.penaltyValue", target = "penaltyValue")
+    @Mapping(source = "penalty.minCancelHour", target = "minCancelHour")
+    @Mapping(source = "vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
+    @Mapping(source = "haveDriver", target = "haveDriver", qualifiedByName = "enumToString")
     @Mapping(source = "insuranceStatus", target = "insuranceStatus", qualifiedByName = "enumToString")
     @Mapping(source = "shipToAddress", target = "shipToAddress", qualifiedByName = "enumToString")
     @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
     @Mapping(source = "fuelType", target = "fuelType", qualifiedByName = "enumToString")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
-    @Mapping(source = "vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
-    @Mapping(source = "haveDriver", target = "haveDriver", qualifiedByName = "enumToString")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
 
 
@@ -139,6 +143,7 @@ public interface VehicleMapper {
     }
 
     // Chuyển đổi từ User Entity sang UserDTO
+    @Named("mapToUserProfileDTO")
     default UserProfileDTO mapToUserProfileDTO(User user) {
         if (user == null) {
             return null;
@@ -154,6 +159,7 @@ public interface VehicleMapper {
     }
 
     // Phương thức này sẽ gọi mapToUserProfileDTO cho User của Vehicle
+    @Named("mapToVehicleForBookingDTO")
     default VehicleForBookingDTO mapToVehicleForBookingDTO(Vehicle vehicle) {
         if (vehicle == null) {
             return null;
@@ -161,7 +167,7 @@ public interface VehicleMapper {
         VehicleForBookingDTO dto = VehicleForBookingDTO.builder()
                 .id(vehicle.getId())
                 .licensePlate(vehicle.getLicensePlate())
-                .vehicleTypes(vehicle.getVehicleType().name())
+                .vehicleTypes(vehicle.getVehicleType() != null ? vehicle.getVehicleType().name() : null)
                 .thumb(vehicle.getThumb())
                 .costPerDay(vehicle.getCostPerDay())
                 .status(vehicle.getStatus().name())

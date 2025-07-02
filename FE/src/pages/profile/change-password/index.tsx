@@ -35,18 +35,10 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen flex justify-center items-start">
-      {" "}
-      {/* Thêm flex, justify-center, items-start */}
-      <Card className="shadow-lg rounded-lg p-8 w-full max-w-md">
-        {" "}
-        {/* Bọc trong Card, tăng padding, giới hạn chiều rộng */}
+    <div className="flex justify-center">
+      <Card className="shadow-lg rounded-lg p-8 w-full max-w-md ">
         <div className="text-center mb-8">
-          {" "}
-          {/* Căn giữa tiêu đề */}
           <Title level={2} className="m-0 text-gray-900">
-            {" "}
-            {/* Điều chỉnh Title */}
             Đổi mật khẩu
           </Title>
           <Text className="text-gray-600 mt-2 block">

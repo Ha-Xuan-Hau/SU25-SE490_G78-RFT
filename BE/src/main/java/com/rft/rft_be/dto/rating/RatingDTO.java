@@ -11,6 +11,8 @@ import java.time.Instant;
 public class RatingDTO {
     String id;
     String userId;
+    String userName;
+    String userImage;
     String vehicleId;
     String bookingId;
     String comment;

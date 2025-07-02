@@ -13,7 +13,6 @@ import { Avatar, Dropdown } from "antd";
 import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 
 const HeaderComponent: React.FC = () => {
-  const [sticky, setSticky] = useState(false);
   const [navbarOpen, setNavbarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -27,17 +26,6 @@ const HeaderComponent: React.FC = () => {
     closeAuthPopup,
     mode,
   } = useAuth();
-
-  const handleScroll = useCallback(() => {
-    setSticky(window.scrollY >= 50);
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, [handleScroll]);
 
   // Dropdown items cho user menu
   const dropdownItems = [
@@ -81,11 +69,7 @@ const HeaderComponent: React.FC = () => {
 
   return (
     <>
-      <header
-        className={`fixed h-18 py-1 z-50 w-full bg-white transition-all duration-300 shadow-sm ${
-          sticky ? "top-0" : "top-0"
-        }`}
-      >
+      <header className="relative h-18 py-1 w-full bg-white shadow-sm">
         {/* Full-width nav, logo sát trái, links sát phải */}
         <nav className="w-full flex items-start justify-between py-2 px-4">
           {/* Logo sát bên trái */}
