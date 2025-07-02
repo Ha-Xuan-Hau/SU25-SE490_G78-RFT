@@ -1,14 +1,10 @@
+"use client";
+
 import { createVehicle, updateVehicle } from "@/apis/vehicle.api";
 import { getUserVehicleById, getUserVehicles } from "@/apis/user-vehicles.api";
-import { ProfileLayout } from "@/layouts/ProfileLayout";
+import { ProviderLayout } from "@/layouts/ProviderLayout";
 import { useUserState } from "@/recoils/user.state";
-import {
-  CarOutlined,
-  EditOutlined,
-  PlusOutlined,
-  InfoCircleOutlined,
-  CarFilled,
-} from "@ant-design/icons";
+import { EditOutlined, PlusOutlined, CarFilled } from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Button,
@@ -20,27 +16,22 @@ import {
   Select,
   Skeleton,
   Table,
-  Tooltip,
   message,
   Card,
-  Steps,
-  Alert,
   Typography,
-  Divider,
   Empty,
   Tag,
   Tabs,
 } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { Vehicle } from "@/types/vehicle";
-import { UploadImage } from "@/components/UploadImage";
+import type { Vehicle } from "@/types/vehicle";
 import { UploadMultipleImage } from "@/components/UploadMultipleImage";
-import { VehicleFeature } from "@/types/vehicle";
 
 const { Title, Text } = Typography;
-const { Step } = Steps;
 const { TabPane } = Tabs;
+
 enum VehicleType {
   CAR = "Car",
   MOTORBIKE = "Motorbike",
@@ -100,16 +91,13 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
     { value: "giant", label: "Giant" },
     { value: "trek", label: "Trek" },
     { value: "specialized", label: "Specialized" },
-    // Thêm các hãng xe phổ biến cho cả xe máy và xe đạp
   ];
-  // Set form data when vehicle detail is loaded
-  // Update the useEffect to handle images correctly
+
   useEffect(() => {
     if (vehicleDetail.data?.data) {
       const vehicle = vehicleDetail.data.data;
 
-      // Better detection of vehicle type
-      let type = VehicleType.CAR; // Default to car
+      let type = VehicleType.CAR;
 
       if (vehicle.vehicleType) {
         if (
@@ -123,9 +111,7 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         ) {
           type = VehicleType.BICYCLE;
         }
-      }
-      // If no explicit type, infer from properties
-      else {
+      } else {
         if (!vehicle.numberSeat && !vehicle.licensePlate) {
           type = VehicleType.BICYCLE;
         } else if (!vehicle.numberSeat && vehicle.licensePlate) {
@@ -135,7 +121,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
 
       setVehicleType(type);
 
-      // Fix TypeScript errors by using your defined types
       const imageUrls =
         vehicle.vehicleImages?.map(
           (img: { imageUrl: string }) => img.imageUrl
@@ -146,7 +131,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
           (feature: { name: string }) => feature.name
         ) || [];
 
-      // Set all form values
       form.setFieldsValue({
         brandName: vehicle.brandName,
         modelName: vehicle.modelName,
@@ -157,32 +141,27 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         yearOfManufacture: vehicle.yearManufacture,
         costPerDay: vehicle.costPerDay,
         description: vehicle.description,
-        images: imageUrls, // Changed: Set just the URLs
-        vehicleFeatures: featureNames, // Changed: Set just the feature names
+        images: imageUrls,
+        vehicleFeatures: featureNames,
         fuelType: vehicle.fuelType,
       });
-
-      console.log("Form values set:", form.getFieldsValue());
     }
   }, [vehicleDetail.data, form]);
 
   const handleVehicleTypeChange = (type: VehicleType) => {
     setVehicleType(type);
 
-    // Reset các trường không liên quan khi đổi loại xe
     if (type === VehicleType.MOTORBIKE) {
       form.setFieldsValue({
         numberSeat: undefined,
-        // Keep other fields that apply to motorcycles
-        // Don't reset vehicleFeatures and fuelType for motorcycles
       });
     } else if (type === VehicleType.BICYCLE) {
       form.setFieldsValue({
         numberSeat: undefined,
         licensePlate: undefined,
         transmission: undefined,
-        vehicleFeatures: undefined, // Reset for bicycles
-        fuelType: undefined, // Reset for bicycles
+        vehicleFeatures: undefined,
+        fuelType: undefined,
       });
     }
   };
@@ -201,14 +180,12 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
       }}
       onFinish={async (values) => {
         try {
-          // Fix for TypeScript error by adding explicit type annotation
           const formattedFeatures =
             values.vehicleFeatures?.map((name: string) => ({ name })) || [];
 
-          // Thêm loại phương tiện vào dữ liệu gửi đi
           const submitData = {
             ...values,
-            vehicleFeatures: formattedFeatures, // Use formatted features
+            vehicleFeatures: formattedFeatures,
             vehicleType,
             user: user?.id || user?.result?.id,
           };
@@ -236,7 +213,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         }
       }}
     >
-      {/* Tab chọn loại phương tiện */}
       <Tabs
         activeKey={vehicleType}
         onChange={
@@ -283,16 +259,7 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
           key={VehicleType.BICYCLE}
         />
       </Tabs>
-      {/* Add warning message when editing */}
-      {vehicleId && (
-        <Alert
-          message="Đang chỉnh sửa xe"
-          description="Bạn không thể thay đổi loại xe khi đang chỉnh sửa. Nếu muốn đổi loại xe, vui lòng xóa xe này và đăng ký mới."
-          type="info"
-          showIcon
-          className="mb-4"
-        />
-      )}
+
       <div className="md:flex gap-6">
         <div className="md:w-2/5">
           <Card title="Hình ảnh xe" className="mb-4">
@@ -346,6 +313,7 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                   />
                 </Form.Item>
               )}
+
               {(vehicleType === VehicleType.CAR ||
                 vehicleType === VehicleType.MOTORBIKE) && (
                 <Form.Item
@@ -371,6 +339,7 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                   />
                 </Form.Item>
               )}
+
               <Form.Item
                 label="Hãng xe"
                 name="brandName"
@@ -397,7 +366,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                 <Input placeholder="Nhập loại xe" />
               </Form.Item>
 
-              {/* Số ghế - chỉ hiển thị cho ô tô */}
               {vehicleType === VehicleType.CAR && (
                 <Form.Item
                   label="Số ghế"
@@ -423,7 +391,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                 </Form.Item>
               )}
 
-              {/* Truyền động - chỉ hiển thị cho ô tô và xe máy */}
               {(vehicleType === VehicleType.CAR ||
                 vehicleType === VehicleType.MOTORBIKE) && (
                 <Form.Item
@@ -453,7 +420,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                 </Form.Item>
               )}
 
-              {/* Biển số xe - chỉ hiển thị cho ô tô và xe máy */}
               {(vehicleType === VehicleType.CAR ||
                 vehicleType === VehicleType.MOTORBIKE) && (
                 <Form.Item
@@ -494,7 +460,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                 />
               </Form.Item>
 
-              {/* Trường này luôn hiển thị cho cả 3 loại phương tiện */}
               <Form.Item
                 label="Giá thuê/ngày (VNĐ)"
                 name="costPerDay"
@@ -551,11 +516,6 @@ export default function UserRegisterVehicle() {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
 
-  const handlePageChange = (newPage: number, pageSize: number) => {
-    setPage(newPage - 1);
-    setSize(pageSize);
-  };
-
   const {
     data: myCarsData,
     isLoading,
@@ -566,24 +526,7 @@ export default function UserRegisterVehicle() {
     enabled: !!accessToken,
   });
 
-  // Truy cập dữ liệu từ response đúng cấu trúc
   const vehicles = myCarsData?.data?.content || [];
-  // const totalItems = myCarsData?.data?.totalElements || 0;
-  // const totalPages = myCarsData?.data?.totalPages || 0;
-
-  const dataSource = vehicles.map((item: Vehicle, idx: number) => ({
-    id: idx + 1,
-    vehicleId: item?.id,
-    firstImage: item?.vehicleImages?.[0]?.imageUrl || "",
-    thumb: item?.thumb,
-    brand: item?.brandName,
-    model: item?.modelName,
-    numberSeat: item?.numberSeat,
-    transmissions: item?.transmission,
-    licensePlate: item?.licensePlate,
-    cost: item?.costPerDay,
-    status: item?.status,
-  }));
 
   const handleAddVehicle = () => {
     setEditVehicleId(null);
@@ -595,146 +538,137 @@ export default function UserRegisterVehicle() {
     setRegisterVehicleModal(true);
   };
 
-  // const getStepStatus = () => {
-  //   if (
-  //     !user?.result?.driverLicenses ||
-  //     user?.result?.driverLicenses?.status !== "VALID"
-  //   ) {
-  //     return 0; // Chưa xác thực GPLX
-  //   }
-  //   if (vehicles.length === 0) {
-  //     return 1; // Chưa đăng ký xe
-  //   }
-  //   if (vehicles.some((car) => car.status === "Không hoạt động")) {
-  //     return 2; // Đã đăng ký xe, đang chờ duyệt
-  //   }
-  //   return 3; // Đã là tài xế
-  // };
+  const columns: ColumnsType<Vehicle> = [
+    {
+      title: "Hình ảnh",
+      dataIndex: "vehicleImages",
+      key: "vehicleImages",
+      width: 120,
+      render: (vehicleImages: Vehicle["vehicleImages"]) => (
+        <Image
+          className="w-20 h-14 rounded-lg object-cover"
+          src={
+            vehicleImages?.[0]?.imageUrl ||
+            "/placeholder.svg?height=56&width=80"
+          }
+          alt="Vehicle thumbnail"
+          fallback="/placeholder.svg?height=56&width=80"
+        />
+      ),
+    },
+    {
+      title: "Thông tin xe",
+      key: "vehicleInfo",
+      render: (_, record: Vehicle) => (
+        <div>
+          <div className="font-medium text-gray-900">{record.thumb}</div>
+          <div className="text-sm text-gray-500">
+            {record.brandName} {record.modelName}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Thông số",
+      key: "specs",
+      render: (_, record: Vehicle) => (
+        <div className="text-sm">
+          {record.numberSeat && (
+            <div>
+              Ghế: <span className="font-medium">{record.numberSeat}</span>
+            </div>
+          )}
+          {record.transmission && (
+            <div>
+              Hộp số: <span className="font-medium">{record.transmission}</span>
+            </div>
+          )}
+          {record.licensePlate && (
+            <div>
+              Biển số:{" "}
+              <span className="font-medium">{record.licensePlate}</span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: "Giá thuê/ngày",
+      dataIndex: "costPerDay",
+      key: "costPerDay",
+      render: (cost: number) => (
+        <div className="font-semibold text-green-600">
+          {cost?.toLocaleString("vi-VN")} VNĐ
+        </div>
+      ),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => (
+        <Tag
+          color={status === "AVAILABLE" ? "green" : "orange"}
+          className="rounded-full px-3 py-1"
+        >
+          {status === "AVAILABLE" ? "Đã duyệt" : "Chờ duyệt"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Thao tác",
+      key: "action",
+      render: (_, record: Vehicle) => (
+        <Button
+          type="primary"
+          size="small"
+          className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+          onClick={() => handleEditVehicle(record.id)}
+        >
+          <EditOutlined /> Chỉnh sửa
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div>
-      <Title level={3}>
-        <CarOutlined /> Đăng ký làm tài xế
-      </Title>
-
-      {/* <Card className="mb-6">
-        <Steps
-          current={getStepStatus()}
-          items={[
-            {
-              title: "Xác thực GPLX",
-              description: "Xác thực giấy phép lái xe",
-            },
-            {
-              title: "Đăng ký xe",
-              description: "Cung cấp thông tin về xe",
-            },
-            {
-              title: "Chờ duyệt",
-              description: "Quản trị viên xem xét",
-            },
-            {
-              title: "Hoàn tất",
-              description: "Bạn đã là tài xế",
-            },
-          ]}
-        />
-
-        {getStepStatus() === 0 && (
-          <Alert
-            message="Bạn cần xác thực giấy phép lái xe trước"
-            description={
-              <div>
-                <p>
-                  Để đăng ký làm tài xế, bạn cần phải có giấy phép lái xe hợp lệ
-                  đã được xác thực.
-                </p>
-                <Button type="primary" href="/profile/driver-licenses">
-                  Đi đến trang xác thực GPLX
-                </Button>
-              </div>
-            }
-            type="info"
-            showIcon
-            className="mt-4"
-          />
-        )}
-      </Card> */}
-
-      <div className="mb-6 flex justify-between items-center">
-        <Title level={4}>Xe của tôi</Title>
-        <Button
-          type="primary"
-          onClick={handleAddVehicle}
-          // disabled={getStepStatus() === 0}
-        >
-          <PlusOutlined /> Đăng ký xe mới
-        </Button>
+      <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <Title level={2} className="mb-2 text-gray-900">
+              Danh sách xe của tôi
+            </Title>
+            <Text className="text-gray-600">
+              Quản lý và theo dõi tình trạng các xe đã đăng ký
+            </Text>
+          </div>
+          <Button
+            type="primary"
+            onClick={handleAddVehicle}
+            className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+          >
+            <PlusOutlined /> Đăng ký xe mới
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
         <Skeleton active paragraph={{ rows: 5 }} />
-      ) : dataSource.length > 0 ? (
-        <div className="shadow-lg rounded-md overflow-x-auto">
-          <Table
-            scroll={{ y: 460, x: 1000 }}
-            pagination={{ pageSize: 5 }}
-            columns={[
-              // Trong phần render của cột bảng
-              {
-                key: "firstImage",
-                title: "Hình ảnh xe",
-                dataIndex: "firstImage",
-                render: (url) => (
-                  <Image
-                    className="h-32 aspect-video rounded-md object-cover"
-                    src={url}
-                    alt="Car thumbnail"
-                  />
-                ),
-              },
-              {
-                key: "thumb",
-                title: "Tên xe",
-                dataIndex: "thumb",
-              },
-              {
-                key: "numberSeat",
-                title: "Số ghế",
-                dataIndex: "numberSeat",
-              },
-              {
-                key: "transmissions",
-                title: "Hộp số",
-                dataIndex: "transmissions",
-              },
-
-              {
-                key: "status",
-                title: "Trạng thái",
-                dataIndex: "status",
-                render: (status) => (
-                  <Tag color={status === "AVAILABLE" ? "green" : "red"}>
-                    {status === "AVAILABLE" ? "Đã duyệt" : "Chờ duyệt"}
-                  </Tag>
-                ),
-              },
-              {
-                key: "action",
-                title: "Thao tác",
-                render: (_, vehicle: { vehicleId: string }) => (
-                  <Button
-                    type="primary"
-                    icon={<EditOutlined />}
-                    onClick={() => handleEditVehicle(vehicle.vehicleId)}
-                  >
-                    Sửa
-                  </Button>
-                ),
-              },
-            ]}
-            dataSource={dataSource}
+      ) : vehicles.length > 0 ? (
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <Table<Vehicle>
+            columns={columns}
+            dataSource={vehicles}
             rowKey="id"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: false,
+              showQuickJumper: false,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} của ${total} xe`,
+            }}
+            className="vehicle-table"
           />
         </div>
       ) : (
@@ -742,12 +676,9 @@ export default function UserRegisterVehicle() {
           description={
             <div>
               <p>Bạn chưa đăng ký xe nào</p>
-              {/* {getStepStatus() > 0 && ( */}
-              {
-                <Button type="primary" onClick={handleAddVehicle}>
-                  Đăng ký xe ngay
-                </Button>
-              }
+              <Button type="primary" onClick={handleAddVehicle}>
+                Đăng ký xe ngay
+              </Button>
             </div>
           }
         />
@@ -763,47 +694,15 @@ export default function UserRegisterVehicle() {
         onCancel={() => setRegisterVehicleModal(false)}
       >
         <RegisterVehicleForm
-          vehicleId={editVehicleId || undefined} // Chuyển null thành undefined
+          vehicleId={editVehicleId || undefined}
           onOk={() => {
             setRegisterVehicleModal(false);
             refetch();
           }}
         />
       </Modal>
-
-      <Divider />
-
-      <div className="bg-blue-50 p-4 rounded-lg my-6">
-        <div className="flex items-center mb-2">
-          <InfoCircleOutlined className="text-blue-500 mr-2 text-xl" />
-          <Title level={5} className="m-0">
-            Quy trình đăng ký làm tài xế
-          </Title>
-        </div>
-        <ol className="list-decimal ml-6 text-gray-700">
-          <li className="mb-2">
-            Xác thực giấy phép lái xe của bạn ở mục{" "}
-            <strong>Giấy phép lái xe</strong>
-          </li>
-          <li className="mb-2">
-            Đăng ký thông tin xe của bạn bằng cách nhấn vào nút{" "}
-            <strong>Đăng ký xe mới</strong>
-          </li>
-          <li className="mb-2">
-            Chờ quản trị viên phê duyệt thông tin xe của bạn
-          </li>
-          <li className="mb-2">
-            Khi được duyệt, trạng thái xe sẽ chuyển thành{" "}
-            <strong>Đã duyệt</strong> và bạn có thể bắt đầu cho thuê xe
-          </li>
-        </ol>
-        <Text type="secondary">
-          Lưu ý: Mọi thông tin cung cấp phải chính xác. Thông tin xe sẽ được
-          quản trị viên xem xét kỹ lưỡng trước khi chấp thuận.
-        </Text>
-      </div>
     </div>
   );
 }
 
-UserRegisterVehicle.Layout = ProfileLayout;
+UserRegisterVehicle.Layout = ProviderLayout;
