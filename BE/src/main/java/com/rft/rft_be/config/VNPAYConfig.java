@@ -1,35 +1,35 @@
-package com.white.apidoc.core.config.payment;
-import com.white.apidoc.util.VNPayUtil;
-import jakarta.servlet.http.HttpServletRequest;
+package com.rft.rft_be.config;
+
+import com.rft.rft_be.util.VNPayUtil;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TimeZone;
+
 @Configuration
 public class VNPAYConfig {
     @Getter
-    @Value("${payment.vnPay.url}")
+    @Value("${vnpay.payUrl}")
     private String vnp_PayUrl;
-    @Value("${payment.vnPay.returnUrl}")
+    @Value("${vnpay.returnUrl}")
     private String vnp_ReturnUrl;
-    @Value("${payment.vnPay.tmnCode}")
-    private String vnp_TmnCode ;
+    @Value("${vnpay.tmnCode}")
+    private String vnp_TmnCode;
+
     @Getter
-    @Value("${payment.vnPay.secretKey}")
+    @Value("${vnpay.hashSecret}")
     private String secretKey;
-    @Value("${payment.vnPay.version}")
+
+    @Value("${vnpay.version}")
     private String vnp_Version;
-    @Value("${payment.vnPay.command}")
+    @Value("${vnpay.command}")
     private String vnp_Command;
-    @Value("${payment.vnPay.orderType}")
+    @Value("${vnpay.orderType}")
     private String orderType;
 
     public Map<String, String> getVNPayConfig() {
