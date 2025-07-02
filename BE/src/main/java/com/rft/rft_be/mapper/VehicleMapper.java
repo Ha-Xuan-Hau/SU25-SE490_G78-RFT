@@ -47,13 +47,17 @@ public interface VehicleMapper {
     @Mapping(source = "brand.name", target = "brandName")
     @Mapping(source = "model.id", target = "modelId")
     @Mapping(source = "model.name", target = "modelName")
+    @Mapping(source = "penalty.id", target = "penaltyId")
+    @Mapping(source = "penalty.penaltyType", target = "penaltyType", qualifiedByName = "enumToString")
+    @Mapping(source = "penalty.penaltyValue", target = "penaltyValue")
+    @Mapping(source = "penalty.minCancelHour", target = "minCancelHour")
+    @Mapping(source = "vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
+    @Mapping(source = "haveDriver", target = "haveDriver", qualifiedByName = "enumToString")
     @Mapping(source = "insuranceStatus", target = "insuranceStatus", qualifiedByName = "enumToString")
     @Mapping(source = "shipToAddress", target = "shipToAddress", qualifiedByName = "enumToString")
     @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
     @Mapping(source = "fuelType", target = "fuelType", qualifiedByName = "enumToString")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
-    @Mapping(source = "vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
-    @Mapping(source = "haveDriver", target = "haveDriver", qualifiedByName = "enumToString")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
 
 

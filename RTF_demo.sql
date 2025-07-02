@@ -52,7 +52,11 @@ CREATE TABLE `penalties` (
   `penalty_type` ENUM('PERCENT', 'FIXED') NOT NULL,
   `penalty_value` decimal(10,2) DEFAULT NULL,
   `min_cancel_hour` int,
-  PRIMARY KEY (`id`)
+  `description` text,
+  `user_id` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `penalties_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `vehicles`

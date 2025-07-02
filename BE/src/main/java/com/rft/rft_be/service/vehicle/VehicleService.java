@@ -8,12 +8,13 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 public interface VehicleService {
-    List<VehicleDTO> getAllVehicles();
-    VehicleDTO getVehicleById(String id);
+    List<VehicleGetDTO> getAllVehicles();
+    VehicleGetDTO getVehicleById(String id);
     //List<CategoryDTO> getAllVehiclesByCategory();
     VehicleDetailDTO getVehicleDetailById(String id);
-
     Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req);
+
+
     List<VehicleGetDTO> getVehiclesByUserId(String userId);
     List<VehicleGetDTO> getVehiclesByStatus(String status);
     List<VehicleGetDTO> getVehiclesByVehicleType(String vehicleType);
@@ -25,6 +26,7 @@ public interface VehicleService {
     void deleteVehicle(String id);
     List<VehicleGetDTO> getVehiclesByHaveDriver(String haveDriver);
     List<VehicleGetDTO> getVehiclesByVehicleTypeAndStatus(String vehicleType, String status);
+    List<VehicleGetDTO> getVehiclesByPenaltyId(String penaltyId);
     double getAverageRating(String vehicleId);
     List<VehicleDTO> getAllAvailableVehicles();
 }

@@ -17,6 +17,10 @@ public class VehicleGetDTO {
     private String brandName;
     private String modelId;
     private String modelName;
+    private String penaltyId;
+    private String penaltyType;
+    private BigDecimal penaltyValue;
+    private Integer minCancelHour;
     private String licensePlate;
     private String vehicleType;
     private String vehicleFeatures;
@@ -37,4 +41,5 @@ public class VehicleGetDTO {
     private Integer likes;
     private Instant createdAt;
     private Instant updatedAt;
+    Double rating;
 }
