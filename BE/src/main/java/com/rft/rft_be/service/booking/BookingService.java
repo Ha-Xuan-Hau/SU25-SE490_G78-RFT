@@ -9,8 +9,12 @@ import java.util.List;
 
 public interface BookingService {
     BookingResponseDTO createBooking(BookingRequestDTO request, String userId);
-    void confirmBooking(String bookingId, String currentUserId);
-    void cancelBooking(String bookingId, String currentUserId); 
+    void confirmBooking(String bookingId, String token);
+    void cancelBooking(String bookingId, String token);
+    void deliverVehicle(String bookingId, String token);
+    void receiveVehicle(String bookingId, String token);
+    void returnVehicle(String bookingId, String token);
+    void completeBooking(String bookingId, String token);
     List<BookingResponseDTO> getAllBookings();
     BookingResponseDTO getBookingById(String bookingId);
     List<BookingDTO> getBookingsByStatus(String status);
