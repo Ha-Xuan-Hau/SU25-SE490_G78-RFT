@@ -470,8 +470,8 @@ public class VehicleServiceImpl implements VehicleService {
         // Thêm điều kiện status AVAILABLE nếu không được chỉ định
         spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), Vehicle.Status.AVAILABLE));
 
-        if (req.getVehicleType() != null && !req.getVehicleType().isEmpty()) {
-            spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleType()));
+        if (req.getVehicleTypes() != null && !req.getVehicleTypes().isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleTypes()));
         }
 
         if (req.getAddresses() != null && !req.getAddresses().isEmpty()) {
