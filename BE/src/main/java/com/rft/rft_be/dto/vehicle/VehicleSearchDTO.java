@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleSearchDTO {
-     List<String> vehicleType;
+     List<String> vehicleTypes;
      List<String> addresses;
      Vehicle.HaveDriver haveDriver;
      Vehicle.ShipToAddress shipToAddress;
