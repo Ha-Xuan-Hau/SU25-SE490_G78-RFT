@@ -143,6 +143,7 @@ public interface VehicleMapper {
     }
 
     // Chuyển đổi từ User Entity sang UserDTO
+    @Named("mapToUserProfileDTO")
     default UserProfileDTO mapToUserProfileDTO(User user) {
         if (user == null) {
             return null;
@@ -158,6 +159,7 @@ public interface VehicleMapper {
     }
 
     // Phương thức này sẽ gọi mapToUserProfileDTO cho User của Vehicle
+    @Named("mapToVehicleForBookingDTO")
     default VehicleForBookingDTO mapToVehicleForBookingDTO(Vehicle vehicle) {
         if (vehicle == null) {
             return null;
@@ -165,7 +167,7 @@ public interface VehicleMapper {
         VehicleForBookingDTO dto = VehicleForBookingDTO.builder()
                 .id(vehicle.getId())
                 .licensePlate(vehicle.getLicensePlate())
-                .vehicleTypes(vehicle.getVehicleType().name())
+                .vehicleTypes(vehicle.getVehicleType() != null ? vehicle.getVehicleType().name() : null)
                 .thumb(vehicle.getThumb())
                 .costPerDay(vehicle.getCostPerDay())
                 .status(vehicle.getStatus().name())
