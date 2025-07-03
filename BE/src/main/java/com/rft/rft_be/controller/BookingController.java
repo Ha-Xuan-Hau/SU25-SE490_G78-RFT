@@ -7,10 +7,10 @@ import com.rft.rft_be.service.booking.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -31,19 +31,47 @@ public class BookingController {
     }
 
     @PostMapping("/{bookingId}/confirm")
-    public ResponseEntity<Void> confirmBooking(@PathVariable String bookingId, @AuthenticationPrincipal Jwt jwt) {
-        String currentUserId = jwt.getClaimAsString("userId");
-        bookingService.confirmBooking(bookingId, currentUserId);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> confirmBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.confirmBooking(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Xác nhận đơn thành công");
+    }
+
+    @PostMapping("/{bookingId}/deliver")
+    public ResponseEntity<?> deliverVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.deliverVehicle(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Giao xe thành công");
+    }
+
+    @PostMapping("/{bookingId}/receive")
+    public ResponseEntity<?> receiveVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.receiveVehicle(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Nhận xe thành công");
+    }
+
+    @PostMapping("/{bookingId}/return")
+    public ResponseEntity<?> returnVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.returnVehicle(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Trả xe thành công");
+    }
+
+    @PostMapping("/{bookingId}/complete")
+    public ResponseEntity<?> completeBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.completeBooking(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Hoàn tất đơn thành công");
     }
 
     @PostMapping("/{bookingId}/cancel")
-    public ResponseEntity<Void> cancelBooking(@PathVariable String bookingId, @AuthenticationPrincipal Jwt jwt) {
-        String currentUserId = jwt.getClaimAsString("userId");
-        bookingService.cancelBooking(bookingId, currentUserId);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> cancelBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.cancelBooking(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Hủy đơn thành công");
     }
 
+    private String extractToken(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        throw new AccessDeniedException("Token không hợp lệ hoặc không tồn tại");
+    }
 
     @GetMapping
     public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
@@ -56,11 +84,13 @@ public class BookingController {
         BookingResponseDTO booking = bookingService.getBookingById(bookingId);
         return ResponseEntity.ok(booking);
     }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<?> getBookingsByStatus(@PathVariable String status) {
-            List<BookingDTO> bookings = bookingService.getBookingsByStatus(status);
-            return ResponseEntity.ok(bookings);
+        List<BookingDTO> bookings = bookingService.getBookingsByStatus(status);
+        return ResponseEntity.ok(bookings);
     }
+
     @GetMapping("/user/{userId}/date-range")
     public ResponseEntity<?> getBookingsByUserIdAndDateRange(
             @PathVariable String userId,
@@ -75,18 +105,17 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getBookingsByUserId(@PathVariable String userId) {
-
-            List<BookingDTO> bookings = bookingService.getBookingsByUserId(userId);
-            return ResponseEntity.ok(bookings);
+        List<BookingDTO> bookings = bookingService.getBookingsByUserId(userId);
+        return ResponseEntity.ok(bookings);
 
     }
+
     @GetMapping("/user/{userId}/status/{status}")
     public ResponseEntity<?> getBookingsByUserIdAndStatus(@PathVariable String userId, @PathVariable String status) {
-
-            List<BookingDTO> bookings = bookingService.getBookingsByUserIdAndStatus(userId, status);
-            return ResponseEntity.ok(bookings);
-
+        List<BookingDTO> bookings = bookingService.getBookingsByUserIdAndStatus(userId, status);
+        return ResponseEntity.ok(bookings);
     }
 }
