@@ -8,20 +8,14 @@ import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
-import com.rft.rft_be.entity.BookedTimeSlot;
-import com.rft.rft_be.entity.Booking;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Vehicle;
+import com.rft.rft_be.entity.*;
 
 import com.rft.rft_be.mapper.BookingMapper;
 
 import com.rft.rft_be.mapper.BookingResponseMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 
-import com.rft.rft_be.repository.BookedTimeSlotRepository;
-import com.rft.rft_be.repository.BookingRepository;
-import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.VehicleRepository;
+import com.rft.rft_be.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -65,6 +59,8 @@ public class BookingServiceImpl implements BookingService {
     VehicleMapper vehicleMapper;
     BookingResponseMapper bookingResponseMapper;
     BookingCleanupTask bookingCleanupTask;
+    WalletRepository walletRepository;
+    WalletTransactionRepository walletTransactionRepository;
 
     @Override
     @Transactional
@@ -385,5 +381,45 @@ public class BookingServiceImpl implements BookingService {
         } catch (ParseException e) {
             throw new RuntimeException("Không thể lấy userId từ token", e);
         }
+    }
+
+    @Override
+    @Transactional
+    public void payBookingWithWallet(String bookingId, String token) {
+        String userId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+
+        if (!booking.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("Chỉ người thuê xe mới được phép thanh toán đơn này.");
+        }
+
+        if (booking.getStatus() != Booking.Status.UNPAID) {
+            throw new IllegalStateException("Chỉ đơn ở trạng thái UNPAID mới được thanh toán.");
+        }
+
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người dùng."));
+
+        BigDecimal totalCost = booking.getTotalCost();
+        if (wallet.getBalance().compareTo(totalCost) < 0) {
+            throw new IllegalStateException("Số dư ví không đủ để thanh toán đơn.");
+        }
+
+        // Trừ tiền
+        wallet.setBalance(wallet.getBalance().subtract(totalCost));
+        walletRepository.save(wallet);
+
+        // Ghi log giao dịch
+        WalletTransaction tx = WalletTransaction.builder()
+                .wallet(wallet)
+                .user(booking.getUser())
+                .amount(totalCost)
+                .status(WalletTransaction.Status.APPROVED)
+                .build();
+        walletTransactionRepository.save(tx);
+
+        // Cập nhật booking
+        booking.setStatus(Booking.Status.PENDING);
+        bookingRepository.save(booking);
     }
 }

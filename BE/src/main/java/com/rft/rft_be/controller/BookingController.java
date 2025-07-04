@@ -73,6 +73,13 @@ public class BookingController {
         throw new AccessDeniedException("Token không hợp lệ hoặc không tồn tại");
     }
 
+    @PostMapping("/{bookingId}/pay-wallet")
+    public ResponseEntity<?> payWithWallet(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        bookingService.payBookingWithWallet(bookingId, token);
+        return ResponseEntity.ok("Thanh toán bằng ví thành công");
+    }
+
     @GetMapping
     public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
         List<BookingResponseDTO> bookings = bookingService.getAllBookings();
