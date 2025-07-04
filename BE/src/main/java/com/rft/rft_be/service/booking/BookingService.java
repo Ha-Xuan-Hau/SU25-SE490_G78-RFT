@@ -21,5 +21,6 @@ public interface BookingService {
     List<BookingDTO> getBookingsByUserIdAndDateRange(String userId, Instant startDate, Instant endDate);
     List<BookingDTO> getBookingsByUserId(String userId);
     List<BookingDTO> getBookingsByUserIdAndStatus(String userId, String status);
+    void payBookingWithWallet(String bookingId, String token);
 
 }
