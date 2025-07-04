@@ -1,26 +1,22 @@
 package com.rft.rft_be.service.booking;
 
 
+import com.nimbusds.jwt.SignedJWT;
 import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.dto.booking.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
-import com.rft.rft_be.entity.BookedTimeSlot;
-import com.rft.rft_be.entity.Booking;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Vehicle;
+import com.rft.rft_be.entity.*;
 
 import com.rft.rft_be.mapper.BookingMapper;
 
 import com.rft.rft_be.mapper.BookingResponseMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 
-import com.rft.rft_be.repository.BookedTimeSlotRepository;
-import com.rft.rft_be.repository.BookingRepository;
-import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.VehicleRepository;
+import com.rft.rft_be.repository.*;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,8 +31,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 
@@ -61,6 +59,8 @@ public class BookingServiceImpl implements BookingService {
     VehicleMapper vehicleMapper;
     BookingResponseMapper bookingResponseMapper;
     BookingCleanupTask bookingCleanupTask;
+    WalletRepository walletRepository;
+    WalletTransactionRepository walletTransactionRepository;
 
     @Override
     @Transactional
@@ -144,57 +144,6 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    @Transactional
-    public void confirmBooking(String bookingId, String currentUserId) {
-        Booking booking = bookingRepository.findByIdWithUserAndVehicle(bookingId) // Đảm bảo query này JOIN FETCH cả user và vehicle.user
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Booking với ID: " + bookingId));
-
-        // Chỉ chủ xe mới đc xác nhận booking
-        // Lấy ID của chủ sở hữu xe
-        String vehicleOwnerId = booking.getVehicle().getUser().getId();
-        if (!currentUserId.equals(vehicleOwnerId)) {
-            throw new AccessDeniedException("Bạn không có quyền xác nhận booking này. Chỉ chủ xe mới được phép.");
-        }
-
-        if (booking.getStatus() != Booking.Status.PENDING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Booking không ở trạng thái PENDING để xác nhận.");
-        }
-
-        booking.setStatus(Booking.Status.CONFIRMED);
-        booking.setUpdatedAt(Instant.now());
-        bookingRepository.save(booking);
-    }
-
-    @Override
-    @Transactional
-    public void cancelBooking(String bookingId, String currentUserId) {
-        Booking booking = bookingRepository.findByIdWithUserAndVehicle(bookingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Booking với ID: " + bookingId));
-
-        // Chỉ người đặt HOẶC chủ xe mới được hủy booking
-        String bookerUserId = booking.getUser().getId();
-        String vehicleOwnerId = booking.getVehicle().getUser().getId();
-
-        if (!currentUserId.equals(bookerUserId) && !currentUserId.equals(vehicleOwnerId)) {
-            throw new AccessDeniedException("Bạn không có quyền hủy booking này. Chỉ người đặt hoặc chủ xe mới được phép.");
-        }
-        if (booking.getStatus() == Booking.Status.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể hủy Booking đã hoàn tất.");
-        }
-
-        booking.setStatus(Booking.Status.CANCELLED);
-        booking.setUpdatedAt(Instant.now());
-        bookingRepository.save(booking);
-
-        // Xóa slot đã đặt khi booking bị hủy
-        bookedTimeSlotRepository.deleteByVehicleIdAndTimeRange(
-                booking.getVehicle().getId(),
-                booking.getTimeBookingStart(),
-                booking.getTimeBookingEnd()
-        );
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getAllBookings() {
         List<Booking> bookings = bookingRepository.findAllWithUserAndVehicle();
@@ -265,6 +214,7 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Failed to get bookings for user: " + e.getMessage());
         }
     }
+
     @Override
     public List<BookingDTO> getBookingsByUserIdAndStatus(String userId, String status) {
         try {
@@ -297,5 +247,179 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
+    @Override
+    @Transactional
+    public void confirmBooking(String bookingId, String token) {
+        String currentUserId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+        if (!booking.getVehicle().getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Chỉ chủ xe mới được xác nhận đơn đặt xe này");
+        }
+        if (booking.getStatus() != Booking.Status.PENDING) {
+            throw new IllegalStateException("Chỉ đơn đặt ở trạng thái PENDING mới được xác nhận.");
+        }
+        booking.setStatus(Booking.Status.CONFIRMED);
+        bookingRepository.save(booking);
+    }
 
+    @Override
+    @Transactional
+    public void deliverVehicle(String bookingId, String token) {
+        String currentUserId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+        if (!booking.getVehicle().getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Chỉ chủ xe mới được phép giao xe.");
+        }
+        if (booking.getStatus() != Booking.Status.CONFIRMED) {
+            throw new IllegalStateException("Chỉ đơn đặt ở trạng thái CONFIRMED mới được giao xe.");
+        }
+        booking.setStatus(Booking.Status.DELIVERED);
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void receiveVehicle(String bookingId, String token) {
+        String currentUserId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+        if (!booking.getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Chỉ người thuê xe mới được xác nhận đã nhận xe.");
+        }
+        if (booking.getStatus() != Booking.Status.DELIVERED) {
+            throw new IllegalStateException("Chỉ đơn đặt ở trạng thái DELIVERED mới được xác nhận đã nhận xe.");
+        }
+        booking.setStatus(Booking.Status.RECEIVED_BY_CUSTOMER);
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void returnVehicle(String bookingId, String token) {
+        String currentUserId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+        if (!booking.getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Chỉ người thuê xe mới được trả xe.");
+        }
+        if (booking.getStatus() != Booking.Status.RECEIVED_BY_CUSTOMER) {
+            throw new IllegalStateException("Chỉ đơn đặt ở trạng thái RECEIVED_BY_CUSTOMER mới được trả xe.");
+        }
+        booking.setStatus(Booking.Status.RETURNED);
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void completeBooking(String bookingId, String token) {
+        String currentUserId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+        if (!booking.getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Chỉ người thuê xe mới được hoàn tất đơn đặt.");
+        }
+        if (booking.getStatus() != Booking.Status.RETURNED) {
+            throw new IllegalStateException("Chỉ đơn đặt ở trạng thái RETURNED mới được hoàn tất.");
+        }
+        booking.setStatus(Booking.Status.COMPLETED);
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void cancelBooking(String bookingId, String token) {
+        String currentUserId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+        boolean isRenter = booking.getUser().getId().equals(currentUserId);
+        boolean isProvider = booking.getVehicle().getUser().getId().equals(currentUserId);
+
+        if (!isRenter && !isProvider) {
+            throw new AccessDeniedException("Chỉ người thuê xe hoặc chủ xe mới có quyền hủy đơn đặt.");
+        }
+
+        if (booking.getStatus() == Booking.Status.DELIVERED ||
+                booking.getStatus() == Booking.Status.RECEIVED_BY_CUSTOMER ||
+                booking.getStatus() == Booking.Status.RETURNED ||
+                booking.getStatus() == Booking.Status.COMPLETED) {
+            throw new IllegalStateException("Không thể hủy đơn đặt khi đã giao, nhận, trả hoặc hoàn tất.");
+        }
+
+        if (isRenter) {
+            Instant now = Instant.now();
+            long hoursUntilStart = ChronoUnit.HOURS.between(now, booking.getTimeBookingStart());
+            Integer minCancelHour = booking.getMinCancelHour();
+
+            if (minCancelHour != null && hoursUntilStart < minCancelHour) {
+                BigDecimal penalty = calculatePenalty(booking);
+                booking.setPenaltyValue(penalty);
+            } else {
+                booking.setPenaltyValue(BigDecimal.ZERO);
+            }
+        }
+
+        booking.setStatus(Booking.Status.CANCELLED);
+        bookingRepository.save(booking);
+    }
+
+    private BigDecimal calculatePenalty(Booking booking) {
+        if (booking.getPenaltyType() == Booking.PenaltyType.FIXED) {
+            return booking.getPenaltyValue() != null ? booking.getPenaltyValue() : BigDecimal.ZERO;
+        } else if (booking.getPenaltyType() == Booking.PenaltyType.PERCENT) {
+            if (booking.getPenaltyValue() == null || booking.getTotalCost() == null) return BigDecimal.ZERO;
+            return booking.getTotalCost()
+                    .multiply(booking.getPenaltyValue())
+                    .divide(BigDecimal.valueOf(100));
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private Booking getBookingOrThrow(String bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new EntityNotFoundException("Booking not found: " + bookingId));
+    }
+
+    private String extractUserIdFromToken(String token) {
+        try {
+            return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
+        } catch (ParseException e) {
+            throw new RuntimeException("Không thể lấy userId từ token", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void payBookingWithWallet(String bookingId, String token) {
+        String userId = extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+
+        if (!booking.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("Chỉ người thuê xe mới được phép thanh toán đơn này.");
+        }
+
+        if (booking.getStatus() != Booking.Status.UNPAID) {
+            throw new IllegalStateException("Chỉ đơn ở trạng thái UNPAID mới được thanh toán.");
+        }
+
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người dùng."));
+
+        BigDecimal totalCost = booking.getTotalCost();
+        if (wallet.getBalance().compareTo(totalCost) < 0) {
+            throw new IllegalStateException("Số dư ví không đủ để thanh toán đơn.");
+        }
+
+        // Trừ tiền
+        wallet.setBalance(wallet.getBalance().subtract(totalCost));
+        walletRepository.save(wallet);
+
+        // Ghi log giao dịch
+        WalletTransaction tx = WalletTransaction.builder()
+                .wallet(wallet)
+                .user(booking.getUser())
+                .amount(totalCost)
+                .status(WalletTransaction.Status.APPROVED)
+                .build();
+        walletTransactionRepository.save(tx);
+
+        // Cập nhật booking
+        booking.setStatus(Booking.Status.PENDING);
+        bookingRepository.save(booking);
+    }
 }
