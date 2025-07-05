@@ -38,7 +38,7 @@ public interface VehicleMapper {
     @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
     @Mapping(source = "vehicleFeatures", target = "vehicleFeatures", qualifiedByName = "stringToFeatureList")
     @Mapping(source = "vehicleImages", target = "vehicleImages", qualifiedByName = "jsonToImageList")
-    @Mapping(source = "user.address", target = "address", qualifiedByName = "extractDistrictAndCity")
+    @Mapping(source = "user.address", target = "address")
     VehicleDetailDTO vehicleToVehicleDetail(Vehicle vehicle);
 
     @Mapping(source = "user.id", target = "userId")
@@ -59,6 +59,7 @@ public interface VehicleMapper {
     @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
     @Mapping(source = "fuelType", target = "fuelType", qualifiedByName = "enumToString")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
+    @Mapping(source = "user.address", target = "address")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
 
 

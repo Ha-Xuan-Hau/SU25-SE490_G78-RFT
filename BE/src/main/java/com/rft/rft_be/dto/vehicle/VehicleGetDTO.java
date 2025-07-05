@@ -43,4 +43,5 @@ public class VehicleGetDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     Double rating;
+    private String address;
 }

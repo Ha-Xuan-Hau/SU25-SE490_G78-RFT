@@ -541,7 +541,7 @@ public class VehicleServiceImpl implements VehicleService {
                     .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : "")
                     .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : "")
                     .numberSeat(vehicle.getNumberSeat())
-                    .totalRating(avgRating != null ? avgRating : 0.0)
+                    .rating(avgRating != null ? avgRating : 0.0)
                     .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : "")
                     .vehicleImages(VehicleMapper.jsonToImageList(vehicle.getVehicleImages()))
                     .transmission(vehicle.getTransmission() != null ? vehicle.getTransmission().name() : null)

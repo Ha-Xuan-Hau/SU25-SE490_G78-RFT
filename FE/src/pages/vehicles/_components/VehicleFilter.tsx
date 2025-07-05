@@ -9,6 +9,7 @@ import {
   Bike,
   MapPin,
   ChevronDown,
+  X,
 } from "lucide-react";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle"; // Import Vehicle
 import {
@@ -17,13 +18,30 @@ import {
   getWardsByDistrictCode,
 } from "@/lib/vietnam-geo-data";
 import { toast } from "react-toastify";
-import { formatCurrency } from "@/lib/format-currency";
-import { Slider } from "@/components/ui/Slider";
+// import { formatCurrency } from "@/lib/format-currency";
+// import { Slider } from "@/components/ui/Slider";
 import { searchVehicles } from "@/apis/vehicle.api";
+import AdvancedSearch from "@/components/AdvancedSearch";
 
-// Import dữ liệu hãng xe
-import carBrandsData from "@/data/car-brands.json";
-import MotorbikeBrandsData from "@/data/motorbike-brand.json";
+// Import types từ AdvancedSearch
+interface FilterValues {
+  priceRange: [number, number];
+  carType: string;
+  transmission: string;
+  fuelType: string;
+  features: string[];
+}
+
+import { DateRangePicker } from "@/components/antd";
+import dayjs, { Dayjs } from "dayjs";
+import { RangePickerProps } from "antd/es/date-picker";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+
+// type RangeValue = [Dayjs | null, Dayjs | null] | null;
 
 interface VehicleFilterProps {
   filters: VehicleFilters;
@@ -40,10 +58,10 @@ interface GeoUnit {
   name: string;
 }
 
-interface BrandOption {
-  value: string;
-  label: string;
-}
+// interface BrandOption {
+//   value: string;
+//   label: string;
+// }
 
 const VehicleFilter: React.FC<VehicleFilterProps> = ({
   filters,
@@ -53,17 +71,109 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
   const [provinces, setProvinces] = useState<GeoUnit[]>([]);
   const [districts, setDistricts] = useState<GeoUnit[]>([]);
   const [wards, setWards] = useState<GeoUnit[]>([]);
-  const [currentBrands, setCurrentBrands] = useState<BrandOption[]>([]);
+
+  // State để quản lý modal tìm kiếm nâng cao
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [activeVehicleType, setActiveVehicleType] = useState<
+    "CAR" | "MOTORBIKE" | "BICYCLE"
+  >("CAR");
+  const [currentAdvancedFilters, setCurrentAdvancedFilters] = useState<
+    Record<string, unknown>
+  >({});
+
+  const [pickupDateTime, setPickupDateTime] = useState<string>("");
+  const [returnDateTime, setReturnDateTime] = useState<string>("");
+
+  // Hàm xử lý khi chọn ngày giờ
+  const handleDateChange: RangePickerProps["onChange"] = (values) => {
+    if (values && values[0] && values[1]) {
+      const [startDate, endDate] = values;
+
+      // Cập nhật pickup và return time
+      setPickupDateTime(startDate.format("YYYY-MM-DDTHH:mm"));
+      setReturnDateTime(endDate.format("YYYY-MM-DDTHH:mm"));
+
+      // Cập nhật filter
+      handleFilterChange(
+        "pickupDateTime",
+        startDate.format("YYYY-MM-DDTHH:mm")
+      );
+      handleFilterChange("returnDateTime", endDate.format("YYYY-MM-DDTHH:mm"));
+    } else {
+      // Reset giá trị khi không chọn ngày
+      setPickupDateTime("");
+      setReturnDateTime("");
+      handleFilterChange("pickupDateTime", undefined);
+      handleFilterChange("returnDateTime", undefined);
+    }
+  };
+
+  // Hàm kiểm tra giờ không được phép chọn
+  const disabledRangeTime: RangePickerProps["disabledTime"] = (
+    current,
+    type
+  ) => {
+    if (!current) return {};
+
+    const currentDate = dayjs();
+    const isToday = current.isSame(currentDate, "day");
+    const currentHour = currentDate.hour();
+
+    // Mặc định giờ không khả dụng (sáng sớm và tối muộn)
+    const defaultDisabledHours = [
+      0, 1, 2, 3, 4, 5, 6, 17, 18, 19, 20, 21, 22, 23,
+    ];
+
+    // Nếu là ngày hôm nay, thêm các giờ đã qua vào danh sách giờ bị disable
+    if (isToday) {
+      // Thời điểm hiện tại + 1 giờ (buffer time để có thời gian chuẩn bị)
+      const disabledPastHours = Array.from(
+        { length: currentHour + 1 },
+        (_, i) => i
+      );
+
+      // Gộp với danh sách giờ mặc định bị disable
+      const todayDisabledHours = [
+        ...new Set([...defaultDisabledHours, ...disabledPastHours]),
+      ];
+
+      if (type === "start") {
+        return {
+          disabledHours: () => todayDisabledHours,
+          disabledMinutes: (selectedHour) => {
+            // Nếu giờ được chọn là giờ hiện tại, disable những phút đã qua
+            if (selectedHour === currentHour + 1) {
+              return Array.from({ length: currentDate.minute() }, (_, i) => i);
+            }
+            return [];
+          },
+        };
+      }
+    }
+
+    return {
+      disabledHours: () => defaultDisabledHours,
+    };
+  };
+
+  // Hàm kiểm tra ngày không được phép chọn (chỉ cho phép từ hôm nay trở đi)
+  const disabledDate = (current: Dayjs | null): boolean => {
+    if (!current) return false;
+
+    const today = dayjs().startOf("day");
+    // Chỉ disable các ngày trong quá khứ
+    return current.isBefore(today);
+  };
 
   // Hàm để cập nhật filters
-  const handleFilterChange = (key: keyof VehicleFilters, value: any) => {
+  const handleFilterChange = (key: keyof VehicleFilters, value: unknown) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   // Hàm xử lý khi nhấn nút "Áp dụng bộ lọc"
   const applyFilters = async () => {
     onApplyFilters([], true, null); // Bắt đầu tải, xóa dữ liệu cũ, đặt isLoading = true
-    const requestBody: any = {};
+    const requestBody: Record<string, unknown> = {};
 
     if (filters.vehicleType) {
       requestBody.vehicleTypes = [filters.vehicleType];
@@ -81,14 +191,6 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       requestBody.shipToAddress = filters.shipToAddress ? "YES" : "NO";
     }
 
-    if (filters.brand) {
-      requestBody.brandId = filters.brand;
-    }
-
-    if (filters.seats) {
-      requestBody.numberSeat = filters.seats;
-    }
-
     if (filters.minPrice !== undefined) {
       requestBody.costFrom = filters.minPrice;
     }
@@ -96,10 +198,18 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       requestBody.costTo = filters.maxPrice;
     }
 
-    if (filters.maxRating === 4) {
+    if (filters.maxRating === 5) {
       requestBody.ratingFiveStarsOnly = true;
     } else {
       requestBody.ratingFiveStarsOnly = false;
+    }
+
+    if (pickupDateTime) {
+      requestBody.timeFrom = pickupDateTime;
+    }
+
+    if (returnDateTime) {
+      requestBody.timeTo = returnDateTime;
     }
 
     requestBody.page = 0;
@@ -108,6 +218,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     console.log("Đang gửi bộ lọc đến backend với body:", requestBody);
 
     try {
+      console.log("Calling searchVehicles with requestBody:", requestBody);
       const result = await searchVehicles({ body: requestBody });
       console.log("Dữ liệu từ backend:", result);
       toast.success(`Tìm kiếm thành công! Tìm thấy ${result.length} xe.`, {
@@ -121,9 +232,10 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         theme: "light",
       });
       onApplyFilters(result, false, null); // Truyền dữ liệu và trạng thái thành công
-    } catch (error: any) {
+    } catch (error) {
       console.error("Lỗi khi gửi bộ lọc:", error);
-      const errorMessage = error.message || "Lỗi không xác định.";
+      const errorMessage =
+        error instanceof Error ? error.message : "Lỗi không xác định.";
       toast.error(`Tìm kiếm thất bại: ${errorMessage}`, {
         position: "top-right",
         autoClose: 5000,
@@ -185,24 +297,106 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     }
   }, [filters.district, districts]);
 
-  useEffect(() => {
-    if (filters.vehicleType === "CAR") {
-      setCurrentBrands(carBrandsData);
-    } else if (filters.vehicleType === "MOTORBIKE") {
-      setCurrentBrands(MotorbikeBrandsData);
-    } else {
-      setCurrentBrands([]);
+  // Hàm để mở modal tìm kiếm nâng cao
+  const openAdvancedSearch = (type: "CAR" | "MOTORBIKE" | "BICYCLE") => {
+    setActiveVehicleType(type);
+    setShowAdvancedSearch(true);
+  };
+
+  // Hàm xử lý khi áp dụng bộ lọc nâng cao
+  const handleAdvancedSearch = async (advancedFilters: FilterValues) => {
+    try {
+      // Bắt đầu tải, xóa dữ liệu cũ, đặt isLoading = true
+      onApplyFilters([], true, null);
+
+      const requestBody: Record<string, unknown> = {
+        ...currentAdvancedFilters,
+        vehicleTypes: [activeVehicleType],
+        page: 0,
+        size: 10,
+      };
+
+      // Xử lý giá
+      if (advancedFilters.priceRange) {
+        const priceRange = advancedFilters.priceRange as [number, number];
+        requestBody.costFrom = priceRange[0];
+        requestBody.costTo = priceRange[1];
+      }
+
+      // Thêm các bộ lọc riêng cho từng loại xe
+      if (activeVehicleType === "CAR") {
+        if (advancedFilters.carType && advancedFilters.carType !== "ALL") {
+          requestBody.carType = advancedFilters.carType;
+        }
+        if (advancedFilters.transmission) {
+          requestBody.transmission = advancedFilters.transmission;
+        }
+        if (advancedFilters.fuelType) {
+          requestBody.fuelType = advancedFilters.fuelType;
+        }
+      } else if (activeVehicleType === "MOTORBIKE") {
+        if (advancedFilters.transmission) {
+          requestBody.motorbikeType = advancedFilters.transmission;
+        }
+        if (advancedFilters.fuelType) {
+          requestBody.fuelType = advancedFilters.fuelType;
+        }
+      }
+
+      // Xử lý tính năng
+      if (
+        advancedFilters.features &&
+        Array.isArray(advancedFilters.features) &&
+        advancedFilters.features.length > 0
+      ) {
+        requestBody.features = advancedFilters.features;
+      }
+
+      // Lưu lại bộ lọc hiện tại
+      setCurrentAdvancedFilters(requestBody);
+
+      console.log("Đang gửi request tìm kiếm nâng cao:", requestBody);
+
+      // Gọi API tìm kiếm
+      const result = await searchVehicles({ body: requestBody });
+      console.log("Kết quả tìm kiếm nâng cao:", result);
+
+      // Cập nhật kết quả
+      onApplyFilters(result, false, null);
+
+      toast.success(
+        `Tìm thấy ${result.length} xe phù hợp với bộ lọc nâng cao`,
+        {
+          position: "top-right",
+          autoClose: 3000,
+        }
+      );
+
+      // Đóng modal
+      setShowAdvancedSearch(false);
+    } catch (error) {
+      console.error("Lỗi khi áp dụng bộ lọc nâng cao:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Không thể tìm kiếm xe";
+
+      // Truyền lỗi về component cha
+      onApplyFilters([], false, errorMessage);
+
+      toast.error(`Tìm kiếm thất bại: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
+      });
     }
-    handleFilterChange("brand", undefined);
-  }, [filters.vehicleType]);
+  };
 
-  const sliderValue = [
-    filters.minPrice !== undefined ? filters.minPrice : 0,
-    filters.maxPrice !== undefined ? filters.maxPrice : 3000000,
-  ];
+  // const sliderValue = [
+  //   filters.minPrice !== undefined ? filters.minPrice : 0,
+  //   filters.maxPrice !== undefined ? filters.maxPrice : 3000000,
+  // ];
 
-  const isPriceFilterAny =
-    filters.minPrice === 0 && filters.maxPrice === 3000000;
+  // const isPriceFilterAny =
+  //   filters.minPrice === 0 && filters.maxPrice === 3000000;
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
@@ -212,7 +406,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         <div className="grid grid-cols-3 gap-3">
           <button
             className={`flex flex-col items-center justify-center p-3 border rounded-lg dark:text-white ${
-              filters.vehicleType === "Car"
+              filters.vehicleType === "CAR"
                 ? "bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-300"
                 : "hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
@@ -261,63 +455,8 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         </div>
       </div>
 
-      {/* Hãng xe - Chỉ hiển thị cho Ô tô và Xe máy (hoặc khi chưa chọn loại xe) */}
-      {(filters.vehicleType === "CAR" ||
-        filters.vehicleType === "MOTORBIKE") && (
-        <div className="mb-6">
-          <h3 className="font-semibold text-lg mb-3 dark:text-white">
-            Hãng xe
-          </h3>
-          <select
-            className="w-full p-2.5 border rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={filters.brand || ""}
-            onChange={(e) =>
-              handleFilterChange("brand", e.target.value || undefined)
-            }
-          >
-            <option value="" disabled hidden>
-              Tất cả các hãng
-            </option>
-            {currentBrands.map((brand) => (
-              <option key={brand.value} value={brand.value}>
-                {brand.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Số chỗ ngồi - Chỉ hiển thị cho Ô tô (hoặc khi chưa chọn loại xe) */}
-      {(filters.vehicleType === undefined || filters.vehicleType === "CAR") && (
-        <div className="mb-6">
-          <h3 className="font-semibold text-lg mb-3 dark:text-white">
-            Số chỗ ngồi
-          </h3>
-          <div className="grid grid-cols-4 gap-2">
-            {[4, 5, 7, 16].map((seat) => (
-              <button
-                key={seat}
-                className={`p-2 border rounded-md text-center ${
-                  filters.seats === seat
-                    ? "bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-300"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white"
-                }`}
-                onClick={() =>
-                  handleFilterChange(
-                    "seats",
-                    filters.seats === seat ? undefined : seat
-                  )
-                }
-              >
-                {seat} chỗ
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Mức giá */}
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <h3 className="font-semibold text-lg mb-3 dark:text-white">Mức giá</h3>
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium dark:text-white">
@@ -348,7 +487,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           }}
           className="w-full"
         />
-      </div>
+      </div> */}
 
       {/* Khu vực chọn địa điểm */}
       <div className="mb-6">
@@ -417,7 +556,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       </div>
 
       {/* Tùy chọn khác: 5 sao, có lái, giao hàng tận nơi */}
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <h3 className="font-semibold text-lg mb-3 dark:text-white">Tùy chọn</h3>
         <div className="space-y-3">
           <div className="flex items-center">
@@ -450,9 +589,9 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             <label htmlFor="homeDelivery" className="dark:text-white">
               Giao xe tận nơi
             </label>
-          </div>
-          {/* Xe có lái - Chỉ hiển thị cho Ô tô và Xe máy (hoặc khi chưa chọn loại xe) */}
-          {(filters.vehicleType === undefined ||
+          </div> */}
+      {/* Xe có lái - Chỉ hiển thị cho Ô tô và Xe máy (hoặc khi chưa chọn loại xe) */}
+      {/* {(filters.vehicleType === undefined ||
             filters.vehicleType === "CAR" ||
             filters.vehicleType === "MOTORBIKE") && (
             <div className="flex items-center">
@@ -471,6 +610,25 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             </div>
           )}
         </div>
+      </div> */}
+      <div className="mb-6">
+        <h3 className="font-semibold text-lg mb-3 dark:text-white">
+          Thời gian thuê
+        </h3>
+        <div className="mt-4 w-full">
+          <DateRangePicker
+            showTime={{
+              format: "HH:mm",
+              minuteStep: 10,
+            }}
+            format="DD-MM-YYYY HH:mm"
+            disabledTime={disabledRangeTime}
+            disabledDate={disabledDate}
+            className="w-full"
+            onChange={handleDateChange}
+            placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+          />
+        </div>
       </div>
 
       {/* Nút áp dụng */}
@@ -487,8 +645,6 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         onClick={() =>
           setFilters({
             vehicleType: undefined,
-            brand: undefined,
-            seats: undefined,
             maxRating: undefined,
             shipToAddress: false,
             hasDriver: false,
@@ -502,6 +658,129 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       >
         Xóa tùy chọn
       </button>
+
+      {/* Nút tìm kiếm nâng cao */}
+      <button
+        onClick={() =>
+          openAdvancedSearch(
+            filters.vehicleType === "CAR"
+              ? "CAR"
+              : filters.vehicleType === "MOTORBIKE"
+              ? "MOTORBIKE"
+              : filters.vehicleType === "BICYCLE"
+              ? "BICYCLE"
+              : "CAR"
+          )
+        }
+        className="w-full mt-4 border-2 border-blue-500 text-blue-600 py-3 rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center font-medium group"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+          />
+        </svg>
+        Tìm kiếm nâng cao
+      </button>
+
+      {/* Modal tìm kiếm nâng cao */}
+      {showAdvancedSearch && (
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]"
+          onClick={() => setShowAdvancedSearch(false)}
+        >
+          {/* Modal container - giữ nguyên bo viền */}
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-3xl w-full m-4 flex flex-col z-[101] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header cố định */}
+            <div className="p-5 border-b flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Tìm kiếm nâng cao</h2>
+              <button
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                onClick={() => setShowAdvancedSearch(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Phần nội dung có thể cuộn */}
+            <div className="overflow-y-auto max-h-[70vh]">
+              <div className="p-5">
+                <div className="flex flex-col space-y-2 mb-5">
+                  <div className="flex space-x-2">
+                    <button
+                      className={`flex-1 py-3 px-2 rounded-lg flex items-center justify-center ${
+                        activeVehicleType === "CAR"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-50 text-gray-700"
+                      }`}
+                      onClick={() => setActiveVehicleType("CAR")}
+                    >
+                      <Car className="mr-2" size={18} />Ô tô
+                    </button>
+                    <button
+                      className={`flex-1 py-3 px-2 rounded-lg flex items-center justify-center ${
+                        activeVehicleType === "MOTORBIKE"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-50 text-gray-700"
+                      }`}
+                      onClick={() => setActiveVehicleType("MOTORBIKE")}
+                    >
+                      <Motorbike className="mr-2" size={18} />
+                      Xe máy
+                    </button>
+                    <button
+                      className={`flex-1 py-3 px-2 rounded-lg flex items-center justify-center ${
+                        activeVehicleType === "BICYCLE"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-50 text-gray-700"
+                      }`}
+                      onClick={() => setActiveVehicleType("BICYCLE")}
+                    >
+                      <Bike className="mr-2" size={18} />
+                      Xe đạp
+                    </button>
+                  </div>
+                </div>
+                <AdvancedSearch
+                  vehicleType={activeVehicleType}
+                  onChange={handleAdvancedSearch}
+                />
+              </div>
+            </div>
+
+            {/* Footer cố định */}
+            <div className="p-5 border-t flex justify-end space-x-3">
+              <button
+                className="px-5 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                onClick={() => setShowAdvancedSearch(false)}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                onClick={() =>
+                  document
+                    .querySelector('form[data-testid="advanced-search-form"]')
+                    ?.dispatchEvent(new Event("submit", { bubbles: true }))
+                }
+              >
+                Áp dụng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

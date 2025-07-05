@@ -1,22 +1,32 @@
 import { apiClient } from './client';
 
 export async function getVehicles() {
-    const data = await apiClient.request({
-        method: 'GET',
-        // url: '/api/vehicles?limit=0',
-        url: '/vehicles',
-    });
+    try {
+        const response = await apiClient.request({
+            method: 'GET',
+            url: '/vehicles',
+        });
 
-    return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+        const data = response.data;
+        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+    } catch (error) {
+        console.error("Error fetching vehicles:", error);
+        throw error;
+    }
 }
 
 export async function getVehicleById(vehicleId) {
-    const { data } = await apiClient.request({
-        method: "GET",
-        url: `/vehicles/detail/${vehicleId}`,
-    });
+    try {
+        const { data } = await apiClient.request({
+            method: "GET",
+            url: `/vehicles/detail/${vehicleId}`,
+        });
 
-    return data;
+        return data;
+    } catch (error) {
+        console.error("Error fetching vehicle details:", error);
+        throw error;
+    }
 }
 
 export async function createVehicle({ body, accessToken }) {
@@ -35,18 +45,25 @@ export async function createVehicle({ body, accessToken }) {
 
 export async function searchVehicles({ body }) {
     try {
+        console.log("Sending search request to: vehicles/search");
+
+        // Explicitly set the URL with a forward slash at the beginning
         const { data } = await apiClient.request({
             method: "POST",
-            url: `vehicles/search`,
+            url: `/vehicles/search`,
             headers: {
                 "Content-Type": "application/json",
+                // Explicitly clear authorization to ensure public access
+                "Authorization": undefined
             },
             data: body,
-        })
+        });
+
+        console.log("Search response received:", data);
         return Array.isArray(data) ? data : data.content || data.items || data.data || [];
     } catch (error) {
-        console.error("Lỗi khi tìm kiếm xe:", error)
-        throw error
+        console.error("Lỗi khi tìm kiếm xe:", error);
+        throw error;
     }
 }
 
@@ -89,4 +106,6 @@ export const updateCarStatus = async ({ accessToken, vehicleId, status }) => {
             status,
         },
     });
+
+    return data;
 };
