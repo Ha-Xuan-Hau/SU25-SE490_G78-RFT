@@ -9,8 +9,6 @@ import { getVehicles } from "@/apis/vehicle.api";
 const ListVehiclePage = () => {
   const [filters, setFilters] = useState<VehicleFilters>({
     vehicleType: undefined,
-    brand: undefined,
-    seats: undefined,
     maxRating: undefined,
     shipToAddress: false,
     hasDriver: false,

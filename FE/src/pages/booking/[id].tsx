@@ -1,10 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 
 import {
   CheckCircleOutlined,
-  CloseCircleOutlined,
   SolutionOutlined,
   PayCircleOutlined,
   SmileOutlined,
@@ -14,12 +14,12 @@ import {
   Button,
   Form,
   Input,
-  Typography,
   Steps,
   Radio,
   Space,
   DatePicker,
   message,
+  Spin,
 } from "antd";
 import Image from "next/image";
 import dayjs, { Dayjs } from "dayjs";
@@ -29,46 +29,81 @@ import { RangePickerProps } from "antd/es/date-picker";
 import Coupon from "@/components/Coupon";
 import { coupon as CouponType } from "@/types/coupon";
 
-const { Title } = Typography;
+// Import API services
+import { getVehicleById } from "@/apis/vehicle.api";
+import { Vehicle } from "@/types/vehicle";
+import { User } from "@/types/user";
+
+import { useUserValue } from "@/recoils/user.state";
+
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
-// Interfaces
-interface CarData {
-  _id: string;
-  model: {
-    name: string;
-  };
-  yearManufacture: string;
-  transmissions: string;
-  numberSeat: number;
-  cost: number;
-  thumb: string;
-}
-
-// Mẫu dữ liệu xe
-const sampleCarData: CarData = {
-  _id: "car123",
-  model: {
-    name: "Toyota Camry",
-  },
-  yearManufacture: "2022",
-  transmissions: "Tự động",
-  numberSeat: 5,
-  cost: 800000,
-  thumb: "/images/demo1.png",
-};
-
 // Component chính
 const BookingPage: React.FC = () => {
-  // State đơn giản cho UI
+  const router = useRouter();
+  const { id } = router.query;
+
+  // State
   const [current, setCurrent] = useState<number>(0);
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [costGetCar, setCostGetCar] = useState<number>(0);
   const [totalDays, setTotalDays] = useState<number>(3);
-  const [validationMessage, setValidationMessage] = useState<string>("");
+  const [validationMessage] = useState<string>("");
   const [form] = Form.useForm();
   const [amountDiscount, setAmountDiscount] = useState<number>(0);
   const [selectedCoupon, setSelectedCoupon] = useState<CouponType | null>(null);
+  const user = useUserValue() as User;
+
+  // Fetch vehicle data and handle query params
+  useEffect(() => {
+    const fetchVehicle = async () => {
+      if (!id) return;
+
+      try {
+        setLoading(true);
+        const vehicleData = await getVehicleById(id);
+        setVehicle(vehicleData);
+
+        // Check for time parameters in URL
+        const { pickupTime, returnTime } = router.query;
+        console.log("URL query params:", { pickupTime, returnTime });
+
+        if (pickupTime && returnTime) {
+          // Set pickup and return times from URL parameters
+          const startDate = dayjs(pickupTime as string);
+          const endDate = dayjs(returnTime as string);
+
+          // Calculate the rental duration
+          if (startDate.isValid() && endDate.isValid()) {
+            const days = Math.ceil(endDate.diff(startDate, "hours") / 24);
+            setTotalDays(days || 1);
+
+            // Set default date range picker values
+            const defaultStart = startDate;
+            const defaultEnd = endDate;
+
+            // Override the default date range picker values
+            // (we'll use these in the component render)
+            console.log("Setting date range from URL params:", {
+              start: defaultStart.format("YYYY-MM-DD HH:mm"),
+              end: defaultEnd.format("YYYY-MM-DD HH:mm"),
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching vehicle details:", error);
+        message.error("Không thể tải thông tin xe");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchVehicle();
+    }
+  }, [id, router.query]);
 
   // Hàm UI đơn giản
   const handleCheckout = (): void => {
@@ -79,8 +114,39 @@ const BookingPage: React.FC = () => {
     setCurrent(0);
   };
 
-  const onChange = (e: any): void => {
-    setCostGetCar(parseInt(e.target.value));
+  // Xử lý thanh toán an toàn
+  const handlePayment = async () => {
+    try {
+      // Lấy dữ liệu từ form
+      const formValues = await form.validateFields();
+
+      // Chuẩn bị dữ liệu thanh toán an toàn
+      // Chỉ gửi thông tin ID và thời gian, KHÔNG gửi giá tiền từ client
+      const paymentData = {
+        vehicleId: id, // ID của xe
+        startDate: formValues.date[0].format("YYYY-MM-DD HH:mm"),
+        endDate: formValues.date[1].format("YYYY-MM-DD HH:mm"),
+        fullname: formValues.fullname,
+        phone: formValues.phone,
+        address: formValues.address,
+        pickupMethod: costGetCar === 0 ? "office" : "delivery",
+        couponId: selectedCoupon ? selectedCoupon.id : null, // Lấy coupon ID từ state
+      };
+
+      console.log("Dữ liệu thanh toán an toàn:", paymentData);
+
+      // Trong thực tế, bạn sẽ gửi dữ liệu này đến backend
+      // const response = await apiClient.post('/bookings/create', paymentData);
+      // if (response.status === 200) {
+      //   setCurrent(2); // Chuyển đến màn hình thành công
+      // }
+
+      // Tạm thời giả lập thành công cho demo
+      setCurrent(2);
+    } catch (error) {
+      console.error("Lỗi khi thanh toán:", error);
+      message.error("Vui lòng kiểm tra lại thông tin thanh toán");
+    }
   };
 
   const selectTimeSlots: RangePickerProps["onChange"] = (value) => {
@@ -88,6 +154,7 @@ const BookingPage: React.FC = () => {
       const startDate = value[0] as Dayjs;
       const endDate = value[1] as Dayjs;
       const days = Math.ceil(endDate.diff(startDate, "hours") / 24);
+      console.log("Date range changed, calculating days:", days);
       setTotalDays(days || 1);
     }
   };
@@ -96,22 +163,92 @@ const BookingPage: React.FC = () => {
   const handleApplyCoupon = (coupon: CouponType | null): void => {
     if (coupon) {
       setAmountDiscount(coupon.discount);
+      setSelectedCoupon(coupon);
+      // Cập nhật form với coupon ID
+      form.setFieldsValue({
+        couponId: coupon.id,
+      });
       message.success(`Đã áp dụng mã giảm giá "${coupon.name}" thành công!`);
     } else {
       setAmountDiscount(0);
+      setSelectedCoupon(null);
+      // Xóa coupon ID khỏi form
+      form.setFieldsValue({
+        couponId: undefined,
+      });
     }
-    setSelectedCoupon(coupon);
   };
 
-  // Mock dữ liệu
-  const data: CarData = sampleCarData;
+  // Calculate total amount based on vehicle data
+  const costPerDay = vehicle?.costPerDay || 0;
   const totalAmount: number =
-    totalDays * data.cost - (totalDays * data.cost * amountDiscount) / 100;
-  // Đã loại bỏ costGetCar từ phép tính
+    totalDays * costPerDay - (totalDays * costPerDay * amountDiscount) / 100;
 
-  // Chuẩn bị giá trị mặc định
-  const defaultStartDate: Dayjs = dayjs().add(1, "day");
-  const defaultEndDate: Dayjs = dayjs().add(4, "day");
+  // SECURITY NOTE: Giá tiền được tính ở client chỉ để hiển thị
+  // Việc tính toán giá cuối cùng PHẢI được thực hiện lại ở server
+  // để ngăn người dùng thay đổi giá qua DevTools
+  // Backend cần:
+  // 1. Lấy giá xe từ database theo vehicleId
+  // 2. Xác thực mã giảm giá và tính lại phần trăm giảm
+  // 3. Tính toán lại số ngày thuê từ startDate và endDate
+  // 4. Tính lại tổng tiền dựa trên dữ liệu đã xác thực
+
+  // Update form when totalAmount changes
+  useEffect(() => {
+    if (form && totalAmount > 0) {
+      form.setFieldsValue({
+        amount: totalAmount.toLocaleString("it-IT", {
+          style: "currency",
+          currency: "VND",
+        }),
+      });
+    }
+  }, [form, totalAmount]);
+
+  // Log user state and update form fields for user data
+  useEffect(() => {
+    console.log("Current user state:", user);
+
+    // If user exists, update form fields
+    if (user && form) {
+      // Set fullname (read-only) and phone (editable)
+      form.setFieldsValue({
+        fullname: user.fullName || "",
+        // Still pre-fill phone but allow editing
+        phone: user.phone || "",
+      });
+    }
+  }, [user, form]);
+
+  // Chuẩn bị giá trị mặc định, using URL params if available
+  const { pickupTime, returnTime } = router.query;
+  const defaultStartDate: Dayjs = pickupTime
+    ? dayjs(pickupTime as string)
+    : dayjs().add(1, "day");
+  const defaultEndDate: Dayjs = returnTime
+    ? dayjs(returnTime as string)
+    : dayjs().add(4, "day");
+
+  // If loading, show loading state
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spin size="large" tip="Đang tải thông tin xe..." />
+      </div>
+    );
+  }
+
+  // If no vehicle data after loading, show error
+  if (!vehicle) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen">
+        <p className="text-xl mb-4 text-red-500">Không thể tải thông tin xe</p>
+        <Link href="/vehicles">
+          <Button type="primary">Quay lại trang tìm kiếm xe</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <section className="!pt-20 pb-20 relative">
@@ -148,23 +285,36 @@ const BookingPage: React.FC = () => {
               <div className="mt-8 space-y-3 rounded-lg shadow-md border bg-white px-2 py-4 sm:px-6">
                 <div className="flex flex-col rounded-lg bg-white sm:flex-row relative">
                   <div className="relative rounded-lg w-1/2 h-48">
+                    {/* Use next/image with proper fallbacks */}
                     <Image
                       alt="car"
-                      src={data.thumb}
+                      src={
+                        vehicle.vehicleImages &&
+                        vehicle.vehicleImages.length > 0
+                          ? vehicle.vehicleImages[0].imageUrl
+                          : "/images/demo1.png"
+                      }
                       layout="fill"
                       className="rounded-lg object-cover"
+                      onError={() => {
+                        console.log(
+                          "Image failed to load, falling back to placeholder"
+                        );
+                      }}
+                      unoptimized={true} // This bypasses the Next.js image optimization
                     />
                   </div>
 
                   <div className="flex w-full flex-col px-4 py-4">
                     <span className="font-semibold text-lg">
-                      {data.model.name} {data.yearManufacture}
+                      {vehicle.thumb} - {vehicle.modelName} (
+                      {vehicle.yearManufacture})
                     </span>
                     <span className="float-right text-gray-400">
-                      {data.transmissions} - {data.numberSeat} chỗ
+                      {vehicle.transmission} - {vehicle.numberSeat} chỗ
                     </span>
                     <p className="text-lg font-bold">
-                      {data.cost.toLocaleString("it-IT", {
+                      {vehicle.costPerDay.toLocaleString("it-IT", {
                         style: "currency",
                         currency: "VND",
                       })}
@@ -176,30 +326,35 @@ const BookingPage: React.FC = () => {
 
               <p className="mt-8 text-lg font-medium">Phương thức nhận xe</p>
               <form className="mt-5 mb-5 grid gap-6">
-                <Radio.Group onChange={onChange} value={costGetCar}>
+                <Radio.Group
+                  onChange={(e) => setCostGetCar(e.target.value)}
+                  value={costGetCar}
+                >
                   <Space direction="vertical">
                     <Radio value={0}>
                       <div>
                         <div className="font-medium">Nhận tại văn phòng</div>
                         <div className="text-gray-500 text-sm">
-                          Thạch Hòa, Thạch Thất, Hà Nội
+                          {vehicle.address || "Thạch Hòa, Thạch Thất, Hà Nội"}
                         </div>
                         <div className="text-green-500 text-sm font-medium">
                           Miễn phí
                         </div>
                       </div>
                     </Radio>
-                    <Radio value={1}>
-                      <div>
-                        <div className="font-medium">Giao tận nơi</div>
-                        <div className="text-gray-500 text-sm">
-                          Giao xe đến địa chỉ của bạn
+                    {vehicle.shipToAddress && (
+                      <Radio value={1}>
+                        <div>
+                          <div className="font-medium">Giao tận nơi</div>
+                          <div className="text-gray-500 text-sm">
+                            Giao xe đến địa chỉ của bạn
+                          </div>
+                          <div className="text-green-500 text-sm font-medium">
+                            Miễn phí
+                          </div>
                         </div>
-                        <div className="text-green-500 text-sm font-medium">
-                          Miễn phí
-                        </div>
-                      </div>
-                    </Radio>
+                      </Radio>
+                    )}
                   </Space>
                 </Radio.Group>
               </form>
@@ -213,7 +368,7 @@ const BookingPage: React.FC = () => {
                   format="DD-MM-YYYY HH:mm"
                   onChange={selectTimeSlots}
                   size="large"
-                  defaultValue={[defaultStartDate, defaultEndDate]}
+                  value={[defaultStartDate, defaultEndDate]}
                 />
                 {validationMessage && (
                   <p className="text-red-500">{validationMessage}</p>
@@ -222,7 +377,7 @@ const BookingPage: React.FC = () => {
               <p className="text-gray-400">Tổng Số ngày thuê: {totalDays} </p>
               <p className="text-gray-400">
                 Giá 1 ngày thuê:{" "}
-                {data.cost.toLocaleString("it-IT", {
+                {vehicle.costPerDay.toLocaleString("it-IT", {
                   style: "currency",
                   currency: "VND",
                 })}
@@ -274,11 +429,12 @@ const BookingPage: React.FC = () => {
               bankCode: "",
               language: "vn",
               amount: totalAmount,
-              fullname: "Nguyễn Văn A",
-              phone: "0987654321",
+              fullname: user ? user.fullName || "" : "",
+              phone: user ? user.phone || "" : "",
+              date: [defaultStartDate, defaultEndDate],
               address:
                 costGetCar === 0
-                  ? "Thạch Hòa, Thạch Thất, Hà Nội"
+                  ? vehicle.address || "Thạch Hòa, Thạch Thất, Hà Nội"
                   : "Địa chỉ nhận xe của bạn",
             }}
             size="large"
@@ -296,7 +452,7 @@ const BookingPage: React.FC = () => {
                     },
                   ]}
                 >
-                  <Input />
+                  <Input readOnly />
                 </Form.Item>
                 <Form.Item
                   name="phone"
@@ -305,6 +461,10 @@ const BookingPage: React.FC = () => {
                     {
                       required: true,
                       message: "Số điện thoại không được để trống",
+                    },
+                    {
+                      pattern: /^(0|\+84)[3|5|7|8|9][0-9]{8}$/,
+                      message: "Vui lòng nhập số điện thoại hợp lệ",
                     },
                   ]}
                 >
@@ -326,7 +486,6 @@ const BookingPage: React.FC = () => {
                   <RangePicker
                     showTime={{ format: "HH mm" }}
                     format="DD-MM-YYYY HH:mm"
-                    defaultValue={[defaultStartDate, defaultEndDate]}
                     disabled
                     style={{ color: "white" }}
                   />
@@ -342,14 +501,11 @@ const BookingPage: React.FC = () => {
                       <Radio value="" checked={true}>
                         Cổng thanh toán VNPAYQR
                       </Radio>
-                      <Radio name="bankCode" value="VNPAYQR">
-                        Thanh toán qua ứng dụng hỗ trợ VNPAYQR
-                      </Radio>
                       <Radio name="bankATM" value="BankATM">
                         Thanh toán qua ATM - Tài khoản ngân hàng nội địa
                       </Radio>
-                      <Radio name="bankVisa" value="BankVisa">
-                        Thanh toán qua thẻ quốc tế
+                      <Radio name="wallet" value="wallet">
+                        Thanh toán qua ví điện tử
                       </Radio>
                     </Space>
                   </Radio.Group>
@@ -369,7 +525,7 @@ const BookingPage: React.FC = () => {
                     <Button
                       type="primary"
                       htmlType="submit"
-                      onClick={() => setCurrent(2)}
+                      onClick={handlePayment}
                     >
                       Thanh Toán
                     </Button>

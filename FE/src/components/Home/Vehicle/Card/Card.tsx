@@ -12,7 +12,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
     transmission,
     fuelType,
     vehicleImages,
-    totalRating,
+    rating,
     address,
   } = item;
 
@@ -28,7 +28,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
                 src={mainImage}
                 alt={`${thumb}`}
                 width={440}
-                height={300}
+                height={250}
                 className="w-full rounded-t-xl"
                 unoptimized={true}
               />
@@ -86,9 +86,9 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
             {/* Rating - Left Side */}
             <div className="flex items-center">
               <div className="flex items-center">
-                {totalRating > 0 ? (
+                {rating > 0 ? (
                   <p className="font-medium text-black dark:text-white flex items-center">
-                    {totalRating}
+                    {rating}
                     <Icon
                       icon={"material-symbols:star-rate-rounded"}
                       width={20}

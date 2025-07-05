@@ -19,7 +19,6 @@ import Image from "next/image";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { AuthPopup } from "@/components/AuthPopup";
 
 // Types and Utils
@@ -179,12 +178,29 @@ export default function VehicleDetail() {
       // Kiểm tra xem người dùng có giấy phép lái xe chưa
       if (user.result?.driverLicenses === undefined) {
         setIsModalCheckOpen(true);
-      } else {
+      } else if (vehicle?.id) {
         // Nếu có đủ điều kiện thì redirect đến trang booking
-        router.push(`/booking/${vehicle?.id}`);
+        console.log(
+          "Navigating from useEffect to booking page with vehicle ID:",
+          vehicle.id
+        );
+        router.push({
+          pathname: `/booking/${vehicle.id}`,
+          query: {
+            pickupTime: pickupDateTime,
+            returnTime: returnDateTime,
+          },
+        });
       }
     }
-  }, [user, isAuthPopupOpen]);
+  }, [
+    user,
+    isAuthPopupOpen,
+    router,
+    vehicle?.id,
+    pickupDateTime,
+    returnDateTime,
+  ]);
 
   // Format dates for DateRangePicker
   // Format dates for DateRangePicker
@@ -314,6 +330,9 @@ export default function VehicleDetail() {
 
   // Booking handlers
   const handleRent = () => {
+    // Add debug information
+    console.log("handleRent called");
+
     if (!pickupDateTime || !returnDateTime) {
       message.error("Vui lòng chọn thời gian thuê xe!");
       return;
@@ -349,7 +368,20 @@ export default function VehicleDetail() {
       if (validationMessage === "Khoảng ngày đã được thuê.") {
         message.error("Khoảng ngày đã được thuê. Vui lòng chọn ngày khác!");
       } else {
-        router.push(`/booking/${vehicle?.id}`);
+        // Prevent page reload by using e.preventDefault() if available
+        // Use router.push with the complete object to ensure proper navigation
+        console.log("Navigating to booking page with ID:", vehicle?.id);
+
+        // Using Next.js router with pathname as string to avoid potential encoding issues
+        const bookingUrl = `/booking/${
+          vehicle?.id
+        }?pickupTime=${encodeURIComponent(
+          pickupDateTime || ""
+        )}&returnTime=${encodeURIComponent(returnDateTime || "")}`;
+        console.log("Booking URL:", bookingUrl);
+
+        // Use window.location for a hard navigation if router isn't working
+        window.location.href = bookingUrl;
       }
     }
   };
@@ -921,12 +953,18 @@ export default function VehicleDetail() {
 
               {/* Book button */}
               <div className="space-y-3 mt-6">
-                <Button
+                {/* Using a simple button since handleRent has the navigation logic */}
+                <button
                   className="w-full bg-teal-500 hover:bg-teal-600 text-white text-lg py-3 rounded-lg font-semibold"
-                  onClick={handleRent}
+                  onClick={(e) => {
+                    e.preventDefault(); // Prevent default form submission behavior
+                    console.log("Book button clicked");
+                    handleRent();
+                  }}
+                  type="button" // Explicitly set type to button to prevent form submission
                 >
                   Đặt xe
-                </Button>
+                </button>
               </div>
             </div>
           </div>

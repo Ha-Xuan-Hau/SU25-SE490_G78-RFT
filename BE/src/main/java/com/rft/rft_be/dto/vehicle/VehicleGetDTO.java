@@ -43,4 +43,5 @@ public class VehicleGetDTO {
     private Instant createdAt;
     private Instant updatedAt;
     Double rating;
+    private String address;
 }

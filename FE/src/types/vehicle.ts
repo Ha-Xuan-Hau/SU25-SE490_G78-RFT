@@ -14,9 +14,10 @@ export interface Vehicle {
   brandName: string;
   modelName: string;
   vehicleImages: VehicleImage[];
-  totalRating: number;
+  rating: number;
   address: string;
   comments?: Comment[];
+  shipToAddress?: boolean; // Add this field to support the delivery option
 }
 
 export interface VehicleFeature {
@@ -34,16 +35,20 @@ export interface Brand {
 
 export interface VehicleFilters {
   vehicleType?: string;
-  brand?: string;
-  seats?: number;
+  model?: string;
   maxRating?: number;
   shipToAddress?: boolean;
   minPrice?: number;
   maxPrice?: number;
+  transmission?: string;
+  fuelType?: string;
   hasDriver?: boolean;
   city?: string;
   district?: string;
   ward?: string;
+  pickupDateTime?: string;
+  returnDateTime?: string;
+  feature?: string[];
 }
 
 export interface Comment {

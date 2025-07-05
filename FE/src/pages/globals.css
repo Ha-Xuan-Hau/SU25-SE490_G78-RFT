@@ -6,9 +6,10 @@
 
 @theme {
   /* Gradient colors */
-  --color-primary: #1976D2;
-  --color-secondary: #388E3C;
-  --color-accent: #FFA000;
+  --color-primary: #4682A9;
+  --color-secondary: #749BC2;
+  --color-accent: #91C8E4;
+  --color-fourth: #FFFBDE;
 
   --color-skyblue: #79adff;
   --color-lightskyblue: #9cc2dd;
