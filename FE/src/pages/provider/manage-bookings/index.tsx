@@ -71,7 +71,7 @@ const mockBookings: BookingData[] = [
   {
     id: 1,
     _id: "booking1",
-    thumb: "/placeholder.svg?height=120&width=200",
+    thumb: "Xe 1",
     numberCar: "30A-12345",
     model: "Toyota Camry",
     numberSeat: 5,
@@ -89,7 +89,7 @@ const mockBookings: BookingData[] = [
   {
     id: 2,
     _id: "booking2",
-    thumb: "/placeholder.svg?height=120&width=200",
+    thumb: "Xe 2",
     numberCar: "30A-54321",
     model: "Honda Civic",
     numberSeat: 4,
@@ -107,7 +107,7 @@ const mockBookings: BookingData[] = [
   {
     id: 3,
     _id: "booking3",
-    thumb: "/placeholder.svg?height=120&width=200",
+    thumb: "Xe 3",
     numberCar: "30A-98765",
     model: "Ford Ranger",
     numberSeat: 7,
@@ -486,56 +486,72 @@ export default function ProviderManageBookings() {
       key: "action",
       fixed: "right",
       width: 120,
-      render: (_, booking) => (
-        <Space direction="vertical" size="small">
-          <Space size="small">
-            {booking.status === "Đã có hợp đồng" ||
-            booking.status === "Đã hủy" ? (
-              <Button
-                type="primary"
-                size="small"
-                disabled
-                icon={<PlusCircleOutlined />}
-              >
-                Tạo HĐ
-              </Button>
-            ) : (
-              <Tooltip title="Tạo hợp đồng">
+      render: (_, booking) => {
+        if (booking.status === "Đã hủy") {
+          return (
+            <div className="text-gray-400 text-sm italic">
+              Không thể thao tác với đơn đã hủy
+            </div>
+          );
+        }
+
+        // Nếu đơn chưa hủy, hiển thị các thao tác phù hợp
+        return (
+          <Space direction="vertical" size="small">
+            <Space size="small">
+              {booking.status === "Đã có hợp đồng" ? (
                 <Button
                   type="primary"
                   size="small"
-                  onClick={() => showModal(booking)}
+                  disabled
                   icon={<PlusCircleOutlined />}
                 >
                   Tạo HĐ
                 </Button>
-              </Tooltip>
-            )}
-            <Tooltip title="Tải file hợp đồng">
-              <Button
-                size="small"
-                onClick={() => generateDocument(booking)}
-                icon={<DownloadOutlined />}
-              />
-            </Tooltip>
-          </Space>
-          <Popconfirm
-            title="Vô hiệu hóa thuê xe?"
-            okText="Vô hiệu hóa"
-            cancelText="Hủy bỏ"
-            onConfirm={() => cancelBooking(booking._id)}
-          >
-            <Button
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              className="w-full"
+              ) : (
+                <Tooltip title="Tạo hợp đồng">
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => showModal(booking)}
+                    icon={<PlusCircleOutlined />}
+                  >
+                    Tạo HĐ
+                  </Button>
+                </Tooltip>
+              )}
+
+              {/* Tải file hợp đồng chỉ khả dụng cho đơn có hợp đồng */}
+              {booking.status === "Đã có hợp đồng" && (
+                <Tooltip title="Tải file hợp đồng">
+                  <Button
+                    size="small"
+                    onClick={() => generateDocument(booking)}
+                    icon={<DownloadOutlined />}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+
+            {/* Nút hủy thuê chỉ hiển thị cho đơn chưa hủy */}
+            <Popconfirm
+              title="Hủy đơn thuê?"
+              okText="Hủy đơn"
+              cancelText="Hủy bỏ"
+              onConfirm={() => cancelBooking(booking._id)}
             >
-              Hủy thuê
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+              <Button
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                className="w-full"
+              >
+                Hủy thuê
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 

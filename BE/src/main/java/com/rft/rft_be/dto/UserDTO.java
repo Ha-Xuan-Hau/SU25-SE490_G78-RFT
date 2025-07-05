@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -22,4 +23,5 @@ public class UserDTO {
     private User.Role role;
     private Instant createdAt;
     private Instant updatedAt;
+    private List<String> validLicenses;
 }

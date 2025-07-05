@@ -13,6 +13,9 @@ public interface DriverLicensRepository extends JpaRepository<DriverLicense, Str
     @Query("SELECT dl FROM DriverLicense dl WHERE dl.user.id = :userId")
     List<DriverLicense> findByUserId(@Param("userId") String userId);
 
+    @Query("SELECT dl From DriverLicense dl where dl.user.id = :userId and dl.status = 'VALID' ")
+    List<DriverLicense> findValidByUserId(@Param("userId") String userId);
+
     Optional<DriverLicense> findByLicenseNumber(String licenseNumber);
 
     boolean existsByLicenseNumber(String licenseNumber);

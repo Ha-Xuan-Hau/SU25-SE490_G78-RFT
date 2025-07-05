@@ -49,14 +49,6 @@ const VehicleListing: React.FC<VehicleListingProps> = ({
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Danh sách xe</h1>
-        {/* <div>
-          <select className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:text-white">
-            <option value="newest">Mới nhất</option>
-            <option value="price-asc">Giá thấp - cao</option>
-            <option value="price-desc">Giá cao - thấp</option>
-            <option value="rating">Đánh giá</option>
-          </select>
-        </div> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
