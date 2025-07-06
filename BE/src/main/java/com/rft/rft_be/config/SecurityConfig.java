@@ -18,6 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 
@@ -60,14 +62,27 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/vehicles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookedTimeSlot/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/wallet/staff/**").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 );
         httpSecurity.oauth2ResourceServer(oauth2
-                -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()))
+                -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder())
+                .jwtAuthenticationConverter(jwtAuthenticationConverter()))
         );
 
         return httpSecurity.build();
+    }
+
+    @Bean
+    JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
+
+        return jwtAuthenticationConverter;
     }
 
     @Bean

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -98,7 +98,7 @@ public class FinalContractServiceImpl implements FinalContractService {
     }
 
     @Override
-    public List<FinalContractDTO> getFinalContractsByTimeFinishBetween(Instant startDate, Instant endDate) {
+    public List<FinalContractDTO> getFinalContractsByTimeFinishBetween(LocalDateTime startDate, LocalDateTime endDate) {
         try {
             log.info("Getting final contracts by time finish between: {} and {}", startDate, endDate);
             List<FinalContract> finalContracts = finalContractRepository.findByTimeFinishBetween(startDate, endDate);
@@ -154,8 +154,8 @@ public class FinalContractServiceImpl implements FinalContractService {
                     .timeFinish(createFinalContractDTO.getTimeFinish())
                     .costSettlement(createFinalContractDTO.getCostSettlement())
                     .note(createFinalContractDTO.getNote())
-                    .createdAt(Instant.now())
-                    .updatedAt(Instant.now())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
                     .build();
 
             // Save final contract
@@ -198,7 +198,7 @@ public class FinalContractServiceImpl implements FinalContractService {
             }
 
             // Update timestamp
-            existingFinalContract.setUpdatedAt(Instant.now());
+            existingFinalContract.setUpdatedAt(LocalDateTime.now());
 
             // Save and return updated final contract
             FinalContract updatedFinalContract = finalContractRepository.save(existingFinalContract);

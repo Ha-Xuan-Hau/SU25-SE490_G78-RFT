@@ -3,7 +3,7 @@ package com.rft.rft_be.service.booking;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ public interface BookingService {
     List<BookingResponseDTO> getAllBookings();
     BookingResponseDTO getBookingById(String bookingId);
     List<BookingDTO> getBookingsByStatus(String status);
-    List<BookingDTO> getBookingsByUserIdAndDateRange(String userId, Instant startDate, Instant endDate);
+    List<BookingDTO> getBookingsByUserIdAndDateRange(String userId, LocalDateTime startDate, LocalDateTime endDate);
     List<BookingDTO> getBookingsByUserId(String userId);
     List<BookingDTO> getBookingsByUserIdAndStatus(String userId, String status);
     void payBookingWithWallet(String bookingId, String token);

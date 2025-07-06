@@ -10,10 +10,12 @@ import com.rft.rft_be.repository.WalletTransactionRepository;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -48,6 +50,29 @@ public class WalletServiceImpl implements  WalletService {
     }
 
     @Override
+    @Transactional
+    public void updateWalletBalance(String walletTransactionId, BigDecimal amount) {
+        WalletTransaction walletTransaction = txRepository.findById(walletTransactionId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mã giao dịch"));
+
+        if (!walletTransaction.getStatus().equals(WalletTransaction.Status.PENDING)) {
+            throw new RuntimeException("giao dịch này đã được xử lý");
+        }
+
+        Wallet wallet = walletTransaction.getWallet();
+
+        // Cộng tiền vào ví
+        wallet.setBalance(wallet.getBalance().add(amount));
+
+        // Cập nhật trạng thái giao dịch
+        walletTransaction.setStatus(WalletTransaction.Status.APPROVED);
+
+        // Lưu lại ví và giao dịch
+        walletRepository.save(wallet);
+        txRepository.save(walletTransaction);
+    }
+
+    @Override
     public List<WalletTransactionDTO> getWithdrawalsByUser(String userId) {
         return walletMapper.toTransactionDTOs(txRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
@@ -69,12 +94,24 @@ public class WalletServiceImpl implements  WalletService {
             throw new RuntimeException("Insufficient balance");
         }
         WalletTransaction tx = new WalletTransaction();
-        tx.setId(UUID.randomUUID().toString());
         tx.setAmount(dto.getAmount());
         tx.setStatus(WalletTransaction.Status.PENDING);
         tx.setWallet(wallet);
         tx.setUser(wallet.getUser());
-        tx.setCreatedAt(Instant.now());
+        tx.setCreatedAt(LocalDateTime.now());
+        return walletMapper.toTransactionDTO(txRepository.save(tx));
+    }
+
+    @Override
+    public WalletTransactionDTO createTopUp(CreateWithdrawalRequestDTO dto) {
+        Wallet wallet = walletRepository.findByUserId(dto.getUserId())
+                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+        WalletTransaction tx = new WalletTransaction();
+        tx.setAmount(dto.getAmount());
+        tx.setStatus(WalletTransaction.Status.PENDING);
+        tx.setWallet(wallet);
+        tx.setUser(wallet.getUser());
+        tx.setCreatedAt(LocalDateTime.now());
         return walletMapper.toTransactionDTO(txRepository.save(tx));
     }
 

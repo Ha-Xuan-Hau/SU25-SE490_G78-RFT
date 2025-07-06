@@ -7,7 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "bookings")
@@ -31,10 +31,10 @@ public class Booking {
     private Vehicle vehicle;
 
     @Column(name = "time_booking_start")
-    private Instant timeBookingStart;
+    private LocalDateTime timeBookingStart;
 
     @Column(name = "time_booking_end")
-    private Instant timeBookingEnd;
+    private LocalDateTime timeBookingEnd;
 
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
@@ -47,7 +47,7 @@ public class Booking {
     private String codeTransaction;
 
     @Column(name = "time_transaction")
-    private Instant timeTransaction;
+    private LocalDateTime timeTransaction;
 
     @Column(name = "total_cost", precision = 10, scale = 2)
     private BigDecimal totalCost;
@@ -72,11 +72,11 @@ public class Booking {
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
     public enum Status {
         UNPAID, PENDING, CONFIRMED, CANCELLED, DELIVERED,

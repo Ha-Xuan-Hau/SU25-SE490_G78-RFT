@@ -7,20 +7,20 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.time.LocalDateTime;
 
 public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, String> {
 
-    List<BookedTimeSlot> findByVehicleIdAndTimeToAfter(String vehicleId, Instant now);
+    List<BookedTimeSlot> findByVehicleIdAndTimeToAfter(String vehicleId, LocalDateTime now);
     @Modifying
     @Transactional
     @Query("DELETE FROM BookedTimeSlot b WHERE b.vehicle.id = :vehicleId AND b.timeFrom = :timeFrom AND b.timeTo = :timeTo")
     void deleteByVehicleIdAndTimeRange(
             @Param("vehicleId") String vehicleId,
-            @Param("timeFrom") Instant timeFrom,
-            @Param("timeTo") Instant timeTo
+            @Param("timeFrom") LocalDateTime timeFrom,
+            @Param("timeTo") LocalDateTime timeTo
     );
 
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END " +
@@ -30,11 +30,11 @@ public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, 
             "AND b.timeTo > :startTime")
     boolean existsByVehicleIdAndTimeOverlap(
             @Param("vehicleId") String vehicleId,
-            @Param("startTime") Instant startTime,
-            @Param("endTime") Instant endTime);
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
 
     @Query("SELECT b FROM BookedTimeSlot b WHERE b.vehicle.id = :vehicleId AND b.timeTo > :start AND b.timeFrom < :end")
-    List<BookedTimeSlot> findByVehicleIdAndTimeRange(String vehicleId, Instant start, Instant end);
+    List<BookedTimeSlot> findByVehicleIdAndTimeRange(String vehicleId, LocalDateTime start, LocalDateTime end);
     @Query(value = "DELETE FROM booked_time_slots WHERE vehicle_id = :vehicleId", nativeQuery = true)
     void deleteByVehicleId(@Param("vehicleId") String vehicleId);
 
@@ -44,12 +44,12 @@ public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, 
 
 
 
-    List<BookedTimeSlot> findByTimeFromBetween(Instant start, Instant end);
+    List<BookedTimeSlot> findByTimeFromBetween(LocalDateTime start, LocalDateTime end);
 
     @Query("SELECT COUNT(b) > 0 FROM BookedTimeSlot b WHERE " +
             "((b.timeFrom <= :timeFrom AND b.timeTo > :timeFrom) " +
             "OR (b.timeFrom < :timeTo AND b.timeTo >= :timeTo) " +
             "OR (b.timeFrom >= :timeFrom AND b.timeTo <= :timeTo))")
-    boolean existsConflictingBooking(@Param("timeFrom") Instant timeFrom,
-                                     @Param("timeTo") Instant timeTo);
+    boolean existsConflictingBooking(@Param("timeFrom") LocalDateTime timeFrom,
+                                     @Param("timeTo") LocalDateTime timeTo);
 }

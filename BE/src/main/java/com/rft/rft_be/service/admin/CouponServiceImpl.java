@@ -14,7 +14,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
@@ -73,7 +73,7 @@ public class CouponServiceImpl implements CouponService {
         coupon.setDiscount(dto.getDiscount());
         coupon.setDescription(dto.getDescription());
         coupon.setTimeExpired(dto.getTimeExpired());
-        coupon.setUpdatedAt(Instant.now());
+        coupon.setUpdatedAt(LocalDateTime.now());
         coupon.setStatus(Coupon.CouponStatus.VALID);
 
         return couponMapper.toDTO(couponRepository.save(coupon));
@@ -82,8 +82,8 @@ public class CouponServiceImpl implements CouponService {
     @Override
     public CouponDTO createCoupon(CouponDTO dto) {
         Coupon coupon = couponMapper.toEntity(dto);
-        coupon.setCreatedAt(Instant.now());
-        coupon.setUpdatedAt(Instant.now());
+        coupon.setCreatedAt(LocalDateTime.now());
+        coupon.setUpdatedAt(LocalDateTime.now());
         return couponMapper.toDTO(couponRepository.save(coupon));
     }
 
@@ -97,11 +97,11 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     public List<CouponUseDTO> getValidCouponsForUser(String userId) {
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
         return couponRepository.findAll().stream()
                 .filter(c -> c.getStatus() == Coupon.CouponStatus.VALID &&
                         c.getTimeExpired() != null &&
-                        c.getTimeExpired().atZone(ZoneId.systemDefault()).toInstant().isAfter(now) &&
+                        c.getTimeExpired().atZone(ZoneId.systemDefault()).toLocalDateTime().isAfter(now) &&
                         !usedCouponRepository.existsByUserIdAndCouponId(userId, c.getId()))
                 .map(couponMapper::toCouponUseDto)
                 .collect(Collectors.toList());

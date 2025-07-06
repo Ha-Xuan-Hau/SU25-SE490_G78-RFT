@@ -7,7 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalDateTime;
 
 @Entity
@@ -34,18 +34,18 @@ public class Coupon {
     private String description;
 
     @Column(name = "time_expired")
-    private Instant timeExpired;
+    private LocalDateTime timeExpired;
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @Enumerated(EnumType.STRING)
     private CouponStatus status;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
     public enum CouponStatus {
         VALID,

@@ -41,10 +41,10 @@ public class VehicleController {
 //    public ResponseEntity<List<CategoryDTO>> getAllVehiclesByCategory() {
 //        return ResponseEntity.ok(vehicleService.getAllVehiclesByCategory());
 //    }
-    @GetMapping("/available")
-    public ResponseEntity<List<VehicleDTO>> getAvailableVehicles() {
-        return ResponseEntity.ok(vehicleService.getAllAvailableVehicles());
-    }
+//    @GetMapping("/available")
+//    public ResponseEntity<List<VehicleDTO>> getAvailableVehicles() {
+//        return ResponseEntity.ok(vehicleService.getAllAvailableVehicles());
+//    }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getVehiclesByUserId(@PathVariable String userId) {

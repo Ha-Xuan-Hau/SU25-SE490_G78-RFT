@@ -16,7 +16,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,7 +50,7 @@ public class RatingServiceImpl implements RatingService {
         Rating rating = ratingRepository.findByBookingId(dto.getBookingId())
                 .orElseGet(() -> {
                     Rating r = ratingMapper.toEntity(dto);
-                    r.setCreatedAt(Instant.now());
+                    r.setCreatedAt(LocalDateTime.now());
                     return r;
                 });
 
@@ -59,7 +59,7 @@ public class RatingServiceImpl implements RatingService {
         rating.setBooking(booking);
         rating.setUser(booking.getUser());
         rating.setVehicle(booking.getVehicle());
-        rating.setUpdatedAt(Instant.now());
+        rating.setUpdatedAt(LocalDateTime.now());
 
         Rating saved = ratingRepository.save(rating);
         updateTotalRatingForVehicle(saved.getVehicle().getId());

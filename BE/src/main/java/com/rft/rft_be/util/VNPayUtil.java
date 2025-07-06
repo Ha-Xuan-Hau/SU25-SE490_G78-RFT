@@ -1,15 +1,19 @@
 package com.rft.rft_be.util;
 
+import com.rft.rft_be.config.VNPAYConfig;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+@RequiredArgsConstructor
 public class VNPayUtil {
     public static String hmacSHA512(final String key, final String data) {
         try {
@@ -44,6 +48,17 @@ public class VNPayUtil {
             ipAdress = "Invalid IP:" + e.getMessage();
         }
         return ipAdress;
+    }
+
+    public static Map<String, String> extractVNPayParams(HttpServletRequest request) {
+        Map<String, String[]> parameterMap = request.getParameterMap();
+        Map<String, String> vnpParams = new HashMap<>();
+
+        for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
+            vnpParams.put(entry.getKey(), entry.getValue()[0]); // lấy giá trị đầu tiên
+        }
+
+        return vnpParams;
     }
 
     public static String getRandomNumber(int len) {
