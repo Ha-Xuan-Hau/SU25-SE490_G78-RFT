@@ -9,7 +9,6 @@ import {
   Bike,
   MapPin,
   ChevronDown,
-  X,
 } from "lucide-react";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle"; // Import Vehicle
 import {
@@ -43,14 +42,22 @@ dayjs.extend(isSameOrBefore);
 
 // type RangeValue = [Dayjs | null, Dayjs | null] | null;
 
+interface PaginationInfo {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  size: number;
+}
+
 interface VehicleFilterProps {
   filters: VehicleFilters;
   setFilters: Dispatch<SetStateAction<VehicleFilters>>;
   onApplyFilters: (
     vehicles: Vehicle[],
     isLoading: boolean,
-    error: string | null
-  ) => void; // Thêm prop mới
+    error: string | null,
+    paginationInfo?: PaginationInfo
+  ) => void;
 }
 
 interface GeoUnit {
@@ -183,12 +190,14 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       requestBody.addresses = [filters.city];
     }
 
-    if (filters.hasDriver !== undefined) {
-      requestBody.haveDriver = filters.hasDriver ? "YES" : "NO";
+    // Chỉ gửi hasDriver khi user thực sự chọn (true)
+    if (filters.hasDriver === true) {
+      requestBody.haveDriver = "YES";
     }
 
-    if (filters.shipToAddress !== undefined) {
-      requestBody.shipToAddress = filters.shipToAddress ? "YES" : "NO";
+    // Chỉ gửi shipToAddress khi user thực sự chọn (true)
+    if (filters.shipToAddress === true) {
+      requestBody.shipToAddress = "YES";
     }
 
     if (filters.minPrice !== undefined) {
@@ -212,8 +221,8 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       requestBody.timeTo = returnDateTime;
     }
 
-    requestBody.page = 0;
-    requestBody.size = 5;
+    // requestBody.page = 0;
+    // requestBody.size = 12; // Hiển thị 12 xe mỗi trang
 
     console.log("Đang gửi bộ lọc đến backend với body:", requestBody);
 
@@ -221,17 +230,30 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       console.log("Calling searchVehicles with requestBody:", requestBody);
       const result = await searchVehicles({ body: requestBody });
       console.log("Dữ liệu từ backend:", result);
-      toast.success(`Tìm kiếm thành công! Tìm thấy ${result.length} xe.`, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
-      onApplyFilters(result, false, null); // Truyền dữ liệu và trạng thái thành công
+
+      // Backend trả về object có vehicles và pagination info
+      const vehicles = result.content || result.vehicles || [];
+      const paginationInfo = {
+        totalItems: result.totalElements || result.total || vehicles.length,
+        totalPages: result.totalPages || 1,
+        currentPage: result.number || 0, // Backend dùng 0-based index
+        size: result.size || 12,
+      };
+
+      toast.success(
+        `Tìm kiếm thành công! Tìm thấy ${paginationInfo.totalItems} xe.`,
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        }
+      );
+      onApplyFilters(vehicles, false, null, paginationInfo);
     } catch (error) {
       console.error("Lỗi khi gửi bộ lọc:", error);
       const errorMessage =
@@ -361,16 +383,17 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       const result = await searchVehicles({ body: requestBody });
       console.log("Kết quả tìm kiếm nâng cao:", result);
 
-      // Cập nhật kết quả
-      onApplyFilters(result, false, null);
+      // Backend trả về object có vehicles và pagination info
+      const vehicles = result.content || result.vehicles || [];
+      const paginationInfo = {
+        totalItems: result.totalElements || result.total || vehicles.length,
+        totalPages: result.totalPages || 1,
+        currentPage: result.number || 0,
+        size: result.size || 12,
+      };
 
-      toast.success(
-        `Tìm thấy ${result.length} xe phù hợp với bộ lọc nâng cao`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-        }
-      );
+      // Cập nhật kết quả
+      onApplyFilters(vehicles, false, null, paginationInfo);
 
       // Đóng modal
       setShowAdvancedSearch(false);
@@ -693,90 +716,63 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
 
       {/* Modal tìm kiếm nâng cao */}
       {showAdvancedSearch && (
-        <div
-          className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]"
-          onClick={() => setShowAdvancedSearch(false)}
-        >
-          {/* Modal container - giữ nguyên bo viền */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div
-            className="bg-white rounded-lg shadow-xl max-w-3xl w-full m-4 flex flex-col z-[101] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header cố định */}
+            className="fixed inset-0 bg-black/50 transition-opacity duration-300 ease-in-out"
+            onClick={() => setShowAdvancedSearch(false)}
+          ></div>
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-y-auto z-[101] m-4 transform transition-all duration-300 ease-in-out opacity-100 scale-100 animate-in fade-in zoom-in-95">
             <div className="p-5 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Tìm kiếm nâng cao</h2>
+              <h2 className="text-lg font-semibold">Tìm kiếm nâng cao</h2>
               <button
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
                 onClick={() => setShowAdvancedSearch(false)}
+                className="text-gray-500 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
               >
-                <X size={20} />
+                ✕
               </button>
             </div>
 
-            {/* Phần nội dung có thể cuộn */}
-            <div className="overflow-y-auto max-h-[70vh]">
-              <div className="p-5">
-                <div className="flex flex-col space-y-2 mb-5">
-                  <div className="flex space-x-2">
-                    <button
-                      className={`flex-1 py-3 px-2 rounded-lg flex items-center justify-center ${
-                        activeVehicleType === "CAR"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-50 text-gray-700"
-                      }`}
-                      onClick={() => setActiveVehicleType("CAR")}
-                    >
-                      <Car className="mr-2" size={18} />Ô tô
-                    </button>
-                    <button
-                      className={`flex-1 py-3 px-2 rounded-lg flex items-center justify-center ${
-                        activeVehicleType === "MOTORBIKE"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-50 text-gray-700"
-                      }`}
-                      onClick={() => setActiveVehicleType("MOTORBIKE")}
-                    >
-                      <Motorbike className="mr-2" size={18} />
-                      Xe máy
-                    </button>
-                    <button
-                      className={`flex-1 py-3 px-2 rounded-lg flex items-center justify-center ${
-                        activeVehicleType === "BICYCLE"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-50 text-gray-700"
-                      }`}
-                      onClick={() => setActiveVehicleType("BICYCLE")}
-                    >
-                      <Bike className="mr-2" size={18} />
-                      Xe đạp
-                    </button>
-                  </div>
-                </div>
-                <AdvancedSearch
-                  vehicleType={activeVehicleType}
-                  onChange={handleAdvancedSearch}
-                />
+            <div className="p-5">
+              <div className="flex gap-3 mb-5">
+                <button
+                  onClick={() => setActiveVehicleType("CAR")}
+                  className={`flex-1 py-3 rounded-lg flex items-center justify-center font-medium transition-all ${
+                    activeVehicleType === "CAR"
+                      ? "bg-blue-100 text-blue-700 border border-blue-500 shadow-sm"
+                      : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  <Car className="w-5 h-5 mr-2" />Ô tô
+                </button>
+                <button
+                  onClick={() => setActiveVehicleType("MOTORBIKE")}
+                  className={`flex-1 py-3 rounded-lg flex items-center justify-center font-medium transition-all ${
+                    activeVehicleType === "MOTORBIKE"
+                      ? "bg-blue-100 text-blue-700 border border-blue-500 shadow-sm"
+                      : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  <Motorbike className="w-5 h-5 mr-2" />
+                  Xe máy
+                </button>
+                <button
+                  onClick={() => setActiveVehicleType("BICYCLE")}
+                  className={`flex-1 py-3 rounded-lg flex items-center justify-center font-medium transition-all ${
+                    activeVehicleType === "BICYCLE"
+                      ? "bg-blue-100 text-blue-700 border border-blue-500 shadow-sm"
+                      : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  <Bike className="w-5 h-5 mr-2" />
+                  Xe đạp
+                </button>
               </div>
-            </div>
 
-            {/* Footer cố định */}
-            <div className="p-5 border-t flex justify-end space-x-3">
-              <button
-                className="px-5 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                onClick={() => setShowAdvancedSearch(false)}
-              >
-                Hủy bỏ
-              </button>
-              <button
-                className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                onClick={() =>
-                  document
-                    .querySelector('form[data-testid="advanced-search-form"]')
-                    ?.dispatchEvent(new Event("submit", { bubbles: true }))
-                }
-              >
-                Áp dụng
-              </button>
+              <AdvancedSearch
+                vehicleType={activeVehicleType}
+                onChange={handleAdvancedSearch}
+                className="mt-3"
+              />
             </div>
           </div>
         </div>

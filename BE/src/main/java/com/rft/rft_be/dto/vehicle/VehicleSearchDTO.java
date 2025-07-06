@@ -27,7 +27,7 @@ public class VehicleSearchDTO {
      Boolean ratingFiveStarsOnly;
 
      int page = 0;
-     int size = 10;
+     int size = 12;
 }
 
 

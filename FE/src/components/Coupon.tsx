@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Modal, Button, List, Tag, message } from "antd";
 import { coupon as CouponType } from "@/types/coupon";
 import { getCoupons } from "@/apis/coupon.api";
+import { useUserValue } from "@/recoils/user.state";
+import { User } from "@/types/user";
 
 interface CouponProps {
   applyCoupon: (coupon: CouponType | null) => void;
@@ -13,11 +15,15 @@ const Coupon: React.FC<CouponProps> = ({ applyCoupon }) => {
   const [selectedCoupon, setSelectedCoupon] = useState<CouponType | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
+  const user = useUserValue() as User;
+
   useEffect(() => {
     const fetchCoupons = async () => {
+      if (!user?.id) return;
+
       setLoading(true);
       try {
-        const couponsData = await getCoupons();
+        const couponsData = await getCoupons(user.id);
         setCoupons(couponsData);
       } catch (error) {
         console.error("Failed to fetch coupons:", error);
@@ -29,7 +35,7 @@ const Coupon: React.FC<CouponProps> = ({ applyCoupon }) => {
     };
 
     fetchCoupons();
-  }, []);
+  }, [user?.id]);
 
   const showModal = () => {
     setIsModalOpen(true);

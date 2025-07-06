@@ -19,95 +19,95 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
   const mainImage = vehicleImages[0]?.imageUrl;
 
   return (
-    <div>
-      <div className="relative rounded-2xl border border-dark/10 dark:border-white/10 group hover:shadow-3xl duration-300 dark:hover:shadow-white/20">
-        <div className="overflow-hidden rounded-t-2xl">
+    <div className="w-full max-w-sm mx-auto">
+      <div className="relative rounded-2xl border border-dark/10 dark:border-white/10 group hover:shadow-3xl duration-300 dark:hover:shadow-white/20 h-full flex flex-col">
+        <div className="overflow-hidden rounded-t-2xl flex-shrink-0">
           <Link href={`/vehicles/${id}`}>
             {mainImage && (
               <Image
                 src={mainImage}
                 alt={`${thumb}`}
                 width={440}
-                height={250}
-                className="w-full rounded-t-xl"
+                height={200}
+                className="w-full h-48 object-cover rounded-t-xl"
                 unoptimized={true}
               />
             )}
           </Link>
-          {/* <div className="absolute top-6 right-6 p-4 bg-white rounded-full hidden group-hover:block">
-            <Icon
-              icon={"solar:arrow-right-linear"}
-              width={24}
-              height={24}
-              className="text-black"
-            />
-          </div> */}
         </div>
-        <div className="p-6">
-          <div className="flex flex-col mobile:flex-row gap-5 mobile:gap-0 justify-between mb-6">
-            <div>
-              <Link href={`/vehicles/${id}`}>
-                <h3 className="text-xl font-medium text-black dark:text-white duration-300 group-hover:text-primary line-clamp-1">
-                  {thumb}
-                </h3>
-              </Link>
-              <p className="text-base font-normal text-black/50 dark:text-white/50">
-                {address}
-              </p>
-            </div>
+        <div className="p-4 flex-1 flex flex-col">
+          <div className="mb-3">
+            <Link href={`/vehicles/${id}`}>
+              <h3 className="text-lg font-medium text-black dark:text-white duration-300 group-hover:text-primary line-clamp-2 mb-1">
+                {thumb}
+              </h3>
+            </Link>
+            <p className="text-sm font-normal text-black/50 dark:text-white/50 line-clamp-1">
+              {address}
+            </p>
           </div>
-          <hr className="my-4 border-t border-black/10 dark:border-white/10" />
 
-          <div className="flex justify-between mb-3">
-            <div className="flex items-center gap-1">
-              <Icon icon={"solar:transmission-bold"} width={20} height={20} />
-              <p className="text-sm font-normal text-black dark:text-white">
+          <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
+            <div className="flex flex-col items-center text-center">
+              <Icon
+                icon={"solar:transmission-bold"}
+                width={16}
+                height={16}
+                className="mb-1"
+              />
+              <p className="text-black dark:text-white truncate w-full">
                 {transmission}
               </p>
             </div>
-            <div className="flex items-center gap-1">
-              <Icon icon={"mdi:car-seat"} width={20} height={20} />
-              <p className="text-sm font-normal text-black dark:text-white">
+            <div className="flex flex-col items-center text-center">
+              <Icon
+                icon={"mdi:car-seat"}
+                width={16}
+                height={16}
+                className="mb-1"
+              />
+              <p className="text-black dark:text-white truncate w-full">
                 {numberSeat} chỗ
               </p>
             </div>
-            <div className="flex items-center gap-1">
-              <Icon icon={"mdi:fuel"} width={20} height={20} />
-              <p className="text-sm font-normal text-black dark:text-white">
+            <div className="flex flex-col items-center text-center">
+              <Icon icon={"mdi:fuel"} width={16} height={16} className="mb-1" />
+              <p className="text-black dark:text-white truncate w-full">
                 {fuelType}
               </p>
             </div>
           </div>
 
-          <hr className="my-4 border-t border-black/10 dark:border-white/10" />
+          <hr className="my-3 border-t border-black/10 dark:border-white/10" />
 
           {/* Price and Rating Row */}
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mt-auto">
             {/* Rating - Left Side */}
             <div className="flex items-center">
-              <div className="flex items-center">
-                {rating > 0 ? (
-                  <p className="font-medium text-black dark:text-white flex items-center">
+              {rating > 0 ? (
+                <div className="flex items-center">
+                  <span className="font-medium text-black dark:text-white text-sm">
                     {rating}
-                    <Icon
-                      icon={"material-symbols:star-rate-rounded"}
-                      width={20}
-                      height={20}
-                      className="ml-0.5 text-yellow-400"
-                    />
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-500 italic">
-                    Chưa có đánh giá
-                  </p>
-                )}
-              </div>
+                  </span>
+                  <Icon
+                    icon={"material-symbols:star-rate-rounded"}
+                    width={16}
+                    height={16}
+                    className="ml-0.5 text-yellow-400"
+                  />
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 italic">Chưa có đánh giá</p>
+              )}
             </div>
 
             {/* Price - Right Side */}
-            <button className="text-base font-medium text-primary px-5 py-2 rounded-full bg-primary/10">
-              {costPerDay.toLocaleString()} VND
-            </button>
+            <div className="text-right">
+              <div className="text-sm font-bold text-primary">
+                {costPerDay.toLocaleString()}K
+              </div>
+              <div className="text-xs text-gray-500">/ngày</div>
+            </div>
           </div>
         </div>
       </div>

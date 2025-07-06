@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import {
   SearchOutlined,
@@ -28,6 +28,8 @@ import {
   Tooltip,
   Card,
   Tag,
+  Tabs,
+  Spin,
 } from "antd";
 import type { UploadProps } from "antd";
 import type { ColumnType } from "antd/es/table";
@@ -133,10 +135,45 @@ export default function ProviderManageBookings() {
   const [uploading, setUploading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>("");
   const [searchedColumn, setSearchedColumn] = useState<string>("");
-  const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(
-    null
-  );
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>("all");
   const searchInput = useRef<InputRef>(null);
+
+  // Detect screen size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  // Load data with loading state
+  useEffect(() => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 800);
+  }, []);
+
+  // Filter bookings based on active tab
+  const filteredBookings = mockBookings.filter((booking) => {
+    if (activeTab === "all") return true;
+    return booking.status === activeTab;
+  });
+
+  const tabs = [
+    { key: "all", label: "Tất cả" },
+    { key: "Chưa có hợp đồng", label: "Chưa có hợp đồng" },
+    { key: "Đã có hợp đồng", label: "Đã có hợp đồng" },
+    { key: "Đã hủy", label: "Đã hủy" },
+  ];
 
   // Upload props
   const uploadProps: UploadProps = {
@@ -177,7 +214,6 @@ export default function ProviderManageBookings() {
   };
 
   const showModal = (booking: BookingData) => {
-    setSelectedBooking(booking);
     setOpen(true);
     form.setFieldsValue({ ...booking });
   };
@@ -558,34 +594,153 @@ export default function ProviderManageBookings() {
   return (
     <div className="p-6">
       <Card>
-        <div className="mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold mb-2">Quản lý đặt xe</h1>
-              <p className="text-gray-600">
-                Quản lý các đơn đặt xe và tạo hợp đồng cho khách hàng
-              </p>
-            </div>
-            <Button type="primary" onClick={showModalScanPDF}>
-              Scan file hợp đồng
-            </Button>
-          </div>
-        </div>
+        {isMobile ? (
+          <>
+            <Tabs
+              activeKey={activeTab}
+              onChange={(key) => setActiveTab(key)}
+              className="mb-4 no-more-icon"
+              tabBarGutter={4}
+              size="small"
+              tabBarStyle={{
+                flexWrap: "wrap",
+                overflow: "visible",
+              }}
+            >
+              {tabs.map((tab) => (
+                <Tabs.TabPane tab={tab.label} key={tab.key} />
+              ))}
+            </Tabs>
 
-        <Table
-          columns={columns}
-          dataSource={mockBookings}
-          rowKey="id"
-          scroll={{ x: 1200 }}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} của ${total} mục`,
-          }}
-          size="middle"
-        />
+            {loading ? (
+              <div className="text-center py-8">
+                <Spin size="large" />
+              </div>
+            ) : filteredBookings.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredBookings.map((booking) => (
+                  <Card key={booking.id} className="shadow-md">
+                    <div className="flex items-center gap-4 mb-2">
+                      <Image
+                        width={80}
+                        height={60}
+                        src={booking.thumb || "/placeholder.svg"}
+                        alt={booking.model}
+                        className="rounded-md object-cover"
+                        fallback="/placeholder.svg?height=60&width=80"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-lg">
+                          {booking.numberCar}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {booking.model}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {booking.numberSeat} chỗ • {booking.yearManufacture}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">{getStatusTag(booking.status)}</div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">
+                          Khách hàng:
+                        </span>
+                        <span className="text-sm font-medium">
+                          {booking.fullname}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">
+                          Điện thoại:
+                        </span>
+                        <span className="text-sm">{booking.phone}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">
+                          Thời gian thuê:
+                        </span>
+                        <span className="text-sm">
+                          {booking.timeBookingStart}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Kết thúc:</span>
+                        <span className="text-sm">
+                          {booking.timeBookingEnd}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">
+                          Tổng tiền:
+                        </span>
+                        <span className="text-sm font-semibold text-green-600">
+                          {booking.totalCost}
+                        </span>
+                      </div>
+                    </div>
+
+                    {booking.status !== "Đã hủy" && (
+                      <div className="flex gap-2">
+                        {booking.status !== "Đã có hợp đồng" && (
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() => showModal(booking)}
+                            className="flex-1"
+                          >
+                            Tạo HĐ
+                          </Button>
+                        )}
+                        {booking.status === "Đã có hợp đồng" && (
+                          <Button
+                            size="small"
+                            onClick={() => generateDocument(booking)}
+                            className="flex-1"
+                          >
+                            Tải HĐ
+                          </Button>
+                        )}
+                        <Popconfirm
+                          title="Hủy đơn thuê?"
+                          okText="Hủy đơn"
+                          cancelText="Hủy bỏ"
+                          onConfirm={() => cancelBooking(booking._id)}
+                        >
+                          <Button danger size="small" className="flex-1">
+                            Hủy thuê
+                          </Button>
+                        </Popconfirm>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                Không có dữ liệu
+              </div>
+            )}
+          </>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={mockBookings}
+            rowKey="id"
+            scroll={{ x: 1200 }}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} của ${total} mục`,
+            }}
+            size="middle"
+          />
+        )}
       </Card>
 
       {/* Modal for contract creation */}
@@ -616,6 +771,9 @@ export default function ProviderManageBookings() {
               <Form.Item label="Biển số xe" name="numberCar">
                 <Input readOnly />
               </Form.Item>
+            </div>
+
+            <div>
               <Form.Item label="Thời gian bắt đầu thuê" name="timeBookingStart">
                 <Input readOnly />
               </Form.Item>
@@ -627,30 +785,6 @@ export default function ProviderManageBookings() {
               </Form.Item>
               <Form.Item label="Booking id" hidden name="_id">
                 <Input readOnly />
-              </Form.Item>
-            </div>
-
-            <div>
-              <Form.Item
-                label="Ảnh hợp đồng"
-                name="images"
-                rules={[
-                  {
-                    required: true,
-                    message: "Hãy đăng ảnh hợp đồng lên!",
-                  },
-                ]}
-              >
-                <Upload
-                  listType="picture-card"
-                  maxCount={3}
-                  beforeUpload={() => false}
-                >
-                  <div>
-                    <PlusOutlined />
-                    <div style={{ marginTop: 8 }}>Tải ảnh lên</div>
-                  </div>
-                </Upload>
               </Form.Item>
             </div>
           </div>

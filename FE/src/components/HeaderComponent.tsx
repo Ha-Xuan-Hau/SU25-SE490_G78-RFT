@@ -89,9 +89,9 @@ const HeaderComponent: React.FC = () => {
           {/* Navigation Links sát bên phải */}
           <div className="hidden lg:flex items-center space-x-10 mt-1">
             <Link
-              href="/about"
+              href="/about-us"
               className={`text-base font-medium ${
-                pathname === "/about"
+                pathname === "/about-us"
                   ? "text-primary font-semibold"
                   : "text-dark"
               } hover:text-primary`}
@@ -110,7 +110,7 @@ const HeaderComponent: React.FC = () => {
               Danh sách xe
             </Link>
 
-            {(!isAuthenticated || user?.role !== "PROVIDER") && (
+            {isAuthenticated && user?.role === "USER" && (
               <Link
                 href="/become-provider"
                 className={`text-base font-medium ${
@@ -207,11 +207,11 @@ const HeaderComponent: React.FC = () => {
                 Danh sách xe
               </Link>
 
-              {(!isAuthenticated || user?.role !== "PROVIDER") && (
+              {isAuthenticated && user?.role === "USER" && (
                 <Link
-                  href="/locations"
+                  href="/become-provider"
                   className={`text-base font-medium text-dark ${
-                    pathname === "/locations"
+                    pathname === "/become-provider"
                       ? "text-primary font-semibold"
                       : "text-dark"
                   } hover:text-primary`}

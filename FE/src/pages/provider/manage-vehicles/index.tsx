@@ -15,6 +15,7 @@ import {
   Modal,
   Select,
   Skeleton,
+  Spin,
   Switch,
   Table,
   message,
@@ -51,6 +52,7 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
   const [form] = Form.useForm();
   const [vehicleType, setVehicleType] = useState<VehicleType>(VehicleType.CAR);
   const [isMultipleVehicles, setIsMultipleVehicles] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   const vehicleDetail = useQuery({
     queryFn: () => getUserVehicleById(vehicleId),
@@ -65,6 +67,8 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
   const apiUpdateCar = useMutation({
     mutationFn: updateVehicle,
   });
+
+  // Loading state for form submission
 
   const rentalRuleOptions = [
     { value: "ID_REQUIRED", label: "Yêu cầu CMND/CCCD" },
@@ -181,7 +185,12 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
   };
 
   if (vehicleId && vehicleDetail.isLoading) {
-    return <Skeleton active />;
+    return (
+      <div className="p-6 bg-white rounded-lg shadow-sm relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite] -translate-x-full"></div>
+        <Skeleton active avatar paragraph={{ rows: 6 }} />
+      </div>
+    );
   }
 
   return (
@@ -193,6 +202,7 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         vehicleType: VehicleType.CAR,
       }}
       onFinish={async (values) => {
+        setSubmitting(true);
         try {
           const formattedFeatures =
             values.vehicleFeatures?.map((name: string) => ({ name })) || [];
@@ -236,6 +246,8 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         } catch (error) {
           message.error("Có lỗi xảy ra khi đăng ký xe");
           console.error(error);
+        } finally {
+          setSubmitting(false);
         }
       }}
     >
@@ -629,7 +641,13 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
           </Card>
 
           <div className="flex justify-end">
-            <Button type="primary" htmlType="submit" size="large">
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              loading={submitting}
+              disabled={submitting}
+            >
               {isInsert ? "Đăng ký xe" : "Cập nhật thông tin"}
             </Button>
           </div>
@@ -649,15 +667,31 @@ export default function UserRegisterVehicle() {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
 
+  // Use loading state with animation delay for better user experience
+  const [initialLoad, setInitialLoad] = useState(true);
+
   const {
     data: myCarsData,
-    isLoading,
+    isLoading: queryLoading,
     refetch,
   } = useQuery({
     queryKey: ["user-vehicles", page, size],
     queryFn: () => getUserVehicles(page, size, "createdAt", "desc"),
     enabled: !!accessToken,
   });
+
+  // Add a delay effect for smoother loading animation
+  useEffect(() => {
+    if (!queryLoading && initialLoad) {
+      const timer = setTimeout(() => {
+        setInitialLoad(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [queryLoading, initialLoad]);
+
+  // Combine loading states
+  const isLoading = queryLoading || initialLoad;
 
   const vehicles = myCarsData?.data?.content || [];
 
@@ -766,6 +800,11 @@ export default function UserRegisterVehicle() {
 
   return (
     <div>
+      {/* Global loading indicator */}
+      {isLoading && (
+        <div className="fixed top-0 left-0 right-0 h-1 bg-blue-500 animate-pulse z-50"></div>
+      )}
+
       <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
         <div className="flex justify-between items-start">
           <div>
@@ -779,7 +818,7 @@ export default function UserRegisterVehicle() {
           <Button
             type="primary"
             onClick={handleAddVehicle}
-            className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+            className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600 animate-pulse hover:animate-none"
           >
             <PlusOutlined /> Đăng ký xe mới
           </Button>
@@ -787,34 +826,57 @@ export default function UserRegisterVehicle() {
       </div>
 
       {isLoading ? (
-        <Skeleton active paragraph={{ rows: 5 }} />
+        <div className="bg-white rounded-lg shadow-sm p-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite] -translate-x-full"></div>
+          <div className="flex items-center justify-center mb-4">
+            <Spin size="small" className="mr-2" />
+          </div>
+          <Skeleton active paragraph={{ rows: 5 }} />
+        </div>
       ) : vehicles.length > 0 ? (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <Table<Vehicle>
             columns={columns}
             dataSource={vehicles}
             rowKey="id"
+            scroll={{ x: 1200 }}
+            loading={isLoading}
             pagination={{
               pageSize: 10,
-              showSizeChanger: false,
-              showQuickJumper: false,
+              showSizeChanger: true,
+              showQuickJumper: true,
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} xe`,
+              onChange: (page, pageSize) => {
+                setPage(page - 1); // API uses 0-indexed pages
+                setSize(pageSize);
+              },
+              disabled: isLoading,
             }}
             className="vehicle-table"
+            locale={{
+              emptyText: isLoading ? "Đang tải dữ liệu..." : "Không có dữ liệu",
+            }}
           />
         </div>
       ) : (
-        <Empty
-          description={
-            <div>
-              <p>Bạn chưa đăng ký xe nào</p>
-              <Button type="primary" onClick={handleAddVehicle}>
-                Đăng ký xe ngay
-              </Button>
-            </div>
-          }
-        />
+        <div className="bg-white rounded-lg shadow-sm p-6 text-center transition-all duration-300 ease-in-out">
+          <Empty
+            description={
+              <div className="animate-fadeIn">
+                <p className="mb-4 text-lg">Bạn chưa đăng ký xe nào</p>
+                <Button
+                  type="primary"
+                  onClick={handleAddVehicle}
+                  className="animate-bounce"
+                  size="large"
+                >
+                  Đăng ký xe ngay
+                </Button>
+              </div>
+            }
+          />
+        </div>
       )}
 
       <Modal
@@ -825,14 +887,20 @@ export default function UserRegisterVehicle() {
         destroyOnClose
         footer={null}
         onCancel={() => setRegisterVehicleModal(false)}
+        confirmLoading={false}
       >
-        <RegisterVehicleForm
-          vehicleId={editVehicleId || undefined}
-          onOk={() => {
-            setRegisterVehicleModal(false);
-            refetch();
-          }}
-        />
+        <Spin
+          spinning={editVehicleId ? isLoading : false}
+          tip="Đang tải thông tin xe..."
+        >
+          <RegisterVehicleForm
+            vehicleId={editVehicleId || undefined}
+            onOk={() => {
+              setRegisterVehicleModal(false);
+              refetch();
+            }}
+          />
+        </Spin>
       </Modal>
     </div>
   );
