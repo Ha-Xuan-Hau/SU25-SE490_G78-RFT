@@ -17,7 +17,10 @@ export interface Vehicle {
   rating: number;
   address: string;
   comments?: Comment[];
-  shipToAddress?: boolean; // Add this field to support the delivery option
+  shipToAddress?: boolean;
+  penaltyType?: string; // "PERCENT" or "FIXED"
+  penaltyValue?: number; // Percentage or fixed amount
+  minCancelHour?: number; // Minimum hours before cancellation allowed
 }
 
 export interface VehicleFeature {

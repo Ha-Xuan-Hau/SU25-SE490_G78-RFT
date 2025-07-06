@@ -1,10 +1,13 @@
 import { apiClient } from './client';
 
-export async function getCoupons() {
+export async function getCoupons(userId) {
     try {
         const { data } = await apiClient.request({
             method: 'GET',
-            url: '/coupons',
+            url: '/coupons/available',
+            params: {
+                userId: userId
+            }
         });
 
         return Array.isArray(data) ? data : data.content || data.items || data.data || [];

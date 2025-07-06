@@ -184,3 +184,7 @@ html {
 .provider-registration-steps .ant-steps-item-finish>.ant-steps-item-container>.ant-steps-item-content>.ant-steps-item-title::after {
   background-color: #ff4d4f;
 }
+
+.no-more-icon .ant-tabs-nav-more {
+  display: none !important;
+}

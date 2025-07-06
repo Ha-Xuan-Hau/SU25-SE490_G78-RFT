@@ -6,6 +6,13 @@ import VehicleListing from "./_components/VehicleList";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle";
 import { getVehicles } from "@/apis/vehicle.api";
 
+interface PaginationInfo {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  size: number;
+}
+
 const ListVehiclePage = () => {
   const [filters, setFilters] = useState<VehicleFilters>({
     vehicleType: undefined,
@@ -23,15 +30,32 @@ const ListVehiclePage = () => {
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
   const [errorVehicles, setErrorVehicles] = useState<string | null>(null);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1); // UI sử dụng 1-based
+  const [totalItems, setTotalItems] = useState(0);
+  const pageSize = 12;
+
   // Hàm này sẽ được truyền xuống VehicleFilter để nhận kết quả tìm kiếm
   const handleApplyFilters = (
     fetchedVehicles: Vehicle[],
     loading: boolean,
-    error: string | null
+    error: string | null,
+    paginationInfo?: PaginationInfo
   ) => {
     setVehicles(fetchedVehicles);
     setIsLoadingVehicles(loading);
     setErrorVehicles(error);
+    if (paginationInfo) {
+      setTotalItems(paginationInfo.totalItems);
+      setCurrentPage(paginationInfo.currentPage + 1); // Backend 0-based, UI 1-based
+    }
+  };
+
+  // Hàm xử lý thay đổi trang
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // TODO: Implement pagination API call when needed
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // useEffect để fetch dữ liệu ban đầu khi component mount
@@ -41,10 +65,22 @@ const ListVehiclePage = () => {
       setErrorVehicles(null);
       try {
         const initialVehicles = await getVehicles();
-        setVehicles(initialVehicles);
-      } catch (err: any) {
+
+        // getVehicles() trả về array đơn giản, không phải pagination format
+        const vehicles = Array.isArray(initialVehicles)
+          ? initialVehicles
+          : initialVehicles.content || initialVehicles.vehicles || [];
+
+        setVehicles(vehicles);
+        setTotalItems(vehicles.length);
+        setCurrentPage(1); // Reset về trang 1
+
+        console.log("Initial vehicles loaded:", vehicles.length);
+      } catch (err) {
         console.error("Lỗi khi tải xe ban đầu:", err);
-        setErrorVehicles(err.message || "Không thể tải danh sách xe ban đầu.");
+        setErrorVehicles(
+          (err as Error).message || "Không thể tải danh sách xe ban đầu."
+        );
       } finally {
         setIsLoadingVehicles(false);
       }
@@ -53,31 +89,45 @@ const ListVehiclePage = () => {
     fetchInitialVehicles();
   }, []);
 
+  // Debug: Log state changes
+  useEffect(() => {
+    console.log("Vehicles state changed:", {
+      vehiclesCount: vehicles.length,
+      totalItems,
+      currentPage,
+      isLoading: isLoadingVehicles,
+      error: errorVehicles,
+    });
+  }, [vehicles, totalItems, currentPage, isLoadingVehicles, errorVehicles]);
+
   return (
-    <section className="container mx-auto px-4 2xl:px-0 py-8">
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="lg:w-1/4">
-          <VehicleFilter
-            filters={filters}
-            setFilters={setFilters}
-            onApplyFilters={handleApplyFilters} // Truyền hàm callback
-          />
-          {/* <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm text-sm dark:text-gray-200">
-            <h3 className="font-semibold mb-2">Trạng thái bộ lọc hiện tại:</h3>
-            <pre className="whitespace-pre-wrap break-words">
-              {JSON.stringify(filters, null, 2)}
-            </pre>
-          </div> */}
-        </div>
-        <div className=" lg:w-3/4">
-          <VehicleListing
-            vehicles={vehicles}
-            isLoading={isLoadingVehicles}
-            error={errorVehicles}
-          />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
+        <div className="flex flex-col xl:flex-row gap-8">
+          {/* Filter Sidebar */}
+          <div className="xl:w-80 flex-shrink-0">
+            <VehicleFilter
+              filters={filters}
+              setFilters={setFilters}
+              onApplyFilters={handleApplyFilters}
+            />
+          </div>
+
+          {/* Vehicle List - Tận dụng không gian còn lại */}
+          <div className="flex-1">
+            <VehicleListing
+              vehicles={vehicles}
+              isLoading={isLoadingVehicles}
+              error={errorVehicles}
+              currentPage={currentPage}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+            />
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 export default ListVehiclePage;

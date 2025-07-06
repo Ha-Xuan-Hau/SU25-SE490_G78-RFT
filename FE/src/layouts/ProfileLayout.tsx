@@ -55,7 +55,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
       <HeaderComponent />
 
       {/* container ở giữa - Thêm flex-1 để phần này mở rộng lấp đầy không gian */}
-      <section className="flex-1 w-full bg-[#f5f5f5] dark:bg-gray-900 py-0">
+      <section className="flex-1 w-full bg-gray-100 dark:bg-gray-900 py-0">
         <div className="max-w-[1200px] mx-auto px-4 xl:px-0 py-6">
           <div className="flex w-full gap-4">
             {/* Sidebar  */}

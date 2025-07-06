@@ -39,4 +39,8 @@ public class BookingResponseDTO {
     Instant createdAt;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     Instant updatedAt;
+
+    BigDecimal discountAmount;
+    String priceType; // "hourly" hoặc "daily"
+    String rentalDuration; // "3 giờ 30 phút" hoặc "2 ngày"
 }

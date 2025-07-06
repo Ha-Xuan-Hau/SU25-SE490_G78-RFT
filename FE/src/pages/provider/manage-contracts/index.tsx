@@ -5,18 +5,15 @@ import { ProviderLayout } from "@/layouts/ProviderLayout";
 import {
   SearchOutlined,
   PlusCircleOutlined,
-  MinusCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
   DownloadOutlined,
-  PlusOutlined,
   RollbackOutlined,
   ClockCircleOutlined,
   UserOutlined,
   CarOutlined,
   QuestionCircleOutlined,
-  HistoryOutlined,
 } from "@ant-design/icons";
 import {
   message,
@@ -27,7 +24,6 @@ import {
   InputNumber,
   Modal,
   Table,
-  Upload,
   Space,
   Tooltip,
   DatePicker,
@@ -35,7 +31,6 @@ import {
   Tag,
   Divider,
   Progress,
-  Timeline,
 } from "antd";
 import type { InputRef } from "antd";
 import type { ColumnType } from "antd/es/table";
@@ -207,15 +202,25 @@ export default function ProviderManageContracts() {
   const [urlFile, setUrlFile] = useState<string>("");
   const [form] = Form.useForm();
   const [open, setOpen] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [searchText, setSearchText] = useState<string>("");
   const [searchedColumn, setSearchedColumn] = useState<string>("");
   const searchInput = useRef<InputRef>(null);
   const router = useRouter();
   const [days, setDays] = useState<number>();
   const [filteredInfo, setFilteredInfo] = useState<Record<string, any>>({});
-  const [contracts, setContracts] = useState<ContractData[]>(mockContracts);
+  const [contracts, setContracts] = useState<ContractData[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+  // Load contract data with loading state
+  useEffect(() => {
+    setLoading(true);
+    // Simulate API call with timeout
+    setTimeout(() => {
+      setContracts(mockContracts);
+      setLoading(false);
+    }, 800);
+  }, []);
 
   // Định nghĩa enum cho trạng thái hợp đồng
   enum ContractStatus {
@@ -862,6 +867,7 @@ export default function ProviderManageContracts() {
           columns={columns}
           dataSource={contracts}
           rowKey="id"
+          loading={loading}
           scroll={{ x: 1200 }}
           pagination={{
             pageSize: 10,
@@ -871,6 +877,9 @@ export default function ProviderManageContracts() {
               `${range[0]}-${range[1]} của ${total} mục`,
           }}
           size="middle"
+          locale={{
+            emptyText: loading ? "Đang tải dữ liệu..." : "Không có dữ liệu",
+          }}
         />
       </Card>
 
@@ -963,30 +972,6 @@ export default function ProviderManageContracts() {
               </Form.Item>
               <Form.Item hidden name="totalCostNumber">
                 <Input />
-              </Form.Item>
-            </div>
-
-            <div>
-              <Form.Item
-                label="Ảnh hợp đồng tất toán"
-                name="images"
-                rules={[
-                  {
-                    required: true,
-                    message: "Hãy đăng ảnh tất toán hợp đồng lên!",
-                  },
-                ]}
-              >
-                <Upload
-                  listType="picture-card"
-                  maxCount={3}
-                  beforeUpload={() => false}
-                >
-                  <div>
-                    <PlusOutlined />
-                    <div style={{ marginTop: 8 }}>Tải ảnh lên</div>
-                  </div>
-                </Upload>
               </Form.Item>
             </div>
           </div>

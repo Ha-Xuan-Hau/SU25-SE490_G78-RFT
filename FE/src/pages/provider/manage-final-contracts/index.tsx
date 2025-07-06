@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import {
   SearchOutlined,
@@ -129,9 +129,18 @@ export default function ProviderManageFinalContracts() {
   const [searchedColumn, setSearchedColumn] = useState<string>("");
   const searchInput = useRef<InputRef>(null);
   const [filteredInfo, setFilteredInfo] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState<boolean>(true);
+  const [finalContracts, setFinalContracts] = useState<FinalContractData[]>([]);
 
-  // Use mock data
-  const dataSource = mockFinalContracts;
+  // Load data with loading state
+  useEffect(() => {
+    setLoading(true);
+    // Simulate API call with timeout
+    setTimeout(() => {
+      setFinalContracts(mockFinalContracts);
+      setLoading(false);
+    }, 800);
+  }, []);
 
   const handleChange = (pagination: any, filters: Record<string, any>) => {
     setFilteredInfo(filters);
@@ -443,8 +452,9 @@ export default function ProviderManageFinalContracts() {
         <Table
           onChange={handleChange}
           columns={columns}
-          dataSource={dataSource}
+          dataSource={finalContracts}
           rowKey="id"
+          loading={loading}
           scroll={{ x: 1200 }}
           pagination={{
             pageSize: 10,
@@ -452,6 +462,9 @@ export default function ProviderManageFinalContracts() {
             showQuickJumper: true,
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} của ${total} mục`,
+          }}
+          locale={{
+            emptyText: loading ? "Đang tải dữ liệu..." : "Không có dữ liệu",
           }}
           size="middle"
         />

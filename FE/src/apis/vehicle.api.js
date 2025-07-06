@@ -60,7 +60,9 @@ export async function searchVehicles({ body }) {
         });
 
         console.log("Search response received:", data);
-        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+
+        // Trả về toàn bộ pagination response object, không chỉ content
+        return data;
     } catch (error) {
         console.error("Lỗi khi tìm kiếm xe:", error);
         throw error;
@@ -69,14 +71,45 @@ export async function searchVehicles({ body }) {
 
 export async function getBookedSlotById(vehicleId) {
     try {
+        // Fetch from booking endpoint to get proper booking data with status
         const { data } = await apiClient.request({
             method: "GET",
-            url: `bookedTimeSlot/vehicle/${vehicleId}`,
-        })
-        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+            url: `/bookedTimeSlot/vehicle/${vehicleId}`,
+        });
+
+        // Convert to ExistingBooking format
+        const bookings = Array.isArray(data) ? data : data.content || data.items || data.data || [];
+
+        return bookings.map((booking, index) => ({
+            id: booking.id || index + 1,
+            startDate: booking.timeBookingStart || booking.timeFrom,
+            endDate: booking.timeBookingEnd || booking.timeTo,
+            status: booking.status || 'CONFIRMED'
+        })).filter(booking =>
+            // Only include active bookings (not cancelled)
+            booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED'
+        );
     } catch (error) {
-        console.error("Lỗi khi tìm kiếm xe:", error)
-        throw error
+        console.error("Lỗi khi lấy booking data:", error);
+        // Fallback to old endpoint if new one fails
+        try {
+            const { data } = await apiClient.request({
+                method: "GET",
+                url: `bookedTimeSlot/vehicle/${vehicleId}`,
+            });
+
+            const slots = Array.isArray(data) ? data : data.content || data.items || data.data || [];
+
+            return slots.map((slot, index) => ({
+                id: index + 1,
+                startDate: slot.timeFrom,
+                endDate: slot.timeTo,
+                status: 'CONFIRMED'
+            }));
+        } catch (fallbackError) {
+            console.error("Fallback cũng thất bại:", fallbackError);
+            return [];
+        }
     }
 }
 
