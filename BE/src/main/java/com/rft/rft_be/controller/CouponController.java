@@ -14,34 +14,41 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/coupons")
 public class CouponController {
-@Autowired
-private CouponService couponService;
+    @Autowired
+    private CouponService couponService;
+
     @PutMapping("/{id}/restore")
     public ResponseEntity<Void> restoreCouponToValid(@PathVariable String id) {
         couponService.restoreCouponToValid(id);
         return ResponseEntity.ok().build();
     }
-@GetMapping
+
+    @GetMapping
     public ResponseEntity<List<CouponDTO>> getAllCoupons() {
         return ResponseEntity.ok(couponService.getAllCoupons());
-}
-@GetMapping("/{id}")
+    }
+
+    @GetMapping("/{id}")
     public ResponseEntity<CouponDTO> getCouponById(@PathVariable String id) {
-    return ResponseEntity.ok(couponService.getCouponById(id));
-}
+        return ResponseEntity.ok(couponService.getCouponById(id));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<CouponDTO> update(@PathVariable String id, @RequestBody CouponDTO dto) {
         return ResponseEntity.ok(couponService.updateCoupon(id, dto));
     }
+
     @PostMapping
     public ResponseEntity<CouponDTO> createCoupon(@RequestBody CouponDTO dto) {
         return ResponseEntity.ok(couponService.createCoupon(dto));
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         couponService.deleteCouponById(id);
         return ResponseEntity.noContent().build();
     }
+
     @GetMapping("/available")
     public ResponseEntity<List<CouponUseDTO>> getAvailableCouponsForUser(@RequestParam String userId) {
         return ResponseEntity.ok(couponService.getValidCouponsForUser(userId));

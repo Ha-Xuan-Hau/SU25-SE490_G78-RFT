@@ -1,4 +1,5 @@
 import type React from "react";
+import { Pagination } from "antd";
 import VehicleCard from "@/components/Home/Vehicle/Card/Card";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import type { Vehicle } from "@/types/vehicle";
@@ -7,18 +8,28 @@ interface VehicleListingProps {
   vehicles: Vehicle[];
   isLoading: boolean;
   error: string | null;
+  currentPage: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize?: number) => void;
 }
 
 const VehicleListing: React.FC<VehicleListingProps> = ({
   vehicles,
   isLoading,
   error,
+  currentPage,
+  totalItems,
+  pageSize,
+  onPageChange,
 }) => {
   // Hiển thị trạng thái loading
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-20">
-        <LoadingSpinner />
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <div className="flex justify-center items-center py-32">
+          <LoadingSpinner />
+        </div>
       </div>
     );
   }
@@ -26,11 +37,13 @@ const VehicleListing: React.FC<VehicleListingProps> = ({
   // Hiển thị lỗi nếu có
   if (error) {
     return (
-      <div className="text-center py-20">
-        <p className="text-red-500 text-lg font-medium">
-          Đã xảy ra lỗi khi tải dữ liệu
-        </p>
-        <p className="text-gray-500 mt-2">Vui lòng thử lại sau: {error}</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <div className="text-center py-32">
+          <p className="text-red-500 text-lg font-medium">
+            Đã xảy ra lỗi khi tải dữ liệu
+          </p>
+          <p className="text-gray-500 mt-2">Vui lòng thử lại sau: {error}</p>
+        </div>
       </div>
     );
   }
@@ -38,34 +51,66 @@ const VehicleListing: React.FC<VehicleListingProps> = ({
   // Trường hợp không có xe nào sau khi lọc
   if (!vehicles || vehicles.length === 0) {
     return (
-      <div className="text-center py-20">
-        <p className="text-lg">Không tìm thấy xe nào phù hợp với bộ lọc</p>
-        <p className="text-gray-500 mt-2">Vui lòng thử với bộ lọc khác</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <div className="text-center py-32">
+          <div className="mx-auto w-24 h-24 mb-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-full">
+            <svg
+              className="w-12 h-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Không tìm thấy xe nào
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-2">
+            Vui lòng thử với bộ lọc khác hoặc mở rộng điều kiện tìm kiếm
+          </p>
+          {/* <p className="text-xs text-gray-400">
+            Debug: vehicles={vehicles?.length || 0}, totalItems={totalItems},
+            currentPage={currentPage}
+          </p> */}
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold">Danh sách xe</h1>
-        {/* <div>
-          <select className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:text-white">
-            <option value="newest">Mới nhất</option>
-            <option value="price-asc">Giá thấp - cao</option>
-            <option value="price-desc">Giá cao - thấp</option>
-            <option value="rating">Đánh giá</option>
-          </select>
-        </div> */}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+      {/* Grid hiển thị 4 cards trên 1 hàng với responsive */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6 mb-8">
         {vehicles.map((vehicle: Vehicle) => (
           <div key={vehicle.id} className="h-full">
             <VehicleCard item={vehicle} />
           </div>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalItems > pageSize && (
+        <div className="flex justify-center mt-8">
+          <Pagination
+            current={currentPage}
+            total={totalItems}
+            pageSize={pageSize}
+            onChange={onPageChange}
+            showSizeChanger={false}
+            showQuickJumper
+            showTotal={(total, range) =>
+              `${range[0]}-${range[1]} của ${total} xe`
+            }
+            className="text-center"
+          />
+        </div>
+      )}
     </div>
   );
 };

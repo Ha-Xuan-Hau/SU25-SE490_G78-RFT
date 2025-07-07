@@ -28,7 +28,7 @@ public class VehicleSearchDTO {
      String returnDateTime;
      List<String> feature;
      int page = 0;
-     int size = 10;
+     int size = 12;
 }
 
 

@@ -36,8 +36,8 @@ const Banner: React.FC = () => {
             </h1>
             <p className="text-lg md:text-xl font-medium mb-8">
               Trải nghiệm sự khác biệt từ{" "}
-              <span className="text-green-400 font-semibold">hơn 10.000</span>{" "}
-              xe gia đình đời mới khắp Việt Nam
+              <span className="text-accent font-semibold">hơn 10.000</span> xe
+              gia đình đời mới khắp Việt Nam
             </p>
           </div>
 
