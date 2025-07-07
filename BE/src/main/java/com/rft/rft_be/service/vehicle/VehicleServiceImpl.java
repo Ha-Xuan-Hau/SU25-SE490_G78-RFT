@@ -446,7 +446,7 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, Instant timeFrom, Instant timeTo) {
+    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, LocalDateTime timeFrom, LocalDateTime timeTo) {
         Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
 
         Specification<Vehicle> spec = (root, query, cb) -> cb.equal(root.get("status"), Vehicle.Status.AVAILABLE);
@@ -541,12 +541,12 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public void deleteExpiredBookedTimeSlots() {
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
         bookedTimeSlotsRepository.deleteAllByTimeToBefore(now);
     }
 
     @Override
-    public Page<VehicleSearchResultDTO> basicSearch(String address, String type, Instant from, Instant to, Pageable pageable) {
+    public Page<VehicleSearchResultDTO> basicSearch(String address, String type, LocalDateTime from, LocalDateTime to, Pageable pageable) {
         // Lấy danh sách xe bận trong khoảng thời gian
         List<String> busyIds = bookedTimeSlotsRepository.findBusyVehicleIds(from, to);
 
