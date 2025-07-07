@@ -23,6 +23,7 @@ public class VehicleDetailDTO {
     String status;
     String thumb;
     Integer numberSeat;
+    String shipToAddress;
     Integer yearManufacture;
     String transmission;
     String fuelType;

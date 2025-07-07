@@ -15,6 +15,7 @@ import {
 } from "@ant-design/icons";
 import moment from "moment";
 import { formatCurrency } from "@/lib/format-currency";
+import { showSuccess, showError } from "@/utils/toast.utils";
 
 // Mock data for car123
 const mockBookingData = {
@@ -63,15 +64,24 @@ export default function BookingDetailPage() {
   const [isPreviewVisible, setPreviewVisible] = useState(false);
 
   const onDownload = () => {
-    if (!src) return;
+    if (!src) {
+      showError("Không có hình ảnh để tải xuống!");
+      return;
+    }
 
-    // This is a mock implementation
-    const link = document.createElement("a");
-    link.href = src;
-    link.download = "booking-image.png";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    try {
+      // This is a mock implementation
+      const link = document.createElement("a");
+      link.href = src;
+      link.download = "booking-image.png";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      showSuccess("Tải xuống hình ảnh thành công!");
+    } catch (error) {
+      showError("Có lỗi xảy ra khi tải xuống hình ảnh!");
+    }
   };
 
   return (

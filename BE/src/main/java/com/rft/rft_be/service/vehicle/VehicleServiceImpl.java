@@ -449,16 +449,24 @@ public class VehicleServiceImpl implements VehicleService {
     public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, LocalDateTime timeFrom, LocalDateTime timeTo) {
         Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
 
-        Specification<Vehicle> spec = (root, query, cb) -> cb.equal(root.get("status"), Vehicle.Status.AVAILABLE);
+        Specification<Vehicle> spec = (root, query, cb) -> cb.conjunction();
+
+        // Thêm điều kiện status AVAILABLE nếu không được chỉ định
+        spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), Vehicle.Status.AVAILABLE));
 
         if (req.getVehicleTypes() != null && !req.getVehicleTypes().isEmpty()) {
             spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleTypes()));
         }
 
-        if (req.getAddress() != null && !req.getAddress().isBlank()) {
+        if (req.getAddresses() != null && !req.getAddresses().isEmpty()) {
             spec = spec.and((root, query, cb) -> {
-                var userJoin = root.join("user");
-                return cb.like(cb.lower(userJoin.get("address")), "%" + req.getAddress().toLowerCase() + "%");
+                Join<Vehicle, User> userJoin = root.join("user", JoinType.INNER);
+                Predicate combinedPredicate = cb.disjunction();
+                for (String addr : req.getAddresses()) {
+                    combinedPredicate = cb.or(combinedPredicate,
+                            cb.like(cb.lower(userJoin.get("address")), "%" + addr.toLowerCase() + "%"));
+                }
+                return combinedPredicate;
             });
         }
 
@@ -467,7 +475,7 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         if (req.getShipToAddress() != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("shipToAddress"), req.getShipToAddress() ? Vehicle.ShipToAddress.YES : Vehicle.ShipToAddress.NO));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("shipToAddress"), req.getShipToAddress()));
         }
 
         if (req.getBrandId() != null) {
@@ -563,6 +571,7 @@ public class VehicleServiceImpl implements VehicleService {
 
         return result.map(vehicle -> {
             Double avgRating = ratingRepository.findAverageByVehicleId(vehicle.getId());
+
             return VehicleSearchResultDTO.builder()
                     .id(vehicle.getId())
                     .licensePlate(vehicle.getLicensePlate())

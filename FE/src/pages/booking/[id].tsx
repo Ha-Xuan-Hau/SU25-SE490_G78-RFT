@@ -1,30 +1,19 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-import {
-  CheckCircleOutlined,
-  SolutionOutlined,
-  PayCircleOutlined,
-  SmileOutlined,
-  LoadingOutlined,
-  CreditCardOutlined,
-  WalletOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
+// Icons removed for cleaner UI
 import {
   Button,
   Form,
   Input,
-  Steps,
   Radio,
-  Space,
   DatePicker,
   message,
   Spin,
-  Card,
   Divider,
+  Modal,
 } from "antd";
 import Image from "next/image";
 import dayjs, { Dayjs } from "dayjs";
@@ -34,11 +23,11 @@ import {
   calculateRentalDuration,
   calculateRentalPrice,
   formatRentalDuration,
-  OPERATING_HOURS,
+  formatTimeForBackend,
   RentalCalculation,
   checkBufferTimeConflict,
-  getBlockedDates,
-  getBlockedTimeRanges,
+  createDisabledTimeFunction,
+  isDateDisabled,
   VehicleType,
   ExistingBooking,
   BUFFER_TIME_RULES,
@@ -126,7 +115,6 @@ const BookingPage: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [costGetCar, setCostGetCar] = useState<number>(0);
   const [totalDays, setTotalDays] = useState<number>(3);
-  const [validationMessage] = useState<string>("");
   const [form] = Form.useForm();
   const [amountDiscount, setAmountDiscount] = useState<number>(0);
   const [selectedCoupon, setSelectedCoupon] = useState<CouponType | null>(null);
@@ -146,10 +134,20 @@ const BookingPage: React.FC = () => {
   const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>(
     []
   );
+  const [rawBookingSlotsFromAPI, setRawBookingSlotsFromAPI] = useState<
+    unknown[]
+  >([]);
   const [bufferConflictMessage, setBufferConflictMessage] =
     useState<string>("");
+  const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
 
   const user = useUserValue() as User;
+
+  // Reset coupon state when component first mounts (page reload)
+  useEffect(() => {
+    setAmountDiscount(0);
+    setSelectedCoupon(null);
+  }, []);
 
   // Tính hourly rate từ daily rate (daily rate / 12 giờ)
   useEffect(() => {
@@ -171,23 +169,6 @@ const BookingPage: React.FC = () => {
         // TODO: Fetch existing bookings for this vehicle
         const bookings = await getBookedSlotById(id);
         setExistingBookings(bookings);
-
-        // Mock data for demonstration
-        // const mockBookings: ExistingBooking[] = [
-        //   {
-        //     id: 1,
-        //     startDate: dayjs().add(2, "day").hour(9).minute(0),
-        //     endDate: dayjs().add(2, "day").hour(17).minute(0),
-        //     status: "CONFIRMED",
-        //   },
-        //   {
-        //     id: 2,
-        //     startDate: dayjs().add(5, "day").hour(8).minute(0),
-        //     endDate: dayjs().add(6, "day").hour(18).minute(0),
-        //     status: "CONFIRMED",
-        //   },
-        // ];
-        // setExistingBookings(mockBookings);
 
         // Check for time parameters in URL
         const { pickupTime, returnTime } = router.query;
@@ -242,6 +223,14 @@ const BookingPage: React.FC = () => {
     }
   }, [id, router.query]);
 
+  // Reset coupon state when component mounts or when returning to step 0
+  useEffect(() => {
+    if (current === 0) {
+      setAmountDiscount(0);
+      setSelectedCoupon(null);
+    }
+  }, [current]);
+
   // Fetch wallet balance
   useEffect(() => {
     const fetchWalletBalance = async () => {
@@ -249,7 +238,7 @@ const BookingPage: React.FC = () => {
         // TODO: Implement API call to get wallet balance
         // const balance = await getWalletBalance();
         // setWalletBalance(balance);
-        setWalletBalance(1500000); // Mock data
+        setWalletBalance(10000000); // Mock data
       } catch (error) {
         console.error("Error fetching wallet balance:", error);
       }
@@ -260,33 +249,26 @@ const BookingPage: React.FC = () => {
     }
   }, [user]);
 
-  // Navigation functions
-  const handleNext = (): void => {
-    setCurrent(current + 1);
-  };
-
-  const handleBack = (): void => {
-    setCurrent(current - 1);
-  };
-
   // Tạo booking khi hoàn tất bước 2
   const handleCreateBooking = async () => {
     try {
       setSubmitting(true);
       const formValues = await form.validateFields();
 
+      // Kiểm tra xem đã chọn thời gian chưa
+      if (!selectedDates || !selectedDates[0] || !selectedDates[1]) {
+        message.error("Vui lòng chọn thời gian thuê xe");
+        setSubmitting(false);
+        return;
+      }
+
       // Kiểm tra buffer time conflict một lần nữa trước khi tạo booking
-      if (
-        vehicle?.vehicleType &&
-        formValues.date &&
-        formValues.date[0] &&
-        formValues.date[1]
-      ) {
+      if (vehicle?.vehicleType) {
         const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
         const conflictCheck = checkBufferTimeConflict(
           vehicleType,
-          formValues.date[0],
-          formValues.date[1],
+          selectedDates[0],
+          selectedDates[1],
           existingBookings
         );
 
@@ -303,8 +285,8 @@ const BookingPage: React.FC = () => {
       const maxRetries = 3;
       let retryCount = 0;
 
-      const startTime = formValues.date[0].toISOString();
-      const endTime = formValues.date[1].toISOString();
+      const startTime = formatTimeForBackend(selectedDates[0]);
+      const endTime = formatTimeForBackend(selectedDates[1]);
 
       while (retryCount < maxRetries) {
         try {
@@ -321,11 +303,14 @@ const BookingPage: React.FC = () => {
 
           const bookingRequestData = {
             vehicleId: id,
-            startDate: formValues.date[0].format("YYYY-MM-DD HH:mm"),
-            endDate: formValues.date[1].format("YYYY-MM-DD HH:mm"),
+            timeBookingStart: formatTimeForBackend(selectedDates[0]),
+            timeBookingEnd: formatTimeForBackend(selectedDates[1]),
             fullname: formValues.fullname,
-            phone: formValues.phone,
-            address: formValues.address,
+            phoneNumber: formValues.phone,
+            address:
+              costGetCar === 1
+                ? formValues.address || ""
+                : vehicle?.address || "Nhận tại văn phòng",
             pickupMethod: costGetCar === 0 ? "office" : "delivery",
             couponId: selectedCoupon?.id || null,
 
@@ -344,7 +329,7 @@ const BookingPage: React.FC = () => {
           if (response.success && response.data) {
             setBookingData(response.data);
             message.success("Tạo đơn đặt xe thành công!");
-            setCurrent(2);
+            setCurrent(1);
             return; // Exit retry loop on success
           } else {
             // Check if it's a conflict error using the new isConflict flag
@@ -447,7 +432,7 @@ const BookingPage: React.FC = () => {
 
         if (paymentResponse.success) {
           message.success("Thanh toán ví thành công!");
-          setCurrent(3); // Chuyển đến kết quả thành công
+          setCurrent(2); // Chuyển đến kết quả thành công
         } else {
           message.error(paymentResponse.error || "Lỗi thanh toán ví");
         }
@@ -520,7 +505,6 @@ const BookingPage: React.FC = () => {
     if (coupon) {
       setAmountDiscount(coupon.discount);
       setSelectedCoupon(coupon);
-      message.success(`Đã áp dụng mã giảm giá "${coupon.name}" thành công!`);
     } else {
       setAmountDiscount(0);
       setSelectedCoupon(null);
@@ -537,7 +521,7 @@ const BookingPage: React.FC = () => {
     subtotal = totalDays * costPerDay;
   }
 
-  const deliveryFee = costGetCar === 0 ? 0 : 50000;
+  const deliveryFee = 0; // Miễn phí giao xe
   const discountAmount = (subtotal * amountDiscount) / 100;
   const totalAmount = subtotal + deliveryFee - discountAmount;
 
@@ -560,76 +544,23 @@ const BookingPage: React.FC = () => {
     ? dayjs(returnTime as string)
     : dayjs().add(4, "day").hour(20).minute(0);
 
-  // NEW: disabledTime cho RangePicker - chỉ cho phép 7h-20h, bước nhảy 30 phút
-  const disabledRangeTime: RangePickerProps["disabledTime"] = (current) => {
-    const baseDisabled = {
-      disabledHours: () => [
-        // Disable 0-6h (trước 7h)
-        ...Array.from({ length: OPERATING_HOURS.START }, (_, i) => i), // 0,1,2,3,4,5,6
-        // Disable 21-23h (sau 20h)
-        ...Array.from(
-          { length: 24 - (OPERATING_HOURS.END + 1) },
-          (_, i) => OPERATING_HOURS.END + 1 + i // 21,22,23
-        ),
-      ],
-      disabledMinutes: () => {
-        // Chỉ cho phép :00 và :30
-        const allowedMinutes = [0, 30];
-        return Array.from({ length: 60 }, (_, i) => i).filter(
-          (minute) => !allowedMinutes.includes(minute)
-        );
-      },
-    };
-
-    // Thêm disabled time do buffer conflicts
-    if (vehicle?.vehicleType && current) {
-      const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-      const blockedRanges = getBlockedTimeRanges(
-        vehicleType,
-        current,
-        existingBookings
-      );
-
-      if (blockedRanges.length > 0) {
-        const blockedHours: number[] = [];
-        const blockedMinutes: { [hour: number]: number[] } = {};
-
-        for (const range of blockedRanges) {
-          let currentTime = range.start;
-          while (currentTime.isSameOrBefore(range.end)) {
-            const hour = currentTime.hour();
-            const minute = currentTime.minute();
-
-            if (!blockedHours.includes(hour)) {
-              blockedHours.push(hour);
-            }
-
-            if (!blockedMinutes[hour]) {
-              blockedMinutes[hour] = [];
-            }
-            if (!blockedMinutes[hour].includes(minute)) {
-              blockedMinutes[hour].push(minute);
-            }
-
-            currentTime = currentTime.add(30, "minute");
-          }
-        }
-
-        return {
-          disabledHours: () => [
-            ...baseDisabled.disabledHours(),
-            ...blockedHours,
-          ],
-          disabledMinutes: (selectedHour: number) => [
-            ...baseDisabled.disabledMinutes(),
-            ...(blockedMinutes[selectedHour] || []),
-          ],
-        };
-      }
+  // Tạo disabledTime và disabledDate functions sử dụng helper mới
+  const disabledRangeTime = useMemo(() => {
+    if (!vehicle?.vehicleType) {
+      return createDisabledTimeFunction("CAR", []);
     }
+    const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+    return createDisabledTimeFunction(vehicleType, existingBookings);
+  }, [vehicle?.vehicleType, existingBookings]);
 
-    return baseDisabled;
-  };
+  const disabledDateFunction = useMemo(() => {
+    return (current: Dayjs): boolean => {
+      if (!current || !vehicle?.vehicleType) return false;
+
+      const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+      return isDateDisabled(current, vehicleType, existingBookings);
+    };
+  }, [vehicle?.vehicleType, existingBookings]);
 
   // Loading state
   if (loading) {
@@ -653,332 +584,224 @@ const BookingPage: React.FC = () => {
   }
 
   return (
-    <section className=" relative">
-      <div className="mb-10 max-w-6xl mx-auto">
-        {/* Steps header */}
-        <div className="flex flex-col mt-10 items-center justify-center border rounded-sm shadow-md bg-slate-100 p-2 pb-4 sm:flex-row sm:px-5 lg:px-5 xl:px-12">
-          <div className="flex w-full mt-4 py-2 text-xs sm:mt-0 sm:ml-auto sm:text-base">
-            <Steps
-              className="mt-5"
-              current={current}
-              items={[
-                {
-                  title: "Thông tin thuê xe",
-                  icon: <SolutionOutlined />,
-                },
-                {
-                  title: "Thông tin người đặt",
-                  icon:
-                    current === 1 && submitting ? (
-                      <LoadingOutlined />
-                    ) : (
-                      <UserOutlined />
-                    ),
-                },
-                {
-                  title: "Phương thức thanh toán",
-                  icon:
-                    current === 2 && submitting ? (
-                      <LoadingOutlined />
-                    ) : (
-                      <PayCircleOutlined />
-                    ),
-                },
-                {
-                  title: "Kết quả",
-                  icon: <SmileOutlined />,
-                },
-              ]}
-            />
-          </div>
-        </div>
-
-        {/* Bước 1: Thông tin thuê xe */}
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Bước 1: Thông tin đặt xe */}
         {current === 0 && (
-          <div className="grid sm:px- mt-3 lg:grid-cols-2 p-6 rounded-sm shadow-md bg-slate-100">
-            <div className="px-10 pt-8">
-              <p className="text-xl font-medium">Thông tin xe</p>
-              <div className="mt-8 space-y-3 rounded-lg shadow-md border bg-white px-2 py-4 sm:px-6">
-                <div className="flex flex-col rounded-lg bg-white sm:flex-row relative">
-                  <div className="relative rounded-lg w-1/2 h-48">
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Cột trái: Form thông tin */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Địa chỉ giao xe */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Địa chỉ giao xe
+                  </h3>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      costGetCar === 0
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-blue-300"
+                    }`}
+                    onClick={() => setCostGetCar(0)}
+                  >
+                    <div className="flex items-center mb-2">
+                      <Radio checked={costGetCar === 0} />
+                      <span className="ml-2 font-semibold text-gray-800 text-base">
+                        Nhận tại văn phòng
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-base">
+                      {vehicle.address || "Thạch Hòa, Thạch Thất, Hà Nội"}
+                    </div>
+                    <div className="text-green-600 font-semibold text-base mt-1">
+                      Miễn phí
+                    </div>
+                  </div>
+
+                  {vehicle.shipToAddress && (
+                    <div
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        costGetCar === 1
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-blue-300"
+                      }`}
+                      onClick={() => setCostGetCar(1)}
+                    >
+                      <div className="flex items-center mb-2">
+                        <Radio checked={costGetCar === 1} />
+                        <span className="ml-2 font-semibold text-gray-800 text-base">
+                          Giao tận nơi
+                        </span>
+                      </div>
+                      <div className="text-gray-600 text-base">
+                        Giao xe đến địa chỉ của bạn
+                      </div>
+                      <div className="text-orange-500 font-semibold text-base mt-1">
+                        Miễn phí
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {costGetCar === 1 && (
+                  <div className="mt-4">
+                    <Form form={form} layout="vertical">
+                      <Form.Item
+                        name="address"
+                        label={
+                          <span className="text-base font-medium">
+                            Nhập địa chỉ giao xe mà bạn mong muốn
+                          </span>
+                        }
+                        rules={[
+                          {
+                            required: true,
+                            message: "Vui lòng nhập địa chỉ giao xe",
+                          },
+                        ]}
+                      >
+                        <TextArea
+                          rows={3}
+                          placeholder="Nhập địa chỉ giao xe chi tiết (số nhà, tên đường, phường/xã, quận/huyện, thành phố)"
+                          className="resize-none text-base"
+                        />
+                      </Form.Item>
+                    </Form>
+                  </div>
+                )}
+              </div>
+
+              {/* Thông tin xe */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Thông tin xe thuê
+                  </h3>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative w-full sm:w-48 h-32 rounded-lg overflow-hidden">
                     <Image
-                      alt="car"
                       src={
-                        vehicle.vehicleImages &&
-                        vehicle.vehicleImages.length > 0
+                        vehicle.vehicleImages?.length > 0
                           ? vehicle.vehicleImages[0].imageUrl
                           : "/images/demo1.png"
                       }
+                      alt="Vehicle"
                       layout="fill"
-                      className="rounded-lg object-cover"
-                      unoptimized={true}
+                      className="object-cover"
+                      unoptimized
                     />
                   </div>
 
-                  <div className="flex w-full flex-col px-4 py-4">
-                    <span className="font-semibold text-lg">
+                  <div className="flex-1 space-y-2">
+                    <h4 className="font-semibold text-xl text-gray-800">
                       {vehicle.thumb} - {vehicle.modelName} (
                       {vehicle.yearManufacture})
-                    </span>
-                    <span className="float-right text-gray-400">
-                      {vehicle.transmission} - {vehicle.numberSeat} chỗ
-                    </span>
-                    <p className="text-lg font-bold">
-                      {vehicle.costPerDay.toLocaleString("vi-VN", {
-                        style: "currency",
-                        currency: "VND",
-                      })}
-                      /ngày
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Giá theo giờ: {hourlyRate.toLocaleString("vi-VN")}₫/giờ
-                    </p>
+                    </h4>
+                    <div className="flex flex-wrap gap-4 text-base text-gray-600">
+                      <span>{vehicle.transmission}</span>
+                      <span>{vehicle.numberSeat} chỗ</span>
+                      <span>{vehicle.fuelType || "Xăng"}</span>
+                    </div>
+                    <div className="text-2xl font-bold text-red-500">
+                      {vehicle.costPerDay.toLocaleString("vi-VN")}₫/ngày
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <p className="mt-8 text-lg font-medium">Phương thức nhận xe</p>
-              <form className="mt-5 mb-5 grid gap-6">
-                <Radio.Group
-                  onChange={(e) => setCostGetCar(e.target.value)}
-                  value={costGetCar}
-                >
-                  <Space direction="vertical">
-                    <Radio value={0}>
-                      <div>
-                        <div className="font-medium">Nhận tại văn phòng</div>
-                        <div className="text-gray-500 text-sm">
-                          {vehicle.address || "Thạch Hòa, Thạch Thất, Hà Nội"}
-                        </div>
-                        <div className="text-green-500 text-sm font-medium">
-                          Miễn phí
+                {/* Chọn thời gian */}
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <RangePicker
+                    showTime={{ format: "HH:mm", minuteStep: 30 }}
+                    format="DD-MM-YYYY HH:mm"
+                    onChange={selectTimeSlots}
+                    disabledTime={disabledRangeTime}
+                    disabledDate={disabledDateFunction}
+                    size="large"
+                    value={selectedDates || [defaultStartDate, defaultEndDate]}
+                    className="w-full"
+                    placeholder={["Thời gian nhận xe", "Thời gian trả xe"]}
+                  />
+
+                  {bufferConflictMessage && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start">
+                        <div>
+                          <div className="text-red-600 text-base font-medium">
+                            {bufferConflictMessage}
+                          </div>
+                          {vehicle?.vehicleType && (
+                            <div className="text-gray-600 text-sm mt-1">
+                              {
+                                BUFFER_TIME_RULES[
+                                  vehicle.vehicleType.toUpperCase() as VehicleType
+                                ]?.description
+                              }
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </Radio>
-                    {vehicle.shipToAddress && (
-                      <Radio value={1}>
-                        <div>
-                          <div className="font-medium">Giao tận nơi</div>
-                          <div className="text-gray-500 text-sm">
-                            Giao xe đến địa chỉ của bạn
-                          </div>
-                          <div className="text-orange-500 text-sm font-medium">
-                            +50,000₫
-                          </div>
+                    </div>
+                  )}
+
+                  {rentalCalculation && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-blue-800 text-sm">
+                        <div className="font-medium">
+                          Thời gian thuê:{" "}
+                          {formatRentalDuration(rentalCalculation)}
                         </div>
-                      </Radio>
-                    )}
-                  </Space>
-                </Radio.Group>
-              </form>
+                        {rentalCalculation.isHourlyRate && (
+                          <div className="mt-1 text-xs">
+                            Tính theo giờ: {hourlyRate.toLocaleString("vi-VN")}
+                            ₫/giờ
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="mt-14 bg-gray-50 px-10 pt-4 lg:mt-5 rounded-md shadow-md">
-              <p className="text-xl font-medium ">Chi tiết thuê xe</p>
-              {/* <p className="text-gray-400">
-                Thời gian thuê xe (7h-20h, bước nhảy 30 phút)
-              </p>
-
-              {vehicle?.vehicleType && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="text-blue-700 text-sm font-medium">
-                    📋 Quy định về thời gian thuê:
-                  </p>
-                  <p className="text-blue-600 text-sm mt-1">
-                    {
-                      BUFFER_TIME_RULES[
-                        vehicle.vehicleType.toUpperCase() as VehicleType
-                      ]?.description
-                    }
-                  </p>
+            {/* Cột phải: Thông tin người đặt, Voucher và Tóm tắt đơn hàng */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Thông tin người đặt */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Thông tin người thuê xe
+                  </h3>
                 </div>
-              )} */}
 
-              <Space direction="vertical" size={12}>
-                <RangePicker
-                  showTime={{
-                    format: "HH:mm",
-                    minuteStep: 30,
-                  }}
-                  format="DD-MM-YYYY HH:mm"
-                  onChange={selectTimeSlots}
-                  disabledTime={disabledRangeTime}
-                  disabledDate={(current) => {
-                    if (!vehicle?.vehicleType) return false;
-
-                    const vehicleType =
-                      vehicle.vehicleType.toUpperCase() as VehicleType;
-                    const blockedDates = getBlockedDates(
-                      vehicleType,
-                      existingBookings
-                    );
-                    const currentDateStr = current.format("YYYY-MM-DD");
-
-                    return blockedDates.includes(currentDateStr);
-                  }}
-                  size="large"
-                  value={selectedDates || [defaultStartDate, defaultEndDate]}
-                />
-                {validationMessage && (
-                  <p className="text-red-500">{validationMessage}</p>
-                )}
-                {bufferConflictMessage && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                    <p className="text-red-600 text-sm">
-                      ⚠️ {bufferConflictMessage}
-                    </p>
-                    {vehicle?.vehicleType && (
-                      <p className="text-gray-600 text-xs mt-1">
-                        {
-                          BUFFER_TIME_RULES[
-                            vehicle.vehicleType.toUpperCase() as VehicleType
-                          ]?.description
-                        }
-                      </p>
-                    )}
+                <Form form={form} layout="vertical" size="large">
+                  {/* Họ và tên - Read only */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Họ và tên
+                    </label>
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-800 font-medium text-sm">
+                          {user?.fullName || "Chưa cập nhật"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </Space>
 
-              {/* NEW: Hiển thị chi tiết thời gian thuê */}
-              <div className="mt-4 space-y-2">
-                <p className="text-gray-600">
-                  Thời gian thuê:{" "}
-                  <span className="font-medium">
-                    {rentalCalculation
-                      ? formatRentalDuration(rentalCalculation)
-                      : `${totalDays} ngày`}
-                  </span>
-                </p>
-
-                {rentalCalculation?.isHourlyRate ? (
-                  <div className="space-y-1">
-                    <p className="text-gray-600">
-                      Giá theo giờ: {hourlyRate.toLocaleString("vi-VN")}₫/giờ
-                    </p>
-                    {rentalCalculation.billingHours > 0 && (
-                      <p className="text-sm text-gray-500 ml-4">
-                        • {rentalCalculation.billingHours} giờ ×{" "}
-                        {hourlyRate.toLocaleString("vi-VN")}₫ ={" "}
-                        {(
-                          rentalCalculation.billingHours * hourlyRate
-                        ).toLocaleString("vi-VN")}
-                        ₫
-                      </p>
-                    )}
-                    {rentalCalculation.billingMinutes > 0 && (
-                      <p className="text-sm text-gray-500 ml-4">
-                        • {rentalCalculation.billingMinutes} phút ×{" "}
-                        {Math.round(hourlyRate / 60).toLocaleString("vi-VN")}₫ ={" "}
-                        {Math.round(
-                          (rentalCalculation.billingMinutes / 60) * hourlyRate
-                        ).toLocaleString("vi-VN")}
-                        ₫
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-gray-600">
-                    Giá thuê:{" "}
-                    {vehicle.costPerDay.toLocaleString("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    })}{" "}
-                    × {totalDays} ngày
-                  </p>
-                )}
-
-                {deliveryFee > 0 && (
-                  <p className="text-gray-600">
-                    Phí giao xe:{" "}
-                    {deliveryFee.toLocaleString("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    })}
-                  </p>
-                )}
-              </div>
-
-              {/* Mã giảm giá */}
-              <div className="mt-4 mb-4">
-                <p className="text-gray-600 font-medium">Mã giảm giá</p>
-                <div className="border border-gray-200 rounded-md px-3 mt-2">
-                  <Coupon applyCoupon={handleApplyCoupon} />
-                </div>
-                {amountDiscount > 0 && (
-                  <p className="text-green-500 text-sm mt-1">
-                    Giảm giá {amountDiscount}%: -
-                    {discountAmount.toLocaleString("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    })}
-                  </p>
-                )}
-              </div>
-
-              <Divider />
-              <p className="text-lg font-bold">
-                Tổng tiền:{" "}
-                {totalAmount.toLocaleString("vi-VN", {
-                  style: "currency",
-                  currency: "VND",
-                })}
-              </p>
-
-              <button
-                onClick={handleNext}
-                disabled={!!bufferConflictMessage}
-                className={`mt-4 mb-2 w-full border-none rounded-md px-6 py-2 text-lg font-bold text-white cursor-pointer ${
-                  bufferConflictMessage
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-500 hover:bg-blue-600"
-                }`}
-              >
-                Tiếp tục
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Bước 2: Thông tin người đặt */}
-        {current === 1 && (
-          <div className="mt-3 p-6 rounded-md shadow-md bg-slate-100">
-            <div className="max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold mb-6 text-center">
-                Thông tin người đặt xe
-              </h2>
-
-              <Form
-                form={form}
-                layout="vertical"
-                size="large"
-                initialValues={{
-                  fullname: user?.fullName || "",
-                  phone: user?.phone || "",
-                  date: selectedDates || [defaultStartDate, defaultEndDate],
-                  address:
-                    costGetCar === 0
-                      ? vehicle.address || "Thạch Hòa, Thạch Thất, Hà Nội"
-                      : "",
-                }}
-              >
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Form.Item
-                    name="fullname"
-                    label="Họ và tên"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Vui lòng nhập họ và tên",
-                      },
-                    ]}
-                  >
-                    <Input readOnly className="bg-gray-100" />
-                  </Form.Item>
-
+                  {/* Số điện thoại - Editable */}
                   <Form.Item
                     name="phone"
-                    label="Số điện thoại"
+                    label={
+                      <span className="text-base font-medium">
+                        Số điện thoại
+                      </span>
+                    }
                     rules={[
                       {
                         required: true,
@@ -986,289 +809,458 @@ const BookingPage: React.FC = () => {
                       },
                       {
                         pattern: /^(0|\+84)[3|5|7|8|9][0-9]{8}$/,
-                        message: "Vui lòng nhập số điện thoại hợp lệ",
+                        message: "Số điện thoại không hợp lệ",
+                      },
+                    ]}
+                  >
+                    <Input
+                      placeholder="Nhập số điện thoại liên hệ"
+                      className="h-12 text-base"
+                    />
+                  </Form.Item>
+
+                  {/* Hidden field for fullname validation */}
+                  <Form.Item
+                    name="fullname"
+                    hidden
+                    rules={[
+                      {
+                        required: true,
+                        message: "Vui lòng cập nhật họ tên trong hồ sơ",
                       },
                     ]}
                   >
                     <Input />
                   </Form.Item>
-                </div>
+                </Form>
 
-                <Form.Item
-                  name="address"
-                  label={
-                    costGetCar === 0 ? "Địa chỉ nhận xe" : "Địa chỉ giao xe"
-                  }
-                  rules={[
-                    {
-                      required: true,
-                      message: "Vui lòng nhập địa chỉ",
-                    },
-                  ]}
-                >
-                  <TextArea
-                    rows={3}
-                    placeholder={
-                      costGetCar === 0 ? "Địa chỉ nhận xe" : "Địa chỉ giao xe"
-                    }
-                  />
-                </Form.Item>
-
-                <Form.Item name="date" label="Thời gian thuê xe">
-                  <RangePicker
-                    showTime={{ format: "HH:mm" }}
-                    format="DD-MM-YYYY HH:mm"
-                    disabled
-                    className="w-full"
-                  />
-                </Form.Item>
-
-                {/* NEW: Tóm tắt đơn hàng với logic mới */}
-                <Card className="mt-6">
-                  <h3 className="text-lg font-semibold mb-4">
-                    Tóm tắt đơn hàng
+                {!user?.fullName && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="text-yellow-700 text-sm">
+                      <div className="font-medium">
+                        Chưa có thông tin họ tên
+                      </div>
+                      <div className="text-xs mt-1">
+                        Vui lòng cập nhật họ tên trong hồ sơ cá nhân trước khi
+                        đặt xe.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Mã giảm giá */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Mã giảm giá
                   </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>
-                        {rentalCalculation?.isHourlyRate ? (
-                          <>
-                            Thuê theo giờ (
-                            {formatRentalDuration(rentalCalculation)}):
-                          </>
-                        ) : (
-                          <>Thuê xe ({totalDays} ngày):</>
-                        )}
-                      </span>
-                      <span>{subtotal.toLocaleString("vi-VN")}₫</span>
-                    </div>
-
-                    {/* Hiển thị breakdown cho hourly rate */}
-                    {rentalCalculation?.isHourlyRate && (
-                      <div className="text-sm text-gray-500 ml-4 space-y-1">
-                        {rentalCalculation.billingHours > 0 && (
-                          <div>
-                            • {rentalCalculation.billingHours} giờ ×{" "}
-                            {hourlyRate.toLocaleString("vi-VN")}₫
-                          </div>
-                        )}
-                        {rentalCalculation.billingMinutes > 0 && (
-                          <div>
-                            • {rentalCalculation.billingMinutes} phút ×{" "}
-                            {Math.round(hourlyRate / 60).toLocaleString(
-                              "vi-VN"
-                            )}
-                            ₫
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {deliveryFee > 0 && (
-                      <div className="flex justify-between">
-                        <span>Phí giao xe:</span>
-                        <span>{deliveryFee.toLocaleString("vi-VN")}₫</span>
-                      </div>
-                    )}
-
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Giảm giá ({amountDiscount}%):</span>
-                        <span>-{discountAmount.toLocaleString("vi-VN")}₫</span>
-                      </div>
-                    )}
-                    <Divider className="my-2" />
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Tổng tiền:</span>
-                      <span className="text-blue-600">
-                        {totalAmount.toLocaleString("vi-VN")}₫
-                      </span>
-                    </div>
-                  </div>
-                </Card>
-
-                <div className="flex justify-between mt-8">
-                  <Button size="large" onClick={handleBack}>
-                    Quay lại
-                  </Button>
-                  <Button
-                    type="primary"
-                    size="large"
-                    loading={submitting}
-                    onClick={handleCreateBooking}
-                  >
-                    Đặt xe
-                  </Button>
                 </div>
-              </Form>
-            </div>
-          </div>
-        )}
 
-        {/* Bước 3: Chọn phương thức thanh toán */}
-        {current === 2 && bookingData && (
-          <div className="mt-3 p-6 rounded-md shadow-md bg-slate-100">
-            <div className="max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold mb-6 text-center">
-                Chọn phương thức thanh toán
-              </h2>
-
-              <Card className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">
-                  Thông tin đơn đặt xe
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Mã đơn hàng:</span>
-                    <span className="font-mono">#{bookingData.id}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Trạng thái:</span>
-                    <span className="text-orange-600 font-medium">
-                      {bookingData.status}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Số tiền cần thanh toán:</span>
-                    <span className="text-red-600">
-                      {bookingData.totalCost.toLocaleString("vi-VN")}₫
-                    </span>
-                  </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <Coupon applyCoupon={handleApplyCoupon} />
                 </div>
-              </Card>
 
-              <div className="space-x-4 ">
-                <h3 className="text-lg font-semibold">
-                  Phương thức thanh toán
-                </h3>
-                <Radio.Group
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full"
-                >
-                  <div className="space-y-3">
-                    <Radio value="VNPAY" className="w-full">
-                      <Card className="w-full h-15 cursor-pointer flex items-center ">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center">
-                            <CreditCardOutlined className="mr-3 text-blue-500 text-xl" />
-                            <div className="flex flex-col justify-center h-12">
-                              <div className="font-semibold">
-                                Thanh toán qua VNPay
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    </Radio>
-
-                    <Radio value="WALLET" className="w-full ">
-                      <Card className="w-full h-15 cursor-pointer flex items-center ">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center">
-                            <WalletOutlined className="mr-3  text-xl" />
-                            <div className="flex flex-col justify-center h-12">
-                              <div className="font-semibold">
-                                Thanh toán qua ví RFT
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                Số dư hiện tại:{" "}
-                                <span
-                                  className={`font-medium ${
-                                    walletBalance >= bookingData.totalCost
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
-                                >
-                                  {walletBalance.toLocaleString("vi-VN")}₫
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    </Radio>
-                  </div>
-                </Radio.Group>
-
-                {paymentMethod === "WALLET" &&
-                  walletBalance < bookingData.totalCost && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                      <p className="text-red-600 text-sm">
-                        ⚠️ Số dư ví không đủ để thanh toán. Vui lòng nạp thêm
-                        tiền hoặc chọn phương thức khác.
-                      </p>
+                {selectedCoupon && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-green-700 text-sm">
+                      Đã áp dụng mã &quot;{selectedCoupon.name}&quot; - Giảm{" "}
+                      {amountDiscount}%
                     </div>
-                  )}
+                  </div>
+                )}
               </div>
 
-              <div className="flex justify-between mt-8">
-                <Button size="large" onClick={handleBack}>
-                  Quay lại
-                </Button>
+              {/* Tóm tắt đơn hàng */}
+              <div className="bg-white rounded-lg shadow-sm p-6 sticky top-6">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                  Tóm tắt đơn hàng
+                </h3>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">
+                      {rentalCalculation?.isHourlyRate
+                        ? `Thuê theo giờ (${formatRentalDuration(
+                            rentalCalculation
+                          )})`
+                        : `Thuê xe (${totalDays} ngày)`}
+                    </span>
+                    <span className="font-semibold text-sm">
+                      {subtotal.toLocaleString("vi-VN")}₫
+                    </span>
+                  </div>
+
+                  {rentalCalculation?.isHourlyRate && (
+                    <div className="ml-4 space-y-1 text-sm text-gray-500">
+                      {rentalCalculation.billingHours > 0 && (
+                        <div>
+                          • {rentalCalculation.billingHours} giờ ×{" "}
+                          {hourlyRate.toLocaleString("vi-VN")}₫
+                        </div>
+                      )}
+                      {rentalCalculation.billingMinutes > 0 && (
+                        <div>
+                          • {rentalCalculation.billingMinutes} phút ×{" "}
+                          {Math.round(hourlyRate / 60).toLocaleString("vi-VN")}₫
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {deliveryFee > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-base">
+                        Phí giao xe
+                      </span>
+                      <span className="font-semibold text-base">
+                        {deliveryFee.toLocaleString("vi-VN")}₫
+                      </span>
+                    </div>
+                  )}
+
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-green-600">
+                      <span className="text-base">
+                        Giảm giá ({amountDiscount}%)
+                      </span>
+                      <span className="font-semibold text-base">
+                        -{discountAmount.toLocaleString("vi-VN")}₫
+                      </span>
+                    </div>
+                  )}
+
+                  <Divider className="my-4" />
+
+                  <div className="flex justify-between items-center text-lg">
+                    <span className="font-semibold text-gray-800">
+                      Tổng cộng
+                    </span>
+                    <span className="font-bold text-red-500 text-xl">
+                      {totalAmount.toLocaleString("vi-VN")}₫
+                    </span>
+                  </div>
+                </div>
+
                 <Button
                   type="primary"
                   size="large"
+                  block
+                  className="mt-6 h-12 bg-red-500 hover:bg-red-600 border-red-500 font-semibold"
+                  onClick={handleCreateBooking}
                   loading={submitting}
-                  onClick={handlePayment}
-                  disabled={
-                    paymentMethod === "WALLET" &&
-                    walletBalance < bookingData.totalCost
-                  }
+                  disabled={!!bufferConflictMessage}
                 >
-                  {paymentMethod === "WALLET"
-                    ? "Thanh toán"
-                    : "Thanh toán qua VNPay"}
+                  Đặt xe ngay
                 </Button>
+
+                {bufferConflictMessage && (
+                  <div className="text-sm text-red-500 text-center mt-2">
+                    Vui lòng chọn thời gian khác
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Bước 4: Kết quả */}
-        {current === 3 && (
-          <div className="flex justify-center items-start mt-5 text-gray-700">
-            <div className="flex flex-col justify-center items-center mt-5 text-gray-700">
-              <CheckCircleOutlined
-                style={{ fontSize: "50px", color: "#22c12a" }}
-              />
-              <h1 className="text-3xl font-semibold my-6">
-                Đặt xe thành công!
-              </h1>
-              {bookingData && (
-                <div className="text-center mb-6">
-                  <p className="mb-2">
-                    Mã đơn hàng của bạn:{" "}
-                    <span className="font-mono font-bold">
-                      #{bookingData.id}
+        {/* Bước 2: Thanh toán */}
+        {current === 1 && bookingData && (
+          <div className="max-w-7xl mx-auto">
+            {/* Thông báo tạo booking thành công */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8">
+              <div className="text-center">
+                <div className="font-semibold text-green-800 text-2xl mb-2">
+                  Đặt xe thành công!
+                </div>
+                <div className="text-green-600 text-lg">
+                  Mã đơn hàng:{" "}
+                  <span className="font-mono font-bold">#{bookingData.id}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-5 gap-8">
+              {/* Thông tin đơn hàng và phương thức thanh toán */}
+              <div className="lg:col-span-3">
+                <div className="bg-white rounded-xl shadow-lg p-8">
+                  <div className="mb-8">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                      Chọn phương thức thanh toán
+                    </h3>
+                    <p className="text-gray-600 text-lg">
+                      Vui lòng chọn phương thức thanh toán phù hợp
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* VNPay */}
+                    <div
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        paymentMethod === "VNPAY"
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-blue-300"
+                      }`}
+                      onClick={() => setPaymentMethod("VNPAY")}
+                    >
+                      <div className="flex items-center mb-2">
+                        <Radio checked={paymentMethod === "VNPAY"} />
+                        <span className="ml-2 font-semibold text-gray-800 text-base">
+                          Thanh toán qua VNPay
+                        </span>
+                      </div>
+                      <div className="text-gray-600 text-base">
+                        Thanh toán bằng thẻ ATM, Internet Banking, Ví điện tử
+                      </div>
+                      <div className="text-gray-600 font-medium text-base mt-1">
+                        An toàn & nhanh chóng
+                      </div>
+                    </div>
+
+                    {/* Ví RFT */}
+                    <div
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        walletBalance < bookingData.totalCost
+                          ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                          : paymentMethod === "WALLET"
+                          ? "border-blue-500 bg-blue-50 cursor-pointer"
+                          : "border-gray-200 hover:border-blue-300 cursor-pointer"
+                      }`}
+                      onClick={() => {
+                        if (walletBalance < bookingData.totalCost) {
+                          setShowWalletModal(true);
+                          return;
+                        }
+                        setPaymentMethod("WALLET");
+                      }}
+                    >
+                      <div className="flex items-center mb-2">
+                        <Radio
+                          checked={paymentMethod === "WALLET"}
+                          disabled={walletBalance < bookingData.totalCost}
+                        />
+                        <span className="ml-2 font-semibold text-gray-800 text-base">
+                          Thanh toán qua ví RFT
+                        </span>
+                      </div>
+                      <div className="text-gray-600 text-base">
+                        Số dư hiện tại:
+                        <span className="font-semibold ml-1 text-gray-800">
+                          {walletBalance.toLocaleString("vi-VN")}₫
+                        </span>
+                      </div>
+                      {walletBalance >= bookingData.totalCost ? (
+                        <div className="text-gray-600 font-medium text-base mt-1">
+                          Thanh toán nhanh chóng
+                        </div>
+                      ) : (
+                        <div className="text-gray-500 font-medium text-base mt-1">
+                          Số dư không đủ để thanh toán
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tóm tắt thanh toán */}
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-xl shadow-lg p-8 sticky top-6">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                    Chi tiết thanh toán
+                  </h3>
+
+                  <div className="space-y-5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-lg">
+                        Mã đơn hàng:
+                      </span>
+                      <span className="font-mono text-lg font-semibold text-gray-800">
+                        #{bookingData.id}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-lg">Trạng thái:</span>
+                      <span className="text-orange-600 font-semibold text-lg bg-orange-100 px-3 py-1 rounded-lg">
+                        {bookingData.status}
+                      </span>
+                    </div>
+
+                    <Divider className="my-6" />
+
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800 text-lg">
+                        Tổng thanh toán
+                      </span>
+                      <span className="font-bold text-gray-800 text-xl">
+                        {bookingData.totalCost.toLocaleString("vi-VN")}₫
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-8">
+                    <Button
+                      type="primary"
+                      size="large"
+                      block
+                      className="h-14 bg-red-500 hover:bg-red-600 border-red-500 font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                      onClick={handlePayment}
+                      loading={submitting}
+                      disabled={
+                        paymentMethod === "WALLET" &&
+                        walletBalance < bookingData.totalCost
+                      }
+                    >
+                      {paymentMethod === "WALLET"
+                        ? "Thanh toán từ ví RFT"
+                        : "Thanh toán qua VNPay"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal số dư ví không đủ */}
+            <Modal
+              title={
+                <div className="text-center">
+                  <div className="text-xl font-bold text-red-600">
+                    Số dư ví không đủ
+                  </div>
+                </div>
+              }
+              open={showWalletModal}
+              onCancel={() => setShowWalletModal(false)}
+              footer={[
+                <Button
+                  key="cancel"
+                  size="large"
+                  onClick={() => setShowWalletModal(false)}
+                  className="mr-2"
+                >
+                  Đóng
+                </Button>,
+              ]}
+              className="text-center"
+              width={500}
+            >
+              <div className="py-4">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-red-500 text-2xl font-bold">!</span>
+                </div>
+                <div className="text-lg text-gray-700 mb-4">
+                  Số dư ví RFT của bạn không đủ để thanh toán đơn hàng này.
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-600">Số dư hiện tại:</span>
+                    <span className="font-bold text-red-500 text-lg">
+                      {walletBalance.toLocaleString("vi-VN")}₫
                     </span>
-                  </p>
-                  <p className="mb-2">
-                    Tổng tiền:{" "}
-                    <span className="font-bold text-green-600">
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-600">
+                      Số tiền cần thanh toán:
+                    </span>
+                    <span className="font-bold text-gray-800 text-lg">
                       {bookingData.totalCost.toLocaleString("vi-VN")}₫
                     </span>
-                  </p>
-                  <p className="text-gray-600">
-                    Chúng tôi sẽ liên hệ với bạn sớm nhất để xác nhận đơn hàng.
-                  </p>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Số tiền thiếu:</span>
+                      <span className="font-bold text-red-600 text-lg">
+                        {(bookingData.totalCost - walletBalance).toLocaleString(
+                          "vi-VN"
+                        )}
+                        ₫
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-gray-600">
+                  Vui lòng chọn phương thức thanh toán khác hoặc nạp thêm tiền
+                  vào ví.
+                </div>
+              </div>
+            </Modal>
+          </div>
+        )}
+
+        {/* Bước 3: Hoàn thành */}
+        {current === 2 && (
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="bg-white rounded-lg shadow-sm p-8">
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-green-500 text-2xl font-bold">✓</span>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                  Thanh toán thành công!
+                </h2>
+                <p className="text-gray-600">
+                  Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi
+                </p>
+              </div>
+
+              {bookingData && (
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Mã đơn hàng:</span>
+                      <span className="font-mono font-semibold">
+                        #{bookingData.id}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">
+                        Tổng tiền đã thanh toán:
+                      </span>
+                      <span className="font-bold text-green-600 text-lg">
+                        {bookingData.totalCost.toLocaleString("vi-VN")}₫
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Trạng thái:</span>
+                      <span className="text-green-600 font-semibold">
+                        Đã thanh toán
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
-              <Space>
+
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <p className="text-blue-800 text-sm">
+                    Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất để xác
+                    nhận và hướng dẫn giao nhận xe.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/profile/booking-history">
-                  <Button type="primary" size="large">
-                    Xem đơn của tôi
+                  <Button
+                    type="primary"
+                    size="large"
+                    className="bg-blue-500 hover:bg-blue-600 border-blue-500"
+                  >
+                    Xem đơn hàng của tôi
                   </Button>
                 </Link>
                 <Link href="/vehicles">
                   <Button size="large">Tiếp tục thuê xe</Button>
                 </Link>
-              </Space>
+              </div>
             </div>
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 };
 

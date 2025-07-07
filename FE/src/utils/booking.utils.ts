@@ -1,3 +1,26 @@
+/**
+ * ===============================
+ * LOCALDATETIME MIGRATION NOTES
+ * ===============================
+ *
+ * Backend has migrated from Instant (UTC) to LocalDateTime (Vietnam time).
+ *
+ * CHANGES MADE:
+ * 1. Backend now sends time as "yyyy-MM-dd'T'HH:mm:ss" format (Vietnam time)
+ * 2. Frontend updated to:
+ *    - Send time to backend in "yyyy-MM-dd'T'HH:mm:ss" format (using formatTimeForBackend helper)
+ *    - Parse time from backend as local Vietnam time (not UTC)
+ *    - Use parseBackendTime() helper to ensure consistent parsing
+ *
+ * FILES UPDATED:
+ * - booking/[id].tsx: Changed to use formatTimeForBackend() helper
+ * - vehicles/[id]/index.tsx: Updated comment and booking slot parsing
+ * - booking.utils.ts: Added parseBackendTime() and formatTimeForBackend() helpers
+ * - booking.api.js: Updated JSDoc comments
+ *
+ * IMPORTANT: No more UTC conversion needed - everything is Vietnam local time!
+ */
+
 import dayjs, { Dayjs } from "dayjs";
 import duration from "dayjs/plugin/duration";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -6,6 +29,46 @@ import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 dayjs.extend(duration);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
+
+/**
+ * Helper function to parse time from backend LocalDateTime
+ * Backend can send LocalDateTime as:
+ * 1. String: "yyyy-MM-dd'T'HH:mm:ss" (Vietnam time)
+ * 2. Array: [year, month, day, hour, minute] (Vietnam time)
+ */
+export const parseBackendTime = (
+  timeData: string | number[] | Dayjs
+): Dayjs => {
+  if (dayjs.isDayjs(timeData)) {
+    return timeData;
+  }
+
+  if (Array.isArray(timeData)) {
+    // Handle array format: [year, month, day, hour, minute]
+    // Note: JavaScript month is 0-based, but backend sends 1-based month
+    const [year, month, day, hour, minute] = timeData;
+    return dayjs()
+      .year(year)
+      .month(month - 1)
+      .date(day)
+      .hour(hour)
+      .minute(minute)
+      .second(0)
+      .millisecond(0);
+  }
+
+  // Handle string format: "yyyy-MM-dd'T'HH:mm:ss"
+  return dayjs(timeData);
+};
+
+/**
+ * Helper function to format time to send to backend
+ * Backend expects LocalDateTime in format "yyyy-MM-dd'T'HH:mm:ss" (Vietnam time)
+ */
+export const formatTimeForBackend = (time: Dayjs): string => {
+  // Format as ISO LocalDateTime without timezone (backend treats as Vietnam time)
+  return time.format("YYYY-MM-DDTHH:mm:ss");
+};
 
 // Constants
 export const OPERATING_HOURS = {
@@ -37,11 +100,11 @@ export const BUFFER_TIME_RULES = {
   },
 } as const;
 
-// Interface cho booking đã có
+// Interface cho booking đã có từ backend
 export interface ExistingBooking {
   id: number;
-  startDate: string | Dayjs;
-  endDate: string | Dayjs;
+  startDate: string | number[] | Dayjs; // Hỗ trợ string, array, hoặc Dayjs
+  endDate: string | number[] | Dayjs; // Hỗ trợ string, array, hoặc Dayjs
   status: "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 }
 
@@ -148,25 +211,6 @@ export const formatRentalDuration = (
 };
 
 /**
- * Validate thời gian trong khung giờ hoạt động
- */
-export const isTimeInOperatingHours = (time: Dayjs): boolean => {
-  const hour = time.hour();
-  return hour >= OPERATING_HOURS.START && hour < OPERATING_HOURS.END;
-};
-
-/**
- * Làm tròn thời gian theo bước 30 phút
- */
-export const roundToNearestStep = (time: Dayjs): Dayjs => {
-  const minutes = time.minute();
-  const roundedMinutes =
-    Math.round(minutes / OPERATING_HOURS.STEP_MINUTES) *
-    OPERATING_HOURS.STEP_MINUTES;
-  return time.minute(roundedMinutes).second(0).millisecond(0);
-};
-
-/**
  * Kiểm tra xung đột buffer time cho loại xe
  */
 export const checkBufferTimeConflict = (
@@ -189,8 +233,15 @@ export const checkBufferTimeConflict = (
   const bufferRule = BUFFER_TIME_RULES[vehicleType];
 
   for (const booking of activeBookings) {
-    const bookingStart = dayjs(booking.startDate);
-    const bookingEnd = dayjs(booking.endDate);
+    const bookingStart = parseBackendTime(booking.startDate);
+    const bookingEnd = parseBackendTime(booking.endDate);
+
+    console.log("Debug - Processing booking:", {
+      originalStart: booking.startDate,
+      originalEnd: booking.endDate,
+      parsedStart: bookingStart.format("YYYY-MM-DD HH:mm"),
+      parsedEnd: bookingEnd.format("YYYY-MM-DD HH:mm"),
+    });
 
     // Kiểm tra overlap trực tiếp
     const hasDirectOverlap =
@@ -250,89 +301,168 @@ export const checkBufferTimeConflict = (
 };
 
 /**
- * Lấy các ngày bị block do buffer time
+ * Kiểm tra xem một ngày có bị disable không
  */
-export const getBlockedDates = (
+export const isDateDisabled = (
+  date: Dayjs,
   vehicleType: VehicleType,
   existingBookings: ExistingBooking[]
-): string[] => {
-  const blockedDates: string[] = [];
-
-  const activeBookings = existingBookings.filter(
-    (booking) => booking.status !== "CANCELLED"
-  );
-
-  if (vehicleType === "CAR") {
-    // Với xe hơi: block ngày trả xe
-    for (const booking of activeBookings) {
-      const returnDate = dayjs(booking.endDate).format("YYYY-MM-DD");
-      if (!blockedDates.includes(returnDate)) {
-        blockedDates.push(returnDate);
-      }
-    }
-  }
-
-  return blockedDates;
-};
-
-/**
- * Lấy các khoảng thời gian bị block do buffer time cho xe máy/xe đạp
- */
-export const getBlockedTimeRanges = (
-  vehicleType: VehicleType,
-  selectedDate: Dayjs,
-  existingBookings: ExistingBooking[]
-): { start: Dayjs; end: Dayjs }[] => {
-  const blockedRanges: { start: Dayjs; end: Dayjs }[] = [];
-
-  if (vehicleType !== "MOTORBIKE" && vehicleType !== "BICYCLE") {
-    return blockedRanges;
-  }
-
-  const activeBookings = existingBookings.filter(
-    (booking) => booking.status !== "CANCELLED"
-  );
-
-  const bufferHours = BUFFER_TIME_RULES[vehicleType].hours || 5;
-  const selectedDateStr = selectedDate.format("YYYY-MM-DD");
-
-  for (const booking of activeBookings) {
-    const bookingStart = dayjs(booking.startDate);
-    const bookingEnd = dayjs(booking.endDate);
-
-    // Nếu booking end trong ngày được chọn, block từ start của ngày đến end + buffer
-    if (bookingEnd.format("YYYY-MM-DD") === selectedDateStr) {
-      const blockStart = selectedDate.hour(OPERATING_HOURS.START).minute(0);
-      const blockEnd = bookingEnd.add(bufferHours, "hour");
-
-      if (blockEnd.isAfter(blockStart)) {
-        blockedRanges.push({ start: blockStart, end: blockEnd });
-      }
-    }
-
-    // Nếu booking start trong ngày được chọn, block từ start - buffer đến end của ngày
-    if (bookingStart.format("YYYY-MM-DD") === selectedDateStr) {
-      const blockStart = bookingStart.subtract(bufferHours, "hour");
-      // Sửa: cho phép chọn đến 20h, nên block end phải là sau 20h (20:59 hoặc 21:00)
-      const blockEnd = selectedDate.hour(OPERATING_HOURS.END).minute(59);
-
-      if (blockStart.isBefore(blockEnd)) {
-        blockedRanges.push({ start: blockStart, end: blockEnd });
-      }
-    }
-  }
-
-  return blockedRanges;
-};
-
-/**
- * Kiểm tra xem một thời gian có bị block không
- */
-export const isTimeBlocked = (
-  time: Dayjs,
-  blockedRanges: { start: Dayjs; end: Dayjs }[]
 ): boolean => {
-  return blockedRanges.some(
-    (range) => time.isSameOrAfter(range.start) && time.isSameOrBefore(range.end)
-  );
+  const today = dayjs().startOf("day");
+  const dateStr = date.format("YYYY-MM-DD");
+
+  // Disable ngày trong quá khứ
+  if (date.isBefore(today)) {
+    return true;
+  }
+
+  // Kiểm tra theo loại xe
+  if (vehicleType === "CAR") {
+    // Với xe hơi: kiểm tra xem có booking nào trong ngày này không
+    const activeBookings = existingBookings.filter(
+      (booking) => booking.status !== "CANCELLED"
+    );
+
+    for (const booking of activeBookings) {
+      const startDate = parseBackendTime(booking.startDate);
+      const endDate = parseBackendTime(booking.endDate);
+
+      // Kiểm tra xem ngày có nằm trong khoảng booking không
+      let currentDate = startDate.startOf("day");
+      while (currentDate.isSameOrBefore(endDate.endOf("day"))) {
+        if (currentDate.format("YYYY-MM-DD") === dateStr) {
+          return true;
+        }
+        currentDate = currentDate.add(1, "day");
+      }
+    }
+  }
+
+  // Xe máy/xe đạp: không disable ngày, chỉ disable giờ
+  return false;
+};
+
+/**
+ * Tạo disabledTime function cho RangePicker
+ */
+export const createDisabledTimeFunction = (
+  vehicleType: VehicleType,
+  existingBookings: ExistingBooking[]
+): ((current: Dayjs | null) => {
+  disabledHours: () => number[];
+  disabledMinutes: (selectedHour: number) => number[];
+}) => {
+  return (current: Dayjs | null) => {
+    if (!current) {
+      return {
+        disabledHours: () => [],
+        disabledMinutes: () => [],
+      };
+    }
+
+    const today = dayjs();
+    const isToday = current.isSame(today, "day");
+    const currentHour = today.hour();
+    const disabledHours: number[] = [];
+
+    // Base disabled hours (ngoài giờ hoạt động)
+    const baseDisabled = [
+      ...Array.from({ length: OPERATING_HOURS.START }, (_, i) => i), // 0-6
+      ...Array.from(
+        { length: 24 - (OPERATING_HOURS.END + 1) },
+        (_, i) => OPERATING_HOURS.END + 1 + i // 21-23
+      ),
+    ];
+    disabledHours.push(...baseDisabled);
+
+    // Disable past hours for today
+    if (isToday) {
+      for (let h = 0; h <= currentHour; h++) {
+        if (!disabledHours.includes(h)) {
+          disabledHours.push(h);
+        }
+      }
+    }
+
+    // Kiểm tra booking conflicts
+    const activeBookings = existingBookings.filter(
+      (booking) => booking.status !== "CANCELLED"
+    );
+
+    if (vehicleType === "CAR") {
+      // Với xe hơi: nếu ngày bị disable thì disable tất cả giờ hoạt động
+      if (isDateDisabled(current, vehicleType, existingBookings)) {
+        for (let h = OPERATING_HOURS.START; h <= OPERATING_HOURS.END; h++) {
+          if (!disabledHours.includes(h)) {
+            disabledHours.push(h);
+          }
+        }
+      }
+    } else {
+      // Với xe máy/xe đạp: disable theo buffer time
+      const selectedDateStr = current.format("YYYY-MM-DD");
+      const bufferHours = BUFFER_TIME_RULES[vehicleType].hours || 5;
+
+      for (const booking of activeBookings) {
+        const bookingStart = parseBackendTime(booking.startDate);
+        const bookingEnd = parseBackendTime(booking.endDate);
+
+        // Nếu booking end trong ngày được chọn, block từ start của ngày đến end + buffer
+        if (bookingEnd.format("YYYY-MM-DD") === selectedDateStr) {
+          const blockEnd = bookingEnd.add(bufferHours, "hour");
+          let currentTime = current.hour(OPERATING_HOURS.START).minute(0);
+          while (currentTime.isSameOrBefore(blockEnd)) {
+            const hour = currentTime.hour();
+            if (!disabledHours.includes(hour)) {
+              disabledHours.push(hour);
+            }
+            currentTime = currentTime.add(1, "hour");
+          }
+        }
+
+        // Nếu booking start trong ngày được chọn, block từ start - buffer đến end của ngày
+        if (bookingStart.format("YYYY-MM-DD") === selectedDateStr) {
+          const blockStart = bookingStart.subtract(bufferHours, "hour");
+          let currentTime = blockStart;
+          const endOfDay = current.hour(OPERATING_HOURS.END).minute(59);
+          while (currentTime.isSameOrBefore(endOfDay)) {
+            const hour = currentTime.hour();
+            if (!disabledHours.includes(hour)) {
+              disabledHours.push(hour);
+            }
+            currentTime = currentTime.add(1, "hour");
+          }
+        }
+      }
+    }
+
+    return {
+      disabledHours: () => disabledHours.sort((a, b) => a - b),
+      disabledMinutes: (selectedHour: number) => {
+        // Base: chỉ cho phép :00 và :30
+        const allowedMinutes = [0, 30];
+        const baseDisabledMinutes = Array.from(
+          { length: 60 },
+          (_, i) => i
+        ).filter((minute) => !allowedMinutes.includes(minute));
+
+        // Disable past minutes for current hour of today
+        if (isToday && selectedHour === currentHour) {
+          const currentMinute = today.minute();
+          for (let m = 0; m <= currentMinute; m++) {
+            if (!baseDisabledMinutes.includes(m)) {
+              baseDisabledMinutes.push(m);
+            }
+          }
+        }
+
+        // Với xe hơi: nếu giờ bị disable thì disable tất cả phút
+        if (disabledHours.includes(selectedHour)) {
+          return Array.from({ length: 60 }, (_, i) => i);
+        }
+
+        return baseDisabledMinutes.sort((a, b) => a - b);
+      },
+    };
+  };
 };

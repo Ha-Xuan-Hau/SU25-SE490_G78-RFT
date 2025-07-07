@@ -63,5 +63,4 @@ public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, 
     void deleteAllByTimeToBefore(LocalDateTime time);
    
 }
-  
-}
+

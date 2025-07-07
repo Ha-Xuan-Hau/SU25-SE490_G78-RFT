@@ -3,7 +3,7 @@ package com.rft.rft_be.util;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 import lombok.Builder;
 import lombok.Data;
@@ -31,7 +31,7 @@ public class BookingCalculationUtils {
     /**
      * Tính toán thời gian thuê và loại tính giá
      */
-    public static RentalCalculation calculateRentalDuration(Instant startTime, Instant endTime) {
+    public static RentalCalculation calculateRentalDuration(LocalDateTime startTime, LocalDateTime endTime) {
         Duration duration = Duration.between(startTime, endTime);
         long totalHours = duration.toHours();
         long totalMinutes = duration.toMinutes();
