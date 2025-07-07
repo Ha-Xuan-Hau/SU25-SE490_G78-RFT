@@ -61,6 +61,7 @@ public class BookingServiceImpl implements BookingService {
     BookingCleanupTask bookingCleanupTask;
     WalletRepository walletRepository;
     WalletTransactionRepository walletTransactionRepository;
+     ContractRepository contractRepository;
 
     @Override
     @Transactional
@@ -421,5 +422,12 @@ public class BookingServiceImpl implements BookingService {
         // Cập nhật booking
         booking.setStatus(Booking.Status.PENDING);
         bookingRepository.save(booking);
+
+        Contract contract = Contract.builder()
+                .booking(booking)
+                .user(booking.getUser())
+                .status(Contract.Status.PROCESSING)
+                .build();
+        contractRepository.save(contract);
     }
 }
