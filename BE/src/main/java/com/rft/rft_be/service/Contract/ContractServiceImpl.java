@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -183,6 +184,25 @@ public class ContractServiceImpl implements ContractService {
             throw new RuntimeException("Contract not found with id: " + id);
         }
         contractRepository.deleteById(id);
+    }
+
+    @Override
+    public void createContractByPayment(String bookingtxnRef) {
+        Booking booking = bookingRepository.findByCodeTransaction(bookingtxnRef)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn booking với mã giao dịch: " + bookingtxnRef));
+
+        // Cập nhật trạng thái booking
+        booking.setStatus(Booking.Status.PENDING);
+        bookingRepository.save(booking);
+
+        // Lấy thông tin người cho thuê xe
+        User provider = booking.getVehicle().getUser();
+        // Tạo contract mới
+        Contract contract = new Contract();
+        contract.setUser(provider);
+        contract.setBooking(booking);
+        contract.setCostSettlement(booking.getTotalCost());
+        contractRepository.save(contract);
     }
 }
 

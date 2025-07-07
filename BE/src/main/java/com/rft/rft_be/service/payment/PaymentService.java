@@ -6,6 +6,9 @@ import com.rft.rft_be.dto.payment.VNPayResponse;
 import com.rft.rft_be.dto.wallet.CreateWithdrawalRequestDTO;
 import com.rft.rft_be.dto.wallet.UpdateWalletRequestDTO;
 import com.rft.rft_be.dto.wallet.WalletTransactionDTO;
+import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.repository.BookingRepository;
+import com.rft.rft_be.repository.ContractRepository;
 import com.rft.rft_be.service.Contract.ContractService;
 import com.rft.rft_be.service.booking.BookingService;
 import com.rft.rft_be.service.wallet.WalletService;
@@ -25,6 +28,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,31 +41,66 @@ public class PaymentService {
     String vnp_ReturnWalletUrl;
 
     final VNPAYConfig vnPayConfig;
-    final ContractService contractService;
-    final BookingService bookingService;
+    final BookingRepository bookingRepository;
     final WalletService walletService;
     public VNPayResponse createVnPayPayment(PaymentRequest dto, HttpServletRequest request) {
-        long amount = dto.getAmout().multiply(BigDecimal.valueOf(100)) // nhân 100 theo yêu cầu
-                .setScale(0, RoundingMode.HALF_UP) // làm tròn đúng chuẩn tài chính
-                .longValue();
-        String bankCode = dto.getBankCode();
-        Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
-        vnpParamsMap.put("vnp_ReturnUrl", vnp_ReturnUrl);
-        vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
-        if (bankCode != null && !bankCode.isEmpty()) {
-            vnpParamsMap.put("vnp_BankCode", bankCode);
+        try {
+            String bankCode = dto.getBankCode();
+
+            Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
+            // Xử lý thong tin Booking
+            Optional<Booking> bookingOptional = bookingRepository.findById(dto.getBookingId());
+            if (bookingOptional.isEmpty()) {
+                throw new RuntimeException("Không tìm thấy đơn booking");
+            }
+            Booking booking = bookingOptional.get();
+            if (!(booking.getStatus() == Booking.Status.UNPAID)){
+                throw new RuntimeException("Hóa đơn đã thanh toán");
+            }
+            booking.setCodeTransaction(vnpParamsMap.get("vnp_TxnRef"));
+            bookingRepository.save(booking);
+
+            // Nhân 100 theo yêu cầu VNPAY, làm tròn chuẩn tài chính
+            long amount = booking.getTotalCost().multiply(BigDecimal.valueOf(100))
+                    .setScale(0, RoundingMode.HALF_UP)
+                    .longValue();
+
+            // Lấy cấu hình VNPAY và gán các tham số động
+            vnpParamsMap.put("vnp_ReturnUrl", vnp_ReturnUrl);
+            vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
+
+            if (bankCode != null && !bankCode.isEmpty()) {
+                vnpParamsMap.put("vnp_BankCode", bankCode);
+            }
+
+            vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(request));
+
+            // Build URL và hash bảo mật
+            String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);
+            String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false);
+            String vnpSecureHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
+            queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+
+            String paymentUrl = vnPayConfig.getVnp_PayUrl() + "?" + queryUrl;
+
+            // Trả về kết quả thành công
+            return VNPayResponse.builder()
+                    .code("ok")
+                    .message("success")
+                    .paymentUrl(paymentUrl)
+                    .build();
+
+        } catch (Exception e) {
+            // Log lỗi nếu cần
+            log.error("Error creating VNPay payment", e);
+
+            // Trả về lỗi cho phía client
+            return VNPayResponse.builder()
+                    .code("error")
+                    .message("Đã xảy ra lỗi khi tạo thanh toán VNPay")
+                    .paymentUrl(null)
+                    .build();
         }
-        vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(request));
-        //build query url
-        String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);
-        String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false);
-        String vnpSecureHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
-        queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
-        String paymentUrl = vnPayConfig.getVnp_PayUrl() + "?" + queryUrl;
-        return VNPayResponse.builder()
-                .code("ok")
-                .message("success")
-                .paymentUrl(paymentUrl).build();
     }
 
     public VNPayResponse createTopUpPayment(PaymentRequest dto, HttpServletRequest request) {

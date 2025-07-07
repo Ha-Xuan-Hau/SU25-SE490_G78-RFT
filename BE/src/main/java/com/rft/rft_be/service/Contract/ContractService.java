@@ -16,4 +16,5 @@ public interface ContractService {
     ContractDTO createContract(CreateContractDTO createContractDTO);
     ContractDTO updateContract(String id, ContractDTO contractDTO);
     void deleteContract(String id);
+    void createContractByPayment(String BookingtxnRef);
 }

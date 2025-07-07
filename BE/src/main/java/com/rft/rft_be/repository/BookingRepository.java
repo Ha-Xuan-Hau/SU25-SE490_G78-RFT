@@ -34,6 +34,11 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     List<Booking> findByUserIdAndTimeBookingStartBetween(@Param("userId") String userId,
                                                          @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
+    @Query("SELECT b FROM Booking b " +
+            "JOIN FETCH b.vehicle v " +
+            "JOIN FETCH v.user u " +
+            "WHERE b.codeTransaction = :codeTransaction")
+    Optional<Booking> findByCodeTransaction(@Param("codeTransaction") String codeTransaction);
 
     @Query("""
     SELECT COUNT(b) > 0 FROM Booking b
