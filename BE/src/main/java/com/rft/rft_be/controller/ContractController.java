@@ -1,17 +1,25 @@
 package com.rft.rft_be.controller;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.rft.rft_be.dto.contract.ContractDTO;
 import com.rft.rft_be.dto.contract.CreateContractDTO;
 import com.rft.rft_be.service.Contract.ContractService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/contracts")
@@ -177,8 +185,6 @@ public class ContractController {
         }
     }
 
-
-
     // Count endpoint
     @GetMapping("/count")
     public ResponseEntity<?> getContractCount() {
@@ -213,5 +219,20 @@ public class ContractController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
-}
 
+    @GetMapping("/provider/{providerId}/status/{status}")
+    public ResponseEntity<?> getContractsByProviderIdAndStatus(@PathVariable String providerId, @PathVariable String status) {
+        try {
+            List<ContractDTO> contracts = contractService.getContractsByProviderIdAndStatus(providerId, status);
+            return ResponseEntity.ok(contracts);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+}

@@ -5,9 +5,7 @@ import { VehicleRentalCard } from "@/components/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { getUserBookings } from "@/apis/booking.api";
 import { showError } from "@/utils/toast.utils";
-import { Tabs, Empty, Spin } from "antd";
-
-const { TabPane } = Tabs;
+import { Empty, Spin } from "antd";
 
 // Backend booking interface (based on the API response format)
 interface BackendBooking {
@@ -80,26 +78,16 @@ const transformBooking = (backendBooking: BackendBooking): Booking => {
 // Status mapping from backend to UI
 const statusMapping: { [key: string]: string } = {
   // Main booking statuses
+  UNPAID: "Chờ thanh toán",
   PENDING: "Chờ xử lý",
-  CONFIRMED: "Đã duyệt",
+  CONFIRMED: "Đã xác nhận", // Changed from "Đã duyệt" to "Đã xác nhận"
   DELIVERING: "Đang giao xe",
-  ACTIVE: "Đang thực hiện",
+  DELIVERED: "Đang giao xe", // Add DELIVERED mapping
+  RECEIVED_BY_CUSTOMER: "Đang thực hiện",
+  RETURNED: "Đã trả xe",
   COMPLETED: "Đã tất toán",
   CANCELLED: "Đã hủy",
   REJECTED: "Đã từ chối",
-  UNPAID: "Chờ thanh toán",
-
-  // Contract statuses
-  WAITING_PAYMENT: "Chờ thanh toán",
-  PAID: "Đã thanh toán",
-  DELIVERING_VEHICLE: "Đang giao xe",
-  VEHICLE_DELIVERED: "Đã giao xe",
-  IN_PROGRESS: "Đang thực hiện",
-  RETURNING_VEHICLE: "Đang trả xe",
-  VEHICLE_RETURNED: "Đã trả xe",
-  SETTLEMENT_COMPLETED: "Đã tất toán",
-  EXPIRED: "Hết hạn",
-  DEPOSIT_REFUNDED: "Đã hoàn cọc",
 };
 
 // Get display status from booking data
@@ -186,18 +174,37 @@ export default function BookingHistoryPage() {
   // Lọc danh sách dựa trên tab đang chọn
   const filteredBookings = bookingHistory.filter((booking: Booking) => {
     const displayStatus = getDisplayStatus(booking);
+    const bookingStatus = booking.status;
+    const contractStatus = booking.contract?.status;
 
     switch (activeTab) {
       case "processing":
-        return displayStatus === "Chờ xử lý"; // PENDING status
+        // Include both PENDING and CONFIRMED statuses in Processing tab
+        return (
+          displayStatus === "Chờ xử lý" ||
+          displayStatus === "Đã xác nhận" ||
+          bookingStatus === "CONFIRMED"
+        );
       case "payment":
         return displayStatus === "Chờ thanh toán"; // UNPAID, WAITING_PAYMENT status
       case "transporting":
-        return displayStatus === "Đang giao xe"; // DELIVERING, DELIVERING_VEHICLE status
+        return (
+          displayStatus === "Đang giao xe" ||
+          bookingStatus === "DELIVERING" ||
+          bookingStatus === "DELIVERED" ||
+          contractStatus === "DELIVERING" ||
+          contractStatus === "DELIVERED"
+        ); // DELIVERING, DELIVERED status
       case "active":
         return displayStatus === "Đang thực hiện"; // ACTIVE, IN_PROGRESS status
       case "completed":
         return displayStatus === "Đã tất toán"; // COMPLETED, SETTLEMENT_COMPLETED status
+      case "returned":
+        return (
+          displayStatus === "Đã trả xe" ||
+          bookingStatus === "RETURNED" ||
+          contractStatus === "RETURNED"
+        );
       case "canceled":
         return displayStatus === "Đã hủy"; // CANCELLED status
       default:
@@ -211,19 +218,38 @@ export default function BookingHistoryPage() {
 
   // Đếm số lượng cho từng loại
   const waitingCount = bookingHistory.filter(
-    (b: Booking) => getDisplayStatus(b) === "Chờ xử lý"
+    (b: Booking) =>
+      getDisplayStatus(b) === "Chờ xử lý" ||
+      getDisplayStatus(b) === "Đã xác nhận" ||
+      b.status === "CONFIRMED"
   ).length;
   const paymentCount = bookingHistory.filter(
     (b: Booking) => getDisplayStatus(b) === "Chờ thanh toán"
   ).length;
-  const transportingCount = bookingHistory.filter(
-    (b: Booking) => getDisplayStatus(b) === "Đang giao xe"
-  ).length;
+  const transportingCount = bookingHistory.filter((b: Booking) => {
+    const displayStatus = getDisplayStatus(b);
+    const bookingStatus = b.status;
+    const contractStatus = b.contract?.status;
+
+    return (
+      displayStatus === "Đang giao xe" ||
+      bookingStatus === "DELIVERING" ||
+      bookingStatus === "DELIVERED" ||
+      contractStatus === "DELIVERING" ||
+      contractStatus === "DELIVERED"
+    );
+  }).length;
   const activeCount = bookingHistory.filter(
     (b: Booking) => getDisplayStatus(b) === "Đang thực hiện"
   ).length;
   const completedCount = bookingHistory.filter(
     (b: Booking) => getDisplayStatus(b) === "Đã tất toán"
+  ).length;
+  const returnedCount = bookingHistory.filter(
+    (b: Booking) =>
+      getDisplayStatus(b) === "Đã trả xe" ||
+      b.status === "RETURNED" ||
+      b.contract?.status === "RETURNED"
   ).length;
   const canceledCount = bookingHistory.filter(
     (b: Booking) => getDisplayStatus(b) === "Đã hủy"
@@ -269,184 +295,336 @@ export default function BookingHistoryPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Tab container */}
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <div className="w-full">
-          <Tabs
-            activeKey={activeTab}
-            onChange={handleTabChange}
-            type="card"
-            className="w-full"
-            tabBarStyle={{
-              marginBottom: 0,
-              fontSize: "16px",
-              fontWeight: "500",
-              display: "flex",
-              width: "100%",
-            }}
-            size="large"
-            tabBarGutter={0}
-          >
-            <TabPane
-              tab={
-                <div
-                  style={{ width: "100%", textAlign: "center" }}
-                  className="px-4 py-2"
+      {/* Layout with vertical filter sidebar and content */}
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Left sidebar filter menu */}
+        <div className="w-full md:w-64 bg-white rounded-lg shadow-sm p-5 h-fit">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Lọc theo trạng thái
+          </h2>
+          <ul className="space-y-2">
+            <li>
+              <button
+                onClick={() => handleTabChange("all")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "all"
+                    ? "bg-blue-50 text-blue-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Tất cả</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "all"
+                      ? "bg-blue-100 text-blue-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  Tất cả{" "}
-                  <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-sm ml-1">
-                    {bookingHistory.length}
-                  </span>
-                </div>
-              }
-              key="all"
-            />
-            <TabPane
-              tab={
-                <div
-                  style={{ width: "100%", textAlign: "center" }}
-                  className="px-4 py-2"
+                  {bookingHistory.length}
+                </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => handleTabChange("payment")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "payment"
+                    ? "bg-red-50 text-red-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Chờ thanh toán</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "payment"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  Chờ thanh toán{" "}
-                  <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-sm ml-1">
-                    {paymentCount}
-                  </span>
-                </div>
-              }
-              key="payment"
-            />
-            <TabPane
-              tab={
-                <div
-                  style={{ width: "100%", textAlign: "center" }}
-                  className="px-4 py-2"
+                  {paymentCount}
+                </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => handleTabChange("processing")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "processing"
+                    ? "bg-orange-50 text-orange-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Chờ xử lý</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "processing"
+                      ? "bg-orange-100 text-orange-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  Chờ xử lý{" "}
-                  <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-sm ml-1">
-                    {waitingCount}
-                  </span>
-                </div>
-              }
-              key="processing"
-            />
-            <TabPane
-              tab={
-                <div
-                  style={{ width: "100%", textAlign: "center" }}
-                  className="px-4 py-2"
+                  {waitingCount}
+                </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => handleTabChange("transporting")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "transporting"
+                    ? "bg-yellow-50 text-yellow-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Giao xe</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "transporting"
+                      ? "bg-yellow-100 text-yellow-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  Giao xe{" "}
-                  <span className="bg-yellow-100 text-yellow-600 px-2 py-1 rounded-full text-sm ml-1">
-                    {transportingCount}
-                  </span>
-                </div>
-              }
-              key="transporting"
-            />
-            <TabPane
-              tab={
-                <div
-                  style={{ width: "100%", textAlign: "center" }}
-                  className="px-4 py-2"
+                  {transportingCount}
+                </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => handleTabChange("active")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "active"
+                    ? "bg-green-50 text-green-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Đang thuê</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "active"
+                      ? "bg-green-100 text-green-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  Đang thuê{" "}
-                  <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full text-sm ml-1">
-                    {activeCount}
-                  </span>
-                </div>
-              }
-              key="active"
-            />
-            <TabPane
-              tab={
-                <div
-                  style={{ width: "100%", textAlign: "center" }}
-                  className="px-4 py-2"
+                  {activeCount}
+                </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => handleTabChange("returned")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "returned"
+                    ? "bg-blue-50 text-blue-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Đã trả xe</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "returned"
+                      ? "bg-blue-100 text-blue-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  Hoàn thành{" "}
-                  <span className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded-full text-sm ml-1">
-                    {completedCount}
-                  </span>
-                </div>
-              }
-              key="completed"
-            />
-            <TabPane
-              tab={
-                <div
-                  style={{ width: "100%", textAlign: "center" }}
-                  className="px-4 py-2"
+                  {returnedCount}
+                </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => handleTabChange("completed")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "completed"
+                    ? "bg-emerald-50 text-emerald-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Hoàn thành</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "completed"
+                      ? "bg-emerald-100 text-emerald-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  Đã hủy{" "}
-                  <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-sm ml-1">
-                    {canceledCount}
-                  </span>
-                </div>
-              }
-              key="canceled"
-            />
-          </Tabs>
+                  {completedCount}
+                </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => handleTabChange("canceled")}
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
+                  activeTab === "canceled"
+                    ? "bg-red-50 text-red-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span>Đã hủy</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    activeTab === "canceled"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {canceledCount}
+                </span>
+              </button>
+            </li>
+          </ul>
         </div>
-      </div>
 
-      {/* Content area với background trắng */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="space-y-4">
-          {initialLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <Spin size="large" />
-              <span className="ml-3 text-gray-500">Đang tải dữ liệu...</span>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  <div>
-                    <p className="text-red-500 mb-2">{error}</p>
-                    <button
-                      onClick={fetchBookingHistory}
-                      className="text-blue-500 hover:text-blue-700 underline"
-                    >
-                      Thử lại
-                    </button>
-                  </div>
-                }
-              />
-            </div>
-          ) : visibleBookings.length > 0 ? (
-            <>
-              {visibleBookings.map((booking: Booking, index: number) => (
-                <div
-                  key={`${booking._id}-${index}`}
-                  className="border-b border-gray-100 pb-4 last:border-0"
+        {/* Right side content area */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-6">
+          <div className="mb-4">
+            <h1 className="text-xl font-semibold text-gray-900">
+              Lịch sử đặt xe
+              {activeTab !== "all" && (
+                <span
+                  className={`ml-2 px-3 py-1 text-sm rounded-full inline-block ${
+                    activeTab === "payment"
+                      ? "bg-red-100 text-red-600"
+                      : activeTab === "processing"
+                      ? "bg-orange-100 text-orange-600"
+                      : activeTab === "transporting"
+                      ? "bg-yellow-100 text-yellow-600"
+                      : activeTab === "active"
+                      ? "bg-green-100 text-green-600"
+                      : activeTab === "returned"
+                      ? "bg-blue-100 text-blue-600"
+                      : activeTab === "completed"
+                      ? "bg-emerald-100 text-emerald-600"
+                      : activeTab === "canceled"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  <VehicleRentalCard info={booking} accessToken={accessToken} />
-                </div>
-              ))}
+                  {activeTab === "all"
+                    ? "Tất cả"
+                    : activeTab === "payment"
+                    ? "Chờ thanh toán"
+                    : activeTab === "processing"
+                    ? "Chờ xử lý"
+                    : activeTab === "transporting"
+                    ? "Đang giao xe"
+                    : activeTab === "active"
+                    ? "Đang thuê"
+                    : activeTab === "returned"
+                    ? "Đã trả xe"
+                    : activeTab === "completed"
+                    ? "Hoàn thành"
+                    : activeTab === "canceled"
+                    ? "Đã hủy"
+                    : ""}
+                </span>
+              )}
+            </h1>
+            <div className="text-sm text-gray-500 mt-1">
+              {filteredBookings.length} đơn hàng
+            </div>
+          </div>
 
-              {/* Element này sẽ được sử dụng để phát hiện khi scroll đến cuối */}
-              <div ref={loaderRef} className="py-2 text-center">
-                {loading && (
-                  <div className="flex justify-center items-center py-4">
-                    <Spin size="default" />
-                  </div>
-                )}
-                {!loading && !hasMore && visibleBookings.length > 5 && (
-                  <div className="text-gray-500 text-sm py-2">
-                    Đã hiển thị tất cả đơn hàng
-                  </div>
-                )}
+          <div className="space-y-4">
+            {initialLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Spin size="large" />
+                <span className="ml-3 text-gray-500">Đang tải dữ liệu...</span>
               </div>
-            </>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={
-                <span className="text-gray-500">Không có đơn hàng nào</span>
-              }
-            />
-          )}
+            ) : error ? (
+              <div className="text-center py-12">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    <div>
+                      <p className="text-red-500 mb-2">{error}</p>
+                      <button
+                        onClick={fetchBookingHistory}
+                        className="text-blue-500 hover:text-blue-700 underline"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  }
+                />
+              </div>
+            ) : visibleBookings.length > 0 ? (
+              <>
+                <div className="grid gap-4">
+                  {visibleBookings.map((booking: Booking, index: number) => (
+                    <div
+                      key={`${booking._id}-${index}`}
+                      className="border-b border-gray-100 pb-4 last:border-0"
+                    >
+                      <VehicleRentalCard
+                        info={booking}
+                        accessToken={accessToken}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Element này sẽ được sử dụng để phát hiện khi scroll đến cuối */}
+                <div ref={loaderRef} className="py-2 text-center">
+                  {loading && (
+                    <div className="flex justify-center items-center py-4">
+                      <Spin size="default" />
+                    </div>
+                  )}
+                  {!loading && !hasMore && visibleBookings.length > 5 && (
+                    <div className="text-gray-500 text-sm py-2">
+                      Đã hiển thị tất cả đơn hàng
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="py-8">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    <div className="text-center">
+                      <p className="text-gray-500 mb-2">
+                        {activeTab !== "all"
+                          ? `Không có đơn hàng nào ở trạng thái ${
+                              activeTab === "payment"
+                                ? "Chờ thanh toán"
+                                : activeTab === "processing"
+                                ? "Chờ xử lý"
+                                : activeTab === "transporting"
+                                ? "Đã nhận được xe"
+                                : activeTab === "active"
+                                ? "Đang thuê"
+                                : activeTab === "returned"
+                                ? "Đã trả xe"
+                                : activeTab === "completed"
+                                ? "Hoàn thành"
+                                : activeTab === "canceled"
+                                ? "Đã hủy"
+                                : ""
+                            }`
+                          : "Không có đơn hàng nào"}
+                      </p>
+                      {activeTab !== "all" && (
+                        <button
+                          onClick={() => handleTabChange("all")}
+                          className="text-blue-500 hover:text-blue-700 underline"
+                        >
+                          Xem tất cả đơn hàng
+                        </button>
+                      )}
+                    </div>
+                  }
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

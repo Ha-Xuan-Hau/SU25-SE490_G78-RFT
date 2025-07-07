@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
+import com.rft.rft_be.dto.booking.CancelBookingRequestDTO;
+import com.rft.rft_be.dto.booking.CancelBookingResponseDTO;
+import com.rft.rft_be.dto.booking.CompleteBookingRequestDTO;
 import com.rft.rft_be.service.booking.BookingService;
 
 import lombok.RequiredArgsConstructor;
@@ -65,15 +68,27 @@ public class BookingController {
     }
 
     @PostMapping("/{bookingId}/complete")
-    public ResponseEntity<?> completeBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
-        bookingService.completeBooking(bookingId, extractToken(authHeader));
+    public ResponseEntity<?> completeBooking(
+            @PathVariable String bookingId,
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody CompleteBookingRequestDTO completeRequest
+    ) {
+        bookingService.completeBooking(
+                bookingId,
+                extractToken(authHeader),
+                completeRequest.getCostSettlement(),
+                completeRequest.getNote()
+        );
         return ResponseEntity.ok("Hoàn tất đơn thành công");
     }
 
     @PostMapping("/{bookingId}/cancel")
-    public ResponseEntity<?> cancelBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
-        bookingService.cancelBooking(bookingId, extractToken(authHeader));
-        return ResponseEntity.ok("Hủy đơn thành công");
+    public ResponseEntity<CancelBookingResponseDTO> cancelBooking(
+            @PathVariable String bookingId,
+            @RequestBody CancelBookingRequestDTO cancelRequest,
+            @RequestHeader("Authorization") String authHeader) {
+        CancelBookingResponseDTO response = bookingService.cancelBooking(bookingId, extractToken(authHeader), cancelRequest);
+        return ResponseEntity.ok(response);
     }
 
     private String extractToken(String authHeader) {
@@ -133,6 +148,18 @@ public class BookingController {
     @GetMapping("/user/{userId}/status/{status}")
     public ResponseEntity<?> getBookingsByUserIdAndStatus(@PathVariable String userId, @PathVariable String status) {
         List<BookingDTO> bookings = bookingService.getBookingsByUserIdAndStatus(userId, status);
+        return ResponseEntity.ok(bookings);
+    }
+
+    @GetMapping("/provider/{providerId}")
+    public ResponseEntity<?> getBookingsByProviderId(@PathVariable String providerId) {
+        List<BookingDTO> bookings = bookingService.getBookingsByProviderId(providerId);
+        return ResponseEntity.ok(bookings);
+    }
+
+    @GetMapping("/provider/{providerId}/status/{status}")
+    public ResponseEntity<?> getBookingsByProviderIdAndStatus(@PathVariable String providerId, @PathVariable String status) {
+        List<BookingDTO> bookings = bookingService.getBookingsByProviderIdAndStatus(providerId, status);
         return ResponseEntity.ok(bookings);
     }
 
