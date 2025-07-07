@@ -5,12 +5,15 @@ import { ProviderLayout } from "@/layouts/ProviderLayout";
 import {
   SearchOutlined,
   PlusCircleOutlined,
-  MinusCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
   DownloadOutlined,
-  PlusOutlined,
+  RollbackOutlined,
+  ClockCircleOutlined,
+  UserOutlined,
+  CarOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import {
   message,
@@ -21,13 +24,13 @@ import {
   InputNumber,
   Modal,
   Table,
-  Upload,
   Space,
   Tooltip,
   DatePicker,
   Card,
   Tag,
   Divider,
+  Progress,
 } from "antd";
 import type { InputRef } from "antd";
 import type { ColumnType } from "antd/es/table";
@@ -82,7 +85,16 @@ interface FormValues {
   images?: string[];
 }
 
-// Mock data for contracts
+enum ContractStatus {
+  CONFIRMED = "Đã xác nhận",
+  DELIVERED = "Đã giao xe",
+  RECEIVED = "Đã nhận xe",
+  RENTING = "Đang thuê",
+  RETURNED = "Đã trả xe",
+  SETTLED = "Tất toán",
+  CANCELED = "Đã hủy",
+}
+
 const mockContracts: ContractData[] = [
   {
     id: 1,
@@ -107,7 +119,7 @@ const mockContracts: ContractData[] = [
     totalCost: "4,000,000 VNĐ",
     totalCostNumber: 4000000,
     file: "https://example.com/contract1.pdf",
-    status: "Đang thực hiện",
+    status: ContractStatus.RENTING,
   },
   {
     id: 2,
@@ -129,7 +141,7 @@ const mockContracts: ContractData[] = [
     totalCost: "2,800,000 VNĐ",
     totalCostNumber: 2800000,
     file: "https://example.com/contract2.pdf",
-    status: "Đã tất toán",
+    status: ContractStatus.SETTLED,
   },
   {
     id: 3,
@@ -155,7 +167,33 @@ const mockContracts: ContractData[] = [
     totalCost: "2,700,000 VNĐ",
     totalCostNumber: 2700000,
     file: "https://example.com/contract3.pdf",
-    status: "Đang thực hiện",
+    status: ContractStatus.CONFIRMED,
+  },
+  {
+    id: 4,
+    _id: "contract4",
+    bookingId: "booking4",
+    image: [
+      "/placeholder.svg?height=200&width=300",
+      "/placeholder.svg?height=200&width=300",
+      "/placeholder.svg?height=200&width=300",
+    ],
+    createBy: "Admin User",
+    bookBy: "Lê Văn C",
+    email: "levanc@example.com",
+    phone: "0912345678",
+    address: "789 Đường GHI, Quận 3, TP.HCM",
+    numberCar: "30A-98765",
+    model: "Ford Ranger",
+    cost: 900000,
+    numberSeat: 7,
+    yearManufacture: 2020,
+    timeBookingStart: "22-06-2023 09:00",
+    timeBookingEnd: "25-06-2023 09:00",
+    totalCost: "2,700,000 VNĐ",
+    totalCostNumber: 2700000,
+    file: "https://example.com/contract3.pdf",
+    status: ContractStatus.RETURNED,
   },
 ];
 
@@ -164,18 +202,110 @@ export default function ProviderManageContracts() {
   const [urlFile, setUrlFile] = useState<string>("");
   const [form] = Form.useForm();
   const [open, setOpen] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [searchText, setSearchText] = useState<string>("");
   const [searchedColumn, setSearchedColumn] = useState<string>("");
   const searchInput = useRef<InputRef>(null);
   const router = useRouter();
   const [days, setDays] = useState<number>();
   const [filteredInfo, setFilteredInfo] = useState<Record<string, any>>({});
-  const [contracts, setContracts] = useState<ContractData[]>(mockContracts);
+  const [contracts, setContracts] = useState<ContractData[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+  // Load contract data with loading state
+  useEffect(() => {
+    setLoading(true);
+    // Simulate API call with timeout
+    setTimeout(() => {
+      setContracts(mockContracts);
+      setLoading(false);
+    }, 800);
+  }, []);
+
+  // Định nghĩa enum cho trạng thái hợp đồng
+  enum ContractStatus {
+    CONFIRMED = "Đã xác nhận",
+    DELIVERED = "Đã giao xe",
+    RECEIVED = "Đã nhận xe",
+    RENTING = "Đang thuê",
+    RETURNED = "Đã trả xe",
+    SETTLED = "Tất toán",
+    CANCELED = "Đã hủy",
+  }
+
+  // Cập nhật hàm getStatusTag
+  const getStatusTag = (status: string) => {
+    switch (status) {
+      case ContractStatus.CONFIRMED:
+        return (
+          <Tag color="cyan" icon={<CheckCircleOutlined />}>
+            Đã xác nhận
+          </Tag>
+        );
+      case ContractStatus.DELIVERED:
+        return (
+          <Tag color="blue" icon={<CarOutlined />}>
+            Đã giao xe
+          </Tag>
+        );
+      case ContractStatus.RECEIVED:
+        return (
+          <Tag color="geekblue" icon={<UserOutlined />}>
+            Đã nhận xe
+          </Tag>
+        );
+      case ContractStatus.RENTING:
+        return (
+          <Tag color="purple" icon={<ClockCircleOutlined />}>
+            Đang thuê
+          </Tag>
+        );
+      case ContractStatus.RETURNED:
+        return (
+          <Tag color="orange" icon={<RollbackOutlined />}>
+            Đã trả xe
+          </Tag>
+        );
+      case ContractStatus.SETTLED:
+        return (
+          <Tag color="green" icon={<CheckCircleOutlined />}>
+            Tất toán
+          </Tag>
+        );
+      case ContractStatus.CANCELED:
+        return (
+          <Tag color="red" icon={<ExclamationCircleOutlined />}>
+            Đã hủy
+          </Tag>
+        );
+      default:
+        return (
+          <Tag color="default" icon={<QuestionCircleOutlined />}>
+            {status}
+          </Tag>
+        );
+    }
+  };
 
   const handleChange = (pagination: any, filters: Record<string, any>) => {
     setFilteredInfo(filters);
+  };
+
+  const cancelContract = (contractId: string) => {
+    setLoading(true);
+
+    setTimeout(() => {
+      setContracts((prevContracts) =>
+        prevContracts.map((contract) =>
+          contract._id === contractId
+            ? { ...contract, status: ContractStatus.CANCELED }
+            : contract
+        )
+      );
+
+      message.success("Hợp đồng đã được hủy thành công");
+      setLoading(false);
+    }, 1000);
   };
 
   const handleSearch = (
@@ -221,6 +351,141 @@ export default function ProviderManageContracts() {
   const handleReset = (clearFilters: () => void) => {
     clearFilters();
     setSearchText("");
+  };
+
+  // Hàm hiển thị nút thao tác tương ứng với trạng thái
+  const renderActionButton = (contract: ContractData) => {
+    switch (contract.status) {
+      case ContractStatus.CONFIRMED:
+        return (
+          <div className="space-y-2">
+            <Button
+              type="primary"
+              size="small"
+              onClick={() =>
+                updateContractStatus(contract._id, ContractStatus.DELIVERED)
+              }
+              className="w-full"
+            >
+              Xác nhận giao xe
+            </Button>
+
+            {/* Thêm nút hủy hợp đồng */}
+            <Button
+              danger
+              size="small"
+              onClick={() => {
+                Modal.confirm({
+                  title: "Xác nhận hủy hợp đồng",
+                  content:
+                    "Bạn có chắc chắn muốn hủy hợp đồng này không? Hành động này không thể hoàn tác.",
+                  okText: "Đồng ý",
+                  cancelText: "Hủy",
+                  onOk: () => cancelContract(contract._id),
+                });
+              }}
+              className="w-full"
+            >
+              Hủy hợp đồng
+            </Button>
+          </div>
+        );
+
+      case ContractStatus.DELIVERED:
+        return (
+          <Button
+            type="primary"
+            size="small"
+            onClick={() =>
+              updateContractStatus(contract._id, ContractStatus.RECEIVED)
+            }
+            className="w-full"
+          >
+            Xác nhận khách nhận xe
+          </Button>
+        );
+
+      // Các case khác giữ nguyên như cũ
+      case ContractStatus.RECEIVED:
+        return (
+          <Button
+            type="primary"
+            size="small"
+            onClick={() =>
+              updateContractStatus(contract._id, ContractStatus.RENTING)
+            }
+            className="w-full"
+          >
+            Bắt đầu thuê
+          </Button>
+        );
+
+      case ContractStatus.RENTING:
+        return (
+          <Button
+            type="primary"
+            size="small"
+            onClick={() =>
+              updateContractStatus(contract._id, ContractStatus.RETURNED)
+            }
+            className="w-full"
+          >
+            Xác nhận trả xe
+          </Button>
+        );
+
+      case ContractStatus.RETURNED:
+        return (
+          <Button
+            type="primary"
+            size="small"
+            onClick={() => showModal(contract)}
+            icon={<PlusCircleOutlined />}
+            className="w-full"
+          >
+            Tất toán
+          </Button>
+        );
+
+      // case ContractStatus.SETTLED:
+      //   return (
+      //     <Button size="small" disabled className="w-full">
+      //       Đã tất toán
+      //     </Button>
+      //   );
+
+      // case ContractStatus.CANCELED:
+      //   return (
+      //     <Button size="small" disabled className="w-full">
+      //       Đã hủy
+      //     </Button>
+      //   );
+
+      default:
+        return null;
+    }
+  };
+
+  // Hàm cập nhật trạng thái hợp đồng
+  const updateContractStatus = (
+    contractId: string,
+    newStatus: ContractStatus
+  ) => {
+    setLoading(true);
+
+    // Giả lập API call
+    setTimeout(() => {
+      setContracts((prevContracts) =>
+        prevContracts.map((contract) =>
+          contract._id === contractId
+            ? { ...contract, status: newStatus }
+            : contract
+        )
+      );
+
+      message.success(`Cập nhật trạng thái hợp đồng thành ${newStatus}`);
+      setLoading(false);
+    }, 1000);
   };
 
   const getColumnSearchProps = (
@@ -346,6 +611,11 @@ export default function ProviderManageContracts() {
   };
 
   const showModal = (contract: ContractData) => {
+    if (contract.status !== ContractStatus.RETURNED) {
+      message.warning("Chỉ có thể tất toán hợp đồng khi xe đã được trả");
+      return;
+    }
+
     setOpen(true);
     form.setFieldsValue({
       ...contract,
@@ -383,34 +653,71 @@ export default function ProviderManageContracts() {
     return current < dayjs(dStart) || current > dayjs(dEnd);
   };
 
-  const getStatusTag = (status: string) => {
+  // Hàm tính phần trăm tiến độ của hợp đồng - tính toán động
+  const getContractProgressPercent = (status: string): number => {
+    const totalSteps = 6; // Tổng số bước
+
+    // Bước hiện tại dựa trên trạng thái
+    let currentStep = 0;
+
     switch (status) {
-      case "Đang thực hiện":
-        return (
-          <Tag color="blue" icon={<MinusCircleOutlined />}>
-            Đang thực hiện
-          </Tag>
-        );
-      case "Đã tất toán":
-        return (
-          <Tag color="green" icon={<CheckCircleOutlined />}>
-            Đã tất toán
-          </Tag>
-        );
+      case ContractStatus.CONFIRMED:
+        currentStep = 1;
+        break;
+      case ContractStatus.DELIVERED:
+        currentStep = 2;
+        break;
+      case ContractStatus.RECEIVED:
+        currentStep = 3;
+        break;
+      case ContractStatus.RENTING:
+        currentStep = 4;
+        break;
+      case ContractStatus.RETURNED:
+        currentStep = 5;
+        break;
+      case ContractStatus.SETTLED:
+        currentStep = 6;
+        break;
+      case ContractStatus.CANCELED:
+        return 100;
       default:
-        return (
-          <Tag color="red" icon={<ExclamationCircleOutlined />}>
-            Đã hủy
-          </Tag>
-        );
+        return 0;
+    }
+
+    // Tính phần trăm dựa trên bước hiện tại
+    return (currentStep / totalSteps) * 100;
+  };
+
+  // Hàm lấy text hiển thị tiến độ
+  const getContractProgressText = (status: string): string => {
+    switch (status) {
+      case ContractStatus.CONFIRMED:
+        return "1/6: Chờ giao xe";
+      case ContractStatus.DELIVERED:
+        return "2/6: Chờ khách nhận xe";
+      case ContractStatus.RECEIVED:
+        return "3/6: Chuẩn bị bắt đầu thuê";
+      case ContractStatus.RENTING:
+        return "4/6: Đang trong quá trình thuê";
+      case ContractStatus.RETURNED:
+        return "5/6: Chờ tất toán";
+      case ContractStatus.SETTLED:
+        return "6/6: Đã hoàn thành";
+      case ContractStatus.CANCELED:
+        return "Hợp đồng đã hủy";
+      default:
+        return "Chưa xác định";
     }
   };
 
   const columns: ColumnType<ContractData>[] = [
+    // Thêm vào phần render của cột hợp đồng
     {
       title: "Hợp đồng",
       key: "contract",
       width: 280,
+      ...getColumnSearchProps("numberCar"),
       render: (_, record) => (
         <div className="flex items-center gap-3">
           <Image.PreviewGroup
@@ -435,6 +742,18 @@ export default function ProviderManageContracts() {
             <div className="text-xs text-gray-400">
               {record.numberSeat} chỗ • {record.yearManufacture}
             </div>
+
+            {/* Hiển thị tiến trình của hợp đồng */}
+            <div className="mt-1">
+              <Progress
+                percent={getContractProgressPercent(record.status)}
+                size="small"
+                showInfo={false}
+              />
+              {/* <div className="text-xs text-gray-500 mt-1">
+                {getContractProgressText(record.status)}
+              </div> */}
+            </div>
           </div>
         </div>
       ),
@@ -443,6 +762,7 @@ export default function ProviderManageContracts() {
       title: "Khách hàng",
       key: "customer",
       width: 220,
+      ...getColumnSearchProps("bookBy"),
       render: (_, record) => (
         <div>
           <div className="font-semibold">{record.bookBy}</div>
@@ -456,64 +776,6 @@ export default function ProviderManageContracts() {
           </div>
         </div>
       ),
-      filterDropdown: ({
-        setSelectedKeys,
-        selectedKeys,
-        confirm,
-        clearFilters,
-        close,
-      }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
-          <Input
-            ref={searchInput}
-            placeholder="Tìm khách hàng"
-            value={selectedKeys[0]}
-            onChange={(e) =>
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-            }
-            onPressEnter={() =>
-              handleSearch(selectedKeys as string[], confirm, "bookBy")
-            }
-            style={{ marginBottom: 8, display: "block" }}
-          />
-          <Space>
-            <Button
-              type="primary"
-              onClick={() =>
-                handleSearch(selectedKeys as string[], confirm, "bookBy")
-              }
-              icon={<SearchOutlined />}
-              size="small"
-              style={{ width: 90 }}
-            >
-              Tìm
-            </Button>
-            <Button
-              onClick={() => clearFilters && handleReset(clearFilters)}
-              size="small"
-              style={{ width: 90 }}
-            >
-              Reset
-            </Button>
-          </Space>
-        </div>
-      ),
-      filterIcon: (filtered: boolean) => (
-        <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />
-      ),
-      onFilter: (value, record: ContractData) => {
-        return record.bookBy
-          ? record.bookBy
-              .toString()
-              .toLowerCase()
-              .includes((value as string).toLowerCase())
-          : false;
-      },
-      onFilterDropdownOpenChange: (visible: boolean) => {
-        if (visible) {
-          setTimeout(() => searchInput.current?.select(), 100);
-        }
-      },
     },
     {
       title: "Thời gian thuê",
@@ -545,8 +807,13 @@ export default function ProviderManageContracts() {
       key: "status",
       width: 140,
       filters: [
-        { text: "Đang thực hiện", value: "Đang thực hiện" },
-        { text: "Đã tất toán", value: "Đã tất toán" },
+        { text: "Đã xác nhận", value: ContractStatus.CONFIRMED },
+        { text: "Đã giao xe", value: ContractStatus.DELIVERED },
+        { text: "Đã nhận xe", value: ContractStatus.RECEIVED },
+        { text: "Đang thuê", value: ContractStatus.RENTING },
+        { text: "Đã trả xe", value: ContractStatus.RETURNED },
+        { text: "Tất toán", value: ContractStatus.SETTLED },
+        { text: "Đã hủy", value: ContractStatus.CANCELED },
       ],
       onFilter: (value, record) => record.status === value,
       render: (status) => getStatusTag(status),
@@ -559,27 +826,7 @@ export default function ProviderManageContracts() {
       render: (_, contract) => (
         <Space direction="vertical" size="small">
           <Space size="small">
-            {contract.status === "Đã tất toán" ? (
-              <Button
-                type="primary"
-                size="small"
-                disabled
-                icon={<PlusCircleOutlined />}
-              >
-                Tất toán
-              </Button>
-            ) : (
-              <Tooltip title="Tạo hợp đồng tất toán">
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => showModal(contract)}
-                  icon={<PlusCircleOutlined />}
-                >
-                  Tất toán
-                </Button>
-              </Tooltip>
-            )}
+            {/* Thao tác xem hợp đồng luôn hiển thị */}
             <Tooltip title="Xem hợp đồng">
               <Button
                 size="small"
@@ -587,17 +834,19 @@ export default function ProviderManageContracts() {
                 icon={<EyeOutlined />}
               />
             </Tooltip>
+            {contract.status !== ContractStatus.CANCELED && (
+              <Tooltip title="Tải file hợp đồng">
+                <Button
+                  size="small"
+                  onClick={() => generateDocument(contract)}
+                  icon={<DownloadOutlined />}
+                />
+              </Tooltip>
+            )}
           </Space>
-          <Tooltip title="Tải file tất toán">
-            <Button
-              size="small"
-              onClick={() => generateDocument(contract)}
-              icon={<DownloadOutlined />}
-              className="w-full"
-            >
-              Tải file
-            </Button>
-          </Tooltip>
+
+          {/* Các nút chuyển trạng thái */}
+          {renderActionButton(contract)}
         </Space>
       ),
     },
@@ -618,6 +867,7 @@ export default function ProviderManageContracts() {
           columns={columns}
           dataSource={contracts}
           rowKey="id"
+          loading={loading}
           scroll={{ x: 1200 }}
           pagination={{
             pageSize: 10,
@@ -627,6 +877,9 @@ export default function ProviderManageContracts() {
               `${range[0]}-${range[1]} của ${total} mục`,
           }}
           size="middle"
+          locale={{
+            emptyText: loading ? "Đang tải dữ liệu..." : "Không có dữ liệu",
+          }}
         />
       </Card>
 
@@ -719,30 +972,6 @@ export default function ProviderManageContracts() {
               </Form.Item>
               <Form.Item hidden name="totalCostNumber">
                 <Input />
-              </Form.Item>
-            </div>
-
-            <div>
-              <Form.Item
-                label="Ảnh hợp đồng tất toán"
-                name="images"
-                rules={[
-                  {
-                    required: true,
-                    message: "Hãy đăng ảnh tất toán hợp đồng lên!",
-                  },
-                ]}
-              >
-                <Upload
-                  listType="picture-card"
-                  maxCount={3}
-                  beforeUpload={() => false}
-                >
-                  <div>
-                    <PlusOutlined />
-                    <div style={{ marginTop: 8 }}>Tải ảnh lên</div>
-                  </div>
-                </Upload>
               </Form.Item>
             </div>
           </div>
