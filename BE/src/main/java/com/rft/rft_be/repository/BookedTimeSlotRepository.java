@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.time.LocalDateTime;
+import com.rft.rft_be.entity.BookedTimeSlot;
+
+import jakarta.transaction.Transactional;
 
 public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, String> {
 
@@ -23,11 +26,11 @@ public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, 
             @Param("timeTo") LocalDateTime timeTo
     );
 
-    @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END " +
-            "FROM BookedTimeSlot b " +
-            "WHERE b.vehicle.id = :vehicleId " +
-            "AND b.timeFrom < :endTime " +
-            "AND b.timeTo > :startTime")
+    @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END "
+            + "FROM BookedTimeSlot b "
+            + "WHERE b.vehicle.id = :vehicleId "
+            + "AND b.timeFrom < :endTime "
+            + "AND b.timeTo > :startTime")
     boolean existsByVehicleIdAndTimeOverlap(
             @Param("vehicleId") String vehicleId,
             @Param("startTime") LocalDateTime startTime,
@@ -38,8 +41,8 @@ public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, 
     @Query(value = "DELETE FROM booked_time_slots WHERE vehicle_id = :vehicleId", nativeQuery = true)
     void deleteByVehicleId(@Param("vehicleId") String vehicleId);
 
-    @Query("SELECT COUNT(b) FROM BookedTimeSlot b WHERE b.id IN " +
-            "(SELECT bt.id FROM BookedTimeSlot bt WHERE bt.id = :vehicleId)")
+    @Query("SELECT COUNT(b) FROM BookedTimeSlot b WHERE b.id IN "
+            + "(SELECT bt.id FROM BookedTimeSlot bt WHERE bt.id = :vehicleId)")
     long countByVehicleId(@Param("vehicleId") String vehicleId);
 
 
