@@ -75,8 +75,14 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
     {
       key: "bookings",
       path: "/provider/manage-bookings",
-      icon: "mdi:calendar-check",
+      icon: "mdi:calendar-clock",
       label: "Đơn đặt thuê xe",
+    },
+    {
+      key: "orders",
+      path: "/provider/manage-accepted-bookings",
+      icon: "mdi:calendar-check",
+      label: "Quản lý đơn hàng",
     },
     {
       key: "contracts",
