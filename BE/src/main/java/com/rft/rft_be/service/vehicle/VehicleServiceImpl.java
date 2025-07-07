@@ -69,22 +69,6 @@ public class VehicleServiceImpl implements VehicleService {
         return dto;
     }
 
-    //    @Override
-//    public List<CategoryDTO> getAllVehiclesByCategory() {
-//        List<Vehicle> vehicles = vehicleRepository.findAll();
-//
-//        Map<String, List<Vehicle>> grouped = vehicles.stream()
-//                .collect(Collectors.groupingBy(Vehicle::getVehicleType));
-//
-//        return grouped.entrySet().stream()
-//                .map(entry -> CategoryDTO.builder()
-//                        .categoryName(entry.getKey())
-//                        .vehicles(entry.getValue().stream()
-//                                .map(vehicleMapper::toDTO)
-//                                .collect(Collectors.toList()))
-//                        .build())
-//                .collect(Collectors.toList());
-//    }
     @Override
     public VehicleDetailDTO getVehicleDetailById(String id) {
         Vehicle vehicle = vehicleRepository.findById(id)
@@ -462,7 +446,7 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req) {
+    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, LocalDateTime timeFrom, LocalDateTime timeTo) {
         Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
 
         Specification<Vehicle> spec = (root, query, cb) -> cb.conjunction();
@@ -487,9 +471,7 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         if (req.getHaveDriver() != null) {
-            spec = spec.and((root, query, cb)
-                    -> cb.equal(root.get("haveDriver"), req.getHaveDriver())
-            );
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("haveDriver"), req.getHaveDriver()));
         }
 
         if (req.getShipToAddress() != null) {
@@ -516,19 +498,78 @@ public class VehicleServiceImpl implements VehicleService {
             spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("costPerDay"), req.getCostTo()));
         }
 
+        if (req.getTransmission() != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("transmission"), Vehicle.Transmission.valueOf(req.getTransmission())));
+        }
+
+        if (req.getFuelType() != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("fuelType"), Vehicle.FuelType.valueOf(req.getFuelType())));
+        }
+
         if (Boolean.TRUE.equals(req.getRatingFiveStarsOnly())) {
             spec = spec.and((root, query, cb) -> {
-                Subquery<Double> subquery = query.subquery(Double.class);
-                Root<Rating> ratingRoot = subquery.from(Rating.class);
-                subquery.select(cb.avg(ratingRoot.get("star")));
-                subquery.where(cb.equal(ratingRoot.get("vehicle").get("id"), root.get("id")));
+                var subquery = query.subquery(Double.class);
+                var ratingRoot = subquery.from(Rating.class);
+                subquery.select(cb.avg(ratingRoot.get("star")))
+                        .where(cb.equal(ratingRoot.get("vehicle").get("id"), root.get("id")));
                 return cb.equal(subquery, 5.0);
             });
         }
 
+        // Kiểm tra xe rảnh trong khoảng thời gian yêu cầu
+        if (timeFrom != null && timeTo != null) {
+            List<String> busyVehicleIds = bookedTimeSlotsRepository.findBusyVehicleIds(timeFrom, timeTo);
+            if (!busyVehicleIds.isEmpty()) {
+                spec = spec.and((root, query, cb) -> cb.not(root.get("id").in(busyVehicleIds)));
+            }
+        }
+
         Page<Vehicle> result = vehicleRepository.findAll(spec, pageable);
         return result.map(vehicle -> {
-            // Xử lý averageRating để đảm bảo không null
+            Double avgRating = ratingRepository.findAverageByVehicleId(vehicle.getId());
+            return VehicleSearchResultDTO.builder()
+                    .id(vehicle.getId())
+                    .licensePlate(vehicle.getLicensePlate())
+                    .vehicleType(String.valueOf(vehicle.getVehicleType()))
+                    .thumb(vehicle.getThumb())
+                    .costPerDay(vehicle.getCostPerDay())
+                    .status(vehicle.getStatus().name())
+                    .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : "")
+                    .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : "")
+                    .numberSeat(vehicle.getNumberSeat())
+                    .rating(avgRating != null ? avgRating : 0.0)
+                    .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : "")
+                    .vehicleImages(VehicleMapper.jsonToImageList(vehicle.getVehicleImages()))
+                    .transmission(vehicle.getTransmission() != null ? vehicle.getTransmission().name() : null)
+                    .fuelType(vehicle.getFuelType() != null ? vehicle.getFuelType().name() : null)
+                    .build();
+        });
+    }
+
+    @Override
+    @Transactional
+    public void deleteExpiredBookedTimeSlots() {
+        LocalDateTime now = LocalDateTime.now();
+        bookedTimeSlotsRepository.deleteAllByTimeToBefore(now);
+    }
+
+    @Override
+    public Page<VehicleSearchResultDTO> basicSearch(String address, String type, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        // Lấy danh sách xe bận trong khoảng thời gian
+        List<String> busyIds = bookedTimeSlotsRepository.findBusyVehicleIds(from, to);
+
+        Vehicle.VehicleType vehicleTypeEnum = null;
+        if (type != null && !type.isBlank()) {
+            try {
+                vehicleTypeEnum = Vehicle.VehicleType.valueOf(type.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid vehicle type: " + type);
+            }
+        }
+
+        Page<Vehicle> result = vehicleRepository.findBasicSearch(address, vehicleTypeEnum, busyIds, pageable);
+
+        return result.map(vehicle -> {
             Double avgRating = ratingRepository.findAverageByVehicleId(vehicle.getId());
 
             return VehicleSearchResultDTO.builder()
