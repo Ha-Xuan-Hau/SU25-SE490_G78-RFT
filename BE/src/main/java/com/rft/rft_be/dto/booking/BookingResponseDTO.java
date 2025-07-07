@@ -1,14 +1,19 @@
 package com.rft.rft_be.dto.booking;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
 import com.rft.rft_be.entity.Booking;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -17,9 +22,10 @@ import java.time.LocalDateTime;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingResponseDTO {
+
     String id;
-    UserProfileDTO user; // Người đặt
-    VehicleForBookingDTO vehicle; // Xe được đặt
+    UserProfileDTO user;
+    VehicleForBookingDTO vehicle;
     LocalDateTime timeBookingStart;
     LocalDateTime timeBookingEnd;
     String phoneNumber;
@@ -34,4 +40,9 @@ public class BookingResponseDTO {
     String couponId;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
+
+    // Additional fields for booking calculation
+    String priceType; // "hourly" hoặc "daily"
+    String rentalDuration; // formatted duration
+    BigDecimal discountAmount; // discount amount applied
 }

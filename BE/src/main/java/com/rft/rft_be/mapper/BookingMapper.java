@@ -14,6 +14,10 @@ public interface BookingMapper {
     @Mapping(source = "vehicle.licensePlate", target = "vehicleLicensePlate")
     @Mapping(source = "vehicle.vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
+//    @Mapping(source = "penalty.id", target = "penaltyId")
+//    @Mapping(source = "penalty.penaltyType", target = "penaltyType", qualifiedByName = "enumToString")
+//    @Mapping(source = "penalty.penaltyValue", target = "penaltyValue")
+//    @Mapping(source = "penalty.minCancelHour", target = "minCancelHour")
     BookingDTO toDTO(Booking booking);
 
     @Named("enumToString")

@@ -42,6 +42,18 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
               <Component {...pageProps} />
             </Layout>
             <ReactQueryDevtools initialIsOpen={false} />
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

@@ -66,75 +66,127 @@ const AboutUsPage: React.FC = () => {
           </h2>
 
           <Row gutter={[24, 24]} justify="center">
-            {/* Dev cards giữ nguyên như trước */}
+            {/* Leader Card */}
             <Col xs={24} sm={12} lg={8}>
               <Card
-                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 "
+                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-blue-200 hover:border-blue-400"
                 bodyStyle={{ padding: "24px" }}
               >
                 <div className="text-center">
                   <div className="mb-4">
-                    <div className="w-20 h-20  rounded-full mx-auto flex items-center justify-center">
-                      <span className="text-2xl font-bold text-orange-600">
-                        PMK
+                    <div className="w-20 h-20 bg-blue-100 rounded-full mx-auto flex items-center justify-center">
+                      <span className="text-2xl font-bold text-blue-600">
+                        HXH
                       </span>
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold text-primary mb-4">
-                    Phạm Minh Khánh
+                  <h3 className="text-xl font-bold text-blue-600 mb-4">
+                    Hạ Xuân Hậu
                   </h3>
                   <div className="space-y-2 text-gray-600">
-                    <p>• Back-end Developer</p>
-                    <p>• Front-end Developer</p>
-                    <p>• DevOps</p>
-                    <p>• Designer</p>
+                    <p>• Team Leader</p>
+                    <p>• Project Manager</p>
+                    <p>• Database Designer</p>
                   </div>
                 </div>
               </Card>
             </Col>
 
+            {/* Frontend Developer Card */}
             <Col xs={24} sm={12} lg={8}>
               <Card
-                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-orange-200 hover:border-orange-400"
+                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-green-200 hover:border-green-400"
                 bodyStyle={{ padding: "24px" }}
               >
                 <div className="text-center">
                   <div className="mb-4">
-                    <div className="w-20 h-20 bg-orange-100 rounded-full mx-auto flex items-center justify-center">
-                      <span className="text-2xl font-bold text-orange-600">
-                        CHH
+                    <div className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center">
+                      <span className="text-2xl font-bold text-green-600">
+                        LDH
                       </span>
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold text-orange-600 mb-4">
-                    Cò Huy Hoàng
+                  <h3 className="text-xl font-bold text-green-600 mb-4">
+                    Lê Đình Hiếu
                   </h3>
                   <div className="space-y-2 text-gray-600">
-                    <p>• Front-end Developer</p>
-                    <p>• Designer</p>
+                    <p>• Frontend Developer</p>
+                    <p>• UI/UX Designer</p>
                   </div>
                 </div>
               </Card>
             </Col>
 
+            {/* Backend Developer Card 1 */}
             <Col xs={24} sm={12} lg={8}>
               <Card
-                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-orange-200 hover:border-orange-400"
+                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-purple-200 hover:border-purple-400"
                 bodyStyle={{ padding: "24px" }}
               >
                 <div className="text-center">
                   <div className="mb-4">
-                    <div className="w-20 h-20 bg-orange-100 rounded-full mx-auto flex items-center justify-center">
-                      <span className="text-2xl font-bold text-orange-600">
-                        LTML
+                    <div className="w-20 h-20 bg-purple-100 rounded-full mx-auto flex items-center justify-center">
+                      <span className="text-2xl font-bold text-purple-600">
+                        PHL
                       </span>
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold text-orange-600 mb-4">
-                    Lê Thị Mỹ Lệ
+                  <h3 className="text-xl font-bold text-purple-600 mb-4">
+                    Phạm Huy Long
                   </h3>
                   <div className="space-y-2 text-gray-600">
-                    <p>• Logo Designer</p>
+                    <p>• Backend Developer</p>
+                    <p>• API Developer</p>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            {/* Backend Developer Card 2 */}
+            <Col xs={24} sm={12} lg={8}>
+              <Card
+                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-purple-200 hover:border-purple-400"
+                bodyStyle={{ padding: "24px" }}
+              >
+                <div className="text-center">
+                  <div className="mb-4">
+                    <div className="w-20 h-20 bg-purple-100 rounded-full mx-auto flex items-center justify-center">
+                      <span className="text-2xl font-bold text-purple-600">
+                        PTT
+                      </span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-purple-600 mb-4">
+                    Phạm Trọng Tiệp
+                  </h3>
+                  <div className="space-y-2 text-gray-600">
+                    <p>• Backend Developer</p>
+                    <p>• API Developer</p>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            {/* Backend Developer Card 3 */}
+            <Col xs={24} sm={12} lg={8}>
+              <Card
+                className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-2 border-purple-200 hover:border-purple-400"
+                bodyStyle={{ padding: "24px" }}
+              >
+                <div className="text-center">
+                  <div className="mb-4">
+                    <div className="w-20 h-20 bg-purple-100 rounded-full mx-auto flex items-center justify-center">
+                      <span className="text-2xl font-bold text-purple-600">
+                        NMN
+                      </span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-purple-600 mb-4">
+                    Nguyễn Minh Nghĩa
+                  </h3>
+                  <div className="space-y-2 text-gray-600">
+                    <p>• Backend Developer</p>
+                    <p>• API Developer</p>
                   </div>
                 </div>
               </Card>

@@ -63,14 +63,6 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
               {/* User profile section */}
               <div className="px-4 py-6 border-b ">
                 <div className="flex flex-col items-center">
-                  <Avatar
-                    size={64}
-                    src={
-                      userProfile?.avatar ||
-                      "/placeholder.svg?height=64&width=64"
-                    }
-                    className="mb-2 ring-2 ring-primary/30 p-1"
-                  />
                   <h3 className="text-base font-semibold mt-2 text-gray-800 dark:text-white truncate w-full text-center">
                     {userProfile?.fullName || "Người dùng"}
                   </h3>
