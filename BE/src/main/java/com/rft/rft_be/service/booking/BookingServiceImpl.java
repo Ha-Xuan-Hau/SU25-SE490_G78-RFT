@@ -1,25 +1,45 @@
 package com.rft.rft_be.service.booking;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.ParseException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.nimbusds.jwt.SignedJWT;
-import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.dto.booking.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
-import com.rft.rft_be.entity.*;
-
+import com.rft.rft_be.entity.BookedTimeSlot;
+import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.entity.Coupon;
+import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.Vehicle;
+import com.rft.rft_be.entity.Wallet;
+import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.mapper.BookingMapper;
-
 import com.rft.rft_be.mapper.BookingResponseMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
+import com.rft.rft_be.repository.BookedTimeSlotRepository;
+import com.rft.rft_be.repository.BookingRepository;
+import com.rft.rft_be.repository.CouponRepository;
+import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.repository.VehicleRepository;
+import com.rft.rft_be.repository.WalletRepository;
+import com.rft.rft_be.repository.WalletTransactionRepository;
+import com.rft.rft_be.util.BookingCalculationUtils;
 
-import com.rft.rft_be.repository.*;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -50,7 +70,6 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BookingServiceImpl implements BookingService {
 
-
     BookingMapper bookingMapper;
     BookingRepository bookingRepository;
     BookedTimeSlotRepository bookedTimeSlotRepository;
@@ -61,7 +80,88 @@ public class BookingServiceImpl implements BookingService {
     BookingCleanupTask bookingCleanupTask;
     WalletRepository walletRepository;
     WalletTransactionRepository walletTransactionRepository;
+    CouponRepository couponRepository;
 
+//    @Override
+//    @Transactional
+//    public BookingResponseDTO createBooking(BookingRequestDTO request, String userId) {
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
+//
+//        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
+//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy xe với ID: " + request.getVehicleId()));
+//
+//        if (userId.equals(vehicle.getUser().getId())) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn không thể đặt xe của chính mình.");
+//        }
+//
+//        Instant start = request.getTimeBookingStart();
+//        Instant end = request.getTimeBookingEnd();
+//
+//        if (start == null || end == null || !start.isBefore(end)) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian đặt không hợp lệ. Thời gian bắt đầu phải trước thời gian kết thúc.");
+//        }
+//
+//        // check xe đã được đặt trong thời gian đó chưa
+//        List<BookedTimeSlot> overlaps = bookedTimeSlotRepository.findByVehicleIdAndTimeRange(vehicle.getId(), start, end);
+//        if (!overlaps.isEmpty()) {
+//            throw new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã được đặt trong khoảng thời gian này.");
+//        }
+//
+//        // check renter đã có booking chưa huỷ hoặc chưa bị xoá cho chuyến tương tự chưa
+//        boolean hasActiveBookingForTrip = bookingRepository.existsByUserIdAndVehicleIdAndTimeBookingStartAndTimeBookingEndAndStatusIn(
+//                userId,
+//                vehicle.getId(),
+//                start,
+//                end,
+//                List.of(Booking.Status.UNPAID, Booking.Status.PENDING, Booking.Status.CONFIRMED)
+//        );
+//        if (hasActiveBookingForTrip) {
+//            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có một booking đang tồn tại cho chuyến đi này.");
+//        }
+//
+//        // Tính tổng chi phí
+//        long durationHours = Duration.between(start, end).toHours();
+//        BigDecimal numberOfDays = BigDecimal.valueOf(Math.ceil((double) durationHours / 24));
+//        BigDecimal totalCost = (vehicle.getCostPerDay() != null)
+//                ? vehicle.getCostPerDay().multiply(numberOfDays)
+//                : BigDecimal.ZERO;
+//
+//        String generatedCodeTransaction = "BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+//        Instant transactionTime = Instant.now();
+//
+//        Booking booking = Booking.builder()
+//                .user(user)
+//                .phoneNumber(request.getPhoneNumber())
+//                .address(request.getAddress())
+//                .vehicle(vehicle)
+//                .timeBookingStart(start)
+//                .timeBookingEnd(end)
+//                .status(Booking.Status.UNPAID)
+//                .totalCost(totalCost)
+//                .codeTransaction(generatedCodeTransaction)
+//                .timeTransaction(transactionTime)
+//                .penaltyType(Booking.PenaltyType.valueOf(request.getPenaltyType()))
+//                .penaltyValue(request.getPenaltyValue())
+//                .minCancelHour(request.getMinCancelHour())
+//                .createdAt(Instant.now())
+//                .updatedAt(Instant.now())
+//                .build();
+//        bookingRepository.save(booking);
+//        bookingCleanupTask.scheduleCleanup(booking.getId());
+//
+//        // lưu time slot đã đặt để tránh đặt trùng
+//        BookedTimeSlot slot = BookedTimeSlot.builder()
+//                .vehicle(vehicle)
+//                .timeFrom(start)
+//                .timeTo(end)
+//                .createdAt(Instant.now())
+//                .updatedAt(Instant.now())
+//                .build();
+//        bookedTimeSlotRepository.save(slot);
+//
+//        return bookingResponseMapper.toResponseDTO(booking);
+//    }
     @Override
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request, String userId) {
@@ -78,47 +178,103 @@ public class BookingServiceImpl implements BookingService {
         LocalDateTime start = request.getTimeBookingStart();
         LocalDateTime end = request.getTimeBookingEnd();
 
+        // DEBUG: Log giờ VN và UTC
+        log.info("Frontend sent - startDate: {}, endDate: {}", request.getStartDate(), request.getEndDate());
+        log.info("Converted to Instant (UTC+7) - start: {}, end: {}", start, end);
+
         if (start == null || end == null || !start.isBefore(end)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian đặt không hợp lệ. Thời gian bắt đầu phải trước thời gian kết thúc.");
         }
 
-        // check xe đã được đặt trong thời gian đó chưa
-        List<BookedTimeSlot> overlaps = bookedTimeSlotRepository.findByVehicleIdAndTimeRange(vehicle.getId(), start, end);
-        if (!overlaps.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã được đặt trong khoảng thời gian này.");
+        // Validate thời gian trong khung giờ hoạt động (7h-20h)
+        validateOperatingHours(start, end);
+
+        // CRITICAL: Double-check availability với pessimistic locking để tránh race condition
+        // Sử dụng synchronized block hoặc database-level locking
+        BookedTimeSlot bookedSlot;
+        synchronized (this) {
+            // Check xe đã được đặt trong thời gian đó chưa - kiểm tra lại trong synchronized block
+            List<BookedTimeSlot> overlaps = bookedTimeSlotRepository.findByVehicleIdAndTimeRange(vehicle.getId(), start, end);
+            if (!overlaps.isEmpty()) {
+                log.warn("Race condition detected: Vehicle {} already booked for time range {} to {}",
+                        vehicle.getId(), start, end);
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã được đặt trong khoảng thời gian này. Vui lòng chọn thời gian khác.");
+            }
+
+            // Immediately create BookedTimeSlot để block slot này ngay lập tức
+            bookedSlot = BookedTimeSlot.builder()
+                    .vehicle(vehicle)
+                    .timeFrom(start)
+                    .timeTo(end)
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+            bookedTimeSlotRepository.save(bookedSlot);
+            log.info("Created booked time slot for vehicle {} from {} to {}", vehicle.getId(), start, end);
         }
 
-        // check renter đã có booking chưa huỷ hoặc chưa bị xoá cho chuyến tương tự chưa
+        // Check renter đã có booking chưa huỷ hoặc chưa bị xoá cho chuyến tương tự chưa
         boolean hasActiveBookingForTrip = bookingRepository.existsByUserIdAndVehicleIdAndTimeBookingStartAndTimeBookingEndAndStatusIn(
-                userId,
-                vehicle.getId(),
-                start,
-                end,
+                userId, vehicle.getId(), start, end,
                 List.of(Booking.Status.UNPAID, Booking.Status.PENDING, Booking.Status.CONFIRMED)
         );
         if (hasActiveBookingForTrip) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có một booking đang tồn tại cho chuyến đi này.");
         }
 
-        // Tính tổng chi phí
-        long durationHours = Duration.between(start, end).toHours();
-        BigDecimal numberOfDays = BigDecimal.valueOf(Math.ceil((double) durationHours / 24));
-        BigDecimal totalCost = (vehicle.getCostPerDay() != null)
-                ? vehicle.getCostPerDay().multiply(numberOfDays)
-                : BigDecimal.ZERO;
+        // ===== TÍNH GIÁ THEO LOGIC MỚI =====
+        BookingCalculationUtils.RentalCalculation calculation
+                = BookingCalculationUtils.calculateRentalDuration(start, end);
+
+        BigDecimal baseCost = BookingCalculationUtils.calculateRentalPrice(calculation, vehicle.getCostPerDay());
+
+        // Thêm phí giao xe (nếu có)
+        BigDecimal deliveryCost = BigDecimal.ZERO;
+        if ("delivery".equals(request.getPickupMethod())) {
+            deliveryCost = BigDecimal.valueOf(50000); // 50k phí giao xe
+        }
+
+        BigDecimal totalCostBeforeDiscount = baseCost.add(deliveryCost);
+        log.info("Base cost: {}, Delivery cost: {}, Total before discount: {}",
+                baseCost, deliveryCost, totalCostBeforeDiscount);
+
+        // ===== XỬ LÝ COUPON =====
+        BigDecimal finalTotalCost = totalCostBeforeDiscount;
+        Coupon appliedCoupon = null;
+        BigDecimal discountAmount = BigDecimal.ZERO;
+
+        if (request.getCouponId() != null && !request.getCouponId().trim().isEmpty()) {
+            appliedCoupon = validateAndApplyCoupon(request.getCouponId(), totalCostBeforeDiscount);
+            if (appliedCoupon != null) {
+                // Tính discount amount (giả sử coupon.discount là phần trăm)
+                discountAmount = totalCostBeforeDiscount.multiply(appliedCoupon.getDiscount())
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                finalTotalCost = totalCostBeforeDiscount.subtract(discountAmount);
+
+                // Đảm bảo không âm
+                if (finalTotalCost.compareTo(BigDecimal.ZERO) < 0) {
+                    finalTotalCost = BigDecimal.ZERO;
+                }
+
+                log.info("Applied coupon: {}, Discount: {}%, Amount: {}, Final cost: {}",
+                        appliedCoupon.getName(), appliedCoupon.getDiscount(), discountAmount, finalTotalCost);
+            }
+        }
 
         String generatedCodeTransaction = "BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         LocalDateTime transactionTime = LocalDateTime.now();
 
+        // Tạo booking với giá đã tính toán
         Booking booking = Booking.builder()
                 .user(user)
-                .phoneNumber(request.getPhoneNumber())
-                .address(request.getAddress())
                 .vehicle(vehicle)
                 .timeBookingStart(start)
                 .timeBookingEnd(end)
+                .phoneNumber(request.getPhoneNumber())
+                .address(request.getAddress())
                 .status(Booking.Status.UNPAID)
-                .totalCost(totalCost)
+                .totalCost(finalTotalCost) // Giá sau khi áp dụng coupon
                 .codeTransaction(generatedCodeTransaction)
                 .timeTransaction(transactionTime)
                 .penaltyType(Booking.PenaltyType.valueOf(request.getPenaltyType()))
@@ -127,20 +283,87 @@ public class BookingServiceImpl implements BookingService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+
+        // DEBUG: Log giá trị sẽ lưu vào DB
+        log.info("DEBUG - Values to be saved to DB:");
+        log.info("  timeBookingStart (Instant UTC+7): {}", start);
+        log.info("  timeBookingEnd (Instant UTC+7): {}", end);
+        log.info("  Original VN time: start={}, end={}", request.getStartDate(), request.getEndDate());
+
         bookingRepository.save(booking);
+
+        // Schedule cleanup task for unpaid booking
         bookingCleanupTask.scheduleCleanup(booking.getId());
 
-        // lưu time slot đã đặt để tránh đặt trùng
-        BookedTimeSlot slot = BookedTimeSlot.builder()
-                .vehicle(vehicle)
-                .timeFrom(start)
-                .timeTo(end)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-        bookedTimeSlotRepository.save(slot);
+        log.info("Booking created successfully with ID: {} and time slot reserved", booking.getId());
 
-        return bookingResponseMapper.toResponseDTO(booking);
+        // Tạo response với thông tin chi tiết
+        BookingResponseDTO response = bookingResponseMapper.toResponseDTO(booking);
+
+        // Thêm thông tin bổ sung cho response
+        if (appliedCoupon != null) {
+            response.setCouponId(appliedCoupon.getId());
+            response.setDiscountAmount(discountAmount);
+        }
+        response.setPriceType(calculation.getPriceType());
+        response.setRentalDuration(BookingCalculationUtils.formatRentalDuration(calculation));
+
+        return response;
+    }
+
+// Thêm method validate mới
+    private void validateOperatingHours(Instant start, Instant end) {
+        // Convert to VN time for validation (trừ 7 giờ để có giờ VN gốc)
+        java.time.LocalDateTime startLocal = start.minusSeconds(7 * 3600).atZone(java.time.ZoneId.of("UTC")).toLocalDateTime();
+        java.time.LocalDateTime endLocal = end.minusSeconds(7 * 3600).atZone(java.time.ZoneId.of("UTC")).toLocalDateTime();
+
+        int startHour = startLocal.getHour();
+        int endHour = endLocal.getHour();
+        int startMinute = startLocal.getMinute();
+        int endMinute = endLocal.getMinute();
+
+        // DEBUG: Log chi tiết thời gian để debug
+        log.info("DEBUG validateOperatingHours - Start VN: {} ({}:{}), End VN: {} ({}:{})",
+                startLocal, startHour, startMinute, endLocal, endHour, endMinute);
+        log.info("DEBUG - Original Instant (UTC+7): start={}, end={}", start, end);
+
+        // Validate giờ hoạt động (7h-20h30) - cho phép start từ 7-20h, end từ 7-20h30
+        if (startHour < 7 || startHour >= 21) {
+            log.error("Start hour validation failed: {} (must be 7-20)", startHour);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giờ bắt đầu phải từ 7:00 đến 20:59");
+        }
+
+        // End time: cho phép từ 7:00 đến 20:30 (không cho 21:00 trở đi)
+        if (endHour < 7 || endHour >= 21) {
+            log.error("End hour validation failed: {} (must be 7-20)", endHour);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giờ kết thúc phải từ 7:00 đến 20:30");
+        }
+
+        // Validate phút chỉ được :00 hoặc :30
+        if ((startMinute != 0 && startMinute != 30) || (endMinute != 0 && endMinute != 30)) {
+            log.error("Minute validation failed: start={}:{}, end={}:{}", startHour, startMinute, endHour, endMinute);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian chỉ được chọn theo bước 30 phút (:00 hoặc :30)");
+        }
+
+        log.info("Operating hours validation passed");
+    }
+
+    private Coupon validateAndApplyCoupon(String couponId, BigDecimal orderAmount) {
+        // 1. Kiểm tra coupon tồn tại
+        Coupon coupon = couponRepository.findById(couponId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mã giảm giá không tồn tại"));
+
+        // 2. Kiểm tra trạng thái
+        if (coupon.getStatus() != Coupon.CouponStatus.VALID) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã giảm giá đã hết hạn");
+        }
+
+        // 3. Kiểm tra thời gian hết hạn
+        if (coupon.getTimeExpired() != null && coupon.getTimeExpired().isBefore(Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã giảm giá đã hết hạn");
+        }
+
+        return coupon;
     }
 
     @Override
@@ -334,10 +557,10 @@ public class BookingServiceImpl implements BookingService {
             throw new AccessDeniedException("Chỉ người thuê xe hoặc chủ xe mới có quyền hủy đơn đặt.");
         }
 
-        if (booking.getStatus() == Booking.Status.DELIVERED ||
-                booking.getStatus() == Booking.Status.RECEIVED_BY_CUSTOMER ||
-                booking.getStatus() == Booking.Status.RETURNED ||
-                booking.getStatus() == Booking.Status.COMPLETED) {
+        if (booking.getStatus() == Booking.Status.DELIVERED
+                || booking.getStatus() == Booking.Status.RECEIVED_BY_CUSTOMER
+                || booking.getStatus() == Booking.Status.RETURNED
+                || booking.getStatus() == Booking.Status.COMPLETED) {
             throw new IllegalStateException("Không thể hủy đơn đặt khi đã giao, nhận, trả hoặc hoàn tất.");
         }
 
@@ -362,7 +585,9 @@ public class BookingServiceImpl implements BookingService {
         if (booking.getPenaltyType() == Booking.PenaltyType.FIXED) {
             return booking.getPenaltyValue() != null ? booking.getPenaltyValue() : BigDecimal.ZERO;
         } else if (booking.getPenaltyType() == Booking.PenaltyType.PERCENT) {
-            if (booking.getPenaltyValue() == null || booking.getTotalCost() == null) return BigDecimal.ZERO;
+            if (booking.getPenaltyValue() == null || booking.getTotalCost() == null) {
+                return BigDecimal.ZERO;
+            }
             return booking.getTotalCost()
                     .multiply(booking.getPenaltyValue())
                     .divide(BigDecimal.valueOf(100));
@@ -421,5 +646,20 @@ public class BookingServiceImpl implements BookingService {
         // Cập nhật booking
         booking.setStatus(Booking.Status.PENDING);
         bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isTimeSlotAvailable(String vehicleId, Instant startTime, Instant endTime) {
+        // Synchronized để đảm bảo atomic check
+        synchronized (this) {
+            List<BookedTimeSlot> overlaps = bookedTimeSlotRepository.findByVehicleIdAndTimeRange(vehicleId, startTime, endTime);
+            boolean available = overlaps.isEmpty();
+
+            log.debug("Checking availability for vehicle {} from {} to {}: {}",
+                    vehicleId, startTime, endTime, available ? "AVAILABLE" : "CONFLICT");
+
+            return available;
+        }
     }
 }

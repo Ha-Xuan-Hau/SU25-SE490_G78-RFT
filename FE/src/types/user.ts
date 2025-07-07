@@ -11,4 +11,5 @@ export interface User {
   status?: string;
   createdAt?: string | number;
   updatedAt?: string | number;
+  validLicenses?: string[];
 }

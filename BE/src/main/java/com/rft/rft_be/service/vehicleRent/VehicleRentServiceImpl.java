@@ -1,6 +1,5 @@
 package com.rft.rft_be.service.vehicleRent;
 
-
 import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.vehicle.vehicleRent.*;
 import com.rft.rft_be.entity.Brand;
@@ -41,8 +40,8 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public PageResponseDTO<VehicleDTO> getUserVehicles(String userId, int page, int size, String sortBy, String sortDir) {
         log.info("Getting vehicles for user: {}, page: {}, size: {}", userId, page, size);
 
-        Sort sort = sortDir.equalsIgnoreCase("desc") ?
-                Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<Vehicle> vehiclePage = vehicleRepository.findByUserIdWithBrandAndModel(userId, pageable);
@@ -125,73 +124,72 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
-    @Override
-    @Transactional
-    public VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request) {
-        log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
+   @Override
+   @Transactional
+   public VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request) {
+       log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
 
-        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
+       Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+               .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
 
-        // Validate brand if provided
-        if (request.getBrandId() != null) {
-            Brand brand = brandRepository.findById(request.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
-            vehicle.setBrand(brand);
-        }
+       // Validate brand if provided
+       if (request.getBrandId() != null) {
+           Brand brand = brandRepository.findById(request.getBrandId())
+                   .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
+           vehicle.setBrand(brand);
+       }
 
-        // Validate model if provided
-        if (request.getModelId() != null) {
-            Model model = modelRepository.findById(request.getModelId())
-                    .orElseThrow(() -> new RuntimeException("Model not found with id: " + request.getModelId()));
+       // Validate model if provided
+       if (request.getModelId() != null) {
+           Model model = modelRepository.findById(request.getModelId())
+                   .orElseThrow(() -> new RuntimeException("Model not found with id: " + request.getModelId()));
 
-            // If both brand and model are provided, validate they match
-            String brandIdToCheck = request.getBrandId() != null ? request.getBrandId() :
-                    (vehicle.getBrand() != null ? vehicle.getBrand().getId() : null);
+           // If both brand and model are provided, validate they match
+           String brandIdToCheck = request.getBrandId() != null ? request.getBrandId() :
+                   (vehicle.getBrand() != null ? vehicle.getBrand().getId() : null);
 
-            vehicle.setModel(model);
-        }
+           vehicle.setModel(model);
+       }
 
-        // Check license plate uniqueness if changed
-        if (request.getLicensePlate() != null &&
-                !request.getLicensePlate().equals(vehicle.getLicensePlate())) {
-            if (vehicleRepository.existsByLicensePlateAndUserIdAndIdNot(
-                    request.getLicensePlate(), userId, vehicleId)) {
-                throw new RuntimeException("License plate already exists for this user");
-            }
-            vehicle.setLicensePlate(request.getLicensePlate());
-        }
+       // Check license plate uniqueness if changed
+       if (request.getLicensePlate() != null &&
+               !request.getLicensePlate().equals(vehicle.getLicensePlate())) {
+           if (vehicleRepository.existsByLicensePlateAndUserIdAndIdNot(
+                   request.getLicensePlate(), userId, vehicleId)) {
+               throw new RuntimeException("License plate already exists for this user");
+           }
+           vehicle.setLicensePlate(request.getLicensePlate());
+       }
 
-        // Update other fields if provided
-        if (request.getVehicleType() != null) vehicle.setVehicleType(parseVehicleType(request.getVehicleType()));
-        if (request.getVehicleFeatures() != null) vehicle.setVehicleFeatures(request.getVehicleFeatures());
-        if (request.getVehicleImages() != null) vehicle.setVehicleImages(request.getVehicleImages());
-        if (request.getInsuranceStatus() != null) vehicle.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));
-        if (request.getShipToAddress() != null) vehicle.setShipToAddress(parseShipToAddress(request.getShipToAddress()));
-        if (request.getNumberSeat() != null) vehicle.setNumberSeat(request.getNumberSeat());
-        if (request.getYearManufacture() != null) vehicle.setYearManufacture(request.getYearManufacture());
-        if (request.getTransmission() != null) vehicle.setTransmission(parseTransmission(request.getTransmission()));
-        if (request.getFuelType() != null) vehicle.setFuelType(parseFuelType(request.getFuelType()));
-        if (request.getDescription() != null) vehicle.setDescription(request.getDescription());
-        if (request.getNumberVehicle() != null) vehicle.setNumberVehicle(request.getNumberVehicle());
-        if (request.getCostPerDay() != null) vehicle.setCostPerDay(request.getCostPerDay());
-        if (request.getStatus() != null) vehicle.setStatus(parseStatus(request.getStatus()));
-        if (request.getThumb() != null) vehicle.setThumb(request.getThumb());
+       // Update other fields if provided
+       if (request.getVehicleType() != null) vehicle.setVehicleType(parseVehicleType(request.getVehicleType()));
+       if (request.getVehicleFeatures() != null) vehicle.setVehicleFeatures(request.getVehicleFeatures());
+       if (request.getVehicleImages() != null) vehicle.setVehicleImages(request.getVehicleImages());
+       if (request.getInsuranceStatus() != null) vehicle.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));
+       if (request.getShipToAddress() != null) vehicle.setShipToAddress(parseShipToAddress(request.getShipToAddress()));
+       if (request.getNumberSeat() != null) vehicle.setNumberSeat(request.getNumberSeat());
+       if (request.getYearManufacture() != null) vehicle.setYearManufacture(request.getYearManufacture());
+       if (request.getTransmission() != null) vehicle.setTransmission(parseTransmission(request.getTransmission()));
+       if (request.getFuelType() != null) vehicle.setFuelType(parseFuelType(request.getFuelType()));
+       if (request.getDescription() != null) vehicle.setDescription(request.getDescription());
+       if (request.getNumberVehicle() != null) vehicle.setNumberVehicle(request.getNumberVehicle());
+       if (request.getCostPerDay() != null) vehicle.setCostPerDay(request.getCostPerDay());
+       if (request.getStatus() != null) vehicle.setStatus(parseStatus(request.getStatus()));
+       if (request.getThumb() != null) vehicle.setThumb(request.getThumb());
 
         // Manually set updatedAt timestamp using reflection
         LocalDateTime now = LocalDateTime.now();
         setUpdatedAt(vehicle, now);
 
-        Vehicle updatedVehicle = vehicleRepository.save(vehicle);
+       Vehicle updatedVehicle = vehicleRepository.save(vehicle);
 
-        // Fetch with brand and model for response
-        Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
-                .orElse(updatedVehicle);
+       // Fetch with brand and model for response
+       Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
+               .orElse(updatedVehicle);
 
-        log.info("Vehicle updated successfully: {}", vehicleId);
-        return vehicleMapper.vehicleGet(vehicleWithRelations);
-    }
-
+       log.info("Vehicle updated successfully: {}", vehicleId);
+       return vehicleMapper.vehicleGet(vehicleWithRelations);
+   }
 //    @Override
 //    @Transactional
 //    public VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request) {
@@ -260,8 +258,6 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 //        log.info("Vehicle updated successfully: {}", vehicleId);
 //        return vehicleMapper.vehicleGet(vehicleWithRelations);
 //    }
-
-
     @Override
     @Transactional
     public void deleteVehicle(String userId, String vehicleId) {
@@ -393,6 +389,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             }
         }
     }
+
     private Vehicle.VehicleType parseVehicleType(String type) {
         if (type == null || type.trim().isEmpty()) {
             return null;

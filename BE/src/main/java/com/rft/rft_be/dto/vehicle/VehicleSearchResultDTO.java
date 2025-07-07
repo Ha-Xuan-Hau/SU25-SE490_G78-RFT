@@ -21,7 +21,7 @@ public class VehicleSearchResultDTO {
      String brandName;
      String modelName;
      Integer numberSeat;
-     Double totalRating;
+     Double rating;
      String address;
      List<VehicleImageDTO> vehicleImages;
      String transmission;
