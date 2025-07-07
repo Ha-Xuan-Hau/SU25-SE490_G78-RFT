@@ -12,7 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
@@ -282,8 +282,8 @@ public class VehicleController {
     public ResponseEntity<?> search(@RequestBody VehicleSearchDTO request) {
         try {
             // Parse time
-            Instant timeFrom = request.getPickupDateTime() != null ? Instant.parse(request.getPickupDateTime()) : null;
-            Instant timeTo = request.getReturnDateTime() != null ? Instant.parse(request.getReturnDateTime()) : null;
+            LocalDateTime timeFrom = request.getPickupDateTime() != null ? LocalDateTime.parse(request.getPickupDateTime()) : null;
+            LocalDateTime timeTo = request.getReturnDateTime() != null ? LocalDateTime.parse(request.getReturnDateTime()) : null;
 
             Page<VehicleSearchResultDTO> results = vehicleService.searchVehicles(request, timeFrom, timeTo);
 
@@ -302,9 +302,12 @@ public class VehicleController {
     @PostMapping("/search-basic")
     public ResponseEntity<?> basicSearch(@RequestBody BasicSearchDTO request) {
         try {
-            Instant pickupTime = request.getPickupDateTime() != null ? Instant.parse(request.getPickupDateTime()) : null;
-            Instant returnTime = request.getReturnDateTime() != null ? Instant.parse(request.getReturnDateTime()) : null;
+            LocalDateTime pickupTime = request.getPickupDateTime() != null ? LocalDateTime.parse(request.getPickupDateTime()) : null;
+            LocalDateTime returnTime = request.getReturnDateTime() != null ? LocalDateTime.parse(request.getReturnDateTime()) : null;
 
+            if (pickupTime != null && returnTime != null && pickupTime.isAfter(returnTime)) {
+                return ResponseEntity.badRequest().body("pickupTime must be before returnTime");
+            }
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
             Page<VehicleSearchResultDTO> results = vehicleService.basicSearch(
                     request.getAddress(),

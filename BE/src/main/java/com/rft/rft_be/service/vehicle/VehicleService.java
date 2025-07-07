@@ -4,7 +4,7 @@ import com.rft.rft_be.dto.vehicle.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface VehicleService {
@@ -28,7 +28,7 @@ public interface VehicleService {
     List<VehicleGetDTO> getVehiclesByPenaltyId(String penaltyId);
     double getAverageRating(String vehicleId);
     List<VehicleDTO> getAllAvailableVehicles();
-    Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, Instant timeFrom, Instant timeTo);
+    Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, LocalDateTime timeFrom, LocalDateTime timeTo);
     void deleteExpiredBookedTimeSlots();
-    Page<VehicleSearchResultDTO> basicSearch(String address, String type, Instant from, Instant to, Pageable pageable);
+    Page<VehicleSearchResultDTO> basicSearch(String address, String type, LocalDateTime from, LocalDateTime to, Pageable pageable);
 }
