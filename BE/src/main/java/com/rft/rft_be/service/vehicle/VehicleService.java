@@ -1,10 +1,10 @@
 package com.rft.rft_be.service.vehicle;
 
-import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.entity.Vehicle;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.time.Instant;
 import java.util.List;
 
 public interface VehicleService {
@@ -12,7 +12,6 @@ public interface VehicleService {
     VehicleGetDTO getVehicleById(String id);
     //List<CategoryDTO> getAllVehiclesByCategory();
     VehicleDetailDTO getVehicleDetailById(String id);
-    Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req);
 
 
     List<VehicleGetDTO> getVehiclesByUserId(String userId);
@@ -29,4 +28,7 @@ public interface VehicleService {
     List<VehicleGetDTO> getVehiclesByPenaltyId(String penaltyId);
     double getAverageRating(String vehicleId);
     List<VehicleDTO> getAllAvailableVehicles();
+    Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, Instant timeFrom, Instant timeTo);
+    void deleteExpiredBookedTimeSlots();
+    Page<VehicleSearchResultDTO> basicSearch(String address, String type, Instant from, Instant to, Pageable pageable);
 }

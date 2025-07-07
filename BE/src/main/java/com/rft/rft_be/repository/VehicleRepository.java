@@ -126,4 +126,17 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
             @Param("costTo") BigDecimal costTo,
             Pageable pageable
     );
+
+    @Query("SELECT v FROM Vehicle v " +
+            "JOIN FETCH v.user u " +
+            "WHERE LOWER(u.address) LIKE LOWER(CONCAT('%', :address, '%')) " +
+            "AND (:type IS NULL OR v.vehicleType = :type) " +
+            "AND v.id NOT IN :busyVehicleIds " +
+            "AND v.status = 'AVAILABLE'")
+    Page<Vehicle> findBasicSearch(
+            @Param("address") String address,
+            @Param("type") Vehicle.VehicleType type,
+            @Param("busyVehicleIds") List<String> busyVehicleIds,
+            Pageable pageable
+    );
 }
