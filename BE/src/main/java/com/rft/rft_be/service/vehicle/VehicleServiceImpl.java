@@ -471,7 +471,7 @@ public class VehicleServiceImpl implements VehicleService {
         }
 
         if (req.getHaveDriver() != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("haveDriver"), req.getHaveDriver() ? Vehicle.HaveDriver.YES : Vehicle.HaveDriver.NO));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("haveDriver"), req.getHaveDriver()));
         }
 
         if (req.getShipToAddress() != null) {
@@ -537,7 +537,7 @@ public class VehicleServiceImpl implements VehicleService {
                     .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : "")
                     .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : "")
                     .numberSeat(vehicle.getNumberSeat())
-                    .totalRating(avgRating != null ? avgRating : 0.0)
+                    .rating(avgRating != null ? avgRating : 0.0)
                     .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : "")
                     .vehicleImages(VehicleMapper.jsonToImageList(vehicle.getVehicleImages()))
                     .transmission(vehicle.getTransmission() != null ? vehicle.getTransmission().name() : null)

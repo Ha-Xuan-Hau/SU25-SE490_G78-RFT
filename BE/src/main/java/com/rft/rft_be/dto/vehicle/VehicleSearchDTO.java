@@ -19,10 +19,15 @@ public class VehicleSearchDTO {
 
      String brandId;
      String modelId;
+     String pickupDateTime;
+     String returnDateTime;
 
+     String Transmission;
+     String fuelType;
      Integer numberSeat;
      Integer costFrom;
      Integer costTo;
+
 
      Boolean ratingFiveStarsOnly;
 
