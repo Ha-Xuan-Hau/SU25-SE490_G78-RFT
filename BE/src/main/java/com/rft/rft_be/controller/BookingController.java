@@ -11,7 +11,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,8 +101,8 @@ public class BookingController {
     @GetMapping("/user/{userId}/date-range")
     public ResponseEntity<?> getBookingsByUserIdAndDateRange(
             @PathVariable String userId,
-            @RequestParam Instant startDate,
-            @RequestParam Instant endDate) {
+            @RequestParam LocalDateTime startDate,
+            @RequestParam LocalDateTime endDate) {
         try {
             List<BookingDTO> bookings = bookingService.getBookingsByUserIdAndDateRange(userId, startDate, endDate);
             return ResponseEntity.ok(bookings);

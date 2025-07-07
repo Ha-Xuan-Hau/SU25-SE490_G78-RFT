@@ -6,7 +6,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 
 @Entity
@@ -52,13 +52,19 @@ public class User {
     @Column(name = "role")
     private Role role = Role.USER;
 
+    @Column(name = "open_time")
+    private LocalDateTime openTime;
+
+    @Column(name = "close_time")
+    private LocalDateTime closeTime;
+
     @CreationTimestamp
     @Column(name = "created_at")
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
     public enum Status {
         ACTIVE, INACTIVE

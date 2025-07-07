@@ -8,7 +8,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -20,23 +20,18 @@ public class BookingResponseDTO {
     String id;
     UserProfileDTO user; // Người đặt
     VehicleForBookingDTO vehicle; // Xe được đặt
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
-    Instant timeBookingStart;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
-    Instant timeBookingEnd;
+    LocalDateTime timeBookingStart;
+    LocalDateTime timeBookingEnd;
     String phoneNumber;
     String address;
     String codeTransaction;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
-    Instant timeTransaction;
+    LocalDateTime timeTransaction;
     BigDecimal totalCost;
     Booking.Status status;
     String penaltyType;
     BigDecimal penaltyValue;
     Integer minCancelHour;
     String couponId;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
-    Instant createdAt;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
-    Instant updatedAt;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 }

@@ -3,7 +3,7 @@ package com.rft.rft_be.dto.vehicle;
 
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -39,7 +39,7 @@ public class VehicleGetDTO {
     private String thumb;
     private Integer totalRatings;
     private Integer likes;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     Double rating;
 }

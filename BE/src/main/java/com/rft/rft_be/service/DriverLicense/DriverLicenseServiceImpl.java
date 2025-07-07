@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -93,8 +93,8 @@ public class DriverLicenseServiceImpl implements DriverLicenseService {
                 .licenseNumber(createDriverLicenseDTO.getLicenseNumber())
                 .classField(createDriverLicenseDTO.getClassField())
                 .image(createDriverLicenseDTO.getImage())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         // Set status with validation
@@ -151,7 +151,7 @@ public class DriverLicenseServiceImpl implements DriverLicenseService {
         }
 
         // Update timestamp
-        existingDriverLicense.setUpdatedAt(Instant.now());
+        existingDriverLicense.setUpdatedAt(LocalDateTime.now());
 
         // Save and return updated driver license
         DriverLicense updatedDriverLicense = driverLicenseRepository.save(existingDriverLicense);

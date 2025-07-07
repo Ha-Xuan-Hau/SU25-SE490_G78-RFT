@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -235,8 +235,8 @@ public class VehicleServiceImpl implements VehicleService {
                 .thumb(createVehicleDTO.getThumb())
                 .totalRatings(0)
                 .likes(0)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         // Set enum values with validation

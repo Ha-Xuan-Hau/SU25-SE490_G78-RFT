@@ -33,7 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.time.Duration;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
@@ -75,8 +75,8 @@ public class BookingServiceImpl implements BookingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn không thể đặt xe của chính mình.");
         }
 
-        Instant start = request.getTimeBookingStart();
-        Instant end = request.getTimeBookingEnd();
+        LocalDateTime start = request.getTimeBookingStart();
+        LocalDateTime end = request.getTimeBookingEnd();
 
         if (start == null || end == null || !start.isBefore(end)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian đặt không hợp lệ. Thời gian bắt đầu phải trước thời gian kết thúc.");
@@ -108,7 +108,7 @@ public class BookingServiceImpl implements BookingService {
                 : BigDecimal.ZERO;
 
         String generatedCodeTransaction = "BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        Instant transactionTime = Instant.now();
+        LocalDateTime transactionTime = LocalDateTime.now();
 
         Booking booking = Booking.builder()
                 .user(user)
@@ -124,8 +124,8 @@ public class BookingServiceImpl implements BookingService {
                 .penaltyType(Booking.PenaltyType.valueOf(request.getPenaltyType()))
                 .penaltyValue(request.getPenaltyValue())
                 .minCancelHour(request.getMinCancelHour())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
         bookingRepository.save(booking);
         bookingCleanupTask.scheduleCleanup(booking.getId());
@@ -135,8 +135,8 @@ public class BookingServiceImpl implements BookingService {
                 .vehicle(vehicle)
                 .timeFrom(start)
                 .timeTo(end)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
         bookedTimeSlotRepository.save(slot);
 
@@ -178,7 +178,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public List<BookingDTO> getBookingsByUserIdAndDateRange(String userId, Instant startDate, Instant endDate) {
+    public List<BookingDTO> getBookingsByUserIdAndDateRange(String userId, LocalDateTime startDate, LocalDateTime endDate) {
         try {
             log.info("Getting bookings for user: {} between {} and {}", userId, startDate, endDate);
             List<Booking> bookings = bookingRepository.findByUserIdAndTimeBookingStartBetween(userId, startDate, endDate);
@@ -342,7 +342,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         if (isRenter) {
-            Instant now = Instant.now();
+            LocalDateTime now = LocalDateTime.now();
             long hoursUntilStart = ChronoUnit.HOURS.between(now, booking.getTimeBookingStart());
             Integer minCancelHour = booking.getMinCancelHour();
 

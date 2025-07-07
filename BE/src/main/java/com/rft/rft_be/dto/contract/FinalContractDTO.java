@@ -3,7 +3,7 @@ package com.rft.rft_be.dto.contract;
 
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -15,9 +15,9 @@ public class FinalContractDTO {
     private String userId;
     private String userName;
     private String image;
-    private Instant timeFinish;
+    private LocalDateTime timeFinish;
     private BigDecimal costSettlement;
     private String note;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -6,7 +6,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "booked_time_slots")
@@ -22,18 +22,18 @@ public class BookedTimeSlot {
     private String id;
 
     @Column(name = "time_from")
-    private Instant timeFrom;
+    private LocalDateTime timeFrom;
 
     @Column(name = "time_to")
-    private Instant timeTo;
+    private LocalDateTime timeTo;
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vehicle_id")

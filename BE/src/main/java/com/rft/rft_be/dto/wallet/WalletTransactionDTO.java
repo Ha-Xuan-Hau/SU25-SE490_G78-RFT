@@ -3,7 +3,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 @Getter
 @Setter
 @AllArgsConstructor
@@ -14,6 +14,6 @@ public class WalletTransactionDTO {
     private BigDecimal amount;
     private String status;
     private String userId;
-    Instant createdAt;
+    LocalDateTime createdAt;
 
 }

@@ -5,7 +5,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 @Getter
 @Setter
 @AllArgsConstructor
@@ -13,10 +13,8 @@ import java.time.Instant;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingRequestDTO {
      String vehicleId;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
-     Instant timeBookingStart;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
-     Instant timeBookingEnd;
+     LocalDateTime timeBookingStart;
+     LocalDateTime timeBookingEnd;
      String phoneNumber;
      String address;
      String penaltyType;

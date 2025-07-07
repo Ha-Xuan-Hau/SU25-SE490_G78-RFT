@@ -10,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,7 +25,7 @@ public class BookedTimeSlotServiceImpl implements BookedTimeSlotService {
 
     @Override
     public List<BookedSlotResponse> getBookingSlotByVehicleId(String vehicleId) {
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
         List<BookedTimeSlot> bookedSlot = bookedTimeSlotRepository.findByVehicleIdAndTimeToAfter(vehicleId, now);
         return bookedSlot.stream()
                 .map(bookedTimeSlotMapper::toBookedSlotResponseDto)

@@ -3,7 +3,7 @@ package com.rft.rft_be.dto.user;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 
 @Getter
@@ -22,6 +22,6 @@ public class UserDetailDTO {
     String address;
     String status;
     String role;
-    Instant createdAt;
-    Instant updatedAt;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 }
