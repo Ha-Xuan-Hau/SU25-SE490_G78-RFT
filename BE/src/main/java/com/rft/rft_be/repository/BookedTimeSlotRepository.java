@@ -53,15 +53,14 @@ public interface BookedTimeSlotRepository extends JpaRepository<BookedTimeSlot, 
             "((b.timeFrom <= :timeFrom AND b.timeTo > :timeFrom) " +
             "OR (b.timeFrom < :timeTo AND b.timeTo >= :timeTo) " +
             "OR (b.timeFrom >= :timeFrom AND b.timeTo <= :timeTo))")
-    boolean existsConflictingBooking(@Param("timeFrom") Instant timeFrom,
-                                     @Param("timeTo") Instant timeTo);
+    boolean existsConflictingBooking(@Param("timeFrom") LocalDateTime timeFrom,
+                                     @Param("timeTo") LocalDateTime timeTo);
 
     @Query("SELECT DISTINCT b.vehicle.id FROM BookedTimeSlot b WHERE " +
             "b.timeFrom < :endTime AND b.timeTo > :startTime")
-    List<String> findBusyVehicleIds(@Param("startTime") Instant start, @Param("endTime") Instant end);
+    List<String> findBusyVehicleIds(@Param("startTime") LocalDateTime start, @Param("endTime") LocalDateTime end);
 
-    void deleteAllByTimeToBefore(Instant time);
+    void deleteAllByTimeToBefore(LocalDateTime time);
    
 }
-  
-}
+

@@ -17,7 +17,7 @@ export interface Vehicle {
   rating: number;
   address: string;
   comments?: Comment[];
-  shipToAddress?: boolean;
+  shipToAddress?: string; // "YES" or "NO"
   penaltyType?: string; // "PERCENT" or "FIXED"
   penaltyValue?: number; // Percentage or fixed amount
   minCancelHour?: number; // Minimum hours before cancellation allowed

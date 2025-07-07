@@ -446,28 +446,36 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, Instant timeFrom, Instant timeTo) {
+    public Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, LocalDateTime timeFrom, LocalDateTime timeTo) {
         Pageable pageable = PageRequest.of(req.getPage(), req.getSize());
 
-        Specification<Vehicle> spec = (root, query, cb) -> cb.equal(root.get("status"), Vehicle.Status.AVAILABLE);
+        Specification<Vehicle> spec = (root, query, cb) -> cb.conjunction();
+
+        // Thêm điều kiện status AVAILABLE nếu không được chỉ định
+        spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), Vehicle.Status.AVAILABLE));
 
         if (req.getVehicleTypes() != null && !req.getVehicleTypes().isEmpty()) {
             spec = spec.and((root, query, cb) -> root.get("vehicleType").in(req.getVehicleTypes()));
         }
 
-        if (req.getAddress() != null && !req.getAddress().isBlank()) {
+        if (req.getAddresses() != null && !req.getAddresses().isEmpty()) {
             spec = spec.and((root, query, cb) -> {
-                var userJoin = root.join("user");
-                return cb.like(cb.lower(userJoin.get("address")), "%" + req.getAddress().toLowerCase() + "%");
+                Join<Vehicle, User> userJoin = root.join("user", JoinType.INNER);
+                Predicate combinedPredicate = cb.disjunction();
+                for (String addr : req.getAddresses()) {
+                    combinedPredicate = cb.or(combinedPredicate,
+                            cb.like(cb.lower(userJoin.get("address")), "%" + addr.toLowerCase() + "%"));
+                }
+                return combinedPredicate;
             });
         }
 
         if (req.getHaveDriver() != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("haveDriver"), req.getHaveDriver() ? Vehicle.HaveDriver.YES : Vehicle.HaveDriver.NO));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("haveDriver"), req.getHaveDriver()));
         }
 
         if (req.getShipToAddress() != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("shipToAddress"), req.getShipToAddress() ? Vehicle.ShipToAddress.YES : Vehicle.ShipToAddress.NO));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("shipToAddress"), req.getShipToAddress()));
         }
 
         if (req.getBrandId() != null) {
@@ -529,7 +537,7 @@ public class VehicleServiceImpl implements VehicleService {
                     .brandName(vehicle.getBrand() != null ? vehicle.getBrand().getName() : "")
                     .modelName(vehicle.getModel() != null ? vehicle.getModel().getName() : "")
                     .numberSeat(vehicle.getNumberSeat())
-                    .totalRating(avgRating != null ? avgRating : 0.0)
+                    .rating(avgRating != null ? avgRating : 0.0)
                     .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : "")
                     .vehicleImages(VehicleMapper.jsonToImageList(vehicle.getVehicleImages()))
                     .transmission(vehicle.getTransmission() != null ? vehicle.getTransmission().name() : null)
@@ -541,12 +549,12 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     @Transactional
     public void deleteExpiredBookedTimeSlots() {
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
         bookedTimeSlotsRepository.deleteAllByTimeToBefore(now);
     }
 
     @Override
-    public Page<VehicleSearchResultDTO> basicSearch(String address, String type, Instant from, Instant to, Pageable pageable) {
+    public Page<VehicleSearchResultDTO> basicSearch(String address, String type, LocalDateTime from, LocalDateTime to, Pageable pageable) {
         // Lấy danh sách xe bận trong khoảng thời gian
         List<String> busyIds = bookedTimeSlotsRepository.findBusyVehicleIds(from, to);
 
@@ -563,6 +571,7 @@ public class VehicleServiceImpl implements VehicleService {
 
         return result.map(vehicle -> {
             Double avgRating = ratingRepository.findAverageByVehicleId(vehicle.getId());
+
             return VehicleSearchResultDTO.builder()
                     .id(vehicle.getId())
                     .licensePlate(vehicle.getLicensePlate())

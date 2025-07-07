@@ -1,10 +1,10 @@
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.booking.BookingDTO;
-import com.rft.rft_be.dto.booking.BookingRequestDTO;
-import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import com.rft.rft_be.service.booking.BookingService;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -148,8 +148,8 @@ public class BookingController {
     @PostMapping("/check-availability")
     public ResponseEntity<Map<String, Object>> checkAvailability(@RequestBody Map<String, String> request) {
         String vehicleId = request.get("vehicleId");
-        Instant startTime = Instant.parse(request.get("startTime"));
-        Instant endTime = Instant.parse(request.get("endTime"));
+        LocalDateTime startTime = LocalDateTime.parse(request.get("startTime"));
+        LocalDateTime endTime = LocalDateTime.parse(request.get("endTime"));
 
         boolean available = bookingService.isTimeSlotAvailable(vehicleId, startTime, endTime);
 
@@ -166,7 +166,7 @@ public class BookingController {
         Map<String, Object> error = new HashMap<>();
         error.put("message", ex.getReason());
         error.put("status", ex.getStatusCode().value());
-        error.put("timestamp", Instant.now());
+        error.put("timestamp", LocalDateTime.now());
 
         // Log conflicts để monitor
         if (ex.getStatusCode().value() == 409) {

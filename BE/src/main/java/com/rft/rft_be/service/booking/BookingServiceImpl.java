@@ -3,12 +3,14 @@ package com.rft.rft_be.service.booking;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.ParseException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.rft.rft_be.entity.*;
+import com.rft.rft_be.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -20,23 +22,9 @@ import com.rft.rft_be.dto.booking.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import com.rft.rft_be.entity.BookedTimeSlot;
-import com.rft.rft_be.entity.Booking;
-import com.rft.rft_be.entity.Coupon;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Vehicle;
-import com.rft.rft_be.entity.Wallet;
-import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.mapper.BookingMapper;
 import com.rft.rft_be.mapper.BookingResponseMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
-import com.rft.rft_be.repository.BookedTimeSlotRepository;
-import com.rft.rft_be.repository.BookingRepository;
-import com.rft.rft_be.repository.CouponRepository;
-import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.VehicleRepository;
-import com.rft.rft_be.repository.WalletRepository;
-import com.rft.rft_be.repository.WalletTransactionRepository;
 import com.rft.rft_be.util.BookingCalculationUtils;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -100,7 +88,7 @@ public class BookingServiceImpl implements BookingService {
         LocalDateTime end = request.getTimeBookingEnd();
 
         // DEBUG: Log giờ VN và UTC
-        log.info("Frontend sent - startDate: {}, endDate: {}", request.getStartDate(), request.getEndDate());
+        log.info("Frontend sent - startDate: {}, endDate: {}", request.getTimeBookingStart(), request.getTimeBookingEnd());
         log.info("Converted to Instant (UTC+7) - start: {}, end: {}", start, end);
 
         if (start == null || end == null || !start.isBefore(end)) {
@@ -127,8 +115,8 @@ public class BookingServiceImpl implements BookingService {
                     .vehicle(vehicle)
                     .timeFrom(start)
                     .timeTo(end)
-                    .createdAt(Instant.now())
-                    .updatedAt(Instant.now())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
                     .build();
             bookedTimeSlotRepository.save(bookedSlot);
             log.info("Created booked time slot for vehicle {} from {} to {}", vehicle.getId(), start, end);
@@ -209,7 +197,7 @@ public class BookingServiceImpl implements BookingService {
         log.info("DEBUG - Values to be saved to DB:");
         log.info("  timeBookingStart (Instant UTC+7): {}", start);
         log.info("  timeBookingEnd (Instant UTC+7): {}", end);
-        log.info("  Original VN time: start={}, end={}", request.getStartDate(), request.getEndDate());
+        log.info("  Original VN time: start={}, end={}", request.getTimeBookingStart(), request.getTimeBookingEnd());
 
         bookingRepository.save(booking);
 
@@ -233,20 +221,16 @@ public class BookingServiceImpl implements BookingService {
     }
 
 // Thêm method validate mới
-    private void validateOperatingHours(Instant start, Instant end) {
-        // Convert to VN time for validation (trừ 7 giờ để có giờ VN gốc)
-        java.time.LocalDateTime startLocal = start.minusSeconds(7 * 3600).atZone(java.time.ZoneId.of("UTC")).toLocalDateTime();
-        java.time.LocalDateTime endLocal = end.minusSeconds(7 * 3600).atZone(java.time.ZoneId.of("UTC")).toLocalDateTime();
-
-        int startHour = startLocal.getHour();
-        int endHour = endLocal.getHour();
-        int startMinute = startLocal.getMinute();
-        int endMinute = endLocal.getMinute();
+    private void validateOperatingHours(LocalDateTime start, LocalDateTime end) {
+        // LocalDateTime already in Vietnam time, no need to convert
+        int startHour = start.getHour();
+        int endHour = end.getHour();
+        int startMinute = start.getMinute();
+        int endMinute = end.getMinute();
 
         // DEBUG: Log chi tiết thời gian để debug
         log.info("DEBUG validateOperatingHours - Start VN: {} ({}:{}), End VN: {} ({}:{})",
-                startLocal, startHour, startMinute, endLocal, endHour, endMinute);
-        log.info("DEBUG - Original Instant (UTC+7): start={}, end={}", start, end);
+                start, startHour, startMinute, end, endHour, endMinute);
 
         // Validate giờ hoạt động (7h-20h30) - cho phép start từ 7-20h, end từ 7-20h30
         if (startHour < 7 || startHour >= 21) {
@@ -280,7 +264,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // 3. Kiểm tra thời gian hết hạn
-        if (coupon.getTimeExpired() != null && coupon.getTimeExpired().isBefore(Instant.now())) {
+        if (coupon.getTimeExpired() != null && coupon.getTimeExpired().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã giảm giá đã hết hạn");
         }
 
@@ -578,7 +562,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isTimeSlotAvailable(String vehicleId, Instant startTime, Instant endTime) {
+    public boolean isTimeSlotAvailable(String vehicleId, LocalDateTime startTime, LocalDateTime endTime) {
         // Synchronized để đảm bảo atomic check
         synchronized (this) {
             List<BookedTimeSlot> overlaps = bookedTimeSlotRepository.findByVehicleIdAndTimeRange(vehicleId, startTime, endTime);
