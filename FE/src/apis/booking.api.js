@@ -234,8 +234,8 @@ export const verifyVNPayPayment = async (vnpayParams) => {
 /**
  * Kiểm tra tính khả dụng của xe trong khoảng thời gian
  * @param {string} vehicleId - ID xe
- * @param {string} startTime - Thời gian bắt đầu (ISO string)
- * @param {string} endTime - Thời gian kết thúc (ISO string)
+ * @param {string} startTime - Thời gian bắt đầu (yyyy-MM-dd'T'HH:mm:ss format, giờ VN)
+ * @param {string} endTime - Thời gian kết thúc (yyyy-MM-dd'T'HH:mm:ss format, giờ VN)
  * @returns {Promise<Object>} Kết quả kiểm tra
  */
 export const checkAvailability = async (vehicleId, startTime, endTime) => {

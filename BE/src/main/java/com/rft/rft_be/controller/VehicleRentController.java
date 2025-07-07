@@ -74,21 +74,21 @@ public class VehicleRentController {
         }
     }
 
-   @PutMapping("/{vehicleId}")
-   public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateVehicle(
-           @RequestHeader("User-Id") String userId,
-           @PathVariable String vehicleId,
-           @Valid @RequestBody VehicleRentUpdateDTO request) {
+    @PutMapping("/{vehicleId}")
+    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateVehicle(
+            @RequestHeader("User-Id") String userId,
+            @PathVariable String vehicleId,
+            @Valid @RequestBody VehicleRentUpdateDTO request) {
 
-       try {
-           VehicleGetDTO vehicle = vehicleRentService.updateVehicle(userId, vehicleId, request);
-           return ResponseEntity.ok(ApiResponseDTO.success("Vehicle updated successfully", vehicle));
-       } catch (Exception e) {
-           log.error("Error updating vehicle: {} for user: {}", vehicleId, userId, e);
-           return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                   .body(ApiResponseDTO.error("Failed to update vehicle: " + e.getMessage()));
-       }
-   }
+        try {
+            VehicleGetDTO vehicle = vehicleRentService.updateVehicle(userId, vehicleId, request);
+            return ResponseEntity.ok(ApiResponseDTO.success("Vehicle updated successfully", vehicle));
+        } catch (Exception e) {
+            log.error("Error updating vehicle: {} for user: {}", vehicleId, userId, e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseDTO.error("Failed to update vehicle: " + e.getMessage()));
+        }
+    }
     @DeleteMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteVehicle(
             @RequestHeader("User-Id") String userId,

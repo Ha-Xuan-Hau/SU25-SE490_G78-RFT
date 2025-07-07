@@ -1,16 +1,15 @@
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.booking.BookingDTO;
-import com.rft.rft_be.dto.booking.BookingRequestDTO;
-import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import com.rft.rft_be.service.booking.BookingService;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
@@ -27,17 +25,10 @@ import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.service.booking.BookingService;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
-@Slf4j
 public class BookingController {
 
     private final BookingService bookingService;
@@ -148,8 +139,8 @@ public class BookingController {
     @PostMapping("/check-availability")
     public ResponseEntity<Map<String, Object>> checkAvailability(@RequestBody Map<String, String> request) {
         String vehicleId = request.get("vehicleId");
-        Instant startTime = Instant.parse(request.get("startTime"));
-        Instant endTime = Instant.parse(request.get("endTime"));
+        LocalDateTime startTime = LocalDateTime.parse(request.get("startTime"));
+        LocalDateTime endTime = LocalDateTime.parse(request.get("endTime"));
 
         boolean available = bookingService.isTimeSlotAvailable(vehicleId, startTime, endTime);
 
@@ -158,21 +149,5 @@ public class BookingController {
         response.put("message", available ? "Thời gian có sẵn" : "Thời gian đã được đặt");
 
         return ResponseEntity.ok(response);
-    }
-
-    // Exception handler để đảm bảo conflict errors được handle đúng cách
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, Object>> handleResponseStatusException(ResponseStatusException ex) {
-        Map<String, Object> error = new HashMap<>();
-        error.put("message", ex.getReason());
-        error.put("status", ex.getStatusCode().value());
-        error.put("timestamp", Instant.now());
-
-        // Log conflicts để monitor
-        if (ex.getStatusCode().value() == 409) {
-            log.warn("Booking conflict detected: {}", ex.getReason());
-        }
-
-        return ResponseEntity.status(ex.getStatusCode()).body(error);
     }
 }

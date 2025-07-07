@@ -25,7 +25,7 @@ import {
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import EditProfileModal from "@/components/EditProfileComponent";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function AccountPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -56,17 +56,36 @@ export default function AccountPage() {
   };
 
   const formatTimestamp = (
-    timestamp: number | string | undefined | null
+    timestamp: number | string | number[] | undefined | null
   ): string => {
     if (!timestamp) return "";
-    const date = new Date(
-      typeof timestamp === "number" ? timestamp * 1000 : timestamp
-    );
-    return `${date.getDate().toString().padStart(2, "0")}/${(
-      date.getMonth() + 1
-    )
-      .toString()
-      .padStart(2, "0")}/${date.getFullYear()}`;
+
+    // Nếu là mảng [year, month, day, hour, minute] hoặc [year, month, day, hour, minute, second]
+    if (Array.isArray(timestamp) && timestamp.length >= 5) {
+      const [year, month, day, hour, minute] = timestamp;
+      return `${day.toString().padStart(2, "0")}/${month
+        .toString()
+        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    // Nếu là timestamp số hoặc string
+    if (typeof timestamp === "number" || typeof timestamp === "string") {
+      const date = new Date(
+        typeof timestamp === "number" ? timestamp * 1000 : timestamp
+      );
+      return `${date.getDate().toString().padStart(2, "0")}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${date.getFullYear()} ${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    return "";
   };
 
   useEffect(() => {
