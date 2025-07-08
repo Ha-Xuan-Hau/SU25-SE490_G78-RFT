@@ -1,5 +1,11 @@
 package com.rft.rft_be.service.Contract;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.rft.rft_be.dto.contract.ContractDTO;
 import com.rft.rft_be.dto.contract.CreateContractDTO;
@@ -10,6 +16,7 @@ import com.rft.rft_be.mapper.ContractMapper;
 import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.ContractRepository;
 import com.rft.rft_be.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,10 +80,10 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
-    public List<ContractDTO> getContractsByUserIdAndStatus(String userId, String status) {
+    public List<ContractDTO> getContractsByUserIdAndStatus(String providerId, String status) {
         try {
             Contract.Status contractStatus = Contract.Status.valueOf(status.toUpperCase());
-            List<Contract> contracts = contractRepository.findByUserIdAndStatus(userId, contractStatus);
+            List<Contract> contracts = contractRepository.findByUserIdAndStatus(providerId, contractStatus);
             return contracts.stream()
                     .map(contractMapper::toDTO)
                     .collect(Collectors.toList());
@@ -90,6 +97,19 @@ public class ContractServiceImpl implements ContractService {
         try {
             Contract.Status contractStatus = Contract.Status.valueOf(status.toUpperCase());
             List<Contract> contracts = contractRepository.findByBookingIdAndStatus(bookingId, contractStatus);
+            return contracts.stream()
+                    .map(contractMapper::toDTO)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status: " + status + ". Valid values are: DRAFT, FINISHED, CANCELLED");
+        }
+    }
+
+    @Override
+    public List<ContractDTO> getContractsByProviderIdAndStatus(String providerId, String status) {
+        try {
+            Contract.Status contractStatus = Contract.Status.valueOf(status.toUpperCase());
+            List<Contract> contracts = contractRepository.findByProviderIdAndStatus(providerId, contractStatus);
             return contracts.stream()
                     .map(contractMapper::toDTO)
                     .collect(Collectors.toList());
@@ -205,4 +225,3 @@ public class ContractServiceImpl implements ContractService {
         contractRepository.save(contract);
     }
 }
-

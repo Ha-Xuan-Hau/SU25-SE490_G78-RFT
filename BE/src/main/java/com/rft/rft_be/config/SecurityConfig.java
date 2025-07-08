@@ -29,12 +29,13 @@ import org.springframework.web.cors.CorsConfiguration;
 public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINTS = {
-        "/api/auth/**" , "/api/penalties/**"
+            "/api/auth/**", "/api/penalties/**", "/api/payment/vn-pay-callback",
+            "/api/payment/topUpCallBack"
     };
     @Value("${jwt.signerKey}")
     private String signerKey;
 
-//    @Bean
+    //    @Bean
 //    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
 //        httpSecurity.authorizeHttpRequests(request ->
 //                request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
@@ -46,32 +47,34 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .cors(cors -> cors.configurationSource(request -> {
-            CorsConfiguration configuration = new CorsConfiguration();
-            configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
-            configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-            configuration.setAllowedHeaders(Collections.singletonList("*"));
-            configuration.setAllowCredentials(true);
-            configuration.setMaxAge(3600L);
-            return configuration;
-        }))
+                    CorsConfiguration configuration = new CorsConfiguration();
+                    configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
+                    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    configuration.setAllowedHeaders(Collections.singletonList("*"));
+                    configuration.setAllowCredentials(true);
+                    configuration.setMaxAge(3600L);
+                    return configuration;
+                }))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request
-                        -> request
-                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/vehicles/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/vehicles/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/bookedTimeSlot/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/wallet/staff/**").hasAnyRole("STAFF", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/bookings").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/bookings/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/bookings/**").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/vehicle-rent").hasAuthority("PROVIDER")
-                        .requestMatchers(HttpMethod.POST, "/api/vehicle-rent/register").hasAnyRole("PROVIDER","ADMIN")
 
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .anyRequest().authenticated()
+
+                                -> request
+                                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/vehicles/**").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/vehicles/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/bookedTimeSlot/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/wallet/staff/**").hasAnyRole("STAFF", "ADMIN")
+//                                .requestMatchers(HttpMethod.POST, "/api/bookings").authenticated()
+//                                .requestMatchers(HttpMethod.POST, "/api/bookings/**").authenticated()
+//                                .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ADMIN")
+//                                .requestMatchers(HttpMethod.GET, "/api/bookings/**").hasAuthority("ADMIN")
+//                                .requestMatchers(HttpMethod.GET, "/api/vehicle-rent").hasAuthority("PROVIDER")
+//                                .requestMatchers(HttpMethod.POST, "/api/vehicle-rent/register").hasAnyRole("PROVIDER","ADMIN")
+                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                                .anyRequest().authenticated()
+
                 );
         httpSecurity.oauth2ResourceServer(oauth2
                 -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()))
