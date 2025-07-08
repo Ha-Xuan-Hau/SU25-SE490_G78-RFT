@@ -13,7 +13,7 @@ public interface VehicleRentService {
     VehicleGetDTO createVehicle( VehicleRentCreateDTO request);
     VehicleGetDTO updateVehicle( String vehicleId, VehicleRentUpdateDTO request);
     void deleteVehicle( String vehicleId);
-    VehicleDetailDTO getVehicleById(String userId, String vehicleId);
+    VehicleDetailDTO getVehicleById( String vehicleId);
     long countUserVehicles(String userId);
 
 }

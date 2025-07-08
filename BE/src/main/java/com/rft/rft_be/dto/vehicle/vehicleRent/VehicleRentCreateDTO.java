@@ -15,7 +15,7 @@ public class VehicleRentCreateDTO {
 
     private String modelId;
 
-    @NotBlank(message = "License plate is required")
+
     private String licensePlate;
 
     @NotBlank(message = "Vehicle type is required")
@@ -24,19 +24,17 @@ public class VehicleRentCreateDTO {
     private String vehicleFeatures;
     @NotBlank(message = "Vehicle Image is required")
     private String vehicleImages;
-    @NotBlank(message = "HaveDriver is required")
-    private String haveDriver;
+    private String haveDriver="NO";
     private String insuranceStatus = "NO";
     private String shipToAddress = "NO";
 
     @Min(value = 1, message = "Number of seats must be at least 1")
     private Integer numberSeat;
 
-    @Min(value = 1900, message = "Year manufacture must be valid")
-    @Max(value = 2030, message = "Year manufacture must be valid")
     private Integer yearManufacture;
 
     private String transmission;
+    @NotBlank(message = "Fuel type is required")
     private String fuelType;
     private String description;
 

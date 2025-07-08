@@ -75,6 +75,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         String userId = authentication.getToken().getClaim("userId");
         log.info("Creating vehicle for user: {}", userId);
 
+        // Validate user exists
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
@@ -124,7 +125,8 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             throw new RuntimeException("License plate already exists for this user");
         }
 
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
+
         Vehicle vehicle = Vehicle.builder()
                 .user(user)
                 .brand(brand)
@@ -142,6 +144,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .description(request.getDescription())
                 .numberVehicle(request.getNumberVehicle())
                 .costPerDay(request.getCostPerDay())
+                .haveDriver(parseHaveDriver(request.getHaveDriver()))
                 .thumb(request.getThumb())
                 .status(Vehicle.Status.AVAILABLE)
                 .totalRatings(0)
@@ -314,7 +317,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     }
 
     @Override
-    public VehicleDetailDTO getVehicleById(String userId, String vehicleId) {
+    public VehicleDetailDTO getVehicleById( String vehicleId) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Getting vehicle: {} for user: {}", vehicleId, userId);
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
@@ -364,7 +369,17 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             return null;
         }
     }
-
+    private Vehicle.HaveDriver parseHaveDriver(String hasDriver) {
+        if (hasDriver == null || hasDriver.trim().isEmpty()) {
+            return null;
+        }
+        try{
+            return Vehicle.HaveDriver.valueOf(hasDriver.toUpperCase());
+        }catch (IllegalArgumentException e){
+            log.warn("Invalid has driver: {}, defaulting to NO", hasDriver);
+            return null;
+        }
+    }
     private Vehicle.FuelType parseFuelType(String fuelType) {
         if (fuelType == null || fuelType.trim().isEmpty()) {
             return null;

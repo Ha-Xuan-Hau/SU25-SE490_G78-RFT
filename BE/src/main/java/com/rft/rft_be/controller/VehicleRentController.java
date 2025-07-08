@@ -1,21 +1,17 @@
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import com.rft.rft_be.dto.vehicle.VehicleDTO;
-import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
-import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
 import com.rft.rft_be.dto.vehicle.vehicleRent.ApiResponseDTO;
 import com.rft.rft_be.dto.vehicle.vehicleRent.PageResponseDTO;
+import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
 import com.rft.rft_be.service.vehicleRent.VehicleRentService;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/vehicle-rent")
@@ -24,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public class VehicleRentController {
 
     private final VehicleRentService vehicleRentService;
+
 
     @GetMapping("/my-vehicles")
     public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleDTO>>> getUserVehicles(
@@ -43,6 +40,7 @@ public class VehicleRentController {
         }
     }
 
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> registerVehicle(
 
@@ -59,20 +57,22 @@ public class VehicleRentController {
         }
     }
 
+
     @GetMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleDetailDTO>> getVehicleById(
-            @RequestHeader("User-Id") String userId,
+
             @PathVariable String vehicleId) {
 
         try {
-            VehicleDetailDTO vehicle = vehicleRentService.getVehicleById(userId, vehicleId);
+            VehicleDetailDTO vehicle = vehicleRentService.getVehicleById(vehicleId);
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicle retrieved successfully", vehicle));
         } catch (Exception e) {
-            log.error("Error retrieving vehicle: {} for user: {}", vehicleId, userId, e);
+            log.error("Error retrieving vehicle: {} for user: {}", vehicleId, e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponseDTO.error("Failed to retrieve vehicle: " + e.getMessage()));
         }
     }
+
 
     @PutMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateVehicle(
@@ -89,6 +89,9 @@ public class VehicleRentController {
                     .body(ApiResponseDTO.error("Failed to update vehicle: " + e.getMessage()));
         }
     }
+
+
+
     @DeleteMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteVehicle(
 
@@ -103,6 +106,7 @@ public class VehicleRentController {
                     .body(ApiResponseDTO.error("Failed to delete vehicle: " + e.getMessage()));
         }
     }
+
 
     @GetMapping("/count")
     public ResponseEntity<ApiResponseDTO<Long>> countUserVehicles(
