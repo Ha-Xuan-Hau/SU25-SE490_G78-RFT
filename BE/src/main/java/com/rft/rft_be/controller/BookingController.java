@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -43,7 +43,7 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
-    public ResponseEntity<BookingResponseDTO> createBooking(@RequestBody BookingRequestDTO bookingRequestDTO, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<BookingResponseDTO> createBooking(@Valid @RequestBody BookingRequestDTO bookingRequestDTO, @AuthenticationPrincipal Jwt jwt) {
         String userId = jwt.getClaimAsString("userId");
         BookingResponseDTO bookingResponse = bookingService.createBooking(bookingRequestDTO, userId);
         return new ResponseEntity<>(bookingResponse, HttpStatus.CREATED);
