@@ -12,18 +12,18 @@ import java.util.List;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleSearchResultDTO {
-     String id;
-     String licensePlate;
-     String vehicleType;
-     String thumb;
-     BigDecimal costPerDay;
-     String status;
-     String brandName;
-     String modelName;
-     Integer numberSeat;
-     Double totalRating;
-     String address;
-     List<VehicleImageDTO> vehicleImages;
-     String transmission;
-     String fuelType;
+    String id;
+    String licensePlate;
+    String vehicleType;
+    String thumb;
+    BigDecimal costPerDay;
+    String status;
+    String brandName;
+    String modelName;
+    Integer numberSeat;
+    Double rating;
+    String address;
+    List<VehicleImageDTO> vehicleImages;
+    String transmission;
+    String fuelType;
 }

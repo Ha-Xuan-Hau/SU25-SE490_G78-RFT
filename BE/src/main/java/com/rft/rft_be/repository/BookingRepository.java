@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,8 +32,13 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
 
     @Query("SELECT b FROM Booking b WHERE b.user.id = :userId AND b.timeBookingStart BETWEEN :startDate AND :endDate ORDER BY b.createdAt DESC")
     List<Booking> findByUserIdAndTimeBookingStartBetween(@Param("userId") String userId,
-                                                         @Param("startDate") Instant startDate, @Param("endDate") Instant endDate);
+                                                         @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
+    @Query("SELECT b FROM Booking b " +
+            "JOIN FETCH b.vehicle v " +
+            "JOIN FETCH v.user u " +
+            "WHERE b.codeTransaction = :codeTransaction")
+    Optional<Booking> findByCodeTransaction(@Param("codeTransaction") String codeTransaction);
 
     @Query("""
     SELECT COUNT(b) > 0 FROM Booking b
@@ -45,8 +50,17 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
 """)
     boolean existsByUserIdAndTimeOverlap(
             @Param("userId") String userId,
-            @Param("start") Instant start,
-            @Param("end") Instant end
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
     );
+
+    boolean existsByUserIdAndVehicleIdAndTimeBookingStartAndTimeBookingEndAndStatusIn(
+            String userId,
+            String vehicleId,
+            LocalDateTime start,
+            LocalDateTime end,
+            List<Booking.Status> statusList
+    );
+    List<Booking> findByStatusAndCreatedAtBefore(Booking.Status status, LocalDateTime beforeTime);
 
 }

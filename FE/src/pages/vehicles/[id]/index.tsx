@@ -2,7 +2,6 @@
 
 // --- Imports ---
 // Hooks
-import useLocalStorage from "@/hooks/useLocalStorage";
 import React, { useState, useEffect, useMemo } from "react";
 import { useDatesState } from "@/recoils/dates.state";
 import { useUserState } from "@/recoils/user.state";
@@ -19,8 +18,21 @@ import Image from "next/image";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { AuthPopup } from "@/components/AuthPopup";
+
+import {
+  calculateRentalDuration,
+  calculateRentalPrice,
+  formatRentalDuration,
+  RentalCalculation,
+  VehicleType,
+  ExistingBooking,
+  BUFFER_TIME_RULES,
+  parseBackendTime,
+  checkBufferTimeConflict,
+  createDisabledTimeFunction,
+  isDateDisabled,
+} from "@/utils/booking.utils";
 
 // Types and Utils
 import { VehicleFeature } from "@/types/vehicle";
@@ -29,7 +41,6 @@ import { formatCurrency } from "@/lib/format-currency";
 import dayjs, { Dayjs } from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import moment from "moment";
 import { RangePickerProps } from "antd/es/date-picker";
 
 dayjs.extend(isSameOrAfter);
@@ -55,7 +66,7 @@ export default function VehicleDetail() {
 
   // DatePicker and booking state
   const [dates, setDates] = useDatesState();
-  const [bookedTimeSlots, setBookedTimeSlots] = useState<any[]>([]);
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<ExistingBooking[]>([]);
   const [validationMessage, setValidationMessage] = useState<string>("");
   const [pickupDateTime, setPickupDateTime] = useState<string>("");
   const [returnDateTime, setReturnDateTime] = useState<string>("");
@@ -67,6 +78,14 @@ export default function VehicleDetail() {
   const [isModalCheckOpen, setIsModalCheckOpen] = useState(false);
   const [isAuthPopupOpen, setIsAuthPopupOpen] = useState(false);
 
+  const [rentalCalculation, setRentalCalculation] =
+    useState<RentalCalculation | null>(null);
+  const [hourlyRate, setHourlyRate] = useState<number>(0);
+
+  // NEW: Buffer time state
+  const [bufferConflictMessage, setBufferConflictMessage] =
+    useState<string>("");
+
   // Comments pagination state
   const [currentCommentPage, setCurrentCommentPage] = useState<number>(1);
   const commentsPerPage = 5;
@@ -75,23 +94,14 @@ export default function VehicleDetail() {
   const updateDates = (value: RangeValue) => {
     // Kiểm tra rõ ràng trước khi cập nhật
     if (value === null) {
-      setDates(null as any);
+      setDates([] as never[]);
     } else if (Array.isArray(value) && value.length === 2) {
-      setDates(value as any);
+      setDates(value as unknown as never[]);
     } else {
       // Xử lý trường hợp không hợp lệ
-      setDates(null as any);
+      setDates([] as never[]);
     }
   };
-
-  // --- Modal handlers ---
-  // const handleOk = () => {
-  //   setIsModalOpen(false);
-  // };
-
-  // const handleCancel = () => {
-  //   setIsModalOpen(false);
-  // };
 
   const handleOk1 = () => {
     setIsModalCheckOpen(false);
@@ -127,32 +137,51 @@ export default function VehicleDetail() {
 
       fetchBookedSlots();
     }
-  }, [id]);
+  }, [id, vehicle?.vehicleType]);
   // --- Effects ---
+
+  useEffect(() => {
+    if (vehicle?.costPerDay) {
+      setHourlyRate(Math.round(vehicle.costPerDay / 12));
+    }
+  }, [vehicle?.costPerDay]);
+
   // Calculate price based on selected dates
   useEffect(() => {
     if (pickupDateTime && returnDateTime && vehicle?.costPerDay) {
-      const pickupDate = new Date(pickupDateTime);
-      const returnDate = new Date(returnDateTime);
+      const startDate = dayjs(pickupDateTime);
+      const endDate = dayjs(returnDateTime);
 
       // Validate dates
-      if (returnDate <= pickupDate) {
+      if (endDate <= startDate) {
         setRentalDurationDays(1);
         setTotalPrice(vehicle.costPerDay);
+        setRentalCalculation(null);
         return;
       }
 
-      // Calculate rental duration (round up)
-      const diffTime = Math.abs(returnDate.getTime() - pickupDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // Tính toán thời gian thuê
+      const calculation = calculateRentalDuration(startDate, endDate);
+      setRentalCalculation(calculation);
 
-      setRentalDurationDays(diffDays || 1);
-      setTotalPrice((diffDays || 1) * vehicle.costPerDay);
+      // Tính giá
+      const price = calculateRentalPrice(
+        calculation,
+        hourlyRate,
+        vehicle.costPerDay
+      );
+      setTotalPrice(price);
+
+      // Set legacy state cho compatibility
+      setRentalDurationDays(
+        calculation.isHourlyRate ? 1 : calculation.billingDays
+      );
     } else if (vehicle?.costPerDay) {
       // Default price if no dates selected
       setTotalPrice(vehicle.costPerDay);
+      setRentalCalculation(null);
     }
-  }, [pickupDateTime, returnDateTime, vehicle?.costPerDay]);
+  }, [pickupDateTime, returnDateTime, vehicle?.costPerDay, hourlyRate]);
 
   // Fetch booked time slots
   useEffect(() => {
@@ -161,8 +190,8 @@ export default function VehicleDetail() {
 
       // Hiển thị cụ thể các ngày đã được đặt để debug
       const bookedRanges = bookedTimeSlots.map((slot) => {
-        const startDate = dayjs(slot.timeFrom).format("YYYY-MM-DD");
-        const endDate = dayjs(slot.timeTo).format("YYYY-MM-DD");
+        const startDate = parseBackendTime(slot.startDate).format("YYYY-MM-DD");
+        const endDate = parseBackendTime(slot.endDate).format("YYYY-MM-DD");
         return `${startDate} đến ${endDate}`;
       });
 
@@ -179,14 +208,30 @@ export default function VehicleDetail() {
       // Kiểm tra xem người dùng có giấy phép lái xe chưa
       if (user.result?.driverLicenses === undefined) {
         setIsModalCheckOpen(true);
-      } else {
+      } else if (vehicle?.id) {
         // Nếu có đủ điều kiện thì redirect đến trang booking
-        router.push(`/booking/${vehicle?.id}`);
+        console.log(
+          "Navigating from useEffect to booking page with vehicle ID:",
+          vehicle.id
+        );
+        router.push({
+          pathname: `/booking/${vehicle.id}`,
+          query: {
+            pickupTime: pickupDateTime,
+            returnTime: returnDateTime,
+          },
+        });
       }
     }
-  }, [user, isAuthPopupOpen]);
+  }, [
+    user,
+    isAuthPopupOpen,
+    router,
+    vehicle?.id,
+    pickupDateTime,
+    returnDateTime,
+  ]);
 
-  // Format dates for DateRangePicker
   // Format dates for DateRangePicker
   const formattedDates = useMemo(() => {
     // If dates is null or undefined
@@ -218,6 +263,24 @@ export default function VehicleDetail() {
     return null;
   }, [dates]);
 
+  // Tạo disabledTime và disabledDate functions sử dụng logic giống booking page
+  const disabledRangeTime = useMemo(() => {
+    if (!vehicle?.vehicleType) {
+      return createDisabledTimeFunction("CAR", []);
+    }
+    const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+    return createDisabledTimeFunction(vehicleType, bookedTimeSlots);
+  }, [vehicle?.vehicleType, bookedTimeSlots]);
+
+  const disabledDateFunction = useMemo(() => {
+    return (current: Dayjs): boolean => {
+      if (!current || !vehicle?.vehicleType) return false;
+
+      const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+      return isDateDisabled(current, vehicleType, bookedTimeSlots);
+    };
+  }, [vehicle?.vehicleType, bookedTimeSlots]);
+
   // --- Loading and error states ---
   if (isLoading) {
     return <LoadingSpinner />;
@@ -237,7 +300,6 @@ export default function VehicleDetail() {
     []) as VehicleComment[];
   const features: VehicleFeature[] = vehicle?.vehicleFeatures || [];
   const unitPrice = vehicle.costPerDay || 0;
-  const basePrice = unitPrice * rentalDurationDays;
 
   // --- Helper functions ---
   // Image carousel navigation
@@ -274,184 +336,149 @@ export default function VehicleDetail() {
     }
   };
 
-  // Booking handlers
+  const hasValidLicense = (
+    userLicenses: string[] | undefined,
+    vehicleType: string
+  ): boolean => {
+    // Xe đạp không yêu cầu bằng lái
+    if (vehicleType === "BICYCLE") {
+      return true;
+    }
+
+    // Nếu user không có bằng lái nào
+    if (!userLicenses || userLicenses.length === 0) {
+      return false;
+    }
+
+    // Kiểm tra theo từng loại xe
+    switch (vehicleType) {
+      case "CAR":
+        return userLicenses.some((license) => license === "B");
+      case "MOTORBIKE":
+        return userLicenses.some((license) => ["A1", "B1"].includes(license));
+      default:
+        return false;
+    }
+  };
+
+  const getLicenseRequirement = (vehicleType: string): string => {
+    switch (vehicleType) {
+      case "CAR":
+        return "bằng lái loại B";
+      case "MOTORBIKE":
+        return "bằng lái loại A1 hoặc B1";
+      case "BICYCLE":
+        return "không cần bằng lái";
+      default:
+        return "giấy phép phù hợp";
+    }
+  };
+
   // Booking handlers
   const handleRent = () => {
+    // Add debug information
+    console.log("handleRent called");
+
     if (!pickupDateTime || !returnDateTime) {
       message.error("Vui lòng chọn thời gian thuê xe!");
       return;
     }
 
-    if (user === null) {
-      // Thay vì mở modal cũ
-      // setIsModalOpen(true);
+    // Lấy validLicenses từ cả hai nơi có thể chứa nó
+    const userLicenses = user?.validLicenses || user?.result?.validLicenses;
 
-      // Mở AuthPopup trực tiếp
+    if (user === null) {
+      // Mở AuthPopup cho người dùng đăng nhập
       setIsAuthPopupOpen(true);
-    } else if (user?.result?.driverLicenses === undefined) {
+    } else if (!userLicenses) {
+      // Người dùng chưa có thông tin giấy phép lái xe
       setIsModalCheckOpen(true);
     } else {
+      // Kiểm tra tính phù hợp của bằng lái xe
+      const hasProperLicense = hasValidLicense(
+        userLicenses,
+        vehicle.vehicleType
+      );
+
+      if (!hasProperLicense) {
+        // Hiển thị thông báo nếu người dùng không có bằng lái phù hợp
+        Modal.error({
+          title: "Bạn không có giấy phép phù hợp",
+          content: `Loại xe này yêu cầu ${getLicenseRequirement(
+            vehicle.vehicleType
+          )}`,
+        });
+        return;
+      }
+
       if (validationMessage === "Khoảng ngày đã được thuê.") {
         message.error("Khoảng ngày đã được thuê. Vui lòng chọn ngày khác!");
       } else {
-        router.push(`/booking/${vehicle?.id}`);
+        // Prevent page reload by using e.preventDefault() if available
+        // Use router.push with the complete object to ensure proper navigation
+        console.log("Navigating to booking page with ID:", vehicle?.id);
+
+        // Using Next.js router with pathname as string to avoid potential encoding issues
+        const bookingUrl = `/booking/${
+          vehicle?.id
+        }?pickupTime=${encodeURIComponent(
+          pickupDateTime || ""
+        )}&returnTime=${encodeURIComponent(returnDateTime || "")}`;
+        console.log("Booking URL:", bookingUrl);
+
+        // Use window.location for a hard navigation if router isn't working
+        window.location.href = bookingUrl;
       }
     }
   };
 
-  // Date validation
-  function isDateBooked(
-    startDate: moment.Moment,
-    endDate: moment.Moment
-  ): boolean {
-    for (const slot of bookedTimeSlots) {
-      const bookedStart = moment(slot.timeFrom);
-      const bookedEnd = moment(slot.timeTo);
-
-      // Kiểm tra chồng chéo: nếu thời gian bắt đầu < thời gian kết thúc đã đặt
-      // VÀ thời gian kết thúc > thời gian bắt đầu đã đặt
-      const hasOverlap =
-        startDate.isBefore(bookedEnd) && endDate.isAfter(bookedStart);
-
-      if (hasOverlap) {
-        console.log("Phát hiện chồng chéo:", {
-          newBooking: [startDate.format(), endDate.format()],
-          existingBooking: [bookedStart.format(), bookedEnd.format()],
-        });
-        return true;
-      }
-    }
-    return false;
-  }
-
   // DatePicker handlers
   const handleDateChange: RangePickerProps["onChange"] = (values) => {
     if (values && values[0] && values[1]) {
-      const [startDate, endDate] = values;
+      const startDate = values[0] as Dayjs;
+      const endDate = values[1] as Dayjs;
 
-      // Update pickup and return times
-      setPickupDateTime(startDate.format("YYYY-MM-DDTHH:mm"));
-      setReturnDateTime(endDate.format("YYYY-MM-DDTHH:mm"));
+      // Update pickup and return times - For URL params, use readable format
+      setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
+      setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));
 
-      // Vẫn giữ lại logic kiểm tra chồng chéo dự phòng
-      const momentStartDate = moment.utc(startDate.valueOf());
-      const momentEndDate = moment.utc(endDate.valueOf());
+      // Tính toán thời gian thuê mới
+      const calculation = calculateRentalDuration(startDate, endDate);
+      setRentalCalculation(calculation);
 
-      if (isDateBooked(momentStartDate, momentEndDate)) {
-        setValidationMessage("Khoảng ngày đã được thuê.");
+      // Kiểm tra buffer time conflict giống booking page
+      if (vehicle?.vehicleType) {
+        const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+        const conflictCheck = checkBufferTimeConflict(
+          vehicleType,
+          startDate,
+          endDate,
+          bookedTimeSlots
+        );
+
+        if (conflictCheck.hasConflict) {
+          setBufferConflictMessage(
+            conflictCheck.message || "Có xung đột thời gian với booking khác"
+          );
+          setValidationMessage("");
+        } else {
+          setBufferConflictMessage("");
+          setValidationMessage("");
+        }
       } else {
+        setBufferConflictMessage("");
         setValidationMessage("");
       }
     } else {
       // Reset values if no dates selected
       setPickupDateTime("");
       setReturnDateTime("");
+      setBufferConflictMessage("");
+      setValidationMessage("");
     }
 
     // Update Recoil state
     updateDates(values);
-  };
-
-  const disabledRangeTime: RangePickerProps["disabledTime"] = (
-    current,
-    type
-  ) => {
-    if (!current) return {};
-
-    const currentDate = dayjs();
-    const isToday = current.isSame(currentDate, "day");
-    const currentHour = currentDate.hour();
-
-    // Mặc định giờ không khả dụng (sáng sớm và tối muộn)
-    const defaultDisabledHours = [
-      0, 1, 2, 3, 4, 5, 6, 17, 18, 19, 20, 21, 22, 23,
-    ];
-
-    // Nếu là ngày hôm nay, thêm các giờ đã qua vào danh sách giờ bị disable
-    if (isToday) {
-      // Thời điểm hiện tại + 1 giờ (buffer time để có thời gian chuẩn bị)
-      const disabledPastHours = Array.from(
-        { length: currentHour + 1 },
-        (_, i) => i
-      );
-
-      // Gộp với danh sách giờ mặc định bị disable
-      const todayDisabledHours = [
-        ...new Set([...defaultDisabledHours, ...disabledPastHours]),
-      ];
-
-      if (type === "start") {
-        return {
-          disabledHours: () => todayDisabledHours,
-          disabledMinutes: (selectedHour) => {
-            // Nếu giờ được chọn là giờ hiện tại, disable những phút đã qua
-            if (selectedHour === currentHour + 1) {
-              return Array.from({ length: currentDate.minute() }, (_, i) => i);
-            }
-            return [];
-          },
-        };
-      }
-    }
-
-    // Kiểm tra giờ đã được đặt
-    const bookedHoursForDate = bookedTimeSlots
-      .filter((slot) => {
-        const slotStart = dayjs(slot.timeFrom);
-        const slotEnd = dayjs(slot.timeTo);
-        return (
-          current.isSame(slotStart, "day") || current.isSame(slotEnd, "day")
-        );
-      })
-      .map((slot) => {
-        const slotStart = dayjs(slot.timeFrom);
-        const slotEnd = dayjs(slot.timeTo);
-
-        if (current.isSame(slotStart, "day")) {
-          // Nếu là ngày bắt đầu của slot, disable từ giờ bắt đầu trở đi
-          return Array.from(
-            { length: 24 - slotStart.hour() },
-            (_, i) => slotStart.hour() + i
-          );
-        } else if (current.isSame(slotEnd, "day")) {
-          // Nếu là ngày kết thúc của slot, disable từ đầu ngày đến giờ kết thúc
-          return Array.from({ length: slotEnd.hour() + 1 }, (_, i) => i);
-        }
-
-        return [];
-      })
-      .flat();
-
-    const disabledBookedHours = [
-      ...new Set([...defaultDisabledHours, ...bookedHoursForDate]),
-    ];
-
-    return {
-      disabledHours: () => disabledBookedHours,
-    };
-  };
-
-  const disabledDate = (current: Dayjs | null): boolean => {
-    if (!current) return false;
-
-    const today = dayjs().startOf("day");
-    // Chỉ disable các ngày trong quá khứ
-    const isPastDate = current.isBefore(today);
-
-    // Kiểm tra xem ngày có trong khoảng đã đặt không
-    const isBookedDate = bookedTimeSlots.some((slot) => {
-      const bookedStart = dayjs(slot.timeFrom).startOf("day");
-      const bookedEnd = dayjs(slot.timeTo).startOf("day");
-
-      // Nếu ngày hiện tại nằm trong khoảng từ ngày bắt đầu đến ngày kết thúc
-      return (
-        current.isSameOrAfter(bookedStart, "day") &&
-        current.isSameOrBefore(bookedEnd, "day")
-      );
-    });
-
-    // Trả về true để disable nếu là ngày quá khứ hoặc đã có đặt xe
-    return isPastDate || isBookedDate;
   };
 
   // --- Render component ---
@@ -707,9 +734,11 @@ export default function VehicleDetail() {
                         >
                           {comment.userImage && (
                             <div className="flex-shrink-0">
-                              <img
+                              <Image
                                 src={comment.userImage}
                                 alt={`${comment.userName}'s avatar`}
+                                width={48}
+                                height={48}
                                 className="w-12 h-12 rounded-full object-cover"
                               />
                             </div>
@@ -805,23 +834,41 @@ export default function VehicleDetail() {
                 <h3 className="text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
                   Thời gian thuê
                 </h3>
+
                 <div className="mt-4 w-full">
                   <DateRangePicker
                     showTime={{
                       format: "HH:mm",
-                      minuteStep: 10,
+                      minuteStep: 30,
                     }}
                     format="DD-MM-YYYY HH:mm"
                     disabledTime={disabledRangeTime}
-                    disabledDate={disabledDate}
+                    disabledDate={disabledDateFunction}
                     className="w-full"
                     onChange={handleDateChange}
                     value={formattedDates}
+                    placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
                   />
                   {validationMessage && (
                     <p className="text-red-500 text-sm mt-1">
                       {validationMessage}
                     </p>
+                  )}
+                  {bufferConflictMessage && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2">
+                      <p className="text-red-600 text-sm">
+                        ⚠️ {bufferConflictMessage}
+                      </p>
+                      {vehicle?.vehicleType && (
+                        <p className="text-gray-600 text-xs mt-1">
+                          {
+                            BUFFER_TIME_RULES[
+                              vehicle.vehicleType.toUpperCase() as VehicleType
+                            ]?.description
+                          }
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -833,26 +880,65 @@ export default function VehicleDetail() {
                 </h3>
                 <div className="space-y-3 text-gray-700 dark:text-gray-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-base">Đơn giá</span>
+                    <span className="text-base">
+                      {rentalCalculation?.isHourlyRate
+                        ? "Giá theo giờ"
+                        : "Giá theo ngày"}
+                    </span>
                     <span className="text-base font-medium">
-                      {formatCurrency(unitPrice)}
+                      {rentalCalculation?.isHourlyRate
+                        ? `${hourlyRate.toLocaleString()}₫/giờ`
+                        : `${formatCurrency(unitPrice)}/ngày`}
                     </span>
                   </div>
                   <hr className="border-gray-200 dark:border-gray-700" />
+
                   <div className="flex justify-between items-center">
                     <span className="text-base">Thời gian thuê</span>
                     <span className="text-base font-medium">
-                      x{rentalDurationDays} ngày
+                      {rentalCalculation
+                        ? formatRentalDuration(rentalCalculation)
+                        : `${rentalDurationDays} ngày`}
                     </span>
                   </div>
                   <hr className="border-gray-200 dark:border-gray-700" />
+
                   <div className="flex justify-between items-center">
-                    <span className="text-base">Giá cơ bản</span>
+                    <span className="text-base">
+                      {rentalCalculation?.isHourlyRate
+                        ? "Giá theo thời gian"
+                        : "Giá cơ bản"}
+                    </span>
                     <span className="text-base font-medium">
-                      {formatCurrency(basePrice)}
+                      {formatCurrency(totalPrice)}
                     </span>
                   </div>
-                  <hr className="border-gray-200 dark:border-gray-700" />
+
+                  {/* THÊM VÀO ĐÂY - Hiển thị breakdown cho hourly rate */}
+                  {rentalCalculation?.isHourlyRate && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
+                      {rentalCalculation.billingHours > 0 && (
+                        <div>
+                          • {rentalCalculation.billingHours} giờ ×{" "}
+                          {hourlyRate.toLocaleString()}₫ ={" "}
+                          {(
+                            rentalCalculation.billingHours * hourlyRate
+                          ).toLocaleString()}
+                          ₫
+                        </div>
+                      )}
+                      {rentalCalculation.billingMinutes > 0 && (
+                        <div>
+                          • {rentalCalculation.billingMinutes} phút ×{" "}
+                          {Math.round(hourlyRate / 60).toLocaleString()}₫ ={" "}
+                          {Math.round(
+                            (rentalCalculation.billingMinutes / 60) * hourlyRate
+                          ).toLocaleString()}
+                          ₫
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <hr className="border-gray-200 dark:border-gray-700" />
                   <div className="flex justify-between items-center pt-2">
@@ -866,42 +952,37 @@ export default function VehicleDetail() {
 
               {/* Book button */}
               <div className="space-y-3 mt-6">
-                <Button
-                  className="w-full bg-teal-500 hover:bg-teal-600 text-white text-lg py-3 rounded-lg font-semibold"
-                  onClick={handleRent}
+                {/* Using a simple button since handleRent has the navigation logic */}
+                <button
+                  className={`w-full text-lg py-3 rounded-lg font-semibold ${
+                    bufferConflictMessage || validationMessage
+                      ? "bg-gray-400 cursor-not-allowed text-gray-600"
+                      : "bg-teal-500 hover:bg-teal-600 text-white"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault(); // Prevent default form submission behavior
+                    console.log("Book button clicked");
+
+                    // Check for conflicts before proceeding
+                    if (bufferConflictMessage || validationMessage) {
+                      message.warning(
+                        "Vui lòng chọn thời gian khác để tiếp tục"
+                      );
+                      return;
+                    }
+
+                    handleRent();
+                  }}
+                  disabled={!!(bufferConflictMessage || validationMessage)}
+                  type="button" // Explicitly set type to button to prevent form submission
                 >
                   Đặt xe
-                </Button>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* <Modal
-        title="Bạn cần đăng nhập để thuê xe"
-        open={isModalOpen}
-        onOk={handleOk}
-        onCancel={() => {
-          setIsModalOpen(false);
-          setIsAuthPopupOpen(true); // Mở AuthPopup khi đóng modal này
-        }}
-        footer={false}
-      >
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-center">Vui lòng đăng nhập để tiếp tục thuê xe</p>
-          <AntButton
-            type="primary"
-            className="mt-2"
-            onClick={() => {
-              setIsModalOpen(false); // Đóng modal hiện tại
-              setIsAuthPopupOpen(true); // Mở AuthPopup
-            }}
-          >
-            Đăng nhập ngay
-          </AntButton>
-        </div>
-      </Modal> */}
 
       {/* Auth Popup */}
       <AuthPopup
@@ -912,15 +993,32 @@ export default function VehicleDetail() {
 
       {/* Driver license verification modal */}
       <Modal
-        title="Bạn cần xác thực giấy phái lái xe để thuê xe"
+        title="Thông tin giấy phép lái xe"
         open={isModalCheckOpen}
         onOk={handleOk1}
         onCancel={handleCancel1}
         footer={false}
       >
-        <Link href="/profile ">
-          <AntButton type="primary" className="mt-5">
-            Trang cá nhân
+        <div className="py-3">
+          <p className="mb-4">
+            Bạn cần cập nhật thông tin giấy phép lái xe để thuê{" "}
+            {vehicle.vehicleType === "CAR"
+              ? "xe ô tô"
+              : vehicle.vehicleType === "MOTORBIKE"
+              ? "xe máy"
+              : "xe"}
+            .
+          </p>
+          <p className="font-medium mb-4">Yêu cầu giấy phép:</p>
+          <ul className="list-disc pl-5 mb-4">
+            <li>Xe ô tô: Bằng lái loại B</li>
+            <li>Xe máy: Bằng lái loại A1 hoặc B1</li>
+            <li>Xe đạp: Không yêu cầu bằng lái</li>
+          </ul>
+        </div>
+        <Link href="/profile">
+          <AntButton type="primary" className="mt-2">
+            Cập nhật thông tin
           </AntButton>
         </Link>
       </Modal>

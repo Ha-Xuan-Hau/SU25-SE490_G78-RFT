@@ -2,7 +2,7 @@ package com.rft.rft_be.dto.rating;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 @Getter
 @Setter
 @AllArgsConstructor
@@ -11,10 +11,12 @@ import java.time.Instant;
 public class RatingDTO {
     String id;
     String userId;
+    String userName;
+    String userImage;
     String vehicleId;
     String bookingId;
     String comment;
     int star;
-    Instant createdAt;
-    Instant updatedAt;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 }

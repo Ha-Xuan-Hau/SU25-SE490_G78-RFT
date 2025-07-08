@@ -1,6 +1,5 @@
 package com.rft.rft_be.service.vehicleRent;
 
-
 import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.vehicle.vehicleRent.*;
 import com.rft.rft_be.entity.Brand;
@@ -24,7 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,8 +44,8 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         String userId = authentication.getToken().getClaim("userId");
         log.info("Getting vehicles for user: {}, page: {}, size: {}", userId, page, size);
 
-        Sort sort = sortDir.equalsIgnoreCase("desc") ?
-                Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<Vehicle> vehiclePage = vehicleRepository.findByUserIdWithBrandAndModel(userId, pageable);
@@ -109,7 +108,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             throw new RuntimeException("License plate already exists for this user");
         }
 
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
 
         Vehicle vehicle = Vehicle.builder()
 
@@ -203,7 +202,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (request.getThumb() != null) vehicle.setThumb(request.getThumb());
 
         // Manually set updatedAt timestamp using reflection
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
         setUpdatedAt(vehicle, now);
 
         Vehicle updatedVehicle = vehicleRepository.save(vehicle);
@@ -215,8 +214,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         log.info("Vehicle updated successfully: {}", vehicleId);
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
-
-//    @Override
+    //    @Override
 //    @Transactional
 //    public VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request) {
 //        log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
@@ -272,7 +270,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 //        if (request.getThumb() != null) vehicle.setThumb(request.getThumb());
 //
 //        // Manually set updatedAt timestamp using reflection
-//        Instant now = Instant.now();
+//        LocalDateTime now = LocalDateTime.now();
 //        setUpdatedAt(vehicle, now);
 //
 //        Vehicle updatedVehicle = vehicleRepository.save(vehicle);
@@ -284,8 +282,6 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 //        log.info("Vehicle updated successfully: {}", vehicleId);
 //        return vehicleMapper.vehicleGet(vehicleWithRelations);
 //    }
-
-
     @Override
     @Transactional
     public void deleteVehicle( String vehicleId) {
@@ -379,7 +375,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     }
 
     // Helper methods for setting timestamps using reflection
-    private void setTimestamps(Vehicle vehicle, Instant createdAt, Instant updatedAt) {
+    private void setTimestamps(Vehicle vehicle, LocalDateTime createdAt, LocalDateTime updatedAt) {
         try {
             Field createdAtField = Vehicle.class.getDeclaredField("createdAt");
             createdAtField.setAccessible(true);
@@ -394,15 +390,15 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             log.error("Failed to set timestamps using reflection", e);
             // Fallback: try direct setter methods if they exist
             try {
-                vehicle.getClass().getMethod("setCreatedAt", Instant.class).invoke(vehicle, createdAt);
-                vehicle.getClass().getMethod("setUpdatedAt", Instant.class).invoke(vehicle, updatedAt);
+                vehicle.getClass().getMethod("setCreatedAt", LocalDateTime.class).invoke(vehicle, createdAt);
+                vehicle.getClass().getMethod("setUpdatedAt", LocalDateTime.class).invoke(vehicle, updatedAt);
             } catch (Exception ex) {
                 log.error("Failed to set timestamps using setter methods", ex);
             }
         }
     }
 
-    private void setUpdatedAt(Vehicle vehicle, Instant updatedAt) {
+    private void setUpdatedAt(Vehicle vehicle, LocalDateTime updatedAt) {
         try {
             Field updatedAtField = Vehicle.class.getDeclaredField("updatedAt");
             updatedAtField.setAccessible(true);
@@ -413,12 +409,13 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             log.error("Failed to set updatedAt using reflection", e);
             // Fallback: try direct setter method if it exists
             try {
-                vehicle.getClass().getMethod("setUpdatedAt", Instant.class).invoke(vehicle, updatedAt);
+                vehicle.getClass().getMethod("setUpdatedAt", LocalDateTime.class).invoke(vehicle, updatedAt);
             } catch (Exception ex) {
                 log.error("Failed to set updatedAt using setter method", ex);
             }
         }
     }
+
     private Vehicle.VehicleType parseVehicleType(String type) {
         if (type == null || type.trim().isEmpty()) {
             return null;

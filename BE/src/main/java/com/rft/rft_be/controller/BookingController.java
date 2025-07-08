@@ -1,17 +1,35 @@
 package com.rft.rft_be.controller;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.service.booking.BookingService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +37,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
+@Slf4j
 public class BookingController {
 
     private final BookingService bookingService;
@@ -31,19 +50,54 @@ public class BookingController {
     }
 
     @PostMapping("/{bookingId}/confirm")
-    public ResponseEntity<Void> confirmBooking(@PathVariable String bookingId, @AuthenticationPrincipal Jwt jwt) {
-        String currentUserId = jwt.getClaimAsString("userId");
-        bookingService.confirmBooking(bookingId, currentUserId);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> confirmBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.confirmBooking(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Xác nhận đơn thành công");
+    }
+
+    @PostMapping("/{bookingId}/deliver")
+    public ResponseEntity<?> deliverVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.deliverVehicle(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Giao xe thành công");
+    }
+
+    @PostMapping("/{bookingId}/receive")
+    public ResponseEntity<?> receiveVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.receiveVehicle(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Nhận xe thành công");
+    }
+
+    @PostMapping("/{bookingId}/return")
+    public ResponseEntity<?> returnVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.returnVehicle(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Trả xe thành công");
+    }
+
+    @PostMapping("/{bookingId}/complete")
+    public ResponseEntity<?> completeBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.completeBooking(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Hoàn tất đơn thành công");
     }
 
     @PostMapping("/{bookingId}/cancel")
-    public ResponseEntity<Void> cancelBooking(@PathVariable String bookingId, @AuthenticationPrincipal Jwt jwt) {
-        String currentUserId = jwt.getClaimAsString("userId");
-        bookingService.cancelBooking(bookingId, currentUserId);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> cancelBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        bookingService.cancelBooking(bookingId, extractToken(authHeader));
+        return ResponseEntity.ok("Hủy đơn thành công");
     }
 
+    private String extractToken(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        throw new AccessDeniedException("Token không hợp lệ hoặc không tồn tại");
+    }
+
+    @PostMapping("/{bookingId}/pay-wallet")
+    public ResponseEntity<?> payWithWallet(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        bookingService.payBookingWithWallet(bookingId, token);
+        return ResponseEntity.ok("Thanh toán bằng ví thành công");
+    }
 
     @GetMapping
     public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
@@ -56,16 +110,18 @@ public class BookingController {
         BookingResponseDTO booking = bookingService.getBookingById(bookingId);
         return ResponseEntity.ok(booking);
     }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<?> getBookingsByStatus(@PathVariable String status) {
-            List<BookingDTO> bookings = bookingService.getBookingsByStatus(status);
-            return ResponseEntity.ok(bookings);
+        List<BookingDTO> bookings = bookingService.getBookingsByStatus(status);
+        return ResponseEntity.ok(bookings);
     }
+
     @GetMapping("/user/{userId}/date-range")
     public ResponseEntity<?> getBookingsByUserIdAndDateRange(
             @PathVariable String userId,
-            @RequestParam Instant startDate,
-            @RequestParam Instant endDate) {
+            @RequestParam LocalDateTime startDate,
+            @RequestParam LocalDateTime endDate) {
         try {
             List<BookingDTO> bookings = bookingService.getBookingsByUserIdAndDateRange(userId, startDate, endDate);
             return ResponseEntity.ok(bookings);
@@ -75,18 +131,48 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getBookingsByUserId(@PathVariable String userId) {
-
-            List<BookingDTO> bookings = bookingService.getBookingsByUserId(userId);
-            return ResponseEntity.ok(bookings);
+        List<BookingDTO> bookings = bookingService.getBookingsByUserId(userId);
+        return ResponseEntity.ok(bookings);
 
     }
+
     @GetMapping("/user/{userId}/status/{status}")
     public ResponseEntity<?> getBookingsByUserIdAndStatus(@PathVariable String userId, @PathVariable String status) {
+        List<BookingDTO> bookings = bookingService.getBookingsByUserIdAndStatus(userId, status);
+        return ResponseEntity.ok(bookings);
+    }
 
-            List<BookingDTO> bookings = bookingService.getBookingsByUserIdAndStatus(userId, status);
-            return ResponseEntity.ok(bookings);
+    @PostMapping("/check-availability")
+    public ResponseEntity<Map<String, Object>> checkAvailability(@RequestBody Map<String, String> request) {
+        String vehicleId = request.get("vehicleId");
+        LocalDateTime startTime = LocalDateTime.parse(request.get("startTime"));
+        LocalDateTime endTime = LocalDateTime.parse(request.get("endTime"));
 
+        boolean available = bookingService.isTimeSlotAvailable(vehicleId, startTime, endTime);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("available", available);
+        response.put("message", available ? "Thời gian có sẵn" : "Thời gian đã được đặt");
+
+        return ResponseEntity.ok(response);
+    }
+
+    // Exception handler để đảm bảo conflict errors được handle đúng cách
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(ResponseStatusException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("message", ex.getReason());
+        error.put("status", ex.getStatusCode().value());
+        error.put("timestamp", LocalDateTime.now());
+
+        // Log conflicts để monitor
+        if (ex.getStatusCode().value() == 409) {
+            log.warn("Booking conflict detected: {}", ex.getReason());
+        }
+
+        return ResponseEntity.status(ex.getStatusCode()).body(error);
     }
 }

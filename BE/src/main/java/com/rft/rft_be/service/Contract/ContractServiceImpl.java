@@ -14,7 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -121,8 +122,8 @@ public class ContractServiceImpl implements ContractService {
                 .user(user)
                 .image(createContractDTO.getImage())
                 .costSettlement(createContractDTO.getCostSettlement())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         // Set status with validation
@@ -168,7 +169,7 @@ public class ContractServiceImpl implements ContractService {
         }
 
         // Update timestamp
-        existingContract.setUpdatedAt(Instant.now());
+        existingContract.setUpdatedAt(LocalDateTime.now());
 
         // Save and return updated contract
         Contract updatedContract = contractRepository.save(existingContract);
@@ -183,6 +184,25 @@ public class ContractServiceImpl implements ContractService {
             throw new RuntimeException("Contract not found with id: " + id);
         }
         contractRepository.deleteById(id);
+    }
+
+    @Override
+    public void createContractByPayment(String bookingtxnRef) {
+        Booking booking = bookingRepository.findByCodeTransaction(bookingtxnRef)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn booking với mã giao dịch: " + bookingtxnRef));
+
+        // Cập nhật trạng thái booking
+        booking.setStatus(Booking.Status.PENDING);
+        bookingRepository.save(booking);
+
+        // Lấy thông tin người cho thuê xe
+        User provider = booking.getVehicle().getUser();
+        // Tạo contract mới
+        Contract contract = new Contract();
+        contract.setUser(provider);
+        contract.setBooking(booking);
+        contract.setCostSettlement(booking.getTotalCost());
+        contractRepository.save(contract);
     }
 }
 

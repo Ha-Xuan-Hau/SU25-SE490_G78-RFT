@@ -19,7 +19,7 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
     List<FinalContract> findByUserIdAndContractId(@Param("userId") String userId, @Param("contractId") String contractId);
 
     @Query("SELECT fc FROM FinalContract fc WHERE fc.timeFinish BETWEEN :startDate AND :endDate")
-    List<FinalContract> findByTimeFinishBetween(@Param("startDate") java.time.Instant startDate, @Param("endDate") java.time.Instant endDate);
+    List<FinalContract> findByTimeFinishBetween(@Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
 
     @Query("SELECT fc FROM FinalContract fc WHERE fc.costSettlement >= :minCost")
     List<FinalContract> findByCostSettlementGreaterThanEqual(@Param("minCost") java.math.BigDecimal minCost);

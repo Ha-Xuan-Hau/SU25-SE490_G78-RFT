@@ -2,7 +2,7 @@ package com.rft.rft_be.dto.rating;
 
 import lombok.experimental.FieldDefaults;
 import lombok.*;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -12,5 +12,5 @@ public class UserCommentDTO {
     String userImage;
     String comment;
     int star;
-    Instant createdAt;
+    LocalDateTime createdAt;
 }

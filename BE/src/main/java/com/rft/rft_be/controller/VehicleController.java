@@ -6,10 +6,14 @@ import com.rft.rft_be.service.vehicle.VehicleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,10 +45,10 @@ public class VehicleController {
 //    public ResponseEntity<List<CategoryDTO>> getAllVehiclesByCategory() {
 //        return ResponseEntity.ok(vehicleService.getAllVehiclesByCategory());
 //    }
-    @GetMapping("/available")
-    public ResponseEntity<List<VehicleDTO>> getAvailableVehicles() {
-        return ResponseEntity.ok(vehicleService.getAllAvailableVehicles());
-    }
+//    @GetMapping("/available")
+//    public ResponseEntity<List<VehicleDTO>> getAvailableVehicles() {
+//        return ResponseEntity.ok(vehicleService.getAllAvailableVehicles());
+//    }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getVehiclesByUserId(@PathVariable String userId) {
@@ -238,6 +242,7 @@ public class VehicleController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+
     // Count endpoint
     @GetMapping("/count")
     public ResponseEntity<?> getVehicleCount() {
@@ -276,7 +281,41 @@ public class VehicleController {
     @PostMapping("/search")
     public ResponseEntity<?> search(@RequestBody VehicleSearchDTO request) {
         try {
-            Page<VehicleSearchResultDTO> results = vehicleService.searchVehicles(request);
+            // Parse time
+            LocalDateTime timeFrom = request.getPickupDateTime() != null ? LocalDateTime.parse(request.getPickupDateTime()) : null;
+            LocalDateTime timeTo = request.getReturnDateTime() != null ? LocalDateTime.parse(request.getReturnDateTime()) : null;
+
+            Page<VehicleSearchResultDTO> results = vehicleService.searchVehicles(request, timeFrom, timeTo);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", results.getContent());
+            response.put("totalElements", results.getTotalElements());
+            response.put("totalPages", results.getTotalPages());
+            response.put("currentPage", results.getNumber());
+            response.put("size", results.getSize());
+
+            return ResponseEntity.ok(response);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body("Invalid date format. Expecting ISO-8601 e.g. 2025-07-06T00:00:00Z");
+        }
+    }
+    @PostMapping("/search-basic")
+    public ResponseEntity<?> basicSearch(@RequestBody BasicSearchDTO request) {
+        try {
+            LocalDateTime pickupTime = request.getPickupDateTime() != null ? LocalDateTime.parse(request.getPickupDateTime()) : null;
+            LocalDateTime returnTime = request.getReturnDateTime() != null ? LocalDateTime.parse(request.getReturnDateTime()) : null;
+
+            if (pickupTime != null && returnTime != null && pickupTime.isAfter(returnTime)) {
+                return ResponseEntity.badRequest().body("pickupTime must be before returnTime");
+            }
+            Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+            Page<VehicleSearchResultDTO> results = vehicleService.basicSearch(
+                    request.getAddress(),
+                    request.getVehicleType(),
+                    pickupTime,
+                    returnTime,
+                    pageable
+            );
 
             Map<String, Object> response = new HashMap<>();
             response.put("content", results.getContent());

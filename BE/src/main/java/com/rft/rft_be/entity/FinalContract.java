@@ -7,7 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "final_contracts")
@@ -35,7 +35,7 @@ public class FinalContract {
     private String image;
 
     @Column(name = "time_finish")
-    private Instant timeFinish;
+    private LocalDateTime timeFinish;
 
     @Column(name = "cost_settlement", precision = 10, scale = 2)
     private BigDecimal costSettlement;
@@ -46,10 +46,10 @@ public class FinalContract {
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
 }

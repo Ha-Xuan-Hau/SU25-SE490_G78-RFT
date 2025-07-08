@@ -12,22 +12,26 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleSearchDTO {
-     List<String> vehicleType;
+     List<String> vehicleTypes;
      List<String> addresses;
      Vehicle.HaveDriver haveDriver;
      Vehicle.ShipToAddress shipToAddress;
 
      String brandId;
      String modelId;
+     String pickupDateTime;
+     String returnDateTime;
 
+     String Transmission;
+     String fuelType;
      Integer numberSeat;
      Integer costFrom;
      Integer costTo;
 
+
      Boolean ratingFiveStarsOnly;
 
      int page = 0;
-     int size = 10;
+     int size = 12;
 }
-
 

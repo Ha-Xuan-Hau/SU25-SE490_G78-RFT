@@ -3,8 +3,9 @@ package com.rft.rft_be.dto;
 import com.rft.rft_be.entity.User;
 import lombok.*;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -20,6 +21,7 @@ public class UserDTO {
     private String address;
     private User.Status status;
     private User.Role role;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private List<String> validLicenses;
 }

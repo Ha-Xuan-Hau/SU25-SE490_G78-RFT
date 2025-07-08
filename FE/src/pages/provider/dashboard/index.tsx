@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
+import { Spin } from "antd";
 import { formatCurrency } from "@/lib/format-currency";
 import {
   Chart as ChartJS,
@@ -84,9 +85,21 @@ const options = {
 
 // Component Dashboard
 export default function ProviderDashboard() {
-  // Sử dụng mock data
-  const data = mockDashboardData;
-  const revenue = mockRevenueByMonth;
+  // Add loading state
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [revenue, setRevenue] = useState<RevenueByMonth[]>([]);
+
+  // Load data with loading state
+  useEffect(() => {
+    setLoading(true);
+    // Simulate API call with timeout
+    setTimeout(() => {
+      setData(mockDashboardData);
+      setRevenue(mockRevenueByMonth);
+      setLoading(false);
+    }, 800);
+  }, []);
 
   // Chuẩn bị dữ liệu cho biểu đồ
   const chartData = {
@@ -104,34 +117,22 @@ export default function ProviderDashboard() {
     ],
   };
 
-  return (
-    <div>
-      {/* <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="shadow-lg rounded-md p-6 flex flex-col justify-center items-center bg-white">
-          <div className="text-3xl font-bold mb-1">
-            {data.totalBookingByMonth}
-          </div>
-          <span>lượt thuê xe</span>
-        </div>
-        <div className="shadow-lg rounded-md p-6 flex flex-col justify-center items-center bg-white">
-          <div className="text-3xl font-bold mb-1">{data.totalCars}</div>
-          <span>xe</span>
-        </div>
-        <div className="shadow-lg rounded-md p-6 flex flex-col justify-center items-center bg-white">
-          <div className="text-3xl font-bold mb-1">{data.totalUsers}</div>
-          <span>người dùng</span>
-        </div>
-        <div className="shadow-lg rounded-md p-6 flex flex-col justify-center items-center bg-white">
-          <div className="text-3xl font-bold mb-1">
-            {formatCurrency(data.totalRevenue)}
-          </div>
-          <span>doanh thu</span>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-full min-h-[300px]">
+        <Spin size="large" />
       </div>
+    );
+  }
 
-      <div className="h-96 mt-10 flex justify-center">
-        <Line options={options} data={chartData} />
-      </div> */}
+  return (
+    <div className="p-6">
+      {/* Dashboard content goes here */}
+      <div className="text-2xl font-bold mb-6">Dashboard Quản Lý</div>
+      <p className="text-gray-500 mb-6">
+        Chào mừng đến với hệ thống quản lý của nhà cung cấp. Bạn có thể xem
+        thống kê và quản lý xe, đơn đặt, hợp đồng từ menu bên trái.
+      </p>
     </div>
   );
 }

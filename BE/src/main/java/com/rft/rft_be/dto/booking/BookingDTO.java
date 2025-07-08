@@ -3,7 +3,7 @@ package com.rft.rft_be.dto.booking;
 
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -16,14 +16,14 @@ public class BookingDTO {
     private String vehicleId;
     private String vehicleLicensePlate;
     private String vehicleType;
-    private Instant timeBookingStart;
-    private Instant timeBookingEnd;
+    private LocalDateTime timeBookingStart;
+    private LocalDateTime timeBookingEnd;
     private String phoneNumber;
     private String address;
     private String codeTransaction;
-    private Instant timeTransaction;
+    private LocalDateTime timeTransaction;
     private BigDecimal totalCost;
     private String status;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

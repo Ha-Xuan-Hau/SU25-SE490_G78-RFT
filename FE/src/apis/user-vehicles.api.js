@@ -83,13 +83,6 @@ export async function getUserVehicleById(vehicleId) {
     }
 }
 
-export async function likeVehicles({ accessToken, carId }) {
-
-}
-
-export async function getVehiclesLiked(accessToken) {
-}
-
 export async function getCoupons() {
     try {
         const response = await apiClient.request({

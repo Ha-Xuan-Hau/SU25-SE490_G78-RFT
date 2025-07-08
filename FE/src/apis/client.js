@@ -20,6 +20,24 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use(function (config) {
     try {
+        // List of public endpoints that don't need authorization
+        const publicEndpoints = [
+            '/vehicles',
+            '/vehicles/detail',
+            '/vehicles/search',
+            '/bookedTimeSlot/vehicle'
+        ];
+
+        // Check if the current request URL matches any public endpoint
+        const isPublicEndpoint = publicEndpoints.some(endpoint =>
+            config.url === endpoint || config.url.startsWith(`${endpoint}/`)
+        );
+
+        // Skip adding authorization header for public endpoints
+        if (isPublicEndpoint) {
+            return config;
+        }
+
         const tokenStr = localStorage.getItem("access_token");
 
         if (!tokenStr) {
@@ -39,6 +57,7 @@ apiClient.interceptors.request.use(function (config) {
         console.error("Error adding auth token:", error);
     }
 
+    // Make sure we always return the config object
     return config;
 });
 

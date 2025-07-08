@@ -1,40 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, List, Tag, Tooltip, message } from "antd";
+import { Modal, Button, List, Tag, message } from "antd";
 import { coupon as CouponType } from "@/types/coupon";
-
-// Sample data
-const sampleCoupons: CouponType[] = [
-  {
-    id: "coupon-001",
-    name: "NEWUSER10",
-    discount: 10.0,
-    description: "Giảm 10% cho khách hàng mới",
-  },
-  {
-    id: "coupon-002",
-    name: "SUMMER20",
-    discount: 20.0,
-    description: "Giảm 20% cho mùa hè",
-  },
-  {
-    id: "coupon-003",
-    name: "WEEKEND15",
-    discount: 15.0,
-    description: "Giảm 15% cho thuê xe cuối tuần",
-  },
-  {
-    id: "coupon-004",
-    name: "LONGTERM25",
-    discount: 25.0,
-    description: "Giảm 25% cho thuê dài hạn (từ 7 ngày)",
-  },
-  {
-    id: "coupon-005",
-    name: "VIP30",
-    discount: 30.0,
-    description: "Giảm 30% cho khách hàng VIP",
-  },
-];
+import { getCoupons } from "@/apis/coupon.api";
+import { useUserValue } from "@/recoils/user.state";
+import { User } from "@/types/user";
 
 interface CouponProps {
   applyCoupon: (coupon: CouponType | null) => void;
@@ -44,11 +13,29 @@ const Coupon: React.FC<CouponProps> = ({ applyCoupon }) => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [coupons, setCoupons] = useState<CouponType[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<CouponType | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const user = useUserValue() as User;
 
   useEffect(() => {
-    // Trong thực tế, bạn sẽ fetch dữ liệu từ API
-    setCoupons(sampleCoupons);
-  }, []);
+    const fetchCoupons = async () => {
+      if (!user?.id) return;
+
+      setLoading(true);
+      try {
+        const couponsData = await getCoupons(user.id);
+        setCoupons(couponsData);
+      } catch (error) {
+        console.error("Failed to fetch coupons:", error);
+        message.error("Không thể tải mã giảm giá");
+        setCoupons([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCoupons();
+  }, [user?.id]);
 
   const showModal = () => {
     setIsModalOpen(true);
@@ -108,6 +95,7 @@ const Coupon: React.FC<CouponProps> = ({ applyCoupon }) => {
         width={600}
       >
         <List
+          loading={loading}
           itemLayout="horizontal"
           dataSource={coupons}
           renderItem={(coupon) => (

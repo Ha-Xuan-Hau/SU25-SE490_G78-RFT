@@ -6,9 +6,10 @@
 
 @theme {
   /* Gradient colors */
-  --color-primary: #1976D2;
-  --color-secondary: #388E3C;
-  --color-accent: #FFA000;
+  --color-primary: #4682A9;
+  --color-secondary: #749BC2;
+  --color-accent: #91C8E4;
+  --color-fourth: #FFFBDE;
 
   --color-skyblue: #79adff;
   --color-lightskyblue: #9cc2dd;
@@ -77,11 +78,9 @@ html {
   /* Firefox */
 }
 
-section {
-  @apply py-24
-}
 
-.blog-details p, .blog-details hr {
+.blog-details p,
+.blog-details hr {
   @apply mb-8;
 }
 
@@ -184,4 +183,74 @@ section {
 
 .provider-registration-steps .ant-steps-item-finish>.ant-steps-item-container>.ant-steps-item-content>.ant-steps-item-title::after {
   background-color: #ff4d4f;
+}
+
+.no-more-icon .ant-tabs-nav-more {
+  display: none !important;
+}
+
+/* Toast customization */
+.Toastify__toast-container {
+  z-index: 9999;
+}
+
+.Toastify__toast {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  border-radius: 8px;
+  min-height: 64px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.Toastify__toast--success {
+  background: #f6ffed;
+  border-left: 4px solid #52c41a;
+  color: #389e0d;
+}
+
+.Toastify__toast--error {
+  background: #fff2f0;
+  border-left: 4px solid #ff4d4f;
+  color: #cf1322;
+}
+
+.Toastify__toast--warning {
+  background: #fffbe6;
+  border-left: 4px solid #faad14;
+  color: #d46b08;
+}
+
+.Toastify__toast--info {
+  background: #f6ffed;
+  border-left: 4px solid #1890ff;
+  color: #096dd9;
+}
+
+.Toastify__progress-bar {
+  height: 3px;
+}
+
+.Toastify__progress-bar--success {
+  background: #52c41a;
+}
+
+.Toastify__progress-bar--error {
+  background: #ff4d4f;
+}
+
+.Toastify__progress-bar--warning {
+  background: #faad14;
+}
+
+.Toastify__progress-bar--info {
+  background: #1890ff;
+}
+
+.Toastify__close-button {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
 }
