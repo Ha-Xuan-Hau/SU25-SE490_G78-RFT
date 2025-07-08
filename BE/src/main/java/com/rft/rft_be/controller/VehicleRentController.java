@@ -24,17 +24,17 @@ public class VehicleRentController {
 
     @GetMapping("/my-vehicles")
     public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleDTO>>> getUserVehicles(
-            @RequestHeader("User-Id") String userId,
+
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
         try {
-            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles(userId, page, size, sortBy, sortDir);
+            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles( page, size, sortBy, sortDir);
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicles retrieved successfully", vehicles));
         } catch (Exception e) {
-            log.error("Error retrieving vehicles for user: {}", userId, e);
+            log.error("Error retrieving vehicles for user: {}",  e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponseDTO.error("Failed to retrieve vehicles: " + e.getMessage()));
         }
@@ -43,15 +43,15 @@ public class VehicleRentController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> registerVehicle(
-            @RequestHeader("User-Id") String userId,
+
             @Valid @RequestBody VehicleRentCreateDTO request) {
 
         try {
-            VehicleGetDTO vehicle = vehicleRentService.createVehicle(userId, request);
+            VehicleGetDTO vehicle = vehicleRentService.createVehicle( request);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponseDTO.success("Vehicle registered successfully", vehicle));
         } catch (Exception e) {
-            log.error("Error registering vehicle for user: {}", userId, e);
+            log.error("Error registering vehicle for user: {}", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponseDTO.error("Failed to register vehicle: " + e.getMessage()));
         }
@@ -76,15 +76,15 @@ public class VehicleRentController {
 
     @PutMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateVehicle(
-            @RequestHeader("User-Id") String userId,
+
             @PathVariable String vehicleId,
             @Valid @RequestBody VehicleRentUpdateDTO request) {
 
         try {
-            VehicleGetDTO vehicle = vehicleRentService.updateVehicle(userId, vehicleId, request);
+            VehicleGetDTO vehicle = vehicleRentService.updateVehicle( vehicleId, request);
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicle updated successfully", vehicle));
         } catch (Exception e) {
-            log.error("Error updating vehicle: {} for user: {}", vehicleId, userId, e);
+            log.error("Error updating vehicle: {} for user: {}", vehicleId, e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponseDTO.error("Failed to update vehicle: " + e.getMessage()));
         }
@@ -94,14 +94,14 @@ public class VehicleRentController {
 
     @DeleteMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteVehicle(
-            @RequestHeader("User-Id") String userId,
+
             @PathVariable String vehicleId) {
 
         try {
-            vehicleRentService.deleteVehicle(userId, vehicleId);
+            vehicleRentService.deleteVehicle( vehicleId);
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicle deleted successfully", null));
         } catch (Exception e) {
-            log.error("Error deleting vehicle: {} for user: {}", vehicleId, userId, e);
+            log.error("Error deleting vehicle: {} for user: {}", vehicleId,  e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponseDTO.error("Failed to delete vehicle: " + e.getMessage()));
         }

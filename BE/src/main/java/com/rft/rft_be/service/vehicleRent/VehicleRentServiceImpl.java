@@ -18,6 +18,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +40,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final VehicleMapper vehicleMapper;
 
     @Override
-    public PageResponseDTO<VehicleDTO> getUserVehicles(String userId, int page, int size, String sortBy, String sortDir) {
+    public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Getting vehicles for user: {}, page: {}, size: {}", userId, page, size);
 
         Sort sort = sortDir.equalsIgnoreCase("desc") ?
@@ -67,21 +71,39 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
     @Override
     @Transactional
-    public VehicleGetDTO createVehicle(String userId, VehicleRentCreateDTO request) {
+    public VehicleGetDTO createVehicle(  VehicleRentCreateDTO request) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Creating vehicle for user: {}", userId);
+//        Vehicle.VehicleType v= Vehicle.VehicleType.valueOf(request.getVehicleType());
 
-        // Validate user exists
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        Vehicle.VehicleType vehicleType;
+        try {
+            vehicleType = Vehicle.VehicleType.valueOf(request.getVehicleType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid vehicle type: " + request.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
+        }
 
-        // Validate brand exists
-        Brand brand = brandRepository.findById(request.getBrandId())
-                .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
+        // Validate brand and model based on vehicle type - SIMPLIFIED VERSION
+        Brand brand = null;
+        Model model = null;
 
-        // Validate model exists and belongs to the brand
-        Model model = modelRepository.findById(request.getModelId())
-                .orElseThrow(() -> new RuntimeException("Model not found with id: " + request.getModelId()));
-
+        if (vehicleType == Vehicle.VehicleType.CAR) {
+            // Car: require both brand and model
+            brand = brandRepository.findById(request.getBrandId())
+                    .orElseThrow(() -> new RuntimeException("Car must have a valid brand. Not found: " + request.getBrandId()));
+            model = modelRepository.findById(request.getModelId())
+                    .orElseThrow(() -> new RuntimeException("Car must have a valid model. Not found: " + request.getModelId()));
+            // Optional: check if model belongs to brand
+        } else if (vehicleType == Vehicle.VehicleType.MOTORBIKE) {
+            // Motorbike: require brand only
+            brand = brandRepository.findById(request.getBrandId())
+                    .orElseThrow(() -> new RuntimeException("Motorbike must have a valid brand. Not found: " + request.getBrandId()));
+            // Ignore model
+        } else if (vehicleType == Vehicle.VehicleType.BICYCLE) {
+            // Bicycle: no brand or model required
+            // Ignore brand and model
+        }
         // Check if license plate already exists for this user
         if (vehicleRepository.existsByLicensePlateAndUserId(request.getLicensePlate(), userId)) {
             throw new RuntimeException("License plate already exists for this user");
@@ -90,7 +112,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Instant now = Instant.now();
 
         Vehicle vehicle = Vehicle.builder()
-                .user(user)
+
                 .brand(brand)
                 .model(model)
                 .licensePlate(request.getLicensePlate())
@@ -127,7 +149,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
     @Override
     @Transactional
-    public VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request) {
+    public VehicleGetDTO updateVehicle( String vehicleId, VehicleRentUpdateDTO request) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
@@ -264,7 +288,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
     @Override
     @Transactional
-    public void deleteVehicle(String userId, String vehicleId) {
+    public void deleteVehicle( String vehicleId) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Deleting vehicle: {} for user: {}", vehicleId, userId);
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)

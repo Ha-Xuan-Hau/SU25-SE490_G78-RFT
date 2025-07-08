@@ -60,6 +60,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/vehicles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookedTimeSlot/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/wallet/staff/**").hasAnyRole("STAFF", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/bookings").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/bookings/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/**").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/vehicle-rent").hasAuthority("PROVIDER")
+                        .requestMatchers(HttpMethod.POST, "/api/vehicle-rent/register").hasAnyRole("PROVIDER","ADMIN")
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 );
