@@ -8,6 +8,7 @@ import com.rft.rft_be.service.Contract.ContractService;
 import com.rft.rft_be.service.payment.PaymentService;
 import com.rft.rft_be.util.VNPayUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,16 +22,15 @@ import java.util.Map;
 public class PaymentController {
     private final PaymentService paymentService;
     private final ContractService contractService;
-    private final VNPAYConfig vnPayConfig;
 
 
     //lấy thông tin là id của bookingId chuyền vào từ RequestBody để tạo mã thanh toán cho booking bằng vnpay
     @PostMapping("/vn-pay")
-    public ResponseEntity<VNPayResponse> pay(@RequestBody PaymentRequest dto, HttpServletRequest request) {
-        try{
+    public ResponseEntity<VNPayResponse> pay(@Valid @RequestBody PaymentRequest dto, HttpServletRequest request) {
+        try {
             VNPayResponse response = paymentService.createVnPayPayment(dto, request);
             return ResponseEntity.ok(response);
-        }catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new VNPayResponse("", e.getMessage(), ""));
         }
     }
@@ -41,7 +41,7 @@ public class PaymentController {
         // Bước 1: Lấy vnpParams từ request
         Map<String, String> vnpParams = VNPayUtil.extractVNPayParams(request);
         // Bước 2: Xác minh chữ ký
-        boolean isValid = vnPayConfig.validateVNPayResponse(vnpParams);
+        boolean isValid = paymentService.validateVNPayResponse(vnpParams);
         if (!isValid) {
             return ResponseEntity.badRequest().body(" Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
         }
@@ -54,13 +54,13 @@ public class PaymentController {
         }
     }
 
-    //tạo giao dịch nạp tiền bằng ví từ vnpay dto nhận giá trị là bookingid, bankCode và amout
+    //tạo giao dịch nạp tiền bằng ví từ vnpay dto nhận giá trị là amout
     @PostMapping("/topUp")
-    public ResponseEntity<?> topUpWallet(@RequestBody PaymentRequest dto, HttpServletRequest request){
-        try{
+    public ResponseEntity<?> topUpWallet(@Valid @RequestBody PaymentRequest dto, HttpServletRequest request) {
+        try {
             VNPayResponse response = paymentService.createTopUpPayment(dto, request);
             return ResponseEntity.ok(response);
-        }catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new VNPayResponse("", e.getMessage(), ""));
         }
     }
@@ -71,7 +71,7 @@ public class PaymentController {
         // Bước 1: Lấy vnpParams từ request
         Map<String, String> vnpParams = VNPayUtil.extractVNPayParams(request);
         // Bước 2: Xác minh chữ ký
-        boolean isValid = vnPayConfig.validateVNPayResponse(vnpParams);
+        boolean isValid = paymentService.validateVNPayResponse(vnpParams);
         if (!isValid) {
             return ResponseEntity.badRequest().body(" Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
         }

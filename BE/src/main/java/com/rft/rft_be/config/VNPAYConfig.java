@@ -52,21 +52,4 @@ public class VNPAYConfig {
         vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
         return vnpParamsMap;
     }
-
-    public boolean validateVNPayResponse(Map<String, String> vnpParams) {
-        // 1. Lấy vnp_SecureHash từ dữ liệu gửi về
-        String receivedHash = vnpParams.get("vnp_SecureHash");
-        if (receivedHash == null || receivedHash.isEmpty()) {
-            return false;
-        }
-        // 2. Tạo bản sao Map, và loại bỏ các key không tham gia tính toán
-        Map<String, String> filteredParams = new HashMap<>(vnpParams);
-        filteredParams.remove("vnp_SecureHash");
-        // 3. Tạo chuỗi dữ liệu để tạo hash (giống cách khi gửi)
-        String hashData = VNPayUtil.getPaymentURL(filteredParams, false);
-        // 4. Tính lại chữ ký với secretKey
-        String calculatedHash = VNPayUtil.hmacSHA512(secretKey, hashData);
-        // 5. So sánh chữ ký trả về với chữ ký vừa tính lại (không phân biệt hoa/thường)
-        return receivedHash.equalsIgnoreCase(calculatedHash);
-    }
 }
