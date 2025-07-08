@@ -19,12 +19,55 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
     @Query("SELECT c FROM Contract c WHERE c.status = :status")
     List<Contract> findByStatus(@Param("status") Contract.Status status);
 
-    @Query("SELECT c FROM Contract c WHERE c.user.id = :userId AND c.status = :status")
-    List<Contract> findByUserIdAndStatus(@Param("userId") String userId, @Param("status") Contract.Status status);
 
     @Query("SELECT c FROM Contract c WHERE c.booking.id = :bookingId AND c.status = :status")
     List<Contract> findByBookingIdAndStatus(@Param("bookingId") String bookingId, @Param("status") Contract.Status status);
 
+
+    @Query("SELECT c FROM Contract c " +
+            "JOIN Booking b ON c.booking.id = b.id " +
+            "JOIN Vehicle v ON b.vehicle.id = v.id " +
+            "WHERE v.user.id = :vehicleOwnerId AND c.status = :status")
+    List<Contract> findByUserIdAndStatus(@Param("vehicleOwnerId") String vehicleOwnerId,
+                                                 @Param("status") Contract.Status status);
+//
+//    // Find all contracts by vehicle owner ID (all statuses)
+//    @Query("SELECT c FROM Contract c " +
+//            "JOIN Booking b ON c.booking.id = b.id " +
+//            "JOIN Vehicle v ON b.vehicle.id = v.id " +
+//            "WHERE v.user.id = :vehicleOwnerId")
+//    List<Contract> findByVehicleOwnerId(@Param("vehicleOwnerId") String vehicleOwnerId);
+//
+//    // Count contracts by vehicle owner ID
+//    @Query("SELECT COUNT(c) FROM Contract c " +
+//            "JOIN Booking b ON c.booking.id = b.id " +
+//            "JOIN Vehicle v ON b.vehicle.id = v.id " +
+//            "WHERE v.user.id = :vehicleOwnerId")
+//    long countByVehicleOwnerId(@Param("vehicleOwnerId") String vehicleOwnerId);
+//
+//    // Count contracts by vehicle owner ID and status
+//    @Query("SELECT COUNT(c) FROM Contract c " +
+//            "JOIN Booking b ON c.booking.id = b.id " +
+//            "JOIN Vehicle v ON b.vehicle.id = v.id " +
+//            "WHERE v.user.id = :vehicleOwnerId AND c.status = :status")
+//    long countByVehicleOwnerIdAndStatus(@Param("vehicleOwnerId") String vehicleOwnerId,
+//                                        @Param("status") Contract.Status status);
+//
+//    // Find contracts by vehicle ID
+//    @Query("SELECT c FROM Contract c " +
+//            "JOIN Booking b ON c.booking.id = b.id " +
+//            "WHERE b.vehicle.id = :vehicleId")
+//    List<Contract> findByVehicleId(@Param("vehicleId") String vehicleId);
+//
+//    // Find contracts by vehicle ID and status
+//    @Query("SELECT c FROM Contract c " +
+//            "JOIN Booking b ON c.booking.id = b.id " +
+//            "WHERE b.vehicle.id = :vehicleId AND c.status = :status")
+//    List<Contract> findByVehicleIdAndStatus(@Param("vehicleId") String vehicleId,
+//                                           @Param("status") Contract.Status status);
+
+
     @Query("SELECT c FROM Contract c WHERE c.booking.vehicle.user.id = :providerId AND c.status = :status")
     List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId, @Param("status") Contract.Status status);
 }
+
