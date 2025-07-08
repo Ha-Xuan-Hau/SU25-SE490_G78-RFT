@@ -71,10 +71,12 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     @Override
     @Transactional
     public VehicleGetDTO createVehicle(  VehicleRentCreateDTO request) {
-        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+       JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         log.info("Creating vehicle for user: {}", userId);
-//        Vehicle.VehicleType v= Vehicle.VehicleType.valueOf(request.getVehicleType());
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
         Vehicle.VehicleType vehicleType;
         try {
@@ -83,38 +85,51 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             throw new RuntimeException("Invalid vehicle type: " + request.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
         }
 
-        // Validate brand and model based on vehicle type - SIMPLIFIED VERSION
+        // Validate brand and model based on vehicle type
         Brand brand = null;
         Model model = null;
+        String licensePlate = null; // Khởi tạo là null
 
         if (vehicleType == Vehicle.VehicleType.CAR) {
-            // Car: require both brand and model
+            // Car: require brand, model and license plate
             brand = brandRepository.findById(request.getBrandId())
                     .orElseThrow(() -> new RuntimeException("Car must have a valid brand. Not found: " + request.getBrandId()));
             model = modelRepository.findById(request.getModelId())
-                    .orElseThrow(() -> new RuntimeException("Car must have a valid model. Not found: " + request.getModelId()));
-            // Optional: check if model belongs to brand
+                    .orElseThrow(() -> new RuntimeException("Vehicle must have a valid model. Not found: " + request.getModelId()));
+
+            // Validate license plate for CAR
+            if (request.getLicensePlate() == null || request.getLicensePlate().trim().isEmpty()) {
+                throw new RuntimeException("Vehicle must have a license plate");
+            }
+            licensePlate = request.getLicensePlate().trim();
+
         } else if (vehicleType == Vehicle.VehicleType.MOTORBIKE) {
-            // Motorbike: require brand only
+            // Motorbike: require brand and license plate only
             brand = brandRepository.findById(request.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Motorbike must have a valid brand. Not found: " + request.getBrandId()));
-            // Ignore model
+                    .orElseThrow(() -> new RuntimeException("Vehicle must have a valid brand. Not found: " + request.getBrandId()));
+
+            // Validate license plate for MOTORBIKE
+            if (request.getLicensePlate() == null || request.getLicensePlate().trim().isEmpty()) {
+                throw new RuntimeException("Vehicle must have a license plate");
+            }
+            licensePlate = request.getLicensePlate().trim();
+
         } else if (vehicleType == Vehicle.VehicleType.BICYCLE) {
-            // Bicycle: no brand or model required
-            // Ignore brand and model
+            // Bicycle: không cần brand, model, và license plate
+            // licensePlate sẽ giữ nguyên là null
         }
-        // Check if license plate already exists for this user
-        if (vehicleRepository.existsByLicensePlateAndUserId(request.getLicensePlate(), userId)) {
+
+        // Check if license plate already exists for this user (chỉ khi có license plate)
+        if (licensePlate != null && vehicleRepository.existsByLicensePlateAndUserId(licensePlate, userId)) {
             throw new RuntimeException("License plate already exists for this user");
         }
 
-        LocalDateTime now = LocalDateTime.now();
-
+        Instant now = Instant.now();
         Vehicle vehicle = Vehicle.builder()
-
+                .user(user)
                 .brand(brand)
                 .model(model)
-                .licensePlate(request.getLicensePlate())
+                .licensePlate(licensePlate)
                 .vehicleType(parseVehicleType(request.getVehicleType()))
                 .vehicleFeatures(request.getVehicleFeatures())
                 .vehicleImages(request.getVehicleImages())
