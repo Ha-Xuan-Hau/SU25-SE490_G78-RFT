@@ -17,6 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +39,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final VehicleMapper vehicleMapper;
 
     @Override
-    public PageResponseDTO<VehicleDTO> getUserVehicles(String userId, int page, int size, String sortBy, String sortDir) {
+    public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Getting vehicles for user: {}, page: {}, size: {}", userId, page, size);
 
         Sort sort = sortDir.equalsIgnoreCase("desc")
@@ -66,23 +70,58 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
     @Override
     @Transactional
-    public VehicleGetDTO createVehicle(String userId, VehicleRentCreateDTO request) {
+    public VehicleGetDTO createVehicle(  VehicleRentCreateDTO request) {
+       JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Creating vehicle for user: {}", userId);
 
         // Validate user exists
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
-        // Validate brand exists
-        Brand brand = brandRepository.findById(request.getBrandId())
-                .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
+        Vehicle.VehicleType vehicleType;
+        try {
+            vehicleType = Vehicle.VehicleType.valueOf(request.getVehicleType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid vehicle type: " + request.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
+        }
 
-        // Validate model exists and belongs to the brand
-        Model model = modelRepository.findById(request.getModelId())
-                .orElseThrow(() -> new RuntimeException("Model not found with id: " + request.getModelId()));
+        // Validate brand and model based on vehicle type
+        Brand brand = null;
+        Model model = null;
+        String licensePlate = null; // Khởi tạo là null
 
-        // Check if license plate already exists for this user
-        if (vehicleRepository.existsByLicensePlateAndUserId(request.getLicensePlate(), userId)) {
+        if (vehicleType == Vehicle.VehicleType.CAR) {
+            // Car: require brand, model and license plate
+            brand = brandRepository.findById(request.getBrandId())
+                    .orElseThrow(() -> new RuntimeException("Car must have a valid brand. Not found: " + request.getBrandId()));
+            model = modelRepository.findById(request.getModelId())
+                    .orElseThrow(() -> new RuntimeException("Vehicle must have a valid model. Not found: " + request.getModelId()));
+
+            // Validate license plate for CAR
+            if (request.getLicensePlate() == null || request.getLicensePlate().trim().isEmpty()) {
+                throw new RuntimeException("Vehicle must have a license plate");
+            }
+            licensePlate = request.getLicensePlate().trim();
+
+        } else if (vehicleType == Vehicle.VehicleType.MOTORBIKE) {
+            // Motorbike: require brand and license plate only
+            brand = brandRepository.findById(request.getBrandId())
+                    .orElseThrow(() -> new RuntimeException("Vehicle must have a valid brand. Not found: " + request.getBrandId()));
+
+            // Validate license plate for MOTORBIKE
+            if (request.getLicensePlate() == null || request.getLicensePlate().trim().isEmpty()) {
+                throw new RuntimeException("Vehicle must have a license plate");
+            }
+            licensePlate = request.getLicensePlate().trim();
+
+        } else if (vehicleType == Vehicle.VehicleType.BICYCLE) {
+            // Bicycle: không cần brand, model, và license plate
+            // licensePlate sẽ giữ nguyên là null
+        }
+
+        // Check if license plate already exists for this user (chỉ khi có license plate)
+        if (licensePlate != null && vehicleRepository.existsByLicensePlateAndUserId(licensePlate, userId)) {
             throw new RuntimeException("License plate already exists for this user");
         }
 
@@ -92,7 +131,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .user(user)
                 .brand(brand)
                 .model(model)
-                .licensePlate(request.getLicensePlate())
+                .licensePlate(licensePlate)
                 .vehicleType(parseVehicleType(request.getVehicleType()))
                 .vehicleFeatures(request.getVehicleFeatures())
                 .vehicleImages(request.getVehicleImages())
@@ -105,6 +144,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .description(request.getDescription())
                 .numberVehicle(request.getNumberVehicle())
                 .costPerDay(request.getCostPerDay())
+                .haveDriver(parseHaveDriver(request.getHaveDriver()))
                 .thumb(request.getThumb())
                 .status(Vehicle.Status.AVAILABLE)
                 .totalRatings(0)
@@ -126,7 +166,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
     @Override
     @Transactional
-    public VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request) {
+    public VehicleGetDTO updateVehicle( String vehicleId, VehicleRentUpdateDTO request) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
@@ -260,7 +302,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 //    }
     @Override
     @Transactional
-    public void deleteVehicle(String userId, String vehicleId) {
+    public void deleteVehicle( String vehicleId) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Deleting vehicle: {} for user: {}", vehicleId, userId);
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
@@ -273,7 +317,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     }
 
     @Override
-    public VehicleDetailDTO getVehicleById(String userId, String vehicleId) {
+    public VehicleDetailDTO getVehicleById( String vehicleId) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
         log.info("Getting vehicle: {} for user: {}", vehicleId, userId);
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
@@ -323,7 +369,17 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             return null;
         }
     }
-
+    private Vehicle.HaveDriver parseHaveDriver(String hasDriver) {
+        if (hasDriver == null || hasDriver.trim().isEmpty()) {
+            return null;
+        }
+        try{
+            return Vehicle.HaveDriver.valueOf(hasDriver.toUpperCase());
+        }catch (IllegalArgumentException e){
+            log.warn("Invalid has driver: {}, defaulting to NO", hasDriver);
+            return null;
+        }
+    }
     private Vehicle.FuelType parseFuelType(String fuelType) {
         if (fuelType == null || fuelType.trim().isEmpty()) {
             return null;

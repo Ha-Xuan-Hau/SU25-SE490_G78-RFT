@@ -2,38 +2,39 @@ package com.rft.rft_be.dto.vehicle.vehicleRent;
 
 
 import jakarta.validation.constraints.*;
+import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
-
+@Builder
 @Data
 public class VehicleRentCreateDTO {
-    @NotBlank(message = "Brand ID is required")
+
     private String brandId;
 
-    @NotBlank(message = "Model ID is required")
+
     private String modelId;
 
-    @NotBlank(message = "License plate is required")
+
     private String licensePlate;
 
     @NotBlank(message = "Vehicle type is required")
     private String vehicleType;
-
+    @NotBlank(message = "Vehicle Features is required")
     private String vehicleFeatures;
+    @NotBlank(message = "Vehicle Image is required")
     private String vehicleImages;
-    private String haveDriver;
+    private String haveDriver="NO";
     private String insuranceStatus = "NO";
     private String shipToAddress = "NO";
 
     @Min(value = 1, message = "Number of seats must be at least 1")
     private Integer numberSeat;
 
-    @Min(value = 1900, message = "Year manufacture must be valid")
-    @Max(value = 2030, message = "Year manufacture must be valid")
     private Integer yearManufacture;
 
     private String transmission;
+    @NotBlank(message = "Fuel type is required")
     private String fuelType;
     private String description;
 
