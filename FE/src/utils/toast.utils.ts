@@ -1,5 +1,16 @@
 import { toast, ToastOptions, Id } from "react-toastify";
 
+// Type for API error response
+interface ApiErrorResponse {
+  response?: {
+    data?: {
+      message?: string;
+      error?: string;
+    };
+  };
+  message?: string;
+}
+
 // Default toast options
 const defaultOptions: ToastOptions = {
   position: "top-right",
@@ -85,6 +96,44 @@ export const showPromiseToast = <T>(
   return toast.promise(promise, messages, { ...defaultOptions, ...options });
 };
 
+// Utility to extract error message from API response
+export const extractErrorMessage = (
+  error: unknown,
+  defaultMessage: string = "Đã xảy ra lỗi"
+): string => {
+  if (error && typeof error === "object") {
+    const errorObj = error as ApiErrorResponse;
+    if (errorObj?.response?.data?.message) {
+      return errorObj.response.data.message;
+    }
+    if (errorObj?.response?.data?.error) {
+      return errorObj.response.data.error;
+    }
+    if (errorObj?.message) {
+      return errorObj.message;
+    }
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return defaultMessage;
+};
+
+// Show error toast with automatic message extraction
+export const showApiError = (
+  error: unknown,
+  defaultMessage?: string,
+  options?: ToastOptions
+) => {
+  const message = extractErrorMessage(error, defaultMessage);
+  return showError(message, options);
+};
+
+// Show success toast for API operations
+export const showApiSuccess = (message: string, options?: ToastOptions) => {
+  return showSuccess(message, options);
+};
+
 const toastUtils = {
   success: showSuccess,
   error: showError,
@@ -96,6 +145,9 @@ const toastUtils = {
   dismiss: dismissToast,
   dismissAll: dismissAllToasts,
   promise: showPromiseToast,
+  apiError: showApiError,
+  apiSuccess: showApiSuccess,
+  extractError: extractErrorMessage,
 };
 
 export default toastUtils;

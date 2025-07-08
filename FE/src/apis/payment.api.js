@@ -31,25 +31,3 @@ export const handleVNPayCallback = async (callbackParams) => {
         throw new Error(`Lỗi xử lý callback VNPay: ${error.response?.data?.message || error.message}`);
     }
 };
-
-/**
- * Các mã ngân hàng VNPay phổ biến
- */
-export const VNPAY_BANK_CODES = {
-    VNPAYQR: 'VNPAYQR',     // Thanh toán qua QR Code
-    VNBANK: 'VNBANK',       // Thanh toán qua thẻ ATM/iBanking
-    INTCARD: 'INTCARD',     // Thanh toán qua thẻ quốc tế
-    VISA: 'VISA',           // Thẻ VISA
-    MASTERCARD: 'MASTERCARD', // Thẻ MasterCard
-    JCB: 'JCB',             // Thẻ JCB
-};
-
-/**
- * Trạng thái phản hồi từ VNPay
- */
-export const VNPAY_RESPONSE_CODES = {
-    SUCCESS: '00',          // Giao dịch thành công
-    FAILED: '99',           // Giao dịch thất bại
-    PENDING: '01',          // Giao dịch đang xử lý
-    CANCELLED: '24',        // Giao dịch bị hủy
-};

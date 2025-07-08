@@ -15,8 +15,22 @@ import { Badge } from "@/components/ui/badge";
 // Lucide React icons
 import { CalendarDaysIcon } from "lucide-react";
 
-// Assuming RatingModal exists and is imported correctly
+// Import modals
 import RatingModal from "./RatingModal";
+import PaymentModal from "./PaymentModal";
+import CancelBookingModal from "./CancelBookingModal";
+import ReturnVehicleModal from "./ReturnVehicleModal";
+
+// Import booking APIs
+import { updateBookingStatus, cancelBooking } from "@/apis/booking.api";
+import { showSuccess, showError } from "@/utils/toast.utils";
+
+// API response type
+interface ApiResponse {
+  success: boolean;
+  error?: string;
+  data?: unknown;
+}
 
 // Định nghĩa interface cho props
 interface BookingInfo {
@@ -58,26 +72,53 @@ const getStatusBadge = (status?: string) => {
     | "warning"
     | null = null;
   let text = "Không rõ";
+  let customClass = "";
 
-  if (status === "Đã tất toán") {
-    variant = "success"; // Custom variant for success/completed
+  if (status === "Đã tất toán" || status === "COMPLETED") {
+    variant = "default";
     text = "Đã hoàn thành";
-  } else if (status === "Đang thực hiện") {
-    variant = "default"; // Blue for active/renting
+    customClass = "bg-emerald-500 text-white hover:bg-emerald-500/80"; // Emerald like completed tab
+  } else if (status === "CONFIRMED" || status === "Đã xác nhận") {
+    variant = "default";
+    text = "Đã xác nhận";
+    customClass = "bg-orange-500 text-white hover:bg-orange-500/80"; // Orange like processing tab
+  } else if (status === "Đang thực hiện" || status === "RECEIVED_BY_CUSTOMER") {
+    variant = "default";
     text = "Đang thuê";
-  } else if (status === "Đã hủy" || status === "Đã hủy") {
-    // Check both info.status and info.contract.status
-    variant = "destructive"; // Red for cancelled
+    customClass = "bg-green-500 text-white hover:bg-green-500/80"; // Green like active tab
+  } else if (
+    status === "DELIVERED" ||
+    status === "Đang giao xe" ||
+    status === "DELIVERING"
+  ) {
+    variant = "default";
+    text = "Xe đã được giao";
+    customClass = "bg-yellow-500 text-white hover:bg-yellow-500/80"; // Yellow like transporting tab
+  } else if (status === "RETURNED" || status === "Đã trả xe") {
+    variant = "default";
+    text = "Đã trả xe";
+    customClass = "bg-blue-500 text-white hover:bg-blue-500/80"; // Blue like returned tab
+  } else if (status === "Đã hủy" || status === "CANCELLED") {
+    variant = "destructive";
     text = "Đã hủy";
+    customClass = "bg-red-500 text-white hover:bg-red-500/80"; // Red like cancelled tab
+  } else if (status === "Chờ thanh toán" || status === "UNPAID") {
+    variant = "default";
+    text = "Chờ thanh toán";
+    customClass = "bg-red-500 text-white hover:bg-red-500/80"; // Red like payment tab
+  } else if (status === "Chờ xử lý" || status === "PENDING") {
+    variant = "default";
+    text = "Chờ xử lý";
+    customClass = "bg-orange-500 text-white hover:bg-orange-500/80"; // Orange like processing tab
   } else {
-    variant = "warning"; // Yellow for pending/waiting
+    variant = "secondary";
     text = "Đang chờ";
   }
 
   return (
     <Badge
       variant={variant}
-      className="rounded-full text-xs px-3 py-1 font-medium"
+      className={`rounded-full text-xs px-3 py-1 font-medium ${customClass}`}
     >
       {text}
     </Badge>
@@ -91,6 +132,10 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   const [open, setOpen] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [carId, setCarId] = useState<string | null>(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [returnModalVisible, setReturnModalVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const showModal = (bookingId: string, carId: string) => {
     setBookingId(bookingId);
@@ -102,6 +147,177 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
     setOpen(false);
   };
 
+  const showPaymentModal = () => {
+    setPaymentModalVisible(true);
+  };
+
+  const hidePaymentModal = () => {
+    setPaymentModalVisible(false);
+  };
+
+  const handlePaymentSuccess = () => {
+    // Refresh the page or update the booking status
+    window.location.reload();
+  };
+
+  // Handle customer receiving the vehicle
+  const handleReceiveVehicle = async () => {
+    try {
+      setLoading(true);
+      const result = (await updateBookingStatus(
+        info._id,
+        "receive"
+      )) as ApiResponse;
+
+      if (result.success) {
+        showSuccess("Đã xác nhận nhận xe thành công!");
+        // Refresh the page to show updated status
+        window.location.reload();
+      } else {
+        showError(result.error || "Có lỗi xảy ra khi xác nhận nhận xe");
+      }
+    } catch (error) {
+      console.error("Error receiving vehicle:", error);
+      showError("Có lỗi xảy ra khi xác nhận nhận xe");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle booking cancellation
+  const handleCancelBooking = async (reason: string) => {
+    try {
+      setLoading(true);
+      const result = (await cancelBooking(
+        info._id,
+        reason,
+        "customer"
+      )) as ApiResponse;
+
+      if (result.success) {
+        showSuccess("Đã hủy đơn đặt xe thành công!");
+        setCancelModalVisible(false);
+        // Refresh the page to show updated status
+        window.location.reload();
+      } else {
+        showError(result.error || "Có lỗi xảy ra khi hủy đơn");
+      }
+    } catch (error) {
+      console.error("Error canceling booking:", error);
+      showError("Có lỗi xảy ra khi hủy đơn");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Show cancel modal
+  const showCancelModal = () => {
+    setCancelModalVisible(true);
+  };
+
+  // Hide cancel modal
+  const hideCancelModal = () => {
+    setCancelModalVisible(false);
+  };
+
+  // Handle vehicle return
+  const handleReturnVehicle = async () => {
+    try {
+      setLoading(true);
+      const result = (await updateBookingStatus(
+        info._id,
+        "return"
+      )) as ApiResponse;
+
+      if (result.success) {
+        showSuccess("Đã xác nhận trả xe thành công!");
+        setReturnModalVisible(false);
+        // Refresh the page to show updated status
+        window.location.reload();
+      } else {
+        showError(result.error || "Có lỗi xảy ra khi trả xe");
+      }
+    } catch (error) {
+      console.error("Error returning vehicle:", error);
+      showError("Có lỗi xảy ra khi trả xe");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Show return modal
+  const showReturnModal = () => {
+    setReturnModalVisible(true);
+  };
+
+  // Hide return modal
+  const hideReturnModal = () => {
+    setReturnModalVisible(false);
+  };
+
+  // Check if booking is unpaid/waiting payment
+  const isUnpaid = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+
+    return (
+      contractStatus === "Chờ thanh toán" ||
+      bookingStatus === "Chờ thanh toán" ||
+      contractStatus === "WAITING_PAYMENT" ||
+      bookingStatus === "UNPAID"
+    );
+  };
+
+  // Check if booking is delivered and waiting for customer to receive
+  const isDelivered = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+
+    return (
+      contractStatus === "DELIVERED" ||
+      bookingStatus === "DELIVERED" ||
+      contractStatus === "Đang giao xe" ||
+      bookingStatus === "Đang giao xe"
+    );
+  };
+
+  // Check if customer has received the vehicle and can return it
+  const canReturn = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+
+    return (
+      contractStatus === "RECEIVED_BY_CUSTOMER" ||
+      bookingStatus === "RECEIVED_BY_CUSTOMER" ||
+      contractStatus === "Đang thực hiện" ||
+      bookingStatus === "Đang thực hiện"
+    );
+  };
+
+  // Check if cancellation is allowed (before RECEIVED_BY_CUSTOMER)
+  const canCancel = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+
+    // Cannot cancel if already received by customer, completed, or already cancelled
+    const prohibitedStatuses = [
+      "RECEIVED_BY_CUSTOMER",
+      "Đang thực hiện",
+      "COMPLETED",
+      "Đã tất toán",
+      "RETURNED",
+      "Đã trả xe",
+      "CANCELLED",
+      "Đã hủy",
+    ];
+
+    // Allow cancellation for: UNPAID, PENDING, CONFIRMED, DELIVERING, DELIVERED
+    return (
+      !prohibitedStatuses.includes(contractStatus || "") &&
+      !prohibitedStatuses.includes(bookingStatus || "")
+    );
+  };
+
   // Calculate rental duration
   const startDate = moment(info?.timeBookingStart);
   const endDate = moment(info?.timeBookingEnd);
@@ -110,7 +326,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
     durationDays > 0 ? `${durationDays} ngày` : "Dưới 1 ngày";
 
   return (
-    <Card className="w-full  shadow-md hover:shadow-lg transition-shadow duration-200">
+    <Card className="w-full max-w-3xl hover:shadow-lg transition-shadow duration-200">
       <CardContent className="flex flex-col md:flex-row items-start p-4 gap-4">
         {/* Ảnh xe */}
         <div className="flex-shrink-0 w-full md:w-48 h-32 relative rounded-lg overflow-hidden">
@@ -135,8 +351,8 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
               {/* <p className="text-sm text-gray-500">Biển số: 51A-12345</p> */}
               {/* Thêm các thông số khác của xe nếu có */}
               {/* <div className="flex items-center text-sm text-gray-600 gap-2 mt-1">
-                <CarIcon className="w-4 h-4" /> {info.carId.transmission} | {info.carId.seats} chỗ | {info.carId.fuelType}
-              </div> */}
+                  <CarIcon className="w-4 h-4" /> {info.carId.transmission} | {info.carId.seats} chỗ | {info.carId.fuelType}
+                </div> */}
             </div>
             <div className="flex-shrink-0 ml-4">
               {getStatusBadge(info?.contract?.status || info?.status)}
@@ -162,27 +378,112 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
 
           {/* Nút hành động */}
           <div className="flex justify-end gap-2 mt-2">
-            <Link href={`/profile/booking-detail/${info?._id}`} passHref>
-              <Button variant="outline">Chi tiết</Button>
-            </Link>
+            {/* Nút đánh giá cho booking đã hoàn thành - hiển thị cuối cùng bên phải */}
             {info?.contract?.status === "Đã tất toán" && (
               <Button
-                variant="default" // Changed to default for "Đánh giá"
+                variant="secondary"
+                size="sm"
                 onClick={() => showModal(info._id, info.carId._id)}
               >
                 Đánh giá
               </Button>
             )}
-            <RatingModal
-              open={open}
-              handleCancel={handleCancel}
-              bookingId={bookingId}
-              carId={carId}
-              accessToken={accessToken}
-            />
+            {/* Nút hủy cho booking có thể hủy */}
+            {canCancel() && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={showCancelModal}
+                disabled={loading}
+                className="bg-red-500 text-white hover:bg-red-600"
+              >
+                Hủy
+              </Button>
+            )}
+
+            {/* Nút "Nhận xe" cho booking đã được giao */}
+            {isDelivered() && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleReceiveVehicle}
+                disabled={loading}
+              >
+                {loading ? "Đang xử lý..." : "Nhận xe"}
+              </Button>
+            )}
+
+            {/* Nút "Trả xe" cho booking đã được khách nhận */}
+            {canReturn() && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={showReturnModal}
+                disabled={loading}
+                className="bg-blue-500 text-white hover:bg-blue-600"
+              >
+                {loading ? "Đang xử lý..." : "Trả xe"}
+              </Button>
+            )}
+
+            {/* Nút thanh toán cho booking chưa thanh toán */}
+            {isUnpaid() && (
+              <Button variant="default" size="sm" onClick={showPaymentModal}>
+                Thanh toán
+              </Button>
+            )}
+
+            {/* Nút chi tiết - luôn hiển thị cuối cùng bên phải */}
+            <Link href={`/profile/booking-detail/${info?._id}`} passHref>
+              <Button variant="outline" size="sm">
+                Chi tiết
+              </Button>
+            </Link>
           </div>
         </div>
       </CardContent>
+
+      {/* Rating Modal */}
+      <RatingModal
+        open={open}
+        handleCancel={handleCancel}
+        bookingId={bookingId}
+        carId={carId}
+        accessToken={accessToken}
+      />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        visible={paymentModalVisible}
+        onClose={hidePaymentModal}
+        booking={{
+          _id: info._id,
+          totalCost: info.totalCost,
+        }}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      {/* Cancel Booking Modal */}
+      <CancelBookingModal
+        visible={cancelModalVisible}
+        onCancel={hideCancelModal}
+        onConfirm={handleCancelBooking}
+        bookingId={info._id}
+        userType="customer"
+        loading={loading}
+      />
+
+      {/* Return Vehicle Modal */}
+      <ReturnVehicleModal
+        visible={returnModalVisible}
+        onCancel={hideReturnModal}
+        onConfirm={handleReturnVehicle}
+        loading={loading}
+        vehicleInfo={{
+          licensePlate: info?.carId?.model?.name?.split(" - ")[1] || "N/A",
+          model: info?.carId?.model?.name || "Không xác định",
+        }}
+      />
     </Card>
   );
 };
@@ -196,27 +497,27 @@ export default VehicleRentalCard;
 // For this example, I'll assume these are handled by default or via custom classes.
 // Example of how to add custom variants in components/ui/badge.tsx:
 /*
-import { cva, type VariantProps } from "class-variance-authority"
+  import { cva, type VariantProps } from "class-variance-authority"
 
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        success: "border-transparent bg-green-500 text-white hover:bg-green-500/80", // Custom
-        warning: "border-transparent bg-yellow-500 text-white hover:bg-yellow-500/80", // Custom
+  const badgeVariants = cva(
+    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+    {
+      variants: {
+        variant: {
+          default:
+            "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          secondary:
+            "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          destructive:
+            "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+          outline: "text-foreground",
+          success: "border-transparent bg-green-500 text-white hover:bg-green-500/80", // Custom
+          warning: "border-transparent bg-yellow-500 text-white hover:bg-yellow-500/80", // Custom
+        },
       },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-*/
+      defaultVariants: {
+        variant: "default",
+      },
+    }
+  )
+  */

@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.rft.rft_be.entity.*;
-import com.rft.rft_be.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -22,9 +20,29 @@ import com.rft.rft_be.dto.booking.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
+import com.rft.rft_be.dto.booking.CancelBookingRequestDTO;
+import com.rft.rft_be.dto.booking.CancelBookingResponseDTO;
+import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
+import com.rft.rft_be.entity.BookedTimeSlot;
+import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.entity.Contract;
+import com.rft.rft_be.entity.Coupon;
+import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.Vehicle;
+import com.rft.rft_be.entity.Wallet;
+import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.mapper.BookingMapper;
 import com.rft.rft_be.mapper.BookingResponseMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
+import com.rft.rft_be.repository.BookedTimeSlotRepository;
+import com.rft.rft_be.repository.BookingRepository;
+import com.rft.rft_be.repository.ContractRepository;
+import com.rft.rft_be.repository.CouponRepository;
+import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.repository.VehicleRepository;
+import com.rft.rft_be.repository.WalletRepository;
+import com.rft.rft_be.repository.WalletTransactionRepository;
+import com.rft.rft_be.service.Contract.FinalContractService;
 import com.rft.rft_be.util.BookingCalculationUtils;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -32,25 +50,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.math.BigDecimal;
-import java.text.ParseException;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.List;
-
-import java.util.Map;
-
-import java.util.UUID;
-
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +69,7 @@ public class BookingServiceImpl implements BookingService {
     WalletTransactionRepository walletTransactionRepository;
     ContractRepository contractRepository;
     CouponRepository couponRepository;
+    FinalContractService finalContractService;
 
     @Override
     @Transactional
@@ -220,7 +220,7 @@ public class BookingServiceImpl implements BookingService {
         return response;
     }
 
-// Thêm method validate mới
+    // Thêm method validate mới
     private void validateOperatingHours(LocalDateTime start, LocalDateTime end) {
         // LocalDateTime already in Vietnam time, no need to convert
         int startHour = start.getHour();
@@ -376,6 +376,27 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public List<BookingDTO> getBookingsByProviderId(String providerId) {
+        List<Booking> bookings = bookingRepository.findByProviderId(providerId);
+        return bookings.stream()
+                .map(bookingMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<BookingDTO> getBookingsByProviderIdAndStatus(String providerId, String status) {
+        try {
+            Booking.Status bookingStatus = Booking.Status.valueOf(status.toUpperCase());
+            List<Booking> bookings = bookingRepository.findByProviderIdAndStatus(providerId, bookingStatus);
+            return bookings.stream()
+                    .map(bookingMapper::toDTO)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid booking status: " + status);
+        }
+    }
+
+    @Override
     @Transactional
     public void confirmBooking(String bookingId, String token) {
         String currentUserId = extractUserIdFromToken(token);
@@ -416,8 +437,18 @@ public class BookingServiceImpl implements BookingService {
         if (booking.getStatus() != Booking.Status.DELIVERED) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái DELIVERED mới được xác nhận đã nhận xe.");
         }
+
+        // Update booking status
         booking.setStatus(Booking.Status.RECEIVED_BY_CUSTOMER);
         bookingRepository.save(booking);
+
+        // Update contract status to RENTING when customer receives the vehicle
+        List<Contract> contracts = contractRepository.findByBookingId(bookingId);
+        if (!contracts.isEmpty()) {
+            Contract contract = contracts.get(0);
+            contract.setStatus(Contract.Status.RENTING);
+            contractRepository.save(contract);
+        }
     }
 
     @Override
@@ -437,22 +468,46 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public void completeBooking(String bookingId, String token) {
+    public void completeBooking(String bookingId, String token, BigDecimal costSettlement, String note) {
         String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
-        if (!booking.getUser().getId().equals(currentUserId)) {
-            throw new AccessDeniedException("Chỉ người thuê xe mới được hoàn tất đơn đặt.");
-        }
+//        if (!booking.getUser().getId().equals(currentUserId)) {
+//            throw new AccessDeniedException("Chỉ người thuê xe mới được hoàn tất đơn đặt.");
+//        }
         if (booking.getStatus() != Booking.Status.RETURNED) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái RETURNED mới được hoàn tất.");
         }
         booking.setStatus(Booking.Status.COMPLETED);
         bookingRepository.save(booking);
+
+        String finalContractId = null;
+        List<Contract> contracts = contractRepository.findByBookingId(bookingId);
+        if (!contracts.isEmpty()) {
+            Contract contract = contracts.get(0);
+            contract.setStatus(Contract.Status.FINISHED);
+            contractRepository.save(contract);
+
+            // Create FinalContract với costSettlement và note từ FE
+            CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
+                    .contractId(contract.getId())
+                    .userId(currentUserId)
+                    .timeFinish(LocalDateTime.now())
+                    .costSettlement(costSettlement)
+                    .note(note)
+                    .build();
+
+            try {
+                var finalContract = finalContractService.createFinalContract(finalContractDTO);
+                finalContractId = finalContract.getId();
+            } catch (Exception e) {
+                log.error("Failed to create final contract for booking {}: {}", bookingId, e.getMessage());
+            }
+        }
     }
 
     @Override
     @Transactional
-    public void cancelBooking(String bookingId, String token) {
+    public CancelBookingResponseDTO cancelBooking(String bookingId, String token, CancelBookingRequestDTO cancelRequest) {
         String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         boolean isRenter = booking.getUser().getId().equals(currentUserId);
@@ -462,28 +517,94 @@ public class BookingServiceImpl implements BookingService {
             throw new AccessDeniedException("Chỉ người thuê xe hoặc chủ xe mới có quyền hủy đơn đặt.");
         }
 
-        if (booking.getStatus() == Booking.Status.DELIVERED
-                || booking.getStatus() == Booking.Status.RECEIVED_BY_CUSTOMER
+        if (booking.getStatus() == Booking.Status.RECEIVED_BY_CUSTOMER
                 || booking.getStatus() == Booking.Status.RETURNED
                 || booking.getStatus() == Booking.Status.COMPLETED) {
-            throw new IllegalStateException("Không thể hủy đơn đặt khi đã giao, nhận, trả hoặc hoàn tất.");
+            throw new IllegalStateException("Không thể hủy đơn đặt khi đã nhận, trả hoặc hoàn tất.");
         }
+        BigDecimal penalty = BigDecimal.ZERO;
+        BigDecimal refundAmount = booking.getTotalCost(); // Default: full refund
 
         if (isRenter) {
+            // User hủy - cần kiểm tra penalty
+            LocalDateTime paymentTime = booking.getTimeTransaction(); // Thời điểm thanh toán
             LocalDateTime now = LocalDateTime.now();
-            long hoursUntilStart = ChronoUnit.HOURS.between(now, booking.getTimeBookingStart());
             Integer minCancelHour = booking.getMinCancelHour();
 
-            if (minCancelHour != null && hoursUntilStart < minCancelHour) {
-                BigDecimal penalty = calculatePenalty(booking);
-                booking.setPenaltyValue(penalty);
+            // Tính thời gian từ lúc thanh toán đến hiện tại
+            if (paymentTime != null && minCancelHour != null) {
+                long hoursSincePayment = ChronoUnit.HOURS.between(paymentTime, now);
+
+                // Nếu hủy quá thời gian cho phép thì tính penalty
+                if (hoursSincePayment > minCancelHour) {
+                    penalty = calculatePenalty(booking);
+                    booking.setPenaltyValue(penalty);
+                    refundAmount = booking.getTotalCost().subtract(penalty);
+                } else {
+                    // Hủy trong thời gian cho phép - không mất phí
+                    booking.setPenaltyValue(BigDecimal.ZERO);
+                    refundAmount = booking.getTotalCost();
+                }
             } else {
+                // Không có thông tin penalty hoặc thời gian thanh toán - không tính phí
                 booking.setPenaltyValue(BigDecimal.ZERO);
+                refundAmount = booking.getTotalCost();
+            }
+        } else if (isProvider) {
+            // Provider hủy - user nhận lại toàn bộ
+            booking.setPenaltyValue(BigDecimal.ZERO);
+            refundAmount = booking.getTotalCost();
+        }
+
+        // Update booking status
+        booking.setStatus(Booking.Status.CANCELLED);
+        bookingRepository.save(booking);
+
+        bookedTimeSlotRepository.deleteByVehicleIdAndTimeRange(
+                booking.getVehicle().getId(),
+                booking.getTimeBookingStart(),
+                booking.getTimeBookingEnd()
+        );
+
+        // Update contract status to CANCELLED
+        String finalContractId = null;
+        List<Contract> contracts = contractRepository.findByBookingId(bookingId);
+        if (!contracts.isEmpty()) {
+            Contract contract = contracts.get(0);
+            contract.setStatus(Contract.Status.CANCELLED);
+            contractRepository.save(contract);
+
+            // Create FinalContract if requested
+            if (cancelRequest.isCreateFinalContract()) {
+                CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
+                        .contractId(contract.getId())
+                        .userId(currentUserId)
+                        .timeFinish(LocalDateTime.now())
+                        .costSettlement(refundAmount)
+                        .note("Hủy bởi " + (isRenter ? "khách hàng" : "chủ xe")
+                                + (cancelRequest.getReason() != null && !cancelRequest.getReason().isEmpty()
+                                ? ". Lý do: " + cancelRequest.getReason() : ""))
+                        .build();
+
+                try {
+                    var finalContract = finalContractService.createFinalContract(finalContractDTO);
+                    finalContractId = finalContract.getId();
+                } catch (Exception e) {
+                    log.error("Failed to create final contract for booking {}: {}", bookingId, e.getMessage());
+                }
             }
         }
 
-        booking.setStatus(Booking.Status.CANCELLED);
-        bookingRepository.save(booking);
+        return CancelBookingResponseDTO.builder()
+                .bookingId(bookingId)
+                .status(booking.getStatus().toString())
+                .contractStatus("CANCELLED")
+                .finalContractId(finalContractId)
+                .refundAmount(refundAmount)
+                .penaltyAmount(penalty)
+                .reason(cancelRequest.getReason())
+                .message("Hủy đơn đặt xe thành công")
+                .build();
     }
 
     private BigDecimal calculatePenalty(Booking booking) {

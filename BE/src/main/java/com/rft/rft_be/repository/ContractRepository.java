@@ -1,13 +1,15 @@
 package com.rft.rft_be.repository;
 
-import com.rft.rft_be.entity.Contract;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
+import com.rft.rft_be.entity.Contract;
 
 public interface ContractRepository extends JpaRepository<Contract, String> {
+
     @Query("SELECT c FROM Contract c WHERE c.booking.id = :bookingId")
     List<Contract> findByBookingId(@Param("bookingId") String bookingId);
 
@@ -22,4 +24,7 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
 
     @Query("SELECT c FROM Contract c WHERE c.booking.id = :bookingId AND c.status = :status")
     List<Contract> findByBookingIdAndStatus(@Param("bookingId") String bookingId, @Param("status") Contract.Status status);
+
+    @Query("SELECT c FROM Contract c WHERE c.booking.vehicle.user.id = :providerId AND c.status = :status")
+    List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId, @Param("status") Contract.Status status);
 }
