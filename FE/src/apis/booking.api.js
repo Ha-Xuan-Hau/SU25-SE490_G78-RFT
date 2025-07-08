@@ -53,22 +53,21 @@ export const createBooking = async (bookingData) => {
  */
 export const payWithWallet = async (bookingId) => {
     try {
-        console.log('Processing wallet payment for booking:', bookingId);
+        console.log('Paying with wallet for booking:', bookingId);
 
         const response = await apiClient.post(`/bookings/${bookingId}/pay-wallet`);
 
         return {
             success: true,
             data: {
-                bookingId: response.data.bookingId,
-                status: response.data.status,
+                bookingId: bookingId,
                 paymentMethod: 'WALLET',
-                paymentStatus: response.data.paymentStatus,
+                paymentStatus: 'SUCCESS',
                 message: response.data.message || 'Thanh toán ví thành công'
             }
         };
     } catch (error) {
-        console.error('Error processing wallet payment:', error);
+        console.error('Error paying with wallet:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -78,32 +77,24 @@ export const payWithWallet = async (bookingId) => {
 
 /**
  * Tạo link thanh toán VNPay
- * @param {string} bookingId - ID đơn đặt xe
- * @param {string} bankCode - Mã ngân hàng (optional)
- * @returns {Promise<Object>} Response chứa paymentUrl
+ * @param {string} bookingId - ID của booking cần thanh toán
+ * @returns {Promise<Object>} Response chứa URL thanh toán VNPay
  */
-export const createVNPayPayment = async (bookingId, bankCode = '') => {
+export const createVNPayPayment = async (bookingId) => {
     try {
         console.log('Creating VNPay payment for booking:', bookingId);
 
-        // Lấy thông tin booking để có amount
-        const bookingInfo = await getBookingById(bookingId);
-
-        const paymentData = {
-            amount: bookingInfo.totalCost,
-            bookingId: bookingId,
-            bankCode: bankCode,
-        };
-
-        const response = await apiClient.post('/payment/vn-pay', paymentData);
+        const response = await apiClient.post(`/payment/vn-pay`, {
+            bookingId: bookingId
+        });
 
         return {
             success: true,
             data: {
                 bookingId: bookingId,
+                paymentMethod: 'VNPAY',
                 paymentUrl: response.data.paymentUrl,
-                code: response.data.code,
-                message: response.data.message || 'Tạo link thanh toán VNPay thành công'
+                message: 'Tạo link thanh toán VNPay thành công'
             }
         };
     } catch (error) {
@@ -174,15 +165,23 @@ export const updateBookingStatus = async (bookingId, action, additionalData = {}
 };
 
 /**
- * Hủy booking
+ * Hủy booking với lý do chi tiết và tạo final contract
  * @param {string} bookingId - ID đơn đặt xe
- * @param {string} reason - Lý do hủy
+ * @param {string} reason - Lý do hủy chi tiết
+ * @param {string} userType - Loại người dùng: "USER" hoặc "PROVIDER"
  * @returns {Promise<Object>} Kết quả hủy booking
  */
-export const cancelBooking = async (bookingId, reason = '') => {
+export const cancelBooking = async (bookingId, reason = '', userType = 'USER') => {
     try {
+        // Map frontend user types to backend enum values
+        const backendUserType = userType === 'customer' ? 'USER' :
+            userType === 'provider' ? 'PROVIDER' :
+                userType; // Use as-is if already correct
+
         const response = await apiClient.post(`/bookings/${bookingId}/cancel`, {
-            reason: reason
+            reason: reason,
+            userType: backendUserType,
+            createFinalContract: true // Flag để backend biết cần tạo final contract
         });
 
         return {
@@ -190,8 +189,11 @@ export const cancelBooking = async (bookingId, reason = '') => {
             data: {
                 bookingId: bookingId,
                 status: response.data.status,
+                contractStatus: response.data.contractStatus,
+                finalContractId: response.data.finalContractId,
                 refundAmount: response.data.refundAmount,
                 penaltyAmount: response.data.penaltyAmount,
+                reason: reason,
                 message: response.data.message || 'Hủy đơn đặt xe thành công'
             }
         };
@@ -264,3 +266,136 @@ export const checkAvailability = async (vehicleId, startTime, endTime) => {
         };
     }
 };
+
+/**
+ * Lấy thông tin số dư ví của user
+ * @returns {Promise<Object>} Response chứa số dư ví
+ */
+export const getWalletBalance = async () => {
+    try {
+        const response = await apiClient.get('/wallets/balance');
+
+        return {
+            success: true,
+            data: {
+                balance: response.data.balance || 0
+            }
+        };
+    } catch (error) {
+        console.error('Error getting wallet balance:', error);
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            data: { balance: 0 }
+        };
+    }
+};
+
+/**
+ * Cập nhật trạng thái booking trực tiếp
+ * @param {string} bookingId - ID của booking
+ * @param {string} status - Trạng thái mới (CONFIRMED, CANCELLED, etc.)
+ * @returns {Promise<Object>} Response sau khi cập nhật
+ */
+export const updateBookingStatusDirect = async (bookingId, status) => {
+    try {
+        const response = await apiClient.put(`/bookings/${bookingId}`, {
+            status: status
+        });
+
+        return {
+            success: true,
+            data: response.data,
+            message: 'Cập nhật trạng thái đơn đặt xe thành công'
+        };
+    } catch (error) {
+        console.error('Error updating booking status:', error);
+
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            statusCode: error.response?.status
+        };
+    }
+};
+
+/**
+ * Xác nhận đơn đặt xe bởi provider
+ * @param {string} bookingId - ID của booking cần xác nhận
+ * @returns {Promise<Object>} Response sau khi xác nhận
+ */
+export const confirmBookingByProvider = async (bookingId) => {
+    try {
+        const response = await apiClient.post(`/bookings/${bookingId}/confirm`);
+
+        return {
+            success: true,
+            data: response.data,
+            message: 'Xác nhận đơn đặt xe thành công'
+        };
+    } catch (error) {
+        console.error('Error confirming booking:', error);
+
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            statusCode: error.response?.status
+        };
+    }
+};
+
+/**
+ * Lấy danh sách booking theo providerId và status
+ * @param {string} providerId - ID của provider
+ * @param {string} status - Status của booking (PENDING, CONFIRMED, etc.)
+ * @returns {Promise<Object>} Response chứa danh sách bookings
+ */
+export const getBookingsByProviderAndStatus = async (providerId, status) => {
+    try {
+        const response = await apiClient.get(`/bookings/provider/${providerId}/status/${status}`);
+
+        return {
+            success: true,
+            data: response.data
+        };
+    } catch (error) {
+        console.error('Error fetching provider bookings:', error);
+
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            statusCode: error.response?.status
+        };
+    }
+};
+
+/**
+ * Hủy đơn đặt xe bởi provider
+ * @param {string} bookingId - ID của booking cần hủy
+ * @param {string} reason - Lý do hủy (optional)
+ * @returns {Promise<Object>} Response sau khi hủy
+ */
+export const cancelBookingByProvider = async (bookingId, reason = '') => {
+    try {
+        const response = await apiClient.post(`/bookings/${bookingId}/cancel`, {
+            reason: reason,
+            userType: 'PROVIDER',
+            createFinalContract: true
+        });
+
+        return {
+            success: true,
+            data: response.data,
+            message: 'Hủy đơn đặt xe thành công'
+        };
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            statusCode: error.response?.status
+        };
+    }
+};
+
