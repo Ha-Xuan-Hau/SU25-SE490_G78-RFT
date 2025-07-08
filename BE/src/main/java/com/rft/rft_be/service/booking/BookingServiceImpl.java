@@ -560,6 +560,12 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(Booking.Status.CANCELLED);
         bookingRepository.save(booking);
 
+        bookedTimeSlotRepository.deleteByVehicleIdAndTimeRange(
+                booking.getVehicle().getId(),
+                booking.getTimeBookingStart(),
+                booking.getTimeBookingEnd()
+        );
+
         // Update contract status to CANCELLED
         String finalContractId = null;
         List<Contract> contracts = contractRepository.findByBookingId(bookingId);

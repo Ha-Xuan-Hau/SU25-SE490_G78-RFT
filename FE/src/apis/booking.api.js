@@ -84,7 +84,7 @@ export const createVNPayPayment = async (bookingId) => {
     try {
         console.log('Creating VNPay payment for booking:', bookingId);
 
-        const response = await apiClient.post(`/payments/vnpay/create`, {
+        const response = await apiClient.post(`/payment/vn-pay`, {
             bookingId: bookingId
         });
 
