@@ -399,3 +399,31 @@ export const cancelBookingByProvider = async (bookingId, reason = '') => {
     }
 };
 
+/**
+ * Lấy rating của 1 booking theo user
+ * @param {string} bookingId
+ * @param {string} userId
+ */
+export const getRatingByBookingAndUser = async (bookingId, userId) => {
+    try {
+        const res = await apiClient.get(`/ratings/user/${userId}`);
+        // res.data là mảng rating, lọc theo bookingId
+        return res.data.find(rating => rating.bookingId === bookingId) || null;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || error.message);
+    }
+};
+
+/**
+ * Tạo mới hoặc cập nhật rating cho booking
+ * @param {Object} payload { bookingId, carId, userId, star, comment }
+ */
+export const upsertRating = async (payload) => {
+    try {
+        // Nếu backend hỗ trợ PUT/PATCH cho update, dùng PUT, nếu không thì POST
+        const res = await apiClient.post('/ratings', payload);
+        return res.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || error.message);
+    }
+};

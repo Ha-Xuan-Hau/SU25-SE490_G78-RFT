@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { showSuccess, showError, showInfo } from "@/utils/toast.utils";
 import { payWithWallet, createVNPayPayment } from "@/apis/booking.api";
-import { getUserWallet } from "@/apis/user-wallet.api";
+import { getUserWallet } from "@/apis/wallet.api";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 

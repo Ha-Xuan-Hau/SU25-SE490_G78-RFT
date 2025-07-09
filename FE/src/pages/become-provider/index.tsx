@@ -1,4 +1,12 @@
 import { useState } from "react";
+import { useRouter } from "next/router";
+import useLocalStorage from "@/hooks/useLocalStorage";
+import { useUserState } from "@/recoils/user.state";
+import { useEffect } from "react";
+import dayjs, { Dayjs } from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+dayjs.extend(isSameOrAfter);
+
 import {
   Steps,
   Typography,
@@ -10,8 +18,8 @@ import {
   Space,
   Card,
   Divider,
-  notification,
   theme,
+  TimePicker,
 } from "antd";
 import {
   PhoneOutlined,
@@ -21,32 +29,44 @@ import {
   UserOutlined,
   CheckCircleOutlined,
 } from "@ant-design/icons";
+import { registerProvider } from "@/apis/provider.api";
+import { showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title, Paragraph, Text } = Typography;
-const { Step } = Steps;
 
 // Services data
 const rentalServices = [
-  { id: "car", name: "Ô tô", description: "Cho thuê ô tô các loại" },
-  { id: "motorbike", name: "Xe máy", description: "Cho thuê xe máy các loại" },
-  { id: "bicycle", name: "Xe đạp", description: "Cho thuê xe đạp các loại" },
+  { id: "CAR", name: "Ô tô", description: "Cho thuê ô tô các loại" },
+  { id: "MOTORBIKE", name: "Xe máy", description: "Cho thuê xe máy các loại" },
+  { id: "BICYCLE", name: "Xe đạp", description: "Cho thuê xe đạp các loại" },
 ];
 
 const BecomeProviderPage = () => {
   const { token } = theme.useToken();
+  const [accessToken, setAccessToken, clearAccessToken] =
+    useLocalStorage("access_token");
+  const [profile, setProfile, clearProfile] = useLocalStorage("profile", "");
   const [current, setCurrent] = useState(0);
   const [form] = Form.useForm();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [openTime, setOpenTime] = useState<Dayjs | null>(null);
+  const [closeTime, setCloseTime] = useState<Dayjs | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  // Mock user data
-  const userData = {
-    fullname: "Nguyễn Văn A",
-    phone: "0987654321",
-    email: "nguyenvana@example.com",
-    address: "123 Đường ABC, Phường XYZ, Quận 1, TP. HCM",
-  };
+  const [user, setUser] = useUserState();
+
+  useEffect(() => {
+    if (user) {
+      form.setFieldsValue({
+        fullname: user.fullName || user.name || "",
+        phone: user.phone || "",
+        email: user.email || "",
+        address: user.address || "",
+      });
+    }
+  }, [user, form]);
 
   const steps = [
     {
@@ -70,11 +90,9 @@ const BecomeProviderPage = () => {
   const next = () => {
     // Kiểm tra đã đồng ý điều khoản khi ở bước 0
     if (current === 0 && !termsAccepted) {
-      notification.error({
-        message: "Cần đồng ý điều khoản",
-        description:
-          "Vui lòng đọc và đồng ý với các điều khoản và điều kiện trước khi tiếp tục.",
-      });
+      showError(
+        "Vui lòng đọc và đồng ý với các điều khoản và điều kiện trước khi tiếp tục."
+      );
       return;
     }
 
@@ -90,22 +108,68 @@ const BecomeProviderPage = () => {
       return;
     }
 
-    if (current === 2 && selectedServices.length === 0) {
-      notification.error({
-        message: "Cần chọn dịch vụ",
-        description:
-          "Vui lòng chọn ít nhất một dịch vụ cho thuê xe bạn muốn cung cấp.",
-      });
-      return;
-    }
-
     if (current === 2) {
+      // Validate chọn dịch vụ
+      if (selectedServices.length === 0) {
+        showError(
+          "Cần chọn ít nhất một dịch vụ cho thuê xe bạn muốn cung cấp."
+        );
+        return;
+      }
+      if (!openTime || !closeTime) {
+        showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
+        return;
+      }
+      if (!openTime || !closeTime) {
+        showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
+        return;
+      }
+
+      // Chỉ cho phép mở 24/24 nếu cả hai đều là 00:00, còn lại phải openTime < closeTime
+      const isOpenAllDay =
+        openTime.format("HH:mm") === "00:00" &&
+        closeTime.format("HH:mm") === "00:00";
+
+      if (!isOpenAllDay && openTime.isSameOrAfter(closeTime)) {
+        showError(
+          "Giờ mở cửa phải trước giờ đóng cửa (trừ trường hợp mở 24/24 là 00:00 đến 00:00)."
+        );
+        return;
+      }
+
+      const formValues = form.getFieldsValue();
+      const openTimeStr = openTime ? openTime.format("HH:mm") : null;
+      const closeTimeStr = closeTime ? closeTime.format("HH:mm") : null;
+
+      const payload = {
+        ...formValues,
+        userId: user?.id,
+        vehicleTypes: selectedServices,
+        openTime: openTimeStr,
+        closeTime: closeTimeStr,
+      };
+
       setLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        setLoading(false);
-        setCurrent(current + 1);
-      }, 1500);
+      registerProvider(payload)
+        .then(() => {
+          setLoading(false);
+          setCurrent(current + 1);
+          showSuccess("Đăng ký thành công!");
+          // Sau khi chuyển sang bước hoàn tất, timeout 10s rồi logout
+          setTimeout(() => {
+            clearAccessToken();
+            setUser(null);
+            clearProfile();
+            window.location.href = "/";
+          }, 10000);
+        })
+        .catch((err) => {
+          setLoading(false);
+          showError(
+            err?.response?.data?.message ||
+              "Đăng ký thất bại. Vui lòng thử lại sau!"
+          );
+        });
       return;
     }
 
@@ -189,12 +253,7 @@ const BecomeProviderPage = () => {
   const renderInfoContent = () => (
     <div className="p-6 bg-white rounded-lg shadow">
       <Title level={4}>Xác nhận thông tin cá nhân</Title>
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={userData}
-        className="mt-4"
-      >
+      <Form form={form} layout="vertical" className="mt-4">
         <Form.Item
           name="fullname"
           label="Họ và tên"
@@ -258,13 +317,13 @@ const BecomeProviderPage = () => {
         RFT
       </Paragraph>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-8">
         {rentalServices.map((service) => (
           <Card
             key={service.id}
             className={`cursor-pointer transition-all ${
               selectedServices.includes(service.id)
-                ? `border-2 border-${token.colorPrimary} shadow-md`
+                ? `border-2 border-[${token.colorPrimary}] shadow-md`
                 : "border border-gray-200"
             }`}
             onClick={() =>
@@ -294,6 +353,32 @@ const BecomeProviderPage = () => {
           </Card>
         ))}
       </div>
+      <Title level={4}>Chọn thời gian hoạt động</Title>
+      <Paragraph className="mb-4 text-gray-600">
+        Vui lòng chọn giờ mở cửa và đóng cửa cho dịch vụ cho thuê xe của bạn.
+        <br />
+        Phải đảm bảo rằng bạn hoạt động trong khoảng thời gian này.
+      </Paragraph>
+      <Form layout="inline" className="mb-6 mt-8">
+        <Form.Item label="Giờ mở cửa">
+          <TimePicker
+            value={openTime}
+            onChange={setOpenTime}
+            format="HH:mm"
+            minuteStep={30}
+            placeholder="Giờ mở cửa"
+          />
+        </Form.Item>
+        <Form.Item label="Giờ đóng cửa">
+          <TimePicker
+            value={closeTime}
+            onChange={setCloseTime}
+            format="HH:mm"
+            minuteStep={30}
+            placeholder="Giờ đóng cửa"
+          />
+        </Form.Item>
+      </Form>
     </div>
   );
 
@@ -306,20 +391,12 @@ const BecomeProviderPage = () => {
         Đăng ký thành công!
       </Title>
       <Paragraph className="text-lg mb-6">
-        Cảm ơn bạn đã đăng ký làm người cho thuê xe trên nền tảng RFT. Hồ sơ của
-        bạn đã được gửi đi và đang trong quá trình phê duyệt.
+        Cảm ơn bạn đã đăng ký làm người cho thuê xe trên nền tảng RFT. Bây giờ
+        bạn có thể bắt đầu cung cấp dịch vụ cho thuê xe và kiếm thêm thu nhập.
       </Paragraph>
-      <div className="bg-gray-50 p-4 rounded-lg mb-6">
-        <Title level={5}>Thời gian dự kiến phê duyệt</Title>
-        <Paragraph>
-          Hồ sơ đăng ký của bạn sẽ được xem xét trong vòng 1-3 ngày làm việc.
-          Chúng tôi sẽ thông báo kết quả qua email và số điện thoại bạn đã đăng
-          ký.
-        </Paragraph>
-      </div>
-      <Button type="primary" size="large" href="/">
-        Trở về trang chủ
-      </Button>
+      <Paragraph className="text-gray-500">
+        Bạn sẽ được chuyển về trang chủ trong vòng 10 giây.
+      </Paragraph>
     </div>
   );
 

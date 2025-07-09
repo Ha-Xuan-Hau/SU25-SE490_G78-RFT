@@ -39,7 +39,6 @@ interface RegisterBankCardModalProps {
   visible: boolean;
   onCancel: () => void;
   onSave: (card: bankCard) => void;
-  onDelete: (cardId: string) => void;
   card: bankCard | null;
   mode: "add" | "edit";
 }
@@ -48,7 +47,7 @@ const RegisterBankCardModal: React.FC<RegisterBankCardModalProps> = ({
   visible,
   onCancel,
   onSave,
-  onDelete,
+
   card,
   mode,
 }) => {
@@ -57,9 +56,9 @@ const RegisterBankCardModal: React.FC<RegisterBankCardModalProps> = ({
   useEffect(() => {
     if (visible && mode === "edit" && card) {
       form.setFieldsValue({
-        cardHolderName: card.cardHolderName || "",
-        cardNumber: card.cardNumber || "",
-        bankName: card.bankName || "",
+        bankAccountName: card.bankAccountName || "",
+        bankAccountNumber: card.bankAccountNumber || "",
+        bankAccountType: card.bankAccountType || "",
       });
     } else if (visible && mode === "add") {
       form.resetFields();
@@ -70,19 +69,13 @@ const RegisterBankCardModal: React.FC<RegisterBankCardModalProps> = ({
     form.validateFields().then((values) => {
       const newCard: bankCard = {
         id: card?.id || "",
-        cardNumber: values.cardNumber,
-        cardHolderName: values.cardHolderName,
-        bankName: values.bankName,
+        bankAccountNumber: values.bankAccountNumber,
+        bankAccountName: values.bankAccountName,
+        bankAccountType: values.bankAccountType,
       };
 
       onSave(newCard);
     });
-  };
-
-  const handleDelete = () => {
-    if (card && card.id) {
-      onDelete(card.id);
-    }
   };
 
   return (
@@ -94,25 +87,39 @@ const RegisterBankCardModal: React.FC<RegisterBankCardModalProps> = ({
       }
       open={visible}
       onCancel={onCancel}
-      footer={null}
       width={600}
+      footer={[
+        <Button key="cancel" onClick={onCancel}>
+          Đóng
+        </Button>,
+        <Button
+          key="save"
+          type="primary"
+          onClick={handleSubmit}
+          style={{
+            display:
+              mode === "edit" || mode === "add" ? "inline-block" : "none",
+          }}
+        >
+          Lưu
+        </Button>,
+      ]}
     >
       <div className="mt-4">
         <Title level={5} className="mb-4">
           Thông tin thẻ
         </Title>
-
         <Form
           form={form}
           layout="vertical"
           initialValues={{
-            cardHolderName: "",
-            cardNumber: "",
-            bankName: "",
+            bankAccountName: "",
+            bankAccountNumber: "",
+            bankAccountType: "",
           }}
         >
           <Form.Item
-            name="bankName"
+            name="bankAccountType"
             label="Ngân hàng"
             rules={[{ required: true, message: "Vui lòng chọn ngân hàng" }]}
           >
@@ -130,7 +137,7 @@ const RegisterBankCardModal: React.FC<RegisterBankCardModalProps> = ({
           </Form.Item>
 
           <Form.Item
-            name="cardHolderName"
+            name="bankAccountName"
             label="Tên chủ thẻ"
             rules={[{ required: true, message: "Vui lòng nhập tên chủ thẻ" }]}
           >
@@ -141,7 +148,7 @@ const RegisterBankCardModal: React.FC<RegisterBankCardModalProps> = ({
           </Form.Item>
 
           <Form.Item
-            name="cardNumber"
+            name="bankAccountNumber"
             label="Số thẻ"
             rules={[
               { required: true, message: "Vui lòng nhập số thẻ" },
@@ -161,32 +168,6 @@ const RegisterBankCardModal: React.FC<RegisterBankCardModalProps> = ({
               Chính sách riêng tư
             </a>{" "}
             về cách xử lý dữ liệu của bạn.
-          </div>
-
-          <div className="flex justify-between">
-            <div>
-              {mode === "edit" && (
-                <Popconfirm
-                  title="Xóa thẻ"
-                  description="Bạn có chắc muốn xóa thẻ này không?"
-                  onConfirm={handleDelete}
-                  okText="Xóa"
-                  cancelText="Hủy"
-                >
-                  <Button danger icon={<DeleteOutlined />}>
-                    Delete
-                  </Button>
-                </Popconfirm>
-              )}
-            </div>
-            <div>
-              <Button style={{ marginRight: 8 }} onClick={onCancel}>
-                Cancel
-              </Button>
-              <Button type="primary" onClick={handleSubmit}>
-                Save
-              </Button>
-            </div>
           </div>
         </Form>
       </div>

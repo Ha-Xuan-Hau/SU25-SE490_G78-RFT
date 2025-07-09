@@ -8,8 +8,7 @@ import {
 } from "@/apis/wallet.api";
 import { createTopUpVNPay } from "@/apis/payment.api";
 import { showError, showSuccess } from "@/utils/toast.utils";
-import { useUserState } from "@/recoils/user.state";
-import { ProfileLayout } from "@/layouts/ProfileLayout";
+import { ProviderLayout } from "@/layouts/ProviderLayout";
 import {
   Button,
   Card,
@@ -29,6 +28,7 @@ import {
 } from "@ant-design/icons";
 import { bankCard } from "@/types/bankCard";
 import RegisterBankCardModal from "@/components/RegisterBankCardModal";
+import { useProviderState } from "@/recoils/provider.state";
 
 const { Title } = Typography;
 
@@ -37,8 +37,8 @@ type WalletType = {
   cards?: bankCard[];
 };
 
-export default function UserWalletsPage() {
-  const [user] = useUserState();
+export default function ProviderWalletsPage() {
+  const [provider] = useProviderState();
   const [wallet, setWallet] = useState<WalletType | null>(null);
 
   // States for cards
@@ -62,9 +62,9 @@ export default function UserWalletsPage() {
   const [topUpLoading, setTopUpLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!provider?.id) return;
     setLoading(true);
-    getUserWallet(user.id)
+    getUserWallet(provider.id)
       .then((data: any) => {
         setWallet(data);
         // Nếu API trả về 1 object duy nhất, chuyển thành mảng cards
@@ -86,7 +86,7 @@ export default function UserWalletsPage() {
       })
       .catch((err: any) => showError(err.message))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [provider]);
 
   const handleViewCard = (card: bankCard) => {
     setModalMode("edit");
@@ -100,11 +100,11 @@ export default function UserWalletsPage() {
 
   const handleSaveCard = async (card: bankCard) => {
     try {
-      if (!user?.id) return;
-      await updateUserWallet(user.id, card);
+      if (!provider?.id) return;
+      await updateUserWallet(provider.id, card);
       showSuccess("Cập nhật tài khoản RFT thành công");
       // Sau khi cập nhật, reload lại dữ liệu ví/thẻ từ backend
-      const data = await getUserWallet(user.id);
+      const data = await getUserWallet(provider.id);
       setWallet(data);
       if (Array.isArray(data?.cards)) {
         setCards(data.cards);
@@ -193,13 +193,13 @@ export default function UserWalletsPage() {
       if (!currentCard) return;
       setTopUpLoading(true);
       await withdrawFromWallet({
-        userId: user.id,
+        userId: provider.id,
         amount: values.amount,
       });
       showSuccess("Gửi yêu cầu rút tiền thành công!");
       setIsWithdrawModalVisible(false);
       // Reload lại số dư ví và thẻ nếu cần
-      getUserWallet(user.id)
+      getUserWallet(provider.id)
         .then((data: WalletType) => {
           setWallet(data);
           if (Array.isArray(data?.cards)) setCards(data.cards);
@@ -311,7 +311,7 @@ export default function UserWalletsPage() {
             </div>
           ) : (
             <Empty
-              description="Bạn chưa có tài khoản RFT nào"
+              description="Bạn chưa có RFT ngân hàng nào"
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             ></Empty>
           )}
@@ -479,4 +479,4 @@ export default function UserWalletsPage() {
   );
 }
 
-UserWalletsPage.Layout = ProfileLayout;
+ProviderWalletsPage.Layout = ProviderLayout;
