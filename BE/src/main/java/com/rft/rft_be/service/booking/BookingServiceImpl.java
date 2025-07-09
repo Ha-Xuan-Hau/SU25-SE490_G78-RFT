@@ -626,7 +626,7 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found: " + bookingId));
     }
 
-    private String extractUserIdFromToken(String token) {
+    public String extractUserIdFromToken(String token) {
         try {
             return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
         } catch (ParseException e) {
