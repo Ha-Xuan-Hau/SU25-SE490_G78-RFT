@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,7 +48,10 @@ public class PaymentController {
         // Bước 2: Xác minh chữ ký
         boolean isValid = paymentService.validateVNPayResponse(vnpParams);
         if (!isValid) {
-            return ResponseEntity.badRequest().body(" Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
+            return ResponseEntity
+                    .badRequest()
+                    .contentType(MediaType.parseMediaType("text/plain;charset=UTF-8"))
+                    .body("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
         }
         String status = request.getParameter("vnp_ResponseCode");
         if (status.equals("00")) {
@@ -82,7 +86,10 @@ public class PaymentController {
         // Bước 2: Xác minh chữ ký
         boolean isValid = paymentService.validateVNPayResponse(vnpParams);
         if (!isValid) {
-            return ResponseEntity.badRequest().body(" Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
+            return ResponseEntity
+                    .badRequest()
+                    .contentType(MediaType.parseMediaType("text/plain;charset=UTF-8"))
+                    .body("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
         }
         String status = request.getParameter("vnp_ResponseCode");
         if (status.equals("00")) {

@@ -22,12 +22,15 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 @SpringBootTest
@@ -43,6 +46,7 @@ public class PaymentControllerTest {
 
     @MockBean
     private ContractService contractService;
+
 
     private PaymentRequest paymentRequest;
     private VNPayResponse vnPayResponse;
@@ -132,26 +136,43 @@ public class PaymentControllerTest {
     @Test
     void payCallbackHandler_validSignature_success() throws Exception {
         // GIVEN
-        Mockito.when(VNPayUtil.extractVNPayParams(ArgumentMatchers.any(HttpServletRequest.class)))
-                .thenReturn(vnpParams);
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(true);
         Mockito.doNothing().when(contractService).createContractByPayment(ArgumentMatchers.anyString());
 
         // WHEN // THEN
-        mockMvc.perform(MockMvcRequestBuilders
-                        .get("/api/payment/vn-pay-callback")
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/vn-pay-callback?vnp_ResponseCode="+vnpParams.get("vnp_ResponseCode")
+                        +"&vnp_TxnRef="+vnpParams.get("vnp_TxnRef"))
                         .param("vnp_ResponseCode", "00")
                         .param("vnp_TxnRef", "booking_001"))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("00"))
-                .andExpect(MockMvcResultMatchers.jsonPath("message").value("Success"));
+                .andExpect(MockMvcResultMatchers.status().isFound())
+                .andReturn();
+
+        String redirecteUrl = result.getResponse().getRedirectedUrl();
+        assertTrue(redirecteUrl.contains("/payment/callback"));
+        assertTrue(redirecteUrl.contains("vnp_TxnRef=booking_001"));
+        assertTrue(redirecteUrl.contains("vnp_ResponseCode=00"));
+    }
+
+    @Test
+    void payCallbackHandler_invalidResponseCode_fail() throws Exception {
+        // GIVEN
+        vnpParams.put("vnp_ResponseCode", "01"); // Mã phản hồi không hợp lệ
+        Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(true);
+
+        // WHEN // THEN
+        mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/vn-pay-callback")
+                        .param("vnp_ResponseCode", "01")
+                        .param("vnp_TxnRef", "booking_001"))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("code").value("01"))
+                .andExpect(MockMvcResultMatchers.jsonPath("message").value("Error"));
     }
 
     @Test
     void payCallbackHandler_invalidSignature_fail() throws Exception {
         // GIVEN
-        Mockito.when(VNPayUtil.extractVNPayParams(ArgumentMatchers.any(HttpServletRequest.class)))
-                .thenReturn(vnpParams);
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(false);
 
         // WHEN // THEN
@@ -160,7 +181,10 @@ public class PaymentControllerTest {
                         .param("vnp_ResponseCode", "00")
                         .param("vnp_TxnRef", "booking_001"))
                 .andExpect(MockMvcResultMatchers.status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.content().string(" Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo."));
+                .andExpect(MockMvcResultMatchers.content()
+                        .encoding("UTF-8"))
+                .andExpect(MockMvcResultMatchers.content()
+                        .string("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo."));
     }
 
     @Test
@@ -191,7 +215,7 @@ public class PaymentControllerTest {
 
     @Test
     @WithMockUser(username = "testuser", roles = {"USER"}) // Giả lập người dùng đã xác thực
-    void topUpWallet_invalidRequest_fail() throws Exception {
+    void topUpWallet_invalidRequestAmountNegative_fail() throws Exception {
         // GIVEN
         paymentRequest.setAmout(new BigDecimal("-1000")); // Số tiền không hợp lệ
         ObjectMapper objectMapper = new ObjectMapper();
@@ -213,10 +237,27 @@ public class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "testuser", roles = {"USER"}) // Giả lập người dùng đã xác thực
+    void topUpWallet_invalidRequestAmountNull_fail() throws Exception {
+        // GIVEN
+        paymentRequest.setAmout(null); // Số tiền không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(paymentRequest);
+
+        //WHEN //THEN
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/payment/topUp")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())) // Thêm CSRF token giả lập
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("errors.amout").value("Số tiền không được bỏ trống"));
+    }
+
+    @Test
     void topUpCallbackHandler_validSignature_success() throws Exception {
         // GIVEN
-        Mockito.when(VNPayUtil.extractVNPayParams(ArgumentMatchers.any(HttpServletRequest.class)))
-                .thenReturn(vnpParams);
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(true);
         Mockito.doNothing().when(paymentService).addWalletMoney(ArgumentMatchers.anyMap());
 
@@ -234,8 +275,6 @@ public class PaymentControllerTest {
     void topUpCallbackHandler_invalidResponseCode_fail() throws Exception {
         // GIVEN
         vnpParams.put("vnp_ResponseCode", "01"); // Mã phản hồi không hợp lệ
-        Mockito.when(VNPayUtil.extractVNPayParams(ArgumentMatchers.any(HttpServletRequest.class)))
-                .thenReturn(vnpParams);
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(true);
 
         // WHEN // THEN
@@ -246,5 +285,22 @@ public class PaymentControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isBadRequest())
                 .andExpect(MockMvcResultMatchers.jsonPath("code").value("01"))
                 .andExpect(MockMvcResultMatchers.jsonPath("message").value("Error"));
+    }
+
+    @Test
+    void topUpCallbackHandler_invalidSignature_fail() throws Exception {
+        // GIVEN
+        Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(false);
+
+        // WHEN // THEN
+        mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/topUpCallBack")
+                        .param("vnp_ResponseCode", "01")
+                        .param("vnp_TxnRef", "booking_001"))
+                        .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                        .andExpect(MockMvcResultMatchers.content()
+                                .encoding("UTF-8"))
+                        .andExpect(MockMvcResultMatchers.content()
+                                .string("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo."));
     }
 }
