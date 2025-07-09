@@ -1,146 +1,124 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import {
+  useProviderState,
+  getProviderIdFromState,
+} from "@/recoils/provider.state";
+import {
+  getBookingsByProviderAndStatus,
+  confirmBookingByProvider,
+  cancelBookingByProvider,
+} from "@/apis/booking.api";
+import { showApiError, showApiSuccess } from "@/utils/toast.utils";
+import {
   SearchOutlined,
-  PlusCircleOutlined,
-  UploadOutlined,
-  DeleteOutlined,
+  CheckOutlined,
+  CloseOutlined,
   ExclamationCircleOutlined,
   CheckCircleOutlined,
   MinusCircleOutlined,
-  DownloadOutlined,
-  PlusOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import {
-  message,
   Button,
   Form,
   Image,
   Input,
-  type InputRef,
   Modal,
   Popconfirm,
   Table,
-  Upload,
   Space,
   Tooltip,
   Card,
   Tag,
-  Tabs,
   Spin,
 } from "antd";
-import type { UploadProps } from "antd";
 import type { ColumnType } from "antd/es/table";
-import Highlighter from "react-highlight-words";
-import { saveAs } from "file-saver";
 
-// Define TypeScript interfaces
+// Define TypeScript interfaces for Booking data
 interface BookingData {
-  id: number;
-  _id: string;
-  thumb: string;
-  numberCar: string;
-  model: string;
-  numberSeat: number;
-  yearManufacture: number;
-  fullname: string;
-  phone: string;
+  id: string;
+  userId: string;
+  userName: string;
+  vehicleId: string;
+  vehicleLicensePlate: string;
+  vehicleType: string;
+  timeBookingStart: string | number[];
+  timeBookingEnd: string | number[];
+  phoneNumber: string;
   address: string;
-  totalCost: string;
-  timeBookingStart: string;
-  timeBookingEnd: string;
   codeTransaction: string;
-  timeTransaction: string;
+  timeTransaction: string | number[];
+  totalCost: number;
   status: string;
+  createdAt: string | number[];
+  updatedAt: string | number[];
+  // Vehicle information that comes from the backend
+  vehicleBrand: string;
+  vehicleModel: string;
+  vehicleNumberSeat: number;
+  vehicleYearManufacture: number;
+  vehicleThumb: string;
+  vehicleImage: string;
+  vehicleProviderId: string;
 }
 
-interface FormValues {
-  _id: string;
-  fullname: string;
-  phone: string;
-  address: string;
-  numberCar: string;
-  timeBookingStart: string;
-  timeBookingEnd: string;
-  totalCost: string;
-  images: string[];
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  statusCode?: number;
+  message?: string;
 }
 
-// Mock data for bookings
-const mockBookings: BookingData[] = [
-  {
-    id: 1,
-    _id: "booking1",
-    thumb: "Xe 1",
-    numberCar: "30A-12345",
-    model: "Toyota Camry",
-    numberSeat: 5,
-    yearManufacture: 2021,
-    fullname: "Nguyễn Văn A",
-    phone: "0987654321",
-    address: "123 Đường ABC, Quận 1, TP.HCM",
-    totalCost: "2,500,000 VNĐ",
-    timeBookingStart: "15-06-2023 08:00",
-    timeBookingEnd: "17-06-2023 08:00",
-    codeTransaction: "TX123456",
-    timeTransaction: "14-06-2023 10:30",
-    status: "Chưa có hợp đồng",
-  },
-  {
-    id: 2,
-    _id: "booking2",
-    thumb: "Xe 2",
-    numberCar: "30A-54321",
-    model: "Honda Civic",
-    numberSeat: 4,
-    yearManufacture: 2022,
-    fullname: "Trần Thị B",
-    phone: "0901234567",
-    address: "456 Đường DEF, Quận 2, TP.HCM",
-    totalCost: "3,200,000 VNĐ",
-    timeBookingStart: "20-06-2023 09:00",
-    timeBookingEnd: "23-06-2023 09:00",
-    codeTransaction: "TX789012",
-    timeTransaction: "19-06-2023 14:15",
-    status: "Đã có hợp đồng",
-  },
-  {
-    id: 3,
-    _id: "booking3",
-    thumb: "Xe 3",
-    numberCar: "30A-98765",
-    model: "Ford Ranger",
-    numberSeat: 7,
-    yearManufacture: 2020,
-    fullname: "Lê Văn C",
-    phone: "0912345678",
-    address: "789 Đường GHI, Quận 3, TP.HCM",
-    totalCost: "4,100,000 VNĐ",
-    timeBookingStart: "25-06-2023 10:00",
-    timeBookingEnd: "30-06-2023 10:00",
-    codeTransaction: "TX345678",
-    timeTransaction: "24-06-2023 08:45",
-    status: "Đã hủy",
-  },
-];
-
-export default function ProviderManageBookings() {
+export default function ManagePendingBookings() {
   // States
   const [form] = Form.useForm();
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [open, setOpen] = useState<boolean>(false);
-  const [fileScan, setFileScan] = useState<File | null>(null);
-  const [uploading, setUploading] = useState<boolean>(false);
-  const [searchText, setSearchText] = useState<string>("");
-  const [searchedColumn, setSearchedColumn] = useState<string>("");
+  const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
+  const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(
+    null
+  );
   const [loading, setLoading] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>("all");
-  const searchInput = useRef<InputRef>(null);
+  const [bookings, setBookings] = useState<BookingData[]>([]);
+  const [actionLoading, setActionLoading] = useState<string>("");
+  const [providerLoading, setProviderLoading] = useState<boolean>(true);
+  const [searchText, setSearchText] = useState<string>("");
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // Detect screen size
+  // Ref to track if we've already fetched data for current provider
+  const hasFetchedRef = useRef<string | null>(null);
+
+  // Provider state
+  const [provider] = useProviderState();
+
+  // Debug provider state and handle loading timeout
+  useEffect(() => {
+    console.log("Provider state:", provider);
+    // Set provider loading to false once we have determined the provider state
+    if (provider !== null) {
+      setProviderLoading(false);
+    } else {
+      // Check if we've waited long enough or if there's no token
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        setProviderLoading(false);
+      } else {
+        // Set a timeout to stop loading after 5 seconds
+        const timeout = setTimeout(() => {
+          console.warn("Provider loading timeout");
+          setProviderLoading(false);
+        }, 5000);
+
+        return () => clearTimeout(timeout);
+      }
+    }
+  }, [provider]);
+
+  // Mobile detection
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -148,228 +126,184 @@ export default function ProviderManageBookings() {
 
     handleResize();
     window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Load data with loading state
-  useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 800);
-  }, []);
+  // API calls - Fetch pending bookings
+  const fetchPendingBookings = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        const providerId = getProviderIdFromState(provider);
+        console.log("Provider ID from state:", providerId);
 
-  // Filter bookings based on active tab
-  const filteredBookings = mockBookings.filter((booking) => {
-    if (activeTab === "all") return true;
-    return booking.status === activeTab;
-  });
+        if (!providerId) {
+          // Don't show error if provider is still loading
+          if (!providerLoading) {
+            showApiError("Vui lòng đăng nhập để xem danh sách đơn đặt xe");
+          }
+          return;
+        }
 
-  const tabs = [
-    { key: "all", label: "Tất cả" },
-    { key: "Chưa có hợp đồng", label: "Chưa có hợp đồng" },
-    { key: "Đã có hợp đồng", label: "Đã có hợp đồng" },
-    { key: "Đã hủy", label: "Đã hủy" },
-  ];
+        // Check if we've already fetched for this provider (unless forced refresh)
+        if (!forceRefresh && hasFetchedRef.current === providerId) {
+          console.log("Already fetched bookings for provider:", providerId);
+          return;
+        }
 
-  // Upload props
-  const uploadProps: UploadProps = {
-    beforeUpload: (file) => {
-      if (
-        file.type ===
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      ) {
-        setFileScan(file);
-        return false;
+        setLoading(true);
+        console.log("Fetching pending bookings for provider:", providerId);
+
+        const result = (await getBookingsByProviderAndStatus(
+          providerId,
+          "PENDING"
+        )) as ApiResponse<BookingData[]>;
+
+        if (result.success) {
+          setBookings(result.data || []);
+          hasFetchedRef.current = providerId; // Mark as fetched for this provider
+        } else {
+          showApiError(result.error, "Không thể tải dữ liệu đơn đặt xe");
+        }
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        showApiError(error, "Có lỗi xảy ra khi tải dữ liệu");
+      } finally {
+        setLoading(false);
       }
-      message.error("Hãy chọn file docx");
-      return false;
     },
-    maxCount: 1,
+    [provider, providerLoading]
+  );
+
+  // Fetch bookings when provider is ready
+  useEffect(() => {
+    if (!providerLoading) {
+      fetchPendingBookings();
+    }
+  }, [fetchPendingBookings, providerLoading]);
+
+  // Show confirmation modal before accepting booking
+  const showAcceptConfirmation = (booking: BookingData) => {
+    setSelectedBooking(booking);
+    setConfirmModalOpen(true);
   };
 
-  // Helper functions
-  const showModalScanPDF = () => {
-    setIsModalOpen(true);
+  // Handle confirmed acceptance
+  const handleConfirmAccept = async () => {
+    if (!selectedBooking) return;
+
+    try {
+      setActionLoading(selectedBooking.id);
+      setConfirmModalOpen(false);
+
+      // Use the confirm API endpoint
+      const bookingResult = (await confirmBookingByProvider(
+        selectedBooking.id
+      )) as ApiResponse<unknown>;
+
+      if (bookingResult.success) {
+        showApiSuccess("Đã chấp nhận đơn đặt xe thành công!");
+        // Refresh data
+        fetchPendingBookings(true);
+      } else {
+        showApiError(bookingResult.error, "Không thể chấp nhận đơn đặt xe");
+      }
+    } catch (error) {
+      console.error("Error confirming booking:", error);
+      showApiError(error, "Có lỗi xảy ra khi chấp nhận đơn");
+    } finally {
+      setActionLoading("");
+      setSelectedBooking(null);
+    }
   };
 
-  const handleCancelScan = () => {
-    setIsModalOpen(false);
-  };
+  const cancelBooking = async (bookingId: string) => {
+    try {
+      setActionLoading(bookingId);
 
-  const handleUpload = () => {
-    if (!fileScan) return;
+      // Cancel booking
+      const bookingResult = (await cancelBookingByProvider(
+        bookingId
+      )) as ApiResponse<unknown>;
 
-    setUploading(true);
-    // Simulate API call with timeout
-    setTimeout(() => {
-      message.success("Đã chuyển đổi file thành công");
-      setUploading(false);
-      setIsModalOpen(false);
-      setFileScan(null);
-    }, 2000);
+      if (bookingResult.success) {
+        showApiSuccess("Đã hủy đơn đặt xe thành công!");
+        // Refresh data
+        fetchPendingBookings(true);
+      } else {
+        showApiError(bookingResult.error, "Không thể hủy đơn đặt xe");
+      }
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      showApiError(error, "Có lỗi xảy ra khi hủy đơn");
+    } finally {
+      setActionLoading("");
+    }
   };
 
   const showModal = (booking: BookingData) => {
     setOpen(true);
-    form.setFieldsValue({ ...booking });
+    form.setFieldsValue({
+      id: booking.id,
+      userName: booking.userName,
+      phoneNumber: booking.phoneNumber,
+      address: booking.address,
+      vehicleLicensePlate: booking.vehicleLicensePlate,
+      timeBookingStart: formatDateTime(booking.timeBookingStart),
+      timeBookingEnd: formatDateTime(booking.timeBookingEnd),
+      totalCost: booking.totalCost.toLocaleString("vi-VN") + " VNĐ",
+      codeTransaction: booking.codeTransaction,
+      vehicleThumb: booking.vehicleThumb,
+      vehicleImage: booking.vehicleImage,
+    });
   };
 
   const handleCancel = () => {
     setOpen(false);
   };
 
-  const handleSearch = (
-    selectedKeys: string[],
-    confirm: () => void,
-    dataIndex: string
-  ) => {
-    confirm();
-    setSearchText(selectedKeys[0]);
-    setSearchedColumn(dataIndex);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
   };
 
-  const handleReset = (clearFilters: () => void) => {
-    clearFilters();
-    setSearchText("");
-  };
-
-  // Generate document
-  const generateDocument = (booking: BookingData) => {
-    message.success(`Đã tạo hợp đồng cho ${booking.fullname}`);
-    setTimeout(() => {
-      const blob = new Blob(["Dummy contract content"], {
-        type: "application/octet-stream",
-      });
-      saveAs(blob, `hop_dong_${booking.fullname}_${booking.numberCar}.docx`);
-    }, 1000);
-  };
-
-  // Handle form submission
-  const onSubmit = (values: FormValues) => {
-    console.log("Form values:", values);
-    message.success("Hợp đồng đã được tạo thành công!");
-    setOpen(false);
-  };
-
-  const cancelBooking = (bookingId: string) => {
-    message.success(`Đã hủy đặt xe #${bookingId}`);
-  };
-
-  // Column search props
-  const getColumnSearchProps = (
-    dataIndex: keyof BookingData
-  ): ColumnType<BookingData> => ({
-    filterDropdown: ({
-      setSelectedKeys,
-      selectedKeys,
-      confirm,
-      clearFilters,
-      close,
-    }) => (
-      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
-        <Input
-          ref={searchInput}
-          placeholder={`Tìm ${dataIndex}`}
-          value={selectedKeys[0]}
-          onChange={(e) =>
-            setSelectedKeys(e.target.value ? [e.target.value] : [])
-          }
-          onPressEnter={() =>
-            handleSearch(selectedKeys as string[], confirm, dataIndex)
-          }
-          style={{ marginBottom: 8, display: "block" }}
-        />
-        <Space>
-          <Button
-            type="primary"
-            onClick={() =>
-              handleSearch(selectedKeys as string[], confirm, dataIndex)
-            }
-            icon={<SearchOutlined />}
-            size="small"
-            style={{ width: 90 }}
-          >
-            Tìm
-          </Button>
-          <Button
-            onClick={() => clearFilters && handleReset(clearFilters)}
-            size="small"
-            style={{ width: 90 }}
-          >
-            Reset
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={() => {
-              confirm({ closeDropdown: false });
-              setSearchText((selectedKeys as string[])[0]);
-              setSearchedColumn(dataIndex);
-            }}
-          >
-            Lọc
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={() => {
-              close();
-            }}
-          >
-            Đóng
-          </Button>
-        </Space>
-      </div>
-    ),
-    filterIcon: (filtered: boolean) => (
-      <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />
-    ),
-    onFilter: (value, record: BookingData) => {
-      const recordValue = record[dataIndex];
-      return recordValue
-        ? recordValue
-            .toString()
-            .toLowerCase()
-            .includes((value as string).toLowerCase())
-        : false;
-    },
-    onFilterDropdownOpenChange: (visible: boolean) => {
-      if (visible) {
-        setTimeout(() => searchInput.current?.select(), 100);
+  const formatDateTime = (dateValue: string | number[]) => {
+    try {
+      // Handle array format from backend: [year, month, day, hour, minute]
+      if (Array.isArray(dateValue)) {
+        const [year, month, day, hour, minute] = dateValue;
+        // Month in JavaScript Date is 0-indexed, so subtract 1
+        const date = new Date(year, month - 1, day, hour, minute || 0);
+        return date.toLocaleString("vi-VN");
       }
-    },
-    render: (text: string) =>
-      searchedColumn === dataIndex ? (
-        <Highlighter
-          highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
-          searchWords={[searchText]}
-          autoEscape
-          textToHighlight={text ? text.toString() : ""}
-        />
-      ) : (
-        text
-      ),
-  });
+      // Handle ISO string format (yyyy-MM-ddTHH:mm:ss)
+      if (typeof dateValue === "string") {
+        const date = new Date(dateValue);
+        return date.toLocaleString("vi-VN");
+      }
+      return "Invalid date";
+    } catch (error) {
+      console.error("Error formatting date:", error, dateValue);
+      return "Invalid date";
+    }
+  };
 
   const getStatusTag = (status: string) => {
     switch (status) {
-      case "Chưa có hợp đồng":
+      case "PENDING":
         return (
-          <Tag color="red" icon={<MinusCircleOutlined />}>
-            Chưa có hợp đồng
+          <Tag color="orange" icon={<MinusCircleOutlined />}>
+            Chờ xác nhận
           </Tag>
         );
-      case "Đã có hợp đồng":
+      case "CONFIRMED":
         return (
-          <Tag color="green" icon={<CheckCircleOutlined />}>
-            Đã có hợp đồng
+          <Tag color="blue" icon={<CheckCircleOutlined />}>
+            Đã xác nhận
           </Tag>
         );
-      case "Đã hủy":
+      case "CANCELLED":
         return (
           <Tag color="red" icon={<ExclamationCircleOutlined />}>
             Đã hủy
@@ -379,6 +313,27 @@ export default function ProviderManageBookings() {
         return <Tag>{status}</Tag>;
     }
   };
+
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchPendingBookings(true);
+    setTimeout(() => setRefreshing(false), 1000); // Stop refreshing after 1 second
+  };
+
+  const filteredBookings = bookings.filter((booking) => {
+    const searchLower = searchText.toLowerCase();
+    if (!searchLower.trim()) return true;
+
+    return (
+      booking.userName?.toLowerCase().includes(searchLower) ||
+      booking.vehicleLicensePlate?.toLowerCase().includes(searchLower) ||
+      booking.phoneNumber?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const columns: ColumnType<BookingData>[] = [
     {
@@ -390,16 +345,18 @@ export default function ProviderManageBookings() {
           <Image
             width={80}
             height={60}
-            src={record.thumb || "/placeholder.svg"}
-            alt={record.model}
+            src={record.vehicleImage || "/placeholder.svg"}
+            alt={record.vehicleModel || "Vehicle"}
             className="rounded-md object-cover"
             fallback="/placeholder.svg?height=60&width=80"
           />
           <div>
-            <div className="font-semibold">{record.numberCar}</div>
-            <div className="text-sm text-gray-500">{record.model}</div>
+            <div className="font-semibold">{record.vehicleLicensePlate}</div>
+            <div className="text-sm text-gray-500">
+              {record.vehicleBrand} {record.vehicleModel}
+            </div>
             <div className="text-xs text-gray-400">
-              {record.numberSeat} chỗ • {record.yearManufacture}
+              {record.vehicleNumberSeat} chỗ • {record.vehicleYearManufacture}
             </div>
           </div>
         </div>
@@ -411,8 +368,8 @@ export default function ProviderManageBookings() {
       width: 200,
       render: (_, record) => (
         <div>
-          <div className="font-semibold">{record.fullname}</div>
-          <div className="text-sm text-gray-500">{record.phone}</div>
+          <div className="font-semibold">{record.userName}</div>
+          <div className="text-sm text-gray-500">{record.phoneNumber}</div>
           <div
             className="text-xs text-gray-400 truncate"
             title={record.address}
@@ -421,64 +378,6 @@ export default function ProviderManageBookings() {
           </div>
         </div>
       ),
-      filterDropdown: ({
-        setSelectedKeys,
-        selectedKeys,
-        confirm,
-        clearFilters,
-        close,
-      }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
-          <Input
-            ref={searchInput}
-            placeholder="Tìm khách hàng"
-            value={selectedKeys[0]}
-            onChange={(e) =>
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-            }
-            onPressEnter={() =>
-              handleSearch(selectedKeys as string[], confirm, "fullname")
-            }
-            style={{ marginBottom: 8, display: "block" }}
-          />
-          <Space>
-            <Button
-              type="primary"
-              onClick={() =>
-                handleSearch(selectedKeys as string[], confirm, "fullname")
-              }
-              icon={<SearchOutlined />}
-              size="small"
-              style={{ width: 90 }}
-            >
-              Tìm
-            </Button>
-            <Button
-              onClick={() => clearFilters && handleReset(clearFilters)}
-              size="small"
-              style={{ width: 90 }}
-            >
-              Reset
-            </Button>
-          </Space>
-        </div>
-      ),
-      filterIcon: (filtered: boolean) => (
-        <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />
-      ),
-      onFilter: (value, record: BookingData) => {
-        return record.fullname
-          ? record.fullname
-              .toString()
-              .toLowerCase()
-              .includes((value as string).toLowerCase())
-          : false;
-      },
-      onFilterDropdownOpenChange: (visible: boolean) => {
-        if (visible) {
-          setTimeout(() => searchInput.current?.select(), 100);
-        }
-      },
     },
     {
       title: "Thời gian thuê",
@@ -487,21 +386,22 @@ export default function ProviderManageBookings() {
       render: (_, record) => (
         <div>
           <div className="text-sm">
-            <strong>Bắt đầu:</strong> {record.timeBookingStart}
+            <strong>Bắt đầu:</strong> {formatDateTime(record.timeBookingStart)}
           </div>
           <div className="text-sm">
-            <strong>Kết thúc:</strong> {record.timeBookingEnd}
+            <strong>Kết thúc:</strong> {formatDateTime(record.timeBookingEnd)}
           </div>
         </div>
       ),
     },
     {
       title: "Tổng tiền",
-      dataIndex: "totalCost",
       key: "totalCost",
       width: 120,
-      render: (cost) => (
-        <div className="font-semibold text-green-600">{cost}</div>
+      render: (_, record) => (
+        <div className="font-semibold text-green-600">
+          {formatCurrency(record.totalCost)}
+        </div>
       ),
     },
     {
@@ -509,12 +409,6 @@ export default function ProviderManageBookings() {
       dataIndex: "status",
       key: "status",
       width: 150,
-      filters: [
-        { text: "Chưa có hợp đồng", value: "Chưa có hợp đồng" },
-        { text: "Đã có hợp đồng", value: "Đã có hợp đồng" },
-        { text: "Đã hủy", value: "Đã hủy" },
-      ],
-      onFilter: (value, record) => record.status === value,
       render: (status) => getStatusTag(status),
     },
     {
@@ -522,96 +416,66 @@ export default function ProviderManageBookings() {
       key: "action",
       fixed: "right",
       width: 120,
-      render: (_, booking) => {
-        if (booking.status === "Đã hủy") {
-          return (
-            <div className="text-gray-400 text-sm italic">
-              Không thể thao tác với đơn đã hủy
-            </div>
-          );
-        }
-
-        // Nếu đơn chưa hủy, hiển thị các thao tác phù hợp
-        return (
-          <Space direction="vertical" size="small">
-            <Space size="small">
-              {booking.status === "Đã có hợp đồng" ? (
-                <Button
-                  type="primary"
-                  size="small"
-                  disabled
-                  icon={<PlusCircleOutlined />}
-                >
-                  Tạo HĐ
-                </Button>
-              ) : (
-                <Tooltip title="Tạo hợp đồng">
-                  <Button
-                    type="primary"
-                    size="small"
-                    onClick={() => showModal(booking)}
-                    icon={<PlusCircleOutlined />}
-                  >
-                    Tạo HĐ
-                  </Button>
-                </Tooltip>
-              )}
-
-              {/* Tải file hợp đồng chỉ khả dụng cho đơn có hợp đồng */}
-              {booking.status === "Đã có hợp đồng" && (
-                <Tooltip title="Tải file hợp đồng">
-                  <Button
-                    size="small"
-                    onClick={() => generateDocument(booking)}
-                    icon={<DownloadOutlined />}
-                  />
-                </Tooltip>
-              )}
-            </Space>
-
-            {/* Nút hủy thuê chỉ hiển thị cho đơn chưa hủy */}
-            <Popconfirm
-              title="Hủy đơn thuê?"
-              okText="Hủy đơn"
-              cancelText="Hủy bỏ"
-              onConfirm={() => cancelBooking(booking._id)}
-            >
-              <Button
-                danger
-                size="small"
-                icon={<DeleteOutlined />}
-                className="w-full"
-              >
-                Hủy thuê
-              </Button>
-            </Popconfirm>
-          </Space>
-        );
-      },
+      render: (_, booking) => (
+        <Tooltip title="Xem chi tiết">
+          <Button
+            size="small"
+            onClick={() => showModal(booking)}
+            icon={<SearchOutlined />}
+          >
+            Chi tiết
+          </Button>
+        </Tooltip>
+      ),
     },
   ];
 
   return (
     <div className="p-6">
       <Card>
-        {isMobile ? (
-          <>
-            <Tabs
-              activeKey={activeTab}
-              onChange={(key) => setActiveTab(key)}
-              className="mb-4 no-more-icon"
-              tabBarGutter={4}
-              size="small"
-              tabBarStyle={{
-                flexWrap: "wrap",
-                overflow: "visible",
-              }}
-            >
-              {tabs.map((tab) => (
-                <Tabs.TabPane tab={tab.label} key={tab.key} />
-              ))}
-            </Tabs>
+        <div className="mb-4 flex flex-col md:flex-row md:justify-between md:items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">
+              Quản lý đơn đặt xe chờ xác nhận
+            </h2>
+            <p className="text-gray-600">
+              Danh sách các đơn đặt xe đã thanh toán và đang chờ bạn xác nhận
+            </p>
+          </div>
+          <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+            <Input.Search
+              placeholder="Tìm theo tên khách hàng hoặc biển số"
+              onSearch={handleSearch}
+              onChange={(e) => handleSearch(e.target.value)}
+              style={{ width: 280 }}
+              allowClear
+            />
+            <Tooltip title="Làm mới danh sách">
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleRefresh}
+                loading={refreshing}
+              />
+            </Tooltip>
+          </div>
+        </div>
 
+        {providerLoading ? (
+          <div className="text-center py-8">
+            <Spin size="large" />
+            <p className="mt-4 text-gray-600">
+              Đang kiểm tra thông tin đăng nhập...
+            </p>
+          </div>
+        ) : !provider ? (
+          <div className="text-center py-8">
+            <div className="text-gray-500">
+              <h3 className="text-lg font-semibold mb-2">Vui lòng đăng nhập</h3>
+              <p>Bạn cần đăng nhập để xem danh sách đơn đặt xe</p>
+            </div>
+          </div>
+        ) : isMobile ? (
+          <>
             {loading ? (
               <div className="text-center py-8">
                 <Spin size="large" />
@@ -624,20 +488,25 @@ export default function ProviderManageBookings() {
                       <Image
                         width={80}
                         height={60}
-                        src={booking.thumb || "/placeholder.svg"}
-                        alt={booking.model}
+                        src={
+                          booking.vehicleThumb ||
+                          booking.vehicleImage ||
+                          "/placeholder.svg"
+                        }
+                        alt={booking.vehicleModel || "Vehicle"}
                         className="rounded-md object-cover"
                         fallback="/placeholder.svg?height=60&width=80"
                       />
                       <div className="flex-1">
                         <div className="font-semibold text-lg">
-                          {booking.numberCar}
+                          {booking.vehicleLicensePlate}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {booking.model}
+                          {booking.vehicleBrand} {booking.vehicleModel}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {booking.numberSeat} chỗ • {booking.yearManufacture}
+                          {booking.vehicleNumberSeat} chỗ •{" "}
+                          {booking.vehicleYearManufacture}
                         </div>
                       </div>
                     </div>
@@ -650,27 +519,31 @@ export default function ProviderManageBookings() {
                           Khách hàng:
                         </span>
                         <span className="text-sm font-medium">
-                          {booking.fullname}
+                          {booking.userName}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">
                           Điện thoại:
                         </span>
-                        <span className="text-sm">{booking.phone}</span>
+                        <span className="text-sm">{booking.phoneNumber}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">
-                          Thời gian thuê:
+                        <span className="text-sm text-gray-500">Địa chỉ:</span>
+                        <span className="text-sm text-right max-w-[70%]">
+                          {booking.address}
                         </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Bắt đầu:</span>
                         <span className="text-sm">
-                          {booking.timeBookingStart}
+                          {formatDateTime(booking.timeBookingStart)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">Kết thúc:</span>
                         <span className="text-sm">
-                          {booking.timeBookingEnd}
+                          {formatDateTime(booking.timeBookingEnd)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -678,58 +551,44 @@ export default function ProviderManageBookings() {
                           Tổng tiền:
                         </span>
                         <span className="text-sm font-semibold text-green-600">
-                          {booking.totalCost}
+                          {formatCurrency(booking.totalCost)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">
+                          Mã giao dịch:
+                        </span>
+                        <span className="text-sm font-mono">
+                          {booking.codeTransaction}
                         </span>
                       </div>
                     </div>
 
-                    {booking.status !== "Đã hủy" && (
-                      <div className="flex gap-2">
-                        {booking.status !== "Đã có hợp đồng" && (
-                          <Button
-                            type="primary"
-                            size="small"
-                            onClick={() => showModal(booking)}
-                            className="flex-1"
-                          >
-                            Tạo HĐ
-                          </Button>
-                        )}
-                        {booking.status === "Đã có hợp đồng" && (
-                          <Button
-                            size="small"
-                            onClick={() => generateDocument(booking)}
-                            className="flex-1"
-                          >
-                            Tải HĐ
-                          </Button>
-                        )}
-                        <Popconfirm
-                          title="Hủy đơn thuê?"
-                          okText="Hủy đơn"
-                          cancelText="Hủy bỏ"
-                          onConfirm={() => cancelBooking(booking._id)}
-                        >
-                          <Button danger size="small" className="flex-1">
-                            Hủy thuê
-                          </Button>
-                        </Popconfirm>
-                      </div>
-                    )}
+                    <div className="flex justify-center">
+                      <Button
+                        size="middle"
+                        onClick={() => showModal(booking)}
+                        icon={<SearchOutlined />}
+                        className="w-1/2"
+                      >
+                        Xem chi tiết
+                      </Button>
+                    </div>
                   </Card>
                 ))}
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
-                Không có dữ liệu
+                Không có đơn đặt xe nào đang chờ xác nhận
               </div>
             )}
           </>
         ) : (
           <Table
             columns={columns}
-            dataSource={mockBookings}
+            dataSource={filteredBookings}
             rowKey="id"
+            loading={loading}
             scroll={{ x: 1200 }}
             pagination={{
               pageSize: 10,
@@ -743,86 +602,234 @@ export default function ProviderManageBookings() {
         )}
       </Card>
 
-      {/* Modal for contract creation */}
+      {/* Confirmation Modal for Accept Booking */}
       <Modal
-        title="Tạo Hợp Đồng"
+        title="Xác nhận chấp nhận đơn đặt xe"
+        open={confirmModalOpen}
+        onOk={handleConfirmAccept}
+        onCancel={() => {
+          setConfirmModalOpen(false);
+          setSelectedBooking(null);
+        }}
+        okText="Xác nhận"
+        cancelText="Hủy bỏ"
+        okButtonProps={{
+          loading: actionLoading === selectedBooking?.id,
+          danger: false,
+          type: "primary",
+          icon: <CheckOutlined />,
+        }}
+      >
+        {selectedBooking && (
+          <div className="py-4">
+            <p className="mb-4">
+              Bạn có chắc chắn muốn chấp nhận đơn đặt xe này không?
+            </p>
+
+            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+              <div className="flex items-center gap-3 mb-2">
+                <Image
+                  width={80}
+                  height={60}
+                  src={
+                    selectedBooking.vehicleThumb ||
+                    selectedBooking.vehicleImage ||
+                    "/placeholder.svg"
+                  }
+                  alt={`${selectedBooking.vehicleBrand} ${selectedBooking.vehicleModel}`}
+                  className="rounded-md object-cover"
+                  fallback="/placeholder.svg?height=60&width=80"
+                />
+                <div>
+                  <div className="font-semibold">
+                    {selectedBooking.vehicleLicensePlate}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {selectedBooking.vehicleBrand}{" "}
+                    {selectedBooking.vehicleModel}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-medium">Khách hàng:</span>
+                <span>{selectedBooking.userName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Điện thoại:</span>
+                <span>{selectedBooking.phoneNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Địa chỉ nhận xe:</span>
+                <span className="text-right">{selectedBooking.address}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Thời gian bắt đầu:</span>
+                <span>{formatDateTime(selectedBooking.timeBookingStart)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Thời gian kết thúc:</span>
+                <span>{formatDateTime(selectedBooking.timeBookingEnd)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Tổng tiền:</span>
+                <span className="text-green-600 font-semibold">
+                  {formatCurrency(selectedBooking.totalCost)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Mã giao dịch:</span>
+                <span>{selectedBooking.codeTransaction}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Thời gian giao dịch:</span>
+                <span>{formatDateTime(selectedBooking.timeTransaction)}</span>
+              </div>
+            </div>
+
+            <div className="mt-4 bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500">
+              <p className="text-sm text-gray-800">
+                <strong>Lưu ý:</strong> Sau khi xác nhận, đơn đặt xe sẽ được
+                chuyển sang trạng thái &ldquo;Đã xác nhận&rdquo; và hợp đồng sẽ
+                được tạo. Khách hàng sẽ nhận được thông báo để tiếp tục quá
+                trình thuê xe.
+              </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal for booking details */}
+      <Modal
+        title="Chi tiết đơn đặt xe"
         open={open}
         footer={null}
         width={800}
         onCancel={handleCancel}
       >
-        <Form
-          form={form}
-          onFinish={onSubmit}
-          layout="vertical"
-          className="mt-6"
-        >
-          <div className="grid grid-cols-2 gap-6">
+        <div className="mt-4 mb-6 flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Image
+              width={100}
+              height={75}
+              src={
+                form.getFieldValue("vehicleThumb") ||
+                form.getFieldValue("vehicleImage") ||
+                "/placeholder.svg"
+              }
+              alt="Vehicle"
+              className="rounded-md object-cover"
+              fallback="/placeholder.svg?height=75&width=100"
+            />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold">
+              {form.getFieldValue("vehicleLicensePlate")}
+            </h3>
+            <p className="text-blue-600 text-sm">{getStatusTag("PENDING")}</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <h4 className="font-medium text-gray-800 mb-2">
+            Thông tin thanh toán
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Mã giao dịch:</span>
+              <span className="font-medium">
+                {form.getFieldValue("codeTransaction")}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Tổng tiền:</span>
+              <span className="font-semibold text-green-600">
+                {form.getFieldValue("totalCost")}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <Form form={form} layout="vertical">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Form.Item label="Tên khách hàng" name="fullname">
+              <h4 className="font-medium text-gray-800 mb-3">
+                Thông tin khách hàng
+              </h4>
+              <Form.Item label="Tên khách hàng" name="userName">
                 <Input readOnly />
               </Form.Item>
-              <Form.Item label="Số điện thoại" name="phone">
+              <Form.Item label="Số điện thoại" name="phoneNumber">
                 <Input readOnly />
               </Form.Item>
-              <Form.Item label="Địa chỉ" name="address">
+              <Form.Item label="Địa chỉ nhận xe" name="address">
                 <Input.TextArea readOnly rows={2} />
-              </Form.Item>
-              <Form.Item label="Biển số xe" name="numberCar">
-                <Input readOnly />
               </Form.Item>
             </div>
 
             <div>
+              <h4 className="font-medium text-gray-800 mb-3">
+                Thông tin đặt xe
+              </h4>
+              <Form.Item label="Biển số xe" name="vehicleLicensePlate">
+                <Input readOnly />
+              </Form.Item>
               <Form.Item label="Thời gian bắt đầu thuê" name="timeBookingStart">
                 <Input readOnly />
               </Form.Item>
               <Form.Item label="Thời gian kết thúc thuê" name="timeBookingEnd">
                 <Input readOnly />
               </Form.Item>
-              <Form.Item label="Tổng giá tiền thuê" name="totalCost">
-                <Input readOnly />
-              </Form.Item>
-              <Form.Item label="Booking id" hidden name="_id">
+              <Form.Item label="Booking ID" hidden name="id">
                 <Input readOnly />
               </Form.Item>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-6">
-            <Button onClick={handleCancel}>Hủy</Button>
-            <Button type="primary" htmlType="submit">
-              Xác nhận tạo hợp đồng
+          <div className="flex justify-end gap-3 mt-6">
+            <Button onClick={handleCancel}>Đóng</Button>
+
+            <Popconfirm
+              title="Hủy đơn đặt xe?"
+              description="Bạn có chắc muốn hủy đơn đặt xe này?"
+              okText="Hủy đơn"
+              cancelText="Không"
+              onConfirm={() => {
+                const bookingId = form.getFieldValue("id");
+                handleCancel();
+                cancelBooking(bookingId);
+              }}
+            >
+              <Button
+                danger
+                icon={<CloseOutlined />}
+                loading={actionLoading === form.getFieldValue("id")}
+              >
+                Hủy đơn
+              </Button>
+            </Popconfirm>
+
+            <Button
+              type="primary"
+              icon={<CheckOutlined />}
+              onClick={() => {
+                const bookingId = form.getFieldValue("id");
+                const booking = bookings.find((b) => b.id === bookingId);
+                handleCancel();
+                if (booking) {
+                  showAcceptConfirmation(booking);
+                }
+              }}
+              loading={actionLoading === form.getFieldValue("id")}
+            >
+              Chấp nhận đơn
             </Button>
           </div>
         </Form>
-      </Modal>
-
-      {/* Modal for PDF scanning */}
-      <Modal
-        title="Scan PDF"
-        open={isModalOpen}
-        onCancel={handleCancelScan}
-        footer={null}
-      >
-        <div className="py-4">
-          <Upload {...uploadProps}>
-            <Button icon={<UploadOutlined />}>Chọn file</Button>
-          </Upload>
-          <Button
-            type="primary"
-            onClick={handleUpload}
-            disabled={!fileScan}
-            loading={uploading}
-            style={{ marginTop: 16 }}
-          >
-            {uploading ? "Đang quét..." : "Bắt đầu quét"}
-          </Button>
-        </div>
       </Modal>
     </div>
   );
 }
 
 // Set layout for the component
-ProviderManageBookings.Layout = ProviderLayout;
+ManagePendingBookings.Layout = ProviderLayout;

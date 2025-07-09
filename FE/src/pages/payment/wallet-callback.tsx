@@ -1,15 +1,7 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import {
-  Button,
-  Spin,
-  message,
-  Result,
-  Card,
-  Descriptions,
-  Divider,
-} from "antd";
+import { Button, Spin, message, Result, Card, Descriptions } from "antd";
 import Link from "next/link";
 import {
   CheckCircleOutlined,
@@ -17,7 +9,7 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 
-interface VNPayResponse {
+interface VNPayWalletResponse {
   vnp_ResponseCode: string;
   vnp_TxnRef: string;
   vnp_Amount: string;
@@ -28,18 +20,19 @@ interface VNPayResponse {
   vnp_SecureHash: string;
 }
 
-const PaymentCallback: React.FC = () => {
+const WalletCallback: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState<
     "success" | "failed" | "pending"
   >("pending");
-  const [paymentData, setPaymentData] = useState<VNPayResponse | null>(null);
+  const [paymentData, setPaymentData] = useState<VNPayWalletResponse | null>(
+    null
+  );
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const messageShown = useRef(false);
 
   useEffect(() => {
-    const handlePaymentCallback = async () => {
+    const handleWalletCallback = async () => {
       try {
         // Lấy tất cả parameters từ URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -53,7 +46,7 @@ const PaymentCallback: React.FC = () => {
         const secureHash = urlParams.get("vnp_SecureHash") || "";
 
         // Tạo object payment data
-        const paymentResponse: VNPayResponse = {
+        const paymentResponse: VNPayWalletResponse = {
           vnp_ResponseCode: responseCode,
           vnp_TxnRef: txnRef,
           vnp_Amount: amount,
@@ -68,38 +61,29 @@ const PaymentCallback: React.FC = () => {
 
         // Xử lý response code
         if (responseCode === "00") {
-          // Thanh toán thành công
+          // Nạp tiền thành công
           setPaymentStatus("success");
-          if (!messageShown.current) {
-            message.success("Thanh toán thành công!");
-            messageShown.current = true;
-          }
+          message.success("Nạp tiền vào ví thành công!");
 
-          // Có thể gọi API để cập nhật trạng thái booking
+          // Có thể gọi API để cập nhật số dư ví
           try {
-            // await updateBookingStatus(txnRef, 'PAID');
-            console.log("Payment successful for booking:", txnRef);
+            // await updateWalletBalance(txnRef, amount);
+            console.log("Wallet top-up successful:", txnRef);
           } catch (error) {
-            console.error("Error updating booking status:", error);
+            console.error("Error updating wallet balance:", error);
           }
         } else {
-          // Thanh toán thất bại
+          // Nạp tiền thất bại
           setPaymentStatus("failed");
           const errorMsg = getErrorMessage(responseCode);
           setErrorMessage(errorMsg);
-          if (!messageShown.current) {
-            message.error("Thanh toán thất bại!");
-            messageShown.current = true;
-          }
+          message.error("Nạp tiền thất bại!");
         }
       } catch (error) {
-        console.error("Error processing payment callback:", error);
+        console.error("Error processing wallet callback:", error);
         setPaymentStatus("failed");
-        setErrorMessage("Có lỗi xảy ra khi xử lý thanh toán");
-        if (!messageShown.current) {
-          message.error("Có lỗi xảy ra khi xử lý thanh toán");
-          messageShown.current = true;
-        }
+        setErrorMessage("Có lỗi xảy ra khi xử lý nạp tiền");
+        message.error("Có lỗi xảy ra khi xử lý nạp tiền");
       } finally {
         setLoading(false);
       }
@@ -107,11 +91,11 @@ const PaymentCallback: React.FC = () => {
 
     // Chỉ xử lý khi có parameters
     if (window.location.search) {
-      handlePaymentCallback();
+      handleWalletCallback();
     } else {
       setLoading(false);
       setPaymentStatus("failed");
-      setErrorMessage("Không tìm thấy thông tin thanh toán");
+      setErrorMessage("Không tìm thấy thông tin nạp tiền");
     }
   }, []);
 
@@ -168,7 +152,7 @@ const PaymentCallback: React.FC = () => {
             size="large"
           />
           <div className="mt-4 text-lg text-gray-600">
-            Đang xử lý thanh toán...
+            Đang xử lý nạp tiền...
           </div>
           <div className="mt-2 text-sm text-gray-500">
             Vui lòng không đóng trang này
@@ -185,12 +169,12 @@ const PaymentCallback: React.FC = () => {
           <Result
             status="success"
             icon={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
-            title="Thanh toán thành công!"
-            subTitle="Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi"
+            title="Nạp tiền thành công!"
+            subTitle="Số tiền đã được cộng vào ví của bạn"
             extra={[
-              <Link href="/profile/booking-history" key="booking">
+              <Link href="/profile/wallets" key="wallet">
                 <Button type="primary" size="large">
-                  Xem đơn hàng của tôi
+                  Xem số dư ví
                 </Button>
               </Link>,
               <Link href="/vehicles" key="continue">
@@ -200,7 +184,11 @@ const PaymentCallback: React.FC = () => {
           >
             {paymentData && (
               <Card className="mt-6">
-                <Descriptions title="Chi tiết giao dịch" bordered column={1}>
+                <Descriptions
+                  title="Chi tiết giao dịch nạp tiền"
+                  bordered
+                  column={1}
+                >
                   <Descriptions.Item label="Mã giao dịch">
                     <span className="font-mono font-semibold">
                       {paymentData.vnp_TxnRef}
@@ -211,7 +199,7 @@ const PaymentCallback: React.FC = () => {
                       {paymentData.vnp_TransactionNo}
                     </span>
                   </Descriptions.Item>
-                  <Descriptions.Item label="Số tiền">
+                  <Descriptions.Item label="Số tiền nạp">
                     <span className="font-bold text-green-600 text-lg">
                       {formatAmount(paymentData.vnp_Amount)}₫
                     </span>
@@ -219,7 +207,7 @@ const PaymentCallback: React.FC = () => {
                   <Descriptions.Item label="Ngân hàng">
                     {paymentData.vnp_BankCode}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Thời gian thanh toán">
+                  <Descriptions.Item label="Thời gian nạp tiền">
                     {formatPayDate(paymentData.vnp_PayDate)}
                   </Descriptions.Item>
                   <Descriptions.Item label="Mô tả">
@@ -229,19 +217,18 @@ const PaymentCallback: React.FC = () => {
               </Card>
             )}
 
-            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-start">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                  <span className="text-white text-xs font-bold">!</span>
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                  <span className="text-white text-xs font-bold">✓</span>
                 </div>
                 <div>
-                  <div className="font-semibold text-blue-800 mb-1">
-                    Bước tiếp theo
+                  <div className="font-semibold text-green-800 mb-1">
+                    Nạp tiền hoàn tất
                   </div>
-                  <div className="text-blue-700 text-sm">
-                    Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất để xác
-                    nhận và hướng dẫn giao nhận xe. Vui lòng kiểm tra email và
-                    số điện thoại.
+                  <div className="text-green-700 text-sm">
+                    Số tiền đã được cộng vào ví RFT của bạn. Bạn có thể sử dụng
+                    số dư này để thanh toán cho các đơn đặt xe.
                   </div>
                 </div>
               </div>
@@ -253,15 +240,12 @@ const PaymentCallback: React.FC = () => {
           <Result
             status="error"
             icon={<CloseCircleOutlined style={{ color: "#ff4d4f" }} />}
-            title="Thanh toán thất bại"
+            title="Nạp tiền thất bại"
             subTitle={errorMessage}
             extra={[
-              <Link
-                href={`/booking/${paymentData?.vnp_TxnRef || ""}`}
-                key="retry"
-              >
+              <Link href="/profile/wallets" key="retry">
                 <Button type="primary" size="large">
-                  Thử lại thanh toán
+                  Thử lại nạp tiền
                 </Button>
               </Link>,
               <Link href="/vehicles" key="home">
@@ -304,8 +288,8 @@ const PaymentCallback: React.FC = () => {
                     Cần hỗ trợ?
                   </div>
                   <div className="text-yellow-700 text-sm">
-                    Nếu bạn gặp vấn đề với thanh toán, vui lòng liên hệ với
-                    chúng tôi qua hotline hoặc email để được hỗ trợ.
+                    Nếu bạn gặp vấn đề với nạp tiền, vui lòng liên hệ với chúng
+                    tôi qua hotline hoặc email để được hỗ trợ.
                   </div>
                 </div>
               </div>
@@ -317,4 +301,4 @@ const PaymentCallback: React.FC = () => {
   );
 };
 
-export default PaymentCallback;
+export default WalletCallback;
