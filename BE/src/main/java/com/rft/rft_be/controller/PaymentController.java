@@ -61,7 +61,10 @@ public class PaymentController {
                     .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
                     .build();
         } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
+            // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
+                    .build();
         }
     }
 
