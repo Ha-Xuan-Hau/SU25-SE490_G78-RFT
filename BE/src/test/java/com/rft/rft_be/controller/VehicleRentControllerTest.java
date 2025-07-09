@@ -1,172 +1,286 @@
-//package com.rft.rft_be.controller;
-//
-//
-//import com.rft.rft_be.controller.VehicleRentController;
-//import com.rft.rft_be.dto.vehicle.vehicleRent.*;
-//
-//import com.rft.rft_be.dto.vehicle.*;
-//import com.rft.rft_be.entity.Vehicle;
-//import com.rft.rft_be.service.vehicleRent.VehicleRentService;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.mockito.InjectMocks;
-//import org.mockito.Mock;
-//import org.mockito.MockitoAnnotations;
-//import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-//import org.springframework.boot.test.context.SpringBootTest;
-//import org.springframework.http.HttpStatus;
-//import org.springframework.http.ResponseEntity;
-//
-//import java.math.BigDecimal;
-//import java.time.LocalDateTime;
-//import java.util.Arrays;
-//import java.util.List;
-//import java.util.stream.Collectors;
-//
-//import static org.junit.jupiter.api.Assertions.assertEquals;
-//import static org.junit.jupiter.api.Assertions.assertNotNull;
-//import static org.mockito.ArgumentMatchers.any;
-//import static org.mockito.ArgumentMatchers.eq;
-//import static org.mockito.Mockito.when;
-//
-//@SpringBootTest
-//@AutoConfigureMockMvc
-//public class VehicleRentControllerTest {
-//
-//
-//    @Mock
-//    private VehicleRentService vehicleRentService;
-//
-//    @InjectMocks
-//    private VehicleRentController vehicleRentController;
-//
-//    @BeforeEach
-//    void setUp() {
-//        MockitoAnnotations.openMocks(this);
-//    }
-//
-//    @Test
-//    void registerVehicle_Success() {
-//        // Given
-//        String userId = "testUserId";
-//        VehicleRentCreateDTO request = VehicleRentCreateDTO.builder()
-//                .brandId("brand123")
-//                .modelId("model456")
-//                .licensePlate("ABC-123")
-//                .vehicleType("CAR")
-//                .vehicleFeatures("GPS, Bluetooth")
-//                .vehicleImages("img1.jpg,img2.jpg")
-//                .insuranceStatus("YES")
-//                .shipToAddress("NO")
-//                .numberSeat(5)
-//                .yearManufacture(2022)
-//                .transmission("AUTOMATIC")
-//                .fuelType("GASOLINE")
-//                .description("Một chiếc xe thoải mái.")
-//                .numberVehicle(1)
-//                .costPerDay(new BigDecimal("50.00"))
-//                .thumb("thumb.jpg")
-//                .build();
-//
-//        List<VehicleImageDTO> expectedVehicleImages;
-//        String vehicleImagesString = request.getVehicleImages();
-//        if (vehicleImagesString != null && !vehicleImagesString.isEmpty()) {
-//            expectedVehicleImages = Arrays.stream(vehicleImagesString.split(","))
-//                    .map(String::trim)
-//                    .filter(s -> !s.isEmpty())
-//                    .map(url -> VehicleImageDTO.builder().imageUrl(url).build())
-//                    .collect(Collectors.toList());
-//        } else {
-//            expectedVehicleImages = List.of();
-//        }
-//
-//        // --- Quan trọng: Đảm bảo TẤT CẢ các trường liên quan của VehicleGetDTO được điền đầy đủ
-//        // để phép so sánh .equals() hoạt động chính xác.
-//        // Ngay cả khi một số trường là null trong mock setup của bạn, nếu VehicleGetDTO thực tế được tạo bởi mapper
-//        // điền các trường đó, thì .equals() sẽ thất bại.
-//        // An toàn nhất là điền đầy đủ chúng hoặc sử dụng phương pháp so sánh tùy chỉnh nếu chỉ một tập hợp con các trường quan trọng.
-//        VehicleGetDTO mockVehicleGetDTO = VehicleGetDTO.builder()
-//                .id("vehicleId123")
-//                .userId(userId)
-//                // Giả sử VehicleGetDTO cũng có userName, brandName, modelName, v.v.
-//                // Thêm các trường này nếu mapper thực tế của bạn điền chúng vào VehicleGetDTO
-//                // .userName("Test User Name") // Ví dụ
-//                .brandId(request.getBrandId())
-//                // .brandName("Test Brand Name") // Ví dụ
-//                .modelId(request.getModelId())
-//                // .modelName("Test Model Name") // Ví dụ
-//                // .penaltyId, .penaltyType, .penaltyValue, .minCancelHour - thiết lập nếu có, hoặc đảm bảo chúng cũng null trong DTO thực tế
-//                .licensePlate(request.getLicensePlate())
-//                .vehicleType(request.getVehicleType()) // Giả sử DTO sử dụng String cho enums
-//                .vehicleFeatures(request.getVehicleFeatures())
-//                .vehicleImages(expectedVehicleImages)
-//                // Sử dụng .name() để lấy giá trị String từ enum, phù hợp với cách DTO thường lưu trữ
-//                .haveDriver(Vehicle.HaveDriver.NO.name())
-//                .insuranceStatus(Vehicle.InsuranceStatus.NO.name())
-//                .shipToAddress(Vehicle.ShipToAddress.NO.name())
-//                .numberSeat(request.getNumberSeat())
-//                .yearManufacture(request.getYearManufacture())
-//                .transmission(request.getTransmission()) // Giả sử DTO sử dụng String cho enums
-//                .fuelType(request.getFuelType()) // Giả sử DTO sử dụng String cho enums
-//                .description(request.getDescription())
-//                .numberVehicle(request.getNumberVehicle())
-//                .costPerDay(request.getCostPerDay())
-//                .status(Vehicle.Status.AVAILABLE.name())
-//                .thumb(request.getThumb())
-//                .totalRatings(0)
-//                .likes(0)
-//                // createdAt và updatedAt thường được đặt bởi @CreationTimestamp/@UpdateTimestamp trong entity
-//                // và có thể được bao gồm trong DTO. Nếu vậy, chúng cần được mock hoặc bỏ qua trong equals.
-//                // Đối với unit test của controller, thường chỉ cần chúng không phải là null.
-//                // Có thể thêm: .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()) nếu DTO của bạn có chúng.
-//                .createdAt(LocalDateTime.now()) // Thêm để đảm bảo không null
-//                .updatedAt(LocalDateTime.now()) // Thêm để đảm bảo không null
-//                .build();
-//
-//        // Đảm bảo mock trả về một DTO không null
-//        when(vehicleRentService.createVehicle(eq(userId), any(VehicleRentCreateDTO.class)))
-//                .thenReturn(mockVehicleGetDTO); // Đảm bảo mockVehicleGetDTO thực sự được build và không null ở đây
-//
-//        // When
-//        ResponseEntity<ApiResponseDTO<VehicleGetDTO>> responseEntity =
-//                vehicleRentController.registerVehicle(userId, request);
-//
-//        // Then
-//        assertNotNull(responseEntity);
-//        // Thêm các assertion chi tiết hơn để xác định chính xác cái gì là null
-//        assertNotNull(responseEntity.getBody(), "Response body của ResponseEntity không được null");
-//        assertEquals(HttpStatus.CREATED, responseEntity.getStatusCode());
-//        assertEquals("Vehicle registered successfully", responseEntity.getBody().getMessage());
-//        assertNotNull(responseEntity.getBody().getData(), "Trường 'data' trong ApiResponseDTO không được null");
-//        assertEquals(mockVehicleGetDTO, responseEntity.getBody().getData());
-//    }
-//
-//    @Test
-//    void registerVehicle_BadRequest() {
-//        // Given
-//        String userId = "testUserId";
-//        VehicleRentCreateDTO request = VehicleRentCreateDTO.builder()
-//                .brandId("brand123")
-//                .modelId("model456")
-//                .licensePlate("ABC-123")
-//                .vehicleType("CAR")
-//                .costPerDay(new BigDecimal("50.00"))
-//                .build();
-//
-//        String errorMessage = "License plate already exists for this user";
-//        when(vehicleRentService.createVehicle(eq(userId), any(VehicleRentCreateDTO.class)))
-//                .thenThrow(new RuntimeException(errorMessage));
-//
-//        // When
-//        ResponseEntity<ApiResponseDTO<VehicleGetDTO>> responseEntity =
-//                vehicleRentController.registerVehicle(userId, request);
-//
-//        // Then
-//        assertNotNull(responseEntity);
-//        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
-//        assertNotNull(responseEntity.getBody());
-//        assertEquals("Failed to register vehicle: " + errorMessage, responseEntity.getBody().getMessage());
-//        // Giả sử ApiResponseDTO có trường getSuccess()
-//        assertEquals(false, responseEntity.getBody().isSuccess());
-//    }
-//}
+package com.rft.rft_be.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
+import com.rft.rft_be.dto.vehicle.VehicleImageDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
+import com.rft.rft_be.service.vehicleRent.VehicleRentService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class VehicleRentControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private VehicleRentService vehicleRentService;
+
+    private VehicleRentCreateDTO request;
+    private VehicleGetDTO mockVehicleGetDTO;
+
+    @BeforeEach
+    void setUp() {
+        request = VehicleRentCreateDTO.builder()
+                .brandId("brand123")
+                .modelId("model456")
+                .licensePlate("ABC-123")
+                .vehicleType("CAR")
+                .vehicleFeatures("GPS, Bluetooth")
+                .vehicleImages("img1.jpg,img2.jpg")
+                .insuranceStatus("YES")
+                .shipToAddress("NO")
+                .numberSeat(5)
+                .yearManufacture(2022)
+                .transmission("AUTOMATIC")
+                .fuelType("GASOLINE")
+                .description("Một chiếc xe thoải mái.")
+                .numberVehicle(1)
+                .haveDriver("YES")
+                .status("AVAIABLE")
+                .costPerDay(new BigDecimal("50.00"))
+                .thumb("thumb")
+                .build();
+
+        List<VehicleImageDTO> expectedVehicleImages;
+        String vehicleImagesString = request.getVehicleImages();
+        if (vehicleImagesString != null && !vehicleImagesString.isEmpty()) {
+            expectedVehicleImages = Arrays.stream(vehicleImagesString.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(url -> VehicleImageDTO.builder().imageUrl(url).build())
+                    .collect(Collectors.toList());
+        } else {
+            expectedVehicleImages = List.of();
+        }
+
+        mockVehicleGetDTO = VehicleGetDTO.builder()
+                .id("vehicleId123")
+                .userId("testUserId")
+                .brandId(request.getBrandId())
+                .modelId(request.getModelId())
+                .licensePlate(request.getLicensePlate())
+                .vehicleType(request.getVehicleType())
+                .vehicleFeatures(request.getVehicleFeatures())
+                .vehicleImages(expectedVehicleImages)
+                .haveDriver("NO")
+                .insuranceStatus("NO")
+                .shipToAddress("NO")
+                .numberSeat(request.getNumberSeat())
+                .yearManufacture(request.getYearManufacture())
+                .transmission(request.getTransmission())
+                .fuelType(request.getFuelType())
+                .description(request.getDescription())
+                .numberVehicle(request.getNumberVehicle())
+                .costPerDay(request.getCostPerDay())
+                .status("AVAILABLE")
+                .thumb(request.getThumb())
+                .totalRatings(0)
+                .likes(0)
+                .build();
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_Success() throws Exception {
+        Mockito.when(vehicleRentService.createVehicle(Mockito.any(VehicleRentCreateDTO.class)))
+                .thenReturn(mockVehicleGetDTO);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data.id").value(mockVehicleGetDTO.getId()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data.licensePlate").value(request.getLicensePlate()));
+    }
+
+
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_MissingVehicleType_fail() throws Exception {
+        request.setVehicleType(null);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.errors.vehicleType").value("Vehicle type is required"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_MissingVehicleFeatures_fail() throws Exception {
+        request.setVehicleFeatures(null);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.errors.vehicleFeatures").value("Vehicle Features is required"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_MissingVehicleImages_fail() throws Exception {
+        request.setVehicleImages(null);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.errors.vehicleImages").value("Vehicle Image is required"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_MissingFuelType_fail() throws Exception {
+        request.setFuelType(null);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.errors.fuelType").value("Fuel type is required"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidNumberSeat_fail() throws Exception {
+        request.setNumberSeat(0);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.errors.numberSeat").value("Number of seats must be at least 1"));
+    }
+
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidCostPerDay_fail() throws Exception {
+        request.setCostPerDay(BigDecimal.ZERO);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.errors.costPerDay").value("Cost per day must be greater than 0"));
+    }
+
+
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_Motorbike_success() throws Exception {
+        request.setVehicleType("MOTORBIKE");
+        request.setBrandId("brand123");
+        request.setLicensePlate("29A-12345");
+        request.setVehicleFeatures("GPS, Bluetooth");
+        request.setVehicleImages("img1.jpg,img2.jpg");
+        request.setFuelType("GASOLINE");
+        request.setNumberSeat(2);
+        request.setCostPerDay(new BigDecimal("100000"));
+        // Các trường khác giữ nguyên hoặc hợp lệ
+
+        Mockito.when(vehicleRentService.createVehicle(Mockito.any(VehicleRentCreateDTO.class)))
+                .thenReturn(mockVehicleGetDTO);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
+
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_Bicycle_SuccessWithoutBrandModelLicensePlate() throws Exception {
+        request.setVehicleType("BICYCLE");
+        request.setBrandId(null);
+        request.setModelId(null);
+        request.setLicensePlate(null);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+
+        Mockito.when(vehicleRentService.createVehicle(Mockito.any(VehicleRentCreateDTO.class)))
+                .thenReturn(mockVehicleGetDTO);
+
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true));
+    }
+}

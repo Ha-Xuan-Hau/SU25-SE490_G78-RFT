@@ -38,9 +38,9 @@ public class VehicleRentCreateDTO {
     private String fuelType;
     private String description;
 
-    @Min(value = 1, message = "Number of vehicles must be at least 1")
-    private Integer numberVehicle = 1;
-
+//    @Min(value = 1, message = "Number of vehicles must be at least 1")
+//    private Integer numberVehicle = 1;
+    private Integer numberVehicle;
     @DecimalMin(value = "0.0", inclusive = false, message = "Cost per day must be greater than 0")
     private BigDecimal costPerDay;
     private String status;
