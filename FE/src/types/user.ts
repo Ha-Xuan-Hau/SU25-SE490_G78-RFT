@@ -12,4 +12,6 @@ export interface User {
   createdAt?: string | number;
   updatedAt?: string | number;
   validLicenses?: string[];
+  openTimes?: string;
+  closeTimes?: string;
 }

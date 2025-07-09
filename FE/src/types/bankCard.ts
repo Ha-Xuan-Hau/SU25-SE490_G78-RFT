@@ -1,7 +1,7 @@
 export interface bankCard {
   id: string;
-  cardNumber: string;
-  cardHolderName: string;
-  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  bankAccountType: string;
   balance?: number;
 }
