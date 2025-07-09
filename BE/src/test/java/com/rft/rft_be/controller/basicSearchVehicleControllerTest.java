@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-public class SearchVehicleControllerTest {
+public class basicSearchVehicleControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -43,9 +43,9 @@ public class SearchVehicleControllerTest {
         // 1. Prepare request DTO
         BasicSearchDTO request = BasicSearchDTO.builder()
                 .address("Hanoi")
-                .vehicleType("CAR")
-                .pickupDateTime("2025-07-07T00:00:00Z")
-                .returnDateTime("2025-07-10T00:00:00Z")
+                .vehicleType("Car")
+                .pickupDateTime("2025-07-12 18:00:00")
+                .returnDateTime("2025-07-16 18:00:00")
                 .page(0)
                 .size(10)
                 .build();
