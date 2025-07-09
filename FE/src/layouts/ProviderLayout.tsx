@@ -103,6 +103,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
       label: "Quy định thuê xe",
     },
     {
+      key: "provider-wallet",
+      path: "/provider/provider-wallet",
+      icon: "mdi:wallet",
+      label: "Ví của tôi",
+    },
+    {
       key: "change-password",
       path: "/provider/change-password",
       icon: "mdi:key",

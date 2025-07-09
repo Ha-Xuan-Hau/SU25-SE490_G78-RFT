@@ -4,8 +4,11 @@ import { ProfileLayout } from "@/layouts/ProfileLayout";
 import { VehicleRentalCard } from "@/components/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { getUserBookings } from "@/apis/booking.api";
-import { showError } from "@/utils/toast.utils";
+import { getRatingByBookingAndUser, upsertRating } from "@/apis/booking.api";
+
+import { showError, showSuccess } from "@/utils/toast.utils";
 import { Empty, Spin } from "antd";
+import RatingModal from "@/components/RatingModal";
 
 // Backend booking interface (based on the API response format)
 interface BackendBooking {
@@ -120,6 +123,13 @@ export default function BookingHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
 
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [currentRatingMap, setCurrentRatingMap] = useState<Record<string, any>>(
+    {}
+  );
+
   // Get userId from JWT token
   const getUserIdFromToken = useCallback(() => {
     if (!accessToken) return null;
@@ -138,6 +148,78 @@ export default function BookingHistoryPage() {
       return null;
     }
   }, [accessToken]);
+
+  useEffect(() => {
+    setUserId(getUserIdFromToken());
+  }, [accessToken, getUserIdFromToken]);
+
+  const handleOpenRating = async (booking: Booking) => {
+    setSelectedBooking(booking);
+    if (userId) {
+      try {
+        const rating = await getRatingByBookingAndUser(booking._id, userId);
+        setCurrentRatingMap((prev) => ({
+          ...prev,
+          [booking._id]: rating,
+        }));
+      } catch {
+        setCurrentRatingMap((prev) => ({
+          ...prev,
+          [booking._id]: null,
+        }));
+      }
+    }
+    setRatingModalOpen(true);
+  };
+
+  const handleCloseRating = () => {
+    setRatingModalOpen(false);
+    setSelectedBooking(null);
+  };
+
+  const handleSubmitRating = async (star: number, comment: string) => {
+    if (!selectedBooking || !userId) return;
+    await upsertRating({
+      bookingId: selectedBooking._id,
+      carId: selectedBooking.carId._id,
+      userId,
+      star,
+      comment,
+    });
+    showSuccess(
+      currentRatingMap[selectedBooking._id]
+        ? "Cập nhật đánh giá thành công"
+        : "Đánh giá thành công"
+    );
+    setCurrentRatingMap((prev) => ({
+      ...prev,
+      [selectedBooking._id]: { star, comment },
+    }));
+    handleCloseRating();
+  };
+
+  useEffect(() => {
+    // Sau khi fetch bookingHistory xong:
+    const fetchRatings = async () => {
+      if (!userId) return;
+      const map: Record<string, any> = {};
+      await Promise.all(
+        bookingHistory.map(async (booking) => {
+          try {
+            const rating = await getRatingByBookingAndUser(booking._id, userId);
+            if (rating) map[booking._id] = rating;
+          } catch {
+            // Không có rating thì bỏ qua
+          }
+        })
+      );
+      setCurrentRatingMap(map);
+    };
+
+    if (bookingHistory.length && userId) {
+      fetchRatings();
+    }
+  }, [bookingHistory, userId]);
 
   // Fetch booking data from API
   const fetchBookingHistory = useCallback(async () => {
@@ -565,6 +647,8 @@ export default function BookingHistoryPage() {
                       <VehicleRentalCard
                         info={booking}
                         accessToken={accessToken}
+                        onOpenRating={() => handleOpenRating(booking)}
+                        isRated={!!currentRatingMap[booking._id]}
                       />
                     </div>
                   ))}
@@ -627,6 +711,19 @@ export default function BookingHistoryPage() {
           </div>
         </div>
       </div>
+      <RatingModal
+        open={ratingModalOpen}
+        handleCancel={handleCloseRating}
+        bookingId={selectedBooking?._id || ""}
+        carId={selectedBooking?.carId._id || ""}
+        initialStar={
+          selectedBooking && currentRatingMap[selectedBooking._id]?.star
+        }
+        initialComment={
+          selectedBooking && currentRatingMap[selectedBooking._id]?.comment
+        }
+        onSubmit={handleSubmitRating}
+      />
     </div>
   );
 }

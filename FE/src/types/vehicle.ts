@@ -21,6 +21,8 @@ export interface Vehicle {
   penaltyType?: string; // "PERCENT" or "FIXED"
   penaltyValue?: number; // Percentage or fixed amount
   minCancelHour?: number; // Minimum hours before cancellation allowed
+  openTime?: string; // Opening time for the vehicle rental
+  closeTime?: string; // Closing time for the vehicle rental
 }
 
 export interface VehicleFeature {

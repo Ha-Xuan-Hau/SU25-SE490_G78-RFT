@@ -1,6 +1,7 @@
 package com.rft.rft_be.dto.vehicle;
 
 import com.rft.rft_be.entity.Vehicle;
+import jakarta.validation.constraints.Min;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -24,14 +25,23 @@ public class VehicleSearchDTO {
 
      String Transmission;
      String fuelType;
+
+     @Min(value = 1, message = "Số ghế phải ít nhất là 1.")
      Integer numberSeat;
+
+     @Min(value = 0, message = "Giá phải là số dương.")
      Integer costFrom;
+
+     @Min(value = 0, message = "Giá phải là số dương.")
      Integer costTo;
 
 
      Boolean ratingFiveStarsOnly;
 
+     @Min(value = 0, message = "Số trang phải là số dương.")
      int page = 0;
+
+     @Min(value = 1, message = "Kích cỡ trang phải ít nhất là 1.")
      int size = 12;
 }
 

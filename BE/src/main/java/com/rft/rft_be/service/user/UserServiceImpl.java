@@ -1,6 +1,9 @@
 package com.rft.rft_be.service.user;
 
 import java.text.ParseException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -102,6 +105,18 @@ public class UserServiceImpl implements UserService {
 
         // cập nhật role
         user.setRole(User.Role.PROVIDER);
+        userRepository.save(user);
+
+        // cập nhật openTime, closeTime
+        if (request.getOpenTime() != null && request.getCloseTime() != null) {
+            // Giả sử openTime/closeTime là chuỗi "HH:mm"
+            LocalTime open = LocalTime.parse(request.getOpenTime());
+            LocalTime close = LocalTime.parse(request.getCloseTime());
+            // Nếu trường trong entity là LocalDateTime, bạn có thể set với ngày hôm nay:
+            user.setOpenTime(LocalDateTime.of(LocalDate.now(), open));
+            user.setCloseTime(LocalDateTime.of(LocalDate.now(), close));
+        }
+
         userRepository.save(user);
 
         // lấy các loại xe đã đăng ký trước đó để tránh trùng

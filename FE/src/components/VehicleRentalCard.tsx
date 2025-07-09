@@ -59,6 +59,8 @@ interface BookingInfo {
 interface VehicleRentalCardProps {
   info: BookingInfo;
   accessToken?: string;
+  onOpenRating?: () => void;
+  isRated?: boolean;
 }
 
 // Helper function to get status badge styling and text
@@ -128,6 +130,8 @@ const getStatusBadge = (status?: string) => {
 export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   info,
   accessToken,
+  onOpenRating,
+  isRated,
 }) => {
   const [open, setOpen] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
@@ -379,13 +383,9 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           {/* Nút hành động */}
           <div className="flex justify-end gap-2 mt-2">
             {/* Nút đánh giá cho booking đã hoàn thành - hiển thị cuối cùng bên phải */}
-            {info?.contract?.status === "Đã tất toán" && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => showModal(info._id, info.carId._id)}
-              >
-                Đánh giá
+            {info?.contract?.status === "Đã tất toán" && onOpenRating && (
+              <Button variant="secondary" size="sm" onClick={onOpenRating}>
+                {isRated ? "Đánh giá lại" : "Đánh giá"}
               </Button>
             )}
             {/* Nút hủy cho booking có thể hủy */}
@@ -442,15 +442,6 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           </div>
         </div>
       </CardContent>
-
-      {/* Rating Modal */}
-      <RatingModal
-        open={open}
-        handleCancel={handleCancel}
-        bookingId={bookingId}
-        carId={carId}
-        accessToken={accessToken}
-      />
 
       {/* Payment Modal */}
       <PaymentModal

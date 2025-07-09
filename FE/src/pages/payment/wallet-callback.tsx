@@ -248,7 +248,7 @@ const WalletCallback: React.FC = () => {
                   Thử lại nạp tiền
                 </Button>
               </Link>,
-              <Link href="/vehicles" key="home">
+              <Link href="/" key="home">
                 <Button size="large">Về trang chủ</Button>
               </Link>,
             ]}

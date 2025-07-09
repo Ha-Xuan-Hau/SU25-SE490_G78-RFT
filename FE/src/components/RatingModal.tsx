@@ -1,86 +1,36 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Button, Input, Rate, notification } from "antd";
-
-// Define interfaces for props and data
-interface Rating {
-  id: string;
-  star: number;
-  comment: string;
-  bookingId: string;
-  carId: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Modal, Button, Input, Rate } from "antd";
 
 interface RatingModalProps {
   open: boolean;
   handleCancel: () => void;
-  bookingId: string | null;
-  carId: string | null;
-  accessToken?: string;
+  bookingId: string;
+  carId: string;
+  initialStar?: number;
+  initialComment?: string;
+  onSubmit: (star: number, comment: string) => void;
 }
-
-// Mock data for ratings
-const mockRatings: Rating[] = [
-  {
-    id: "rating1",
-    star: 4.5,
-    comment: "Xe rất tốt, lái êm và tiết kiệm nhiên liệu",
-    bookingId: "booking123",
-    carId: "car123",
-    userId: "user1",
-    createdAt: "2023-06-21T09:00:00.000Z",
-    updatedAt: "2023-06-21T09:00:00.000Z",
-  },
-  {
-    id: "rating2",
-    star: 5,
-    comment: "Trải nghiệm thuê xe tuyệt vời, chắc chắn sẽ thuê lại",
-    bookingId: "booking456",
-    carId: "car456",
-    userId: "user1",
-    createdAt: "2023-05-16T10:30:00.000Z",
-    updatedAt: "2023-05-16T10:30:00.000Z",
-  },
-];
 
 const RatingModal: React.FC<RatingModalProps> = ({
   open,
   handleCancel,
   bookingId,
   carId,
+  initialStar = 5,
+  initialComment = "",
+  onSubmit,
 }) => {
   const { TextArea } = Input;
-  const [star, setStar] = useState<number>(5);
-  const [comment, setComment] = useState<string>("");
+  const [star, setStar] = useState<number>(initialStar);
+  const [comment, setComment] = useState<string>(initialComment);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Check if the booking already has a rating
-  const existingRatingIndex = bookingId
-    ? mockRatings.findIndex((rating) => rating.bookingId === bookingId)
-    : -1;
-
-  const hasRatings = existingRatingIndex !== -1;
-
   useEffect(() => {
-    if (open && bookingId) {
-      // Simulate loading data
-      setIsLoading(true);
-      setTimeout(() => {
-        if (hasRatings) {
-          const existingRating = mockRatings[existingRatingIndex];
-          setStar(existingRating.star);
-          setComment(existingRating.comment);
-        } else {
-          // Reset to default values if no existing rating
-          setStar(5);
-          setComment("");
-        }
-        setIsLoading(false);
-      }, 500);
+    if (open) {
+      setStar(initialStar || 5);
+      setComment(initialComment || "");
     }
-  }, [open, bookingId, hasRatings, existingRatingIndex]);
+  }, [open, initialStar, initialComment]);
 
   const handleRatingChange = (value: number) => {
     setStar(value);
@@ -91,66 +41,16 @@ const RatingModal: React.FC<RatingModalProps> = ({
   };
 
   const handleRatingSubmit = async () => {
+    if (!star) {
+      // Có thể dùng notification hoặc showError ở parent
+      return;
+    }
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-
-      if (!star) {
-        notification.error({
-          message: "Lỗi",
-          description: "Vui lòng chọn số sao để đánh giá.",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (hasRatings) {
-        // Update existing rating in mock data
-        if (bookingId) {
-          mockRatings[existingRatingIndex] = {
-            ...mockRatings[existingRatingIndex],
-            star,
-            comment,
-            updatedAt: new Date().toISOString(),
-          };
-        }
-
-        notification.success({
-          message: "Cập nhật đánh giá thành công",
-          description: "Cảm ơn bạn đã cập nhật đánh giá xe!",
-        });
-      } else {
-        // Add new rating to mock data
-        if (bookingId && carId) {
-          const newRating: Rating = {
-            id: `rating${mockRatings.length + 1}`,
-            star,
-            comment,
-            bookingId,
-            carId,
-            userId: "user1",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          mockRatings.push(newRating);
-        }
-
-        notification.success({
-          message: "Đánh giá thành công",
-          description: "Cảm ơn bạn đã đánh giá xe!",
-        });
-      }
-
-      setIsLoading(false);
+      await onSubmit(star, comment);
       handleCancel();
-    } catch (error) {
+    } finally {
       setIsLoading(false);
-      notification.error({
-        message: "Lỗi",
-        description: "Có lỗi xảy ra khi đánh giá. Vui lòng thử lại sau.",
-      });
     }
   };
 
@@ -169,7 +69,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
           onClick={handleRatingSubmit}
           loading={isLoading}
         >
-          {hasRatings ? "Cập nhật đánh giá" : "Gửi đánh giá"}
+          {initialStar && initialComment ? "Cập nhật đánh giá" : "Gửi đánh giá"}
         </Button>,
       ]}
     >
@@ -182,7 +82,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
             <span className="mr-3">Số sao:</span>
             <Rate
               className="text-yellow-500"
-              allowHalf
               value={star}
               onChange={handleRatingChange}
               disabled={isLoading}

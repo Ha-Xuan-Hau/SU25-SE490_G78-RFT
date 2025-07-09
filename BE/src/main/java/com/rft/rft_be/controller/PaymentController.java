@@ -63,7 +63,10 @@ public class PaymentController {
                     .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
                     .build();
         } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
+            // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
+                    .build();
         }
     }
 
@@ -94,9 +97,15 @@ public class PaymentController {
         String status = request.getParameter("vnp_ResponseCode");
         if (status.equals("00")) {
             paymentService.addWalletMoney(vnpParams);
-            return ResponseEntity.ok(new VNPayResponse("00", "Success", ""));
+//            return ResponseEntity.ok(new VNPayResponse("00", "Success", ""));
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
+                    .build();
         } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
+            //return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
+                    .build();
         }
     }
 }
