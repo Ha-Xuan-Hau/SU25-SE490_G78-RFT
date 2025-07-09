@@ -43,29 +43,30 @@ public class PaymentController {
     //xác nhận thông tin từ vnpay để kiểm tra và hoàn thành thanh toán đơn
     @GetMapping("/vn-pay-callback")
     public ResponseEntity<?> payCallbackHandler(HttpServletRequest request) {
-        // Bước 1: Lấy vnpParams từ request
         Map<String, String> vnpParams = VNPayUtil.extractVNPayParams(request);
-        // Bước 2: Xác minh chữ ký
-        boolean isValid = paymentService.validateVNPayResponse(vnpParams);
-        if (!isValid) {
-            return ResponseEntity
-                    .badRequest()
-                    .contentType(MediaType.parseMediaType("text/plain;charset=UTF-8"))
-                    .body("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
-        }
-        String status = request.getParameter("vnp_ResponseCode");
-        if (status.equals("00")) {
-            contractService.createContractByPayment(vnpParams.get("vnp_TxnRef"));
-//            return ResponseEntity.ok(new VNPayResponse("00", "Success", ""));
+        try {
+            boolean isValid = paymentService.validateVNPayResponse(vnpParams);
+            if (!isValid) {
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create("http://localhost:3000/payment/callback?error=INVALID_SIGNATURE"))
+                        .build();
+            }
 
-            //redirect về trang callback của client
+            String status = request.getParameter("vnp_ResponseCode");
+            if ("00".equals(status)) {
+                contractService.createContractByPayment(vnpParams.get("vnp_TxnRef"));
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
+                        .build();
+            } else {
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
+                        .build();
+            }
+        } catch (RuntimeException e) {
+            // Gửi lỗi về FE qua redirect
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
-                    .build();
-        } else {
-            // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
+                    .location(URI.create("http://localhost:3000/payment/callback?error=" + e.getMessage().replace(" ", "%20")))
                     .build();
         }
     }
@@ -84,27 +85,37 @@ public class PaymentController {
     //Kiểm tra xác thực thông tin phản hồi từ vnpay để nạp tiền cho ví
     @GetMapping("/topUpCallBack")
     public ResponseEntity<?> topUpCallbackHandler(HttpServletRequest request) {
-        // Bước 1: Lấy vnpParams từ request
         Map<String, String> vnpParams = VNPayUtil.extractVNPayParams(request);
-        // Bước 2: Xác minh chữ ký
-        boolean isValid = paymentService.validateVNPayResponse(vnpParams);
-        if (!isValid) {
-            return ResponseEntity
-                    .badRequest()
-                    .contentType(MediaType.parseMediaType("text/plain;charset=UTF-8"))
-                    .body("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo.");
-        }
-        String status = request.getParameter("vnp_ResponseCode");
-        if (status.equals("00")) {
-            paymentService.addWalletMoney(vnpParams);
-//            return ResponseEntity.ok(new VNPayResponse("00", "Success", ""));
+
+        try {
+            // Bước 1: Xác minh chữ ký
+            boolean isValid = paymentService.validateVNPayResponse(vnpParams);
+            if (!isValid) {
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create("http://localhost:3000/payment/wallet-callback?error=INVALID_SIGNATURE"))
+                        .build();
+            }
+
+            // Bước 2: Kiểm tra mã phản hồi thanh toán
+            String status = request.getParameter("vnp_ResponseCode");
+            if ("00".equals(status)) {
+                paymentService.addWalletMoney(vnpParams);
+
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
+                        .build();
+            } else {
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
+                        .build();
+            }
+
+        } catch (RuntimeException ex) {
+            // Encode lỗi để truyền qua URL (tránh lỗi khi có khoảng trắng, ký tự đặc biệt)
+            String errorMessage = ex.getMessage().replace(" ", "%20");
+
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
-                    .build();
-        } else {
-            //return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new VNPayResponse(status, "Error", ""));
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
+                    .location(URI.create("http://localhost:3000/payment/wallet-callback?error=" + errorMessage))
                     .build();
         }
     }
