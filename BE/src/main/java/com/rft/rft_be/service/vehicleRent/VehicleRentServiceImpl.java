@@ -73,7 +73,6 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public VehicleGetDTO createVehicle(  VehicleRentCreateDTO request) {
        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        log.info("Creating vehicle for user: {}", userId);
 
         // Validate user exists
         User user = userRepository.findById(userId)
@@ -160,7 +159,6 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(savedVehicle.getId())
                 .orElse(savedVehicle);
 
-        log.info("Vehicle created successfully with id: {}", savedVehicle.getId());
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
