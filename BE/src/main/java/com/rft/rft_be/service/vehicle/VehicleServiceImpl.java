@@ -725,7 +725,7 @@ public class VehicleServiceImpl implements VehicleService {
             if (dto.getStatus() != null)
                 vehicle.setStatus(Vehicle.Status.valueOf(dto.getStatus().toUpperCase()));
             else
-                vehicle.setStatus(Vehicle.Status.AVAILABLE);
+                vehicle.setStatus(Vehicle.Status.UNAVAILABLE);
 
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid enum value: " + e.getMessage());
