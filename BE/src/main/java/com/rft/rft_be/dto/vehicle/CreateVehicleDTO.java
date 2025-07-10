@@ -22,11 +22,13 @@ public class CreateVehicleDTO {
     private String shipToAddress; // YES, NO
     private Integer numberSeat;
     private Integer yearManufacture;
-    private String transmission; // MANUAL, AUTOMATIC
-    private String fuelType; // GASOLINE, ELECTRIC
+    private String transmission; // MANUAL, AUTOMATIC 1
+    private String fuelType; // GASOLINE, ELECTRIC 1
     private String description;
-    private Integer numberVehicle;
+    private Integer numberVehicle; //tuy loai xe
     private BigDecimal costPerDay;
     private String status; // AVAILABLE, UNAVAILABLE
     private String thumb;
+    private Integer vehicleQuantity;
+    private Boolean isMultipleVehicles;
 }

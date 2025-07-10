@@ -264,13 +264,19 @@ export default function VehicleDetail() {
   }, [dates]);
 
   // Tạo disabledTime và disabledDate functions sử dụng logic giống booking page
+  const openTime = vehicle?.openTime || "00:00";
+  const closeTime = vehicle?.closeTime || "00:00";
+
   const disabledRangeTime = useMemo(() => {
-    if (!vehicle?.vehicleType) {
-      return createDisabledTimeFunction("CAR", []);
-    }
-    const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-    return createDisabledTimeFunction(vehicleType, bookedTimeSlots);
-  }, [vehicle?.vehicleType, bookedTimeSlots]);
+    if (!vehicle?.vehicleType)
+      return createDisabledTimeFunction("CAR", [], openTime, closeTime);
+    return createDisabledTimeFunction(
+      vehicle.vehicleType.toUpperCase() as VehicleType,
+      bookedTimeSlots,
+      openTime,
+      closeTime
+    );
+  }, [vehicle?.vehicleType, bookedTimeSlots, openTime, closeTime]);
 
   const disabledDateFunction = useMemo(() => {
     return (current: Dayjs): boolean => {

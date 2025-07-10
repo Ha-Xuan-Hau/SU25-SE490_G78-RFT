@@ -44,6 +44,7 @@ public interface ContractMapper {
     @Mapping(source = "contract.id", target = "contractId")
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.fullName", target = "userName")
+    @Mapping(source = "contract.status", target = "contractStatus", qualifiedByName = "enumToString")
     FinalContractDTO finalContract(FinalContract finalContract);
 
     @Named("enumToString")
