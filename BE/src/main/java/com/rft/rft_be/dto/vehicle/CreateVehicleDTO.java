@@ -29,4 +29,6 @@ public class CreateVehicleDTO {
     private BigDecimal costPerDay;
     private String status; // AVAILABLE, UNAVAILABLE
     private String thumb;
+    private Integer vehicleQuantity;
+    private Boolean isMultipleVehicles;
 }

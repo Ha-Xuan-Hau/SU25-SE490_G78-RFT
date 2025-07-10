@@ -1,6 +1,7 @@
 package com.rft.rft_be.service.vehicle;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -665,7 +666,7 @@ public class VehicleServiceImpl implements VehicleService {
 
         List<Vehicle> savedVehicles = new ArrayList<>();
 
-        for (int i = 0; i < createVehicleDTO.getNumberVehicle(); i++) {
+        for (int i = 0; i < createVehicleDTO.getVehicleQuantity(); i++) {
             Vehicle vehicle = Vehicle.builder()
                     .user(user)
                     .brand(brand)

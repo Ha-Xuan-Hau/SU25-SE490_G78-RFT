@@ -170,8 +170,13 @@ public class VehicleController {
     @PostMapping
     public ResponseEntity<?> createVehicle(@RequestBody CreateVehicleDTO createVehicleDTO) {
         try {
-            VehicleGetDTO createdVehicle = vehicleService.createVehicle(createVehicleDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
+            if(createVehicleDTO.getIsMultipleVehicles()){
+                List<VehicleGetDTO> createdVehicleList = vehicleService.createVehicleBulk(createVehicleDTO);
+                return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicleList);
+            }else{
+                VehicleGetDTO createdVehicle = vehicleService.createVehicle(createVehicleDTO);
+                return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
+            }
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
