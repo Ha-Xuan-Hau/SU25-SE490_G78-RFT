@@ -1,4 +1,4 @@
-package com.rft.rft_be.service.authenticationService;
+package com.rft.rft_be.service.AuthenticationService;
 
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;

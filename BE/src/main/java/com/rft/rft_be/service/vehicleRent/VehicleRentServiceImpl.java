@@ -23,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -230,74 +232,6 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         log.info("Vehicle updated successfully: {}", vehicleId);
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
-    //    @Override
-//    @Transactional
-//    public VehicleGetDTO updateVehicle(String userId, String vehicleId, VehicleRentUpdateDTO request) {
-//        log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
-//
-//        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
-//                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
-//
-//        // Validate brand if provided
-//        if (request.getBrandId() != null) {
-//            Brand brand = brandRepository.findById(request.getBrandId())
-//                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
-//            vehicle.setBrand(brand);
-//        }
-//
-//        // Validate model if provided
-//        if (request.getModelId() != null) {
-//            Model model = modelRepository.findById(request.getModelId())
-//                    .orElseThrow(() -> new RuntimeException("Model not found with id: " + request.getModelId()));
-//
-//            // If both brand and model are provided, validate they match
-//            String brandIdToCheck = request.getBrandId() != null ? request.getBrandId() :
-//                    (vehicle.getBrand() != null ? vehicle.getBrand().getId() : null);
-//            if (brandIdToCheck != null && !model.getBrand().getId().equals(brandIdToCheck)) {
-//                throw new RuntimeException("Model does not belong to the specified brand");
-//            }
-//            vehicle.setModel(model);
-//        }
-//
-//        // Check license plate uniqueness if changed
-//        if (request.getLicensePlate() != null &&
-//                !request.getLicensePlate().equals(vehicle.getLicensePlate())) {
-//            if (vehicleRepository.existsByLicensePlateAndUserIdAndIdNot(
-//                    request.getLicensePlate(), userId, vehicleId)) {
-//                throw new RuntimeException("License plate already exists for this user");
-//            }
-//            vehicle.setLicensePlate(request.getLicensePlate());
-//        }
-//
-//        // Update other fields if provided
-//        if (request.getVehicleType() != null) vehicle.setVehicleType(Vehicle.VehicleType.valueOf(request.getVehicleType()));
-//        if (request.getVehicleFeatures() != null) vehicle.setVehicleFeatures(request.getVehicleFeatures());
-//        if (request.getVehicleImages() != null) vehicle.setVehicleImages(request.getVehicleImages());
-//        if (request.getInsuranceStatus() != null) vehicle.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));
-//        if (request.getShipToAddress() != null) vehicle.setShipToAddress(parseShipToAddress(request.getShipToAddress()));
-//        if (request.getNumberSeat() != null) vehicle.setNumberSeat(request.getNumberSeat());
-//        if (request.getYearManufacture() != null) vehicle.setYearManufacture(request.getYearManufacture());
-//        if (request.getTransmission() != null) vehicle.setTransmission(parseTransmission(request.getTransmission()));
-//        if (request.getFuelType() != null) vehicle.setFuelType(parseFuelType(request.getFuelType()));
-//        if (request.getDescription() != null) vehicle.setDescription(request.getDescription());
-//        if (request.getNumberVehicle() != null) vehicle.setNumberVehicle(request.getNumberVehicle());
-//        if (request.getCostPerDay() != null) vehicle.setCostPerDay(request.getCostPerDay());
-//        if (request.getStatus() != null) vehicle.setStatus(parseStatus(request.getStatus()));
-//        if (request.getThumb() != null) vehicle.setThumb(request.getThumb());
-//
-//        // Manually set updatedAt timestamp using reflection
-//        LocalDateTime now = LocalDateTime.now();
-//        setUpdatedAt(vehicle, now);
-//
-//        Vehicle updatedVehicle = vehicleRepository.save(vehicle);
-//
-//        // Fetch with brand and model for response
-//        Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
-//                .orElse(updatedVehicle);
-//
-//        log.info("Vehicle updated successfully: {}", vehicleId);
-//        return vehicleMapper.vehicleGet(vehicleWithRelations);
-//    }
     @Override
     @Transactional
     public void deleteVehicle( String vehicleId) {
@@ -331,6 +265,144 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         return vehicleRepository.countByUserId(userId);
     }
 
+    @Override
+    @Transactional
+    public VehicleGetDTO toggleVehicleStatus( String vehicleId) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe"));
+
+        // Validate vehicle information before allowing status change to AVAILABLE
+        if (vehicle.getStatus() == Vehicle.Status.UNAVAILABLE) {
+            validateVehicleForAvailability(vehicle);
+        }
+
+        // Toggle status
+        Vehicle.Status newStatus = vehicle.getStatus() == Vehicle.Status.AVAILABLE
+                ? Vehicle.Status.UNAVAILABLE
+                : Vehicle.Status.AVAILABLE;
+
+        vehicle.setStatus(newStatus);
+
+        // Update timestamp
+        LocalDateTime now = LocalDateTime.now();
+        setUpdatedAt(vehicle, now);
+
+        Vehicle updatedVehicle = vehicleRepository.save(vehicle);
+
+        // Fetch with brand and model for response
+        Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
+                .orElse(updatedVehicle);
+
+        log.info("Đã chuyển đổi trạng thái xe thành công: {} -> {}", vehicleId, newStatus);
+        return vehicleMapper.vehicleGet(vehicleWithRelations);
+    }
+
+
+    private void validateVehicleForAvailability(Vehicle vehicle) {
+        StringBuilder missingFields = new StringBuilder();
+
+        // Check required fields for all vehicle types
+        if (vehicle.getCostPerDay() == null || vehicle.getCostPerDay().compareTo(BigDecimal.ZERO) <= 0) {
+            missingFields.append("cost_per_day, ");
+        }
+        if (vehicle.getDescription() == null || vehicle.getDescription().trim().isEmpty()) {
+            missingFields.append("description, ");
+        }
+        if (vehicle.getVehicleImages() == null || vehicle.getVehicleImages().trim().isEmpty()) {
+            missingFields.append("vehicle_images, ");
+        }
+        if (vehicle.getThumb() == null || vehicle.getThumb().trim().isEmpty()) {
+            missingFields.append("thumb, ");
+        }
+
+        // Check vehicle type specific requirements
+        switch (vehicle.getVehicleType()) {
+            case CAR:
+                validateCarRequirements(vehicle, missingFields);
+                break;
+            case MOTORBIKE:
+                validateMotorbikeRequirements(vehicle, missingFields);
+                break;
+            case BICYCLE:
+                validateBicycleRequirements(vehicle, missingFields);
+                break;
+        }
+
+        if (missingFields.length() > 0) {
+            missingFields.setLength(missingFields.length() - 2); // Remove last ", "
+            throw new RuntimeException("Không thể đặt xe thành CÓ SẴN. Thiếu các trường bắt buộc: " + missingFields.toString());
+        }
+    }
+
+    private void validateCarRequirements(Vehicle vehicle, StringBuilder missingFields) {
+        if (vehicle.getBrand() == null) {
+            missingFields.append("brand, ");
+        }
+        if (vehicle.getModel() == null) {
+            missingFields.append("model, ");
+        }
+        if (vehicle.getLicensePlate() == null || vehicle.getLicensePlate().trim().isEmpty()) {
+            missingFields.append("license_plate, ");
+        }
+        if (vehicle.getNumberSeat() == null || vehicle.getNumberSeat() <= 0) {
+            missingFields.append("number_seat, ");
+        }
+        if (vehicle.getYearManufacture() == null || vehicle.getYearManufacture() <= 0) {
+            missingFields.append("year_manufacture, ");
+        }
+        if (vehicle.getTransmission() == null) {
+            missingFields.append("transmission, ");
+        }
+        if (vehicle.getFuelType() == null) {
+            missingFields.append("fuel_type, ");
+        }
+        if (vehicle.getInsuranceStatus() == null) {
+            missingFields.append("insurance_status, ");
+        }
+        if (vehicle.getShipToAddress() == null) {
+            missingFields.append("ship_to_address, ");
+        }
+    }
+
+    private void validateMotorbikeRequirements(Vehicle vehicle, StringBuilder missingFields) {
+        if (vehicle.getBrand() == null) {
+            missingFields.append("brand, ");
+        }
+        if (vehicle.getLicensePlate() == null || vehicle.getLicensePlate().trim().isEmpty()) {
+            missingFields.append("license_plate, ");
+        }
+        if (vehicle.getYearManufacture() == null || vehicle.getYearManufacture() <= 0) {
+            missingFields.append("year_manufacture, ");
+        }
+        if (vehicle.getTransmission() == null) {
+            missingFields.append("transmission, ");
+        }
+        if (vehicle.getFuelType() == null) {
+            missingFields.append("fuel_type, ");
+        }
+        if (vehicle.getInsuranceStatus() == null) {
+            missingFields.append("insurance_status, ");
+        }
+        if (vehicle.getShipToAddress() == null) {
+            missingFields.append("ship_to_address, ");
+        }
+    }
+
+    private void validateBicycleRequirements(Vehicle vehicle, StringBuilder missingFields) {
+        if (vehicle.getYearManufacture() == null || vehicle.getYearManufacture() <= 0) {
+            missingFields.append("year_manufacture, ");
+        }
+
+        if (vehicle.getInsuranceStatus() == null) {
+            missingFields.append("insurance_status, ");
+        }
+        if (vehicle.getShipToAddress() == null) {
+            missingFields.append("ship_to_address, ");
+        }
+    }
+
     // Helper methods for enum parsing
     private Vehicle.InsuranceStatus parseInsuranceStatus(String status) {
         if (status == null || status.trim().isEmpty()) {
@@ -343,6 +415,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             return Vehicle.InsuranceStatus.NO;
         }
     }
+   
 
     private Vehicle.ShipToAddress parseShipToAddress(String address) {
         if (address == null || address.trim().isEmpty()) {

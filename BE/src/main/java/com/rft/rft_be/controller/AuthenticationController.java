@@ -5,7 +5,7 @@ import com.rft.rft_be.dto.authentication.*;
 import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.mapper.UserMapper;
-import com.rft.rft_be.service.authenticationService.AuthenticationService;
+import com.rft.rft_be.service.AuthenticationService.AuthenticationService;
 import com.rft.rft_be.service.otp.OtpService;
 import com.rft.rft_be.service.user.UserService;
 import jakarta.validation.Valid;
