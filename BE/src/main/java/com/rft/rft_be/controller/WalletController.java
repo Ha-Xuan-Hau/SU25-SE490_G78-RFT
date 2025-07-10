@@ -1,11 +1,14 @@
 package com.rft.rft_be.controller;
 import com.rft.rft_be.dto.wallet.*;
 import com.rft.rft_be.service.wallet.WalletService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wallet")
@@ -29,9 +32,28 @@ public class WalletController {
     }
 
     @PostMapping("/withdrawals")
-    public ResponseEntity<WalletTransactionDTO> createWithdrawal(@RequestBody CreateWithdrawalRequestDTO dto) {
-        return ResponseEntity.ok(walletService.createWithdrawal(dto));
+    public ResponseEntity<?> createWithdrawal(@Valid @RequestBody CreateWithdrawalRequestDTO dto) {
+        try {
+            WalletTransactionDTO response = walletService.createWithdrawal(dto);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "statusCode", 400,
+                            "message", e.getMessage()
+                    ));
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "statusCode", 500,
+                            "message", "Đã xảy ra lỗi máy chủ"
+                    ));
+        }
     }
+
+
 
     @PutMapping("/withdrawals/{id}/cancel")
     public ResponseEntity<Void> cancelWithdrawal(@PathVariable String id) {

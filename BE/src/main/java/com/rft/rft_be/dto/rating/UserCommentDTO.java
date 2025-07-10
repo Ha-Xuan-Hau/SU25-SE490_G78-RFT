@@ -8,8 +8,6 @@ import java.time.LocalDateTime;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserCommentDTO {
-    String userName;
-    String userImage;
     String comment;
     int star;
     LocalDateTime createdAt;
