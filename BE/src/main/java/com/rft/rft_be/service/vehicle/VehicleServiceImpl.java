@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -589,5 +590,113 @@ public class VehicleServiceImpl implements VehicleService {
                     .fuelType(vehicle.getFuelType() != null ? vehicle.getFuelType().name() : null)
                     .build();
         });
+    }
+
+    @Override
+    public List<VehicleGetDTO> createVehicleBulk(CreateVehicleDTO createVehicleDTO) {
+        if (createVehicleDTO.getLicensePlate() == null || createVehicleDTO.getLicensePlate().trim().isEmpty()) {
+            throw new RuntimeException("License plate is required");
+        }
+        if (createVehicleDTO.getCostPerDay() == null || createVehicleDTO.getCostPerDay().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Cost per day must be greater than 0");
+        }
+
+        // Check if license plate already exists
+        boolean exists = vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate());
+        if (exists) {
+            throw new RuntimeException("Vehicle with license plate " + createVehicleDTO.getLicensePlate() + " already exists");
+        }
+
+        // Validate foreign key references (optional - can be null)
+        User user = null;
+        if (createVehicleDTO.getUserId() != null && !createVehicleDTO.getUserId().trim().isEmpty()) {
+            user = userRepository.findById(createVehicleDTO.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + createVehicleDTO.getUserId()));
+        }
+
+        Brand brand = null;
+        if (createVehicleDTO.getBrandId() != null && !createVehicleDTO.getBrandId().trim().isEmpty()) {
+            brand = brandRepository.findById(createVehicleDTO.getBrandId())
+                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + createVehicleDTO.getBrandId()));
+        }
+
+        Model model = null;
+        if (createVehicleDTO.getModelId() != null && !createVehicleDTO.getModelId().trim().isEmpty()) {
+            model = modelRepository.findById(createVehicleDTO.getModelId())
+                    .orElseThrow(() -> new RuntimeException("Model not found with id: " + createVehicleDTO.getModelId()));
+        }
+
+        Penalty penalty = null;
+        if (createVehicleDTO.getPenaltyId() != null && !createVehicleDTO.getPenaltyId().trim().isEmpty()) {
+            penalty = penaltyRepository.findById(createVehicleDTO.getPenaltyId())
+                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + createVehicleDTO.getPenaltyId()));
+        }
+
+        List<Vehicle> savedVehicles = new ArrayList<>();
+
+        for (int i = 0; i < createVehicleDTO.getNumberVehicle(); i++) {
+            Vehicle vehicle = Vehicle.builder()
+                    .user(user)
+                    .brand(brand)
+                    .model(model)
+                    .penalty(penalty)
+                    .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
+                    .vehicleImages(createVehicleDTO.getVehicleImages())
+                    .numberSeat(createVehicleDTO.getNumberSeat())
+                    .yearManufacture(createVehicleDTO.getYearManufacture())
+                    .description(createVehicleDTO.getDescription())
+                    .numberVehicle(1)
+                    .costPerDay(createVehicleDTO.getCostPerDay())
+                    .thumb(createVehicleDTO.getThumb())
+                    .totalRatings(0)
+                    .likes(0)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            // Set enum fields
+            setEnums(createVehicleDTO, vehicle);
+
+            savedVehicles.add(vehicle);
+        }
+
+        vehicleRepository.saveAll(savedVehicles);
+
+        return savedVehicles.stream().map(vehicleMapper::vehicleGet).collect(Collectors.toList());
+    }
+
+    private void setEnums(CreateVehicleDTO dto, Vehicle vehicle) {
+        try {
+            if (dto.getVehicleType() != null)
+                vehicle.setVehicleType(Vehicle.VehicleType.valueOf(dto.getVehicleType().toUpperCase()));
+            if (dto.getHaveDriver() != null)
+                vehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(dto.getHaveDriver().toUpperCase()));
+            else
+                vehicle.setHaveDriver(Vehicle.HaveDriver.NO);
+
+            if (dto.getInsuranceStatus() != null)
+                vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(dto.getInsuranceStatus().toUpperCase()));
+            else
+                vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.NO);
+
+            if (dto.getShipToAddress() != null)
+                vehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(dto.getShipToAddress().toUpperCase()));
+            else
+                vehicle.setShipToAddress(Vehicle.ShipToAddress.NO);
+
+            if (dto.getTransmission() != null)
+                vehicle.setTransmission(Vehicle.Transmission.valueOf(dto.getTransmission().toUpperCase()));
+
+            if (dto.getFuelType() != null)
+                vehicle.setFuelType(Vehicle.FuelType.valueOf(dto.getFuelType().toUpperCase()));
+
+            if (dto.getStatus() != null)
+                vehicle.setStatus(Vehicle.Status.valueOf(dto.getStatus().toUpperCase()));
+            else
+                vehicle.setStatus(Vehicle.Status.AVAILABLE);
+
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid enum value: " + e.getMessage());
+        }
     }
 }

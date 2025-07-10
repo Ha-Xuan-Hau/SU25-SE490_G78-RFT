@@ -33,4 +33,5 @@ public interface VehicleService {
     Page<VehicleSearchResultDTO> searchVehicles(VehicleSearchDTO req, LocalDateTime timeFrom, LocalDateTime timeTo);
     void deleteExpiredBookedTimeSlots();
     Page<VehicleSearchResultDTO> basicSearch(String address, String type, LocalDateTime from, LocalDateTime to, Pageable pageable);
+    List<VehicleGetDTO> createVehicleBulk(CreateVehicleDTO dto);
 }
