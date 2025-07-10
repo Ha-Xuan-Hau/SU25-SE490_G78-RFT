@@ -24,4 +24,5 @@ public class UserDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<String> validLicenses;
+    private List<String> registeredVehicles;
 }

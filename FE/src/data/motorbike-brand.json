@@ -1,10 +1,16 @@
 [
-  { "value": "honda", "label": "Honda" },
-  { "value": "yamaha", "label": "Yamaha" },
-  { "value": "piaggio", "label": "Piaggio" },
-  { "value": "suzuki", "label": "Suzuki" },
-  { "value": "sym", "label": "SYM" },
-  { "value": "kymco", "label": "Kymco" },
-  { "value": "vinfast", "label": "VinFast" },
-  { "value": "other", "label": "Hãng khác" }
+  { "value": "brand-101", "label": "Honda" },
+  { "value": "brand-102", "label": "Yamaha" },
+  { "value": "brand-103", "label": "Suzuki" },
+  { "value": "brand-104", "label": "Piaggio" },
+  { "value": "brand-105", "label": "Vespa" },
+  { "value": "brand-106", "label": "SYM" },
+  { "value": "brand-107", "label": "VinFast" },
+  { "value": "brand-108", "label": "Kymco" },
+  { "value": "brand-109", "label": "Ducati" },
+  { "value": "brand-110", "label": "BMW Motorrad" },
+  { "value": "brand-111", "label": "Harley-Davidson" },
+  { "value": "brand-112", "label": "Triumph" },
+  { "value": "brand-113", "label": "Royal Enfield" },
+  { "value": "brand-114", "label": "Kawasaki" }
 ]
