@@ -13,9 +13,11 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.format.DateTimeFormatter;
 
 @Mapper(componentModel = "spring")
 public interface VehicleMapper {
@@ -39,6 +41,8 @@ public interface VehicleMapper {
     @Mapping(source = "vehicleFeatures", target = "vehicleFeatures", qualifiedByName = "stringToFeatureList")
     @Mapping(source = "vehicleImages", target = "vehicleImages", qualifiedByName = "jsonToImageList")
     @Mapping(source = "user.address", target = "address")
+    @Mapping(target = "openTime", expression = "java(vehicle.getUser() != null && vehicle.getUser().getOpenTime() != null ? vehicle.getUser().getOpenTime().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern(\"HH:mm:ss\")) : null)")
+    @Mapping(target = "closeTime", expression = "java(vehicle.getUser() != null && vehicle.getUser().getCloseTime() != null ? vehicle.getUser().getCloseTime().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern(\"HH:mm:ss\")) : null)")
     VehicleDetailDTO vehicleToVehicleDetail(Vehicle vehicle);
 
     @Mapping(source = "user.id", target = "userId")
@@ -61,7 +65,6 @@ public interface VehicleMapper {
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
     @Mapping(source = "user.address", target = "address")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
-
 
     @Named("stringToFeatureList")
     static List<VehicleFeatureDTO> stringToFeatureList(String features) {

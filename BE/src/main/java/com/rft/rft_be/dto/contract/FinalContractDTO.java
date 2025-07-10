@@ -20,4 +20,5 @@ public class FinalContractDTO {
     private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String contractStatus;
 }

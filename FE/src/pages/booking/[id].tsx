@@ -45,6 +45,8 @@ import {
   createVNPayPayment,
   checkAvailability,
 } from "@/apis/booking.api";
+import { getUserWallet } from "@/apis/wallet.api";
+
 import { Vehicle } from "@/types/vehicle";
 import { User } from "@/types/user";
 
@@ -235,12 +237,12 @@ const BookingPage: React.FC = () => {
   useEffect(() => {
     const fetchWalletBalance = async () => {
       try {
-        // TODO: Implement API call to get wallet balance
-        // const balance = await getWalletBalance();
-        // setWalletBalance(balance);
-        setWalletBalance(10000000); // Mock data
+        if (!user?.id) return;
+        const wallet = await getUserWallet(user.id);
+        setWalletBalance(wallet.balance || 0);
       } catch (error) {
         console.error("Error fetching wallet balance:", error);
+        setWalletBalance(0);
       }
     };
 
@@ -545,13 +547,21 @@ const BookingPage: React.FC = () => {
     : dayjs().add(4, "day").hour(20).minute(0);
 
   // Tạo disabledTime và disabledDate functions sử dụng helper mới
+  const openTime = vehicle?.openTime || "00:00";
+  const closeTime = vehicle?.closeTime || "00:00";
+
   const disabledRangeTime = useMemo(() => {
     if (!vehicle?.vehicleType) {
-      return createDisabledTimeFunction("CAR", []);
+      return createDisabledTimeFunction("CAR", [], openTime, closeTime);
     }
     const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-    return createDisabledTimeFunction(vehicleType, existingBookings);
-  }, [vehicle?.vehicleType, existingBookings]);
+    return createDisabledTimeFunction(
+      vehicleType,
+      existingBookings,
+      openTime,
+      closeTime
+    );
+  }, [vehicle?.vehicleType, existingBookings, openTime, closeTime]);
 
   const disabledDateFunction = useMemo(() => {
     return (current: Dayjs): boolean => {
@@ -622,7 +632,7 @@ const BookingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {vehicle.shipToAddress && (
+                  {vehicle.shipToAddress == "YES" && (
                     <div
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                         costGetCar === 1

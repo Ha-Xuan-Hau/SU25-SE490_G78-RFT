@@ -1,12 +1,6 @@
-"use client";
-
 import { useState, useRef, useEffect } from "react";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
-import {
-  SearchOutlined,
-  DownloadOutlined,
-  EyeOutlined,
-} from "@ant-design/icons";
+import { SearchOutlined, EyeOutlined } from "@ant-design/icons";
 import {
   message,
   Button,
@@ -18,23 +12,20 @@ import {
   Card,
   Tag,
   Tooltip,
+  Descriptions,
 } from "antd";
 import type { InputRef } from "antd";
 import type { ColumnType } from "antd/es/table";
-import { Worker } from "@react-pdf-viewer/core";
-import { Viewer } from "@react-pdf-viewer/core";
-import "@react-pdf-viewer/core/lib/styles/index.css";
 import Highlighter from "react-highlight-words";
-import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
-import "@react-pdf-viewer/default-layout/lib/styles/index.css";
-import { saveAs } from "file-saver";
+import { getFinalContractsByProvider } from "@/apis/contract.api";
+import {
+  useProviderState,
+  getProviderIdFromState,
+} from "@/recoils/provider.state";
 
-// Define TypeScript interfaces
 interface FinalContractData {
-  id: number;
   _id: string;
   bookingId: string;
-  image: string[];
   createBy: string;
   bookBy: string;
   email: string;
@@ -47,119 +38,58 @@ interface FinalContractData {
   timeBookingStart: string;
   timeBookingEnd: string;
   totalCost: number | string;
-  status: string;
-  file?: string;
+  status: string; // Đã có status từ DTO
+  contractId?: string;
+  image?: string[]; // Có thể có hoặc không
+  vehicleImages?: { imageUrl: string }[]; // Có thể có hoặc không
 }
 
-// Mock data for contracts
-const mockFinalContracts: FinalContractData[] = [
-  {
-    id: 1,
-    _id: "finalcontract-001",
-    bookingId: "booking-001",
-    image: [
-      "/placeholder.svg?height=200&width=300",
-      "/placeholder.svg?height=200&width=300",
-    ],
-    createBy: "Provider User",
-    bookBy: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    phone: "0987654321",
-    address: "123 Đường ABC, Quận 1, TP.HCM",
-    numberCar: "30A-12345",
-    model: "Toyota Camry",
-    numberSeat: 5,
-    yearManufacture: 2021,
-    timeBookingStart: "15-06-2023",
-    timeBookingEnd: "18-06-2023",
-    totalCost: "2,400,000 VNĐ",
-    status: "Đã tất toán",
-    file: "https://example.com/contract1.pdf",
-  },
-  {
-    id: 2,
-    _id: "finalcontract-002",
-    bookingId: "booking-002",
-    image: ["/placeholder.svg?height=200&width=300"],
-    createBy: "Provider User",
-    bookBy: "Trần Thị B",
-    email: "tranthib@example.com",
-    phone: "0901234567",
-    address: "456 Đường DEF, Quận 2, TP.HCM",
-    numberCar: "30A-54321",
-    model: "Honda Civic",
-    numberSeat: 4,
-    yearManufacture: 2022,
-    timeBookingStart: "18-06-2023",
-    timeBookingEnd: "22-06-2023",
-    totalCost: "2,800,000 VNĐ",
-    status: "Đã tất toán",
-    file: "https://example.com/contract2.pdf",
-  },
-  {
-    id: 3,
-    _id: "finalcontract-003",
-    bookingId: "booking-003",
-    image: [
-      "/placeholder.svg?height=200&width=300",
-      "/placeholder.svg?height=200&width=300",
-    ],
-    createBy: "Provider User",
-    bookBy: "Lê Văn C",
-    email: "levanc@example.com",
-    phone: "0912345678",
-    address: "789 Đường GHI, Quận 3, TP.HCM",
-    numberCar: "30A-98765",
-    model: "Ford Ranger",
-    numberSeat: 7,
-    yearManufacture: 2020,
-    timeBookingStart: "22-06-2023",
-    timeBookingEnd: "25-06-2023",
-    totalCost: "2,100,000 VNĐ",
-    status: "Đã tất toán",
-    file: "https://example.com/contract3.pdf",
-  },
-];
-
 export default function ProviderManageFinalContracts() {
-  const defaultLayoutPluginInstance = defaultLayoutPlugin();
-  const [urlFile, setUrlFile] = useState<string>("");
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [searchText, setSearchText] = useState<string>("");
-  const [searchedColumn, setSearchedColumn] = useState<string>("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedContract, setSelectedContract] =
+    useState<FinalContractData | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [searchedColumn, setSearchedColumn] = useState("");
   const searchInput = useRef<InputRef>(null);
-  const [filteredInfo, setFilteredInfo] = useState<Record<string, any>>({});
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [finalContracts, setFinalContracts] = useState<FinalContractData[]>([]);
 
-  // Load data with loading state
+  const [provider] = useProviderState();
+  const providerId = getProviderIdFromState(provider);
+
   useEffect(() => {
-    setLoading(true);
-    // Simulate API call with timeout
-    setTimeout(() => {
-      setFinalContracts(mockFinalContracts);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        if (!providerId) {
+          setFinalContracts([]);
+          setLoading(false);
+          return;
+        }
+        // API trả về object { success, data }
+        const res: any = await getFinalContractsByProvider(providerId);
+        const data = Array.isArray(res.data) ? res.data : [];
+
+        // Đảm bảo có trường image cho hiển thị
+        for (const fc of data) {
+          if (
+            !fc.image &&
+            fc.vehicleImages &&
+            Array.isArray(fc.vehicleImages) &&
+            fc.vehicleImages.length > 0
+          ) {
+            fc.image = [fc.vehicleImages[0].imageUrl];
+          }
+        }
+
+        setFinalContracts(data);
+      } catch (e) {
+        message.error("Không thể tải danh sách hợp đồng tất toán");
+      }
       setLoading(false);
-    }, 800);
-  }, []);
-
-  const handleChange = (pagination: any, filters: Record<string, any>) => {
-    setFilteredInfo(filters);
-  };
-
-  const handleSearch = (
-    selectedKeys: string[],
-    confirm: () => void,
-    dataIndex: string
-  ) => {
-    confirm();
-    setSearchText(selectedKeys[0]);
-    setSearchedColumn(dataIndex);
-  };
-
-  const handleReset = (clearFilters: () => void) => {
-    clearFilters();
-    setSearchText("");
-  };
+    };
+    if (providerId) fetchData();
+  }, [providerId]);
 
   const getColumnSearchProps = (
     dataIndex: keyof FinalContractData
@@ -236,30 +166,29 @@ export default function ProviderManageFinalContracts() {
       ),
   });
 
-  const generateDocument = (contract: FinalContractData) => {
-    message.success(`Đang tạo file hợp đồng tất toán cho ${contract.bookBy}`);
-    setTimeout(() => {
-      const blob = new Blob(["Dummy contract content"], {
-        type: "application/octet-stream",
-      });
-      saveAs(
-        blob,
-        `Tat_toan_hop_dong_${contract.bookBy}_${contract.numberCar}.docx`
-      );
-    }, 1000);
+  const handleSearch = (
+    selectedKeys: string[],
+    confirm: () => void,
+    dataIndex: string
+  ) => {
+    confirm();
+    setSearchText(selectedKeys[0]);
+    setSearchedColumn(dataIndex);
+  };
+
+  const handleReset = (clearFilters: () => void) => {
+    clearFilters();
+    setSearchText("");
   };
 
   const showModalView = (contract: FinalContractData) => {
+    setSelectedContract(contract);
     setIsModalOpen(true);
-    setUrlFile(contract.file || "");
-  };
-
-  const handleOkView = () => {
-    setIsModalOpen(false);
   };
 
   const handleCancelView = () => {
     setIsModalOpen(false);
+    setSelectedContract(null);
   };
 
   const columns: ColumnType<FinalContractData>[] = [
@@ -269,22 +198,14 @@ export default function ProviderManageFinalContracts() {
       width: 280,
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <Image.PreviewGroup
-            preview={{
-              onChange: (current, prev) =>
-                console.log(`current index: ${current}, prev index: ${prev}`),
-            }}
-            items={record.image}
-          >
-            <Image
-              width={80}
-              height={60}
-              src={record.image[0] || "/placeholder.svg"}
-              alt="Final Contract"
-              className="rounded-md object-cover"
-              fallback="/placeholder.svg?height=60&width=80"
-            />
-          </Image.PreviewGroup>
+          <Image
+            width={80}
+            height={60}
+            src={record.image?.[0] || "/placeholder.svg"}
+            alt="Final Contract"
+            className="rounded-md object-cover"
+            fallback="/placeholder.svg?height=60&width=80"
+          />
           <div>
             <div className="font-semibold">{record.numberCar}</div>
             <div className="text-sm text-gray-500">{record.model}</div>
@@ -312,64 +233,7 @@ export default function ProviderManageFinalContracts() {
           </div>
         </div>
       ),
-      filterDropdown: ({
-        setSelectedKeys,
-        selectedKeys,
-        confirm,
-        clearFilters,
-        close,
-      }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
-          <Input
-            ref={searchInput}
-            placeholder="Tìm khách hàng"
-            value={selectedKeys[0]}
-            onChange={(e) =>
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-            }
-            onPressEnter={() =>
-              handleSearch(selectedKeys as string[], confirm, "bookBy")
-            }
-            style={{ marginBottom: 8, display: "block" }}
-          />
-          <Space>
-            <Button
-              type="primary"
-              onClick={() =>
-                handleSearch(selectedKeys as string[], confirm, "bookBy")
-              }
-              icon={<SearchOutlined />}
-              size="small"
-              style={{ width: 90 }}
-            >
-              Tìm
-            </Button>
-            <Button
-              onClick={() => clearFilters && handleReset(clearFilters)}
-              size="small"
-              style={{ width: 90 }}
-            >
-              Reset
-            </Button>
-          </Space>
-        </div>
-      ),
-      filterIcon: (filtered: boolean) => (
-        <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />
-      ),
-      onFilter: (value, record: FinalContractData) => {
-        return record.bookBy
-          ? record.bookBy
-              .toString()
-              .toLowerCase()
-              .includes((value as string).toLowerCase())
-          : false;
-      },
-      onFilterDropdownOpenChange: (visible: boolean) => {
-        if (visible) {
-          setTimeout(() => searchInput.current?.select(), 100);
-        }
-      },
+      ...getColumnSearchProps("bookBy"),
     },
     {
       title: "Thời gian thuê",
@@ -401,7 +265,16 @@ export default function ProviderManageFinalContracts() {
       key: "status",
       width: 120,
       render: (status) => (
-        <Tag color="green" className="px-2 py-1">
+        <Tag
+          color={
+            status === "Đã tất toán"
+              ? "green"
+              : status === "Đã hủy"
+              ? "red"
+              : "default"
+          }
+          className="px-2 py-1"
+        >
           {status}
         </Tag>
       ),
@@ -410,31 +283,17 @@ export default function ProviderManageFinalContracts() {
       title: "Thao tác",
       key: "action",
       fixed: "right",
-      width: 140,
+      width: 100,
       render: (_, contract) => (
-        <Space direction="vertical" size="small">
-          <Space size="small">
-            <Tooltip title="Xem hợp đồng">
-              <Button
-                size="small"
-                onClick={() => showModalView(contract)}
-                icon={<EyeOutlined />}
-              >
-                Xem
-              </Button>
-            </Tooltip>
-            <Tooltip title="Tải file hợp đồng">
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => generateDocument(contract)}
-                icon={<DownloadOutlined />}
-              >
-                Tải
-              </Button>
-            </Tooltip>
-          </Space>
-        </Space>
+        <Tooltip title="Xem chi tiết">
+          <Button
+            size="small"
+            onClick={() => showModalView(contract)}
+            icon={<EyeOutlined />}
+          >
+            Xem
+          </Button>
+        </Tooltip>
       ),
     },
   ];
@@ -445,15 +304,14 @@ export default function ProviderManageFinalContracts() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-2">Tất toán hợp đồng</h1>
           <p className="text-gray-600">
-            Quản lý các hợp đồng đã tất toán và tải file hợp đồng
+            Quản lý các hợp đồng đã tất toán và xem chi tiết thông tin
           </p>
         </div>
 
         <Table
-          onChange={handleChange}
           columns={columns}
           dataSource={finalContracts}
-          rowKey="id"
+          rowKey="_id"
           loading={loading}
           scroll={{ x: 1200 }}
           pagination={{
@@ -470,33 +328,57 @@ export default function ProviderManageFinalContracts() {
         />
       </Card>
 
-      {/* Modal for viewing PDF contract */}
+      {/* Modal for viewing contract info */}
       <Modal
-        title="Xem hợp đồng tất toán"
+        title="Chi tiết hợp đồng tất toán"
         open={isModalOpen}
-        onOk={handleOkView}
-        footer={null}
-        width={1000}
         onCancel={handleCancelView}
+        footer={null}
+        width={600}
       >
-        <div style={{ height: "750px" }}>
-          <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
-            {urlFile ? (
-              <Viewer
-                fileUrl={urlFile}
-                plugins={[defaultLayoutPluginInstance]}
-              />
-            ) : (
-              <div className="flex justify-center items-center h-full text-gray-500">
-                Không có file PDF để hiển thị
-              </div>
-            )}
-          </Worker>
-        </div>
+        {selectedContract ? (
+          <Descriptions bordered column={1} size="middle">
+            <Descriptions.Item label="Biển số">
+              {selectedContract.numberCar}
+            </Descriptions.Item>
+            <Descriptions.Item label="Mẫu xe">
+              {selectedContract.model}
+            </Descriptions.Item>
+            <Descriptions.Item label="Số chỗ">
+              {selectedContract.numberSeat}
+            </Descriptions.Item>
+            <Descriptions.Item label="Năm sản xuất">
+              {selectedContract.yearManufacture}
+            </Descriptions.Item>
+            <Descriptions.Item label="Khách hàng">
+              {selectedContract.bookBy}
+            </Descriptions.Item>
+            <Descriptions.Item label="Số điện thoại">
+              {selectedContract.phone}
+            </Descriptions.Item>
+            <Descriptions.Item label="Email">
+              {selectedContract.email}
+            </Descriptions.Item>
+            <Descriptions.Item label="Địa chỉ">
+              {selectedContract.address}
+            </Descriptions.Item>
+            <Descriptions.Item label="Thời gian bắt đầu">
+              {selectedContract.timeBookingStart}
+            </Descriptions.Item>
+            <Descriptions.Item label="Thời gian kết thúc">
+              {selectedContract.timeBookingEnd}
+            </Descriptions.Item>
+            <Descriptions.Item label="Số tiền kết toán">
+              {selectedContract.totalCost}
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              {selectedContract.status}
+            </Descriptions.Item>
+          </Descriptions>
+        ) : null}
       </Modal>
     </div>
   );
 }
 
-// Set layout for the component
 ProviderManageFinalContracts.Layout = ProviderLayout;
