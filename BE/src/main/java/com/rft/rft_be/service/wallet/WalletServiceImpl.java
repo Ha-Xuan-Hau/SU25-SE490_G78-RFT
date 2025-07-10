@@ -32,7 +32,6 @@ public class WalletServiceImpl implements  WalletService {
     public WalletDTO getWalletByUserId(String userId) {
         Wallet wallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Wallet not found"));
-
         return toDTO(wallet);
     }
 
@@ -141,7 +140,6 @@ public class WalletServiceImpl implements  WalletService {
     public void updateWithdrawalStatus(String id, String status) {
         WalletTransaction tx = txRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));
-
         try {
             tx.setStatus(WalletTransaction.Status.valueOf(status.toUpperCase()));
         } catch (IllegalArgumentException e) {
