@@ -31,3 +31,26 @@ export const handleVNPayCallback = async (callbackParams) => {
         throw new Error(`Lỗi xử lý callback VNPay: ${error.response?.data?.message || error.message}`);
     }
 };
+
+
+
+// Gọi API tạo link thanh toán VNPay (top up)
+export const createTopUpVNPay = async (paymentData) => {
+    try {
+        const response = await apiClient.post('/payment/topUp', paymentData);
+        return response.data; // { code, message, paymentUrl }
+    } catch (error) {
+        throw new Error(error.response?.data?.message || error.message);
+    }
+};
+
+// Gọi API callback sau khi thanh toán thành công
+export const handleTopUpCallback = async (callbackParams) => {
+    try {
+        const queryString = new URLSearchParams(callbackParams).toString();
+        const response = await apiClient.get(`/payment/topUpCallBack?${queryString}`);
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || error.message);
+    }
+};

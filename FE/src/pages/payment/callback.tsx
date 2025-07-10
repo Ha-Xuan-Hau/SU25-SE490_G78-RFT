@@ -1,15 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
-import {
-  Button,
-  Spin,
-  message,
-  Result,
-  Card,
-  Descriptions,
-  Divider,
-} from "antd";
+import { Button, Spin, message, Result, Card, Descriptions } from "antd";
 import Link from "next/link";
 import {
   CheckCircleOutlined,
@@ -264,7 +256,7 @@ const PaymentCallback: React.FC = () => {
                   Thử lại thanh toán
                 </Button>
               </Link>,
-              <Link href="/vehicles" key="home">
+              <Link href="/" key="home">
                 <Button size="large">Về trang chủ</Button>
               </Link>,
             ]}

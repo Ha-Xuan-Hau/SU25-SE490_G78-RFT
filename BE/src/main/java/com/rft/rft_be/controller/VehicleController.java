@@ -3,6 +3,7 @@ package com.rft.rft_be.controller;
 import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.service.vehicle.VehicleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -279,12 +280,15 @@ public class VehicleController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<?> search(@RequestBody VehicleSearchDTO request) {
+    public ResponseEntity<?> search(@Valid @RequestBody VehicleSearchDTO request) {
         try {
             // Parse time
             LocalDateTime timeFrom = request.getPickupDateTime() != null ? LocalDateTime.parse(request.getPickupDateTime()) : null;
             LocalDateTime timeTo = request.getReturnDateTime() != null ? LocalDateTime.parse(request.getReturnDateTime()) : null;
 
+            if (timeFrom != null && timeTo != null && timeFrom.isAfter(timeTo)) {
+                return ResponseEntity.badRequest().body("pickupTime must be before returnTime");
+            }
             Page<VehicleSearchResultDTO> results = vehicleService.searchVehicles(request, timeFrom, timeTo);
 
             Map<String, Object> response = new HashMap<>();
