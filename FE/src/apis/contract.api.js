@@ -26,6 +26,28 @@ export const getContractsByProviderAndStatus = async (providerId, status) => {
 };
 
 /**
+ * Lấy tất cả FinalContract theo providerId
+ * @param {string} providerId - ID của provider
+ * @returns {Promise<Object>} Response chứa danh sách final contracts
+ */
+export const getFinalContractsByProvider = async (providerId) => {
+    try {
+        const response = await apiClient.get(`/final-contracts/user/${providerId}`);
+        return {
+            success: true,
+            data: response.data
+        };
+    } catch (error) {
+        console.error('Error fetching final contracts:', error);
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            statusCode: error.response?.status
+        };
+    }
+};
+
+/**
  * Cập nhật status của contract
  * @param {string} contractId - ID của contract
  * @param {string} status - Status mới (PROCESSING, RENTING, FINISHED, CANCELLED)
@@ -92,6 +114,28 @@ export const createFinalContract = async (data) => {
         };
     } catch (error) {
         console.error('Error creating final contract:', error);
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            statusCode: error.response?.status
+        };
+    }
+};
+
+/**
+ * Lấy chi tiết FinalContract theo ID
+ * @param {string} finalContractId - ID của final contract
+ * @returns {Promise<Object>} Response chứa thông tin final contract
+ */
+export const getFinalContractById = async (finalContractId) => {
+    try {
+        const response = await apiClient.get(`/final-contracts/${finalContractId}`);
+        return {
+            success: true,
+            data: response.data
+        };
+    } catch (error) {
+        console.error('Error fetching final contract details:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message,

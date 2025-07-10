@@ -14,4 +14,5 @@ export interface User {
   validLicenses?: string[];
   openTimes?: string;
   closeTimes?: string;
+  registeredVehicles?: string[];
 }

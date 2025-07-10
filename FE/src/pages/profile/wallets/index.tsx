@@ -108,7 +108,7 @@ export default function UserWalletsPage() {
       setWallet(data);
       if (Array.isArray(data?.cards)) {
         setCards(data.cards);
-      } else if (data?.bankAccountNumber) {
+      } else if (data?.id) {
         setCards([
           {
             id: data.id || "1",
@@ -262,13 +262,23 @@ export default function UserWalletsPage() {
                 >
                   <div className="flex flex-col md:flex-row md:items-center">
                     <div className="flex-grow">
-                      <div className="mt-1 text-gray-700">
-                        {card.bankAccountName ?? ""} -{" "}
-                        {card.bankAccountType ?? ""}
-                      </div>
-                      <div className="mt-1 text-gray-700">
-                        {formatCardNumber(card.bankAccountNumber)}
-                      </div>
+                      {!card.bankAccountNumber ||
+                      !card.bankAccountName ||
+                      !card.bankAccountType ? (
+                        <div className="text-orange-500 font-medium mb-2">
+                          Bạn chưa thiết lập thông tin thẻ ngân hàng
+                        </div>
+                      ) : (
+                        <>
+                          <div className="mt-1 text-gray-700">
+                            {card.bankAccountName ?? ""} -{" "}
+                            {card.bankAccountType ?? ""}
+                          </div>
+                          <div className="mt-1 text-gray-700">
+                            {formatCardNumber(card.bankAccountNumber)}
+                          </div>
+                        </>
+                      )}
                       <div className="mt-1 text-green-600 font-medium">
                         Số dư: {formatCurrency(card.balance)}
                       </div>

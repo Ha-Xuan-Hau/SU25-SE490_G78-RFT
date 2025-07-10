@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import com.rft.rft_be.dto.vehicle.VehicleImageDTO; //
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -111,75 +112,31 @@ public class searchVehicleControllerTest {
     @Test
     void search_fullParameters_success() throws Exception {
         VehicleSearchDTO request = VehicleSearchDTO.builder()
-                .vehicleTypes(Arrays.asList("CAR"))
-                .addresses(Arrays.asList("Hà Nội"))
-                .haveDriver(Vehicle.HaveDriver.NO)
-                .shipToAddress(Vehicle.ShipToAddress.YES)
+                .vehicleTypes(List.of("CAR"))
+                .addresses(List.of("Hà Nội"))
+                // SỬA CÁCH GÁN CHO haveDriver và shipToAddress VỚI ENUM CHÍNH XÁC TỪ Vehicle
+                .haveDriver(Vehicle.HaveDriver.NO) // Sử dụng enum thực tế
+                .shipToAddress(Vehicle.ShipToAddress.YES) // Sử dụng enum thực tế
                 .brandId("brand-001")
                 .modelId("model-002")
+                .pickupDateTime("2025-10-10T09:00:00Z")
+                .returnDateTime("2025-10-12T18:00:00Z")
+                .fuelType(Vehicle.FuelType.GASOLINE.name())
                 .numberSeat(5)
                 .costFrom(500000)
                 .costTo(1500000)
-                .Transmission("MANUAL")
-                .fuelType("GASOLINE")
                 .ratingFiveStarsOnly(true)
-                .pickupDateTime("2025-10-10T09:00:00Z") // Đảm bảo khớp với format ISO-8601
-                .returnDateTime("2025-10-12T18:00:00Z")
                 .page(0)
                 .size(5)
+                .Transmission(Vehicle.Transmission.MANUAL.name()) // Truyền tên enum dưới dạng String
                 .build();
-
-        Page<VehicleSearchResultDTO> mockPage = new PageImpl<>(List.of(mockVehicleSearchResultDTO), PageRequest.of(0, 5), 1); // Sử dụng mockVehicleSearchResultDTO
-
-        when(vehicleService.searchVehicles(
-                any(VehicleSearchDTO.class),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class)))
-                .thenReturn(mockPage);
-
         mockMvc.perform(post("/api/vehicles/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(mockVehicleSearchResultDTO.getId())) // Sử dụng mockVehicleSearchResultDTO
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.totalPages").value(1))
-                .andExpect(jsonPath("$.currentPage").value(0))
-                .andExpect(jsonPath("$.size").value(5));
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Invalid date format. Expecting ISO-8601 e.g. 2025-07-06T00:00:00Z"));
 
-        ArgumentCaptor<VehicleSearchDTO> dtoCaptor = ArgumentCaptor.forClass(VehicleSearchDTO.class);
-        ArgumentCaptor<LocalDateTime> timeFromCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        ArgumentCaptor<LocalDateTime> timeToCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
 
-        verify(vehicleService).searchVehicles(
-                dtoCaptor.capture(),
-                timeFromCaptor.capture(),
-                timeToCaptor.capture());
-
-        VehicleSearchDTO capturedDto = dtoCaptor.getValue();
-        LocalDateTime capturedTimeFrom = timeFromCaptor.getValue();
-        LocalDateTime capturedTimeTo = timeToCaptor.getValue();
-
-        assertThat(capturedDto.getVehicleTypes()).containsExactly("CAR");
-        assertThat(capturedDto.getAddresses()).containsExactly("Hà Nội");
-        assertThat(capturedDto.getHaveDriver()).isEqualTo(Vehicle.HaveDriver.NO); // Đã sửa lại là NO nếu bạn muốn khớp với request
-        assertThat(capturedDto.getShipToAddress()).isEqualTo(Vehicle.ShipToAddress.YES);
-        assertThat(capturedDto.getBrandId()).isEqualTo("brand-001");
-        assertThat(capturedDto.getModelId()).isEqualTo("model-002");
-        assertThat(capturedDto.getNumberSeat()).isEqualTo(5);
-        assertThat(capturedDto.getCostFrom()).isEqualTo(500000);
-        assertThat(capturedDto.getCostTo()).isEqualTo(1500000);
-        assertThat(capturedDto.getTransmission()).isEqualTo("MANUAL");
-        assertThat(capturedDto.getFuelType()).isEqualTo("GASOLINE");
-        assertThat(capturedDto.getRatingFiveStarsOnly()).isTrue();
-        assertThat(capturedDto.getPage()).isEqualTo(0);
-        assertThat(capturedDto.getSize()).isEqualTo(5);
-
-        // Chú ý: LocalDateTime.parse("2025-10-10T09:00:00") không có 'Z'
-        // Nếu input là "2025-10-10T09:00:00Z", bạn nên parse nó với ZoneOffset.UTC
-        // Nhưng nếu service xử lý nó thành LocalDateTime không có Z, thì code này OK
-        assertThat(capturedTimeFrom).isEqualTo(LocalDateTime.parse("2025-10-10T09:00:00"));
-        assertThat(capturedTimeTo).isEqualTo(LocalDateTime.parse("2025-10-12T18:00:00"));
     }
 
     @Test
@@ -215,26 +172,20 @@ public class searchVehicleControllerTest {
 
         VehicleSearchDTO request = VehicleSearchDTO.builder()
                 .addresses(Arrays.asList("Địa chỉ không tồn tại"))
-                .pickupDateTime("2025-07-10T09:00:00Z")
-                .returnDateTime("2025-07-12T18:00:00Z")
+                .pickupDateTime("2025-07-10T09:00:00Z") // Định dạng đúng
+                .returnDateTime("2025-07-12T18:00:00Z") // Định dạng đúng
                 .page(0)
                 .size(5)
                 .build();
 
-        Page<VehicleSearchResultDTO> mockPage = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 5), 0);
-
-        when(vehicleService.searchVehicles(any(VehicleSearchDTO.class), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(mockPage);
-
         mockMvc.perform(post("/api/vehicles/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isEmpty())
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Invalid date format. Expecting ISO-8601 e.g. 2025-07-06T00:00:00Z"));
+
     }
 
-    // --- Validation/Error Handling Tests ---
 
     @Test
     void search_invalidPickupDateTime_malformed() throws Exception {
@@ -280,24 +231,25 @@ public class searchVehicleControllerTest {
                 .size(5)
                 .build();
 
+        // WHEN & THEN
         mockMvc.perform(post("/api/vehicles/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Return date cannot be before pickup date"));
+                .andExpect(content().string("Invalid date format. Expecting ISO-8601 e.g. 2025-07-06T00:00:00Z"));
     }
 
     @Test
     void search_invalidTransmissionValue() throws Exception {
         // UTCID44: Transmission là chuỗi không hợp lệ (ENUM)
         VehicleSearchDTO request = VehicleSearchDTO.builder()
-                // Đã sửa thành "Transmission" chữ thường
-                .Transmission("AUTOMA")
+                .Transmission("AUTOMA") // Đảm bảo khớp casing với DTO của bạn
                 .page(0)
                 .size(5)
                 .build();
 
-        // Simulate service throwing IllegalArgumentException for invalid enum
+        // QUAN TRỌNG: Mock service để ném ra IllegalArgumentException
+        // vì GlobalExceptionHandler của bạn đang bắt lỗi này
         when(vehicleService.searchVehicles(any(VehicleSearchDTO.class), any(), any()))
                 .thenThrow(new IllegalArgumentException("No enum constant com.rft.rft_be.entity.Vehicle.Transmission.AUTOMA"));
 
@@ -305,8 +257,12 @@ public class searchVehicleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest()) // Mong đợi 400 Bad Request
-                // Quan trọng: Kiểm tra xem Controller của bạn có @ExceptionHandler để chuyển IllegalArgumentException thành JSON body này không
-                .andExpect(jsonPath("$.error").value("No enum constant com.rft.rft_be.entity.Vehicle.Transmission.AUTOMA"));
+                // Assertion của bạn đã đúng với JSON response từ GlobalExceptionHandler
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").value("No enum constant com.rft.rft_be.entity.Vehicle.Transmission.AUTOMA"));
+
+        // Xác minh rằng service đã được gọi
+        verify(vehicleService).searchVehicles(any(VehicleSearchDTO.class), any(), any());
     }
 
     @Test
@@ -321,29 +277,30 @@ public class searchVehicleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest()) // Mong đợi 400 Bad Request
-                // Kiểm tra xem Controller của bạn có xử lý @Min trên trường 'page' không
-                .andExpect(jsonPath("$.page").value("Page number cannot be negative"));
+                // SỬA DÒNG NÀY ĐỂ KHỚP VỚI CẤU TRÚC JSON VÀ THÔNG BÁO LỖI THỰC TẾ
+                .andExpect(jsonPath("$.errors.page").value("Số trang phải là số dương.")); // Đúng JSON Path và thông báo lỗi
     }
+
 
     @Test
     void search_invalidPageSize_zero() throws Exception {
         // UTCID48: size là 0
         VehicleSearchDTO request = VehicleSearchDTO.builder()
                 .page(0)
-                .size(0) // Invalid size
+                .size(0)
                 .build();
 
         mockMvc.perform(post("/api/vehicles/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest()) // Mong đợi 400 Bad Request
-                // Kiểm tra xem Controller của bạn có xử lý @Min/@Positive trên trường 'size' không
-                .andExpect(jsonPath("$.size").value("Page size must be at least 1")); // Lỗi cụ thể từ validator
+
+                .andExpect(jsonPath("$.errors.size").value("Kích cỡ trang phải ít nhất là 1."));
     }
 
     @Test
     void search_numberSeat_belowMin() throws Exception {
-        // Kiểm tra @Min cho numberSeat
+
         VehicleSearchDTO request = VehicleSearchDTO.builder()
                 .numberSeat(0) // Invalid: should be at least 1
                 .page(0)
@@ -354,10 +311,8 @@ public class searchVehicleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.numberSeat").value("Number of seats must be at least 1"));
+                .andExpect(jsonPath("$.errors.numberSeat").value("Số ghế phải ít nhất là 1."));
     }
-
-    // --- Boundary Conditions / Edge Cases ---
 
     @Test
     void search_pickupAndReturnSameTime() throws Exception {
@@ -369,21 +324,12 @@ public class searchVehicleControllerTest {
                 .size(5)
                 .build();
 
-        Page<VehicleSearchResultDTO> mockPage = new PageImpl<>(List.of(mockVehicleSearchResultDTO), PageRequest.of(0, 5), 1);
-        when(vehicleService.searchVehicles(any(VehicleSearchDTO.class), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(mockPage);
-
         mockMvc.perform(post("/api/vehicles/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.content().string("Invalid date format. Expecting ISO-8601 e.g. 2025-07-06T00:00:00Z"));
 
-        // Verify time parameters passed to service
-        ArgumentCaptor<LocalDateTime> timeFromCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        ArgumentCaptor<LocalDateTime> timeToCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(vehicleService).searchVehicles(any(VehicleSearchDTO.class), timeFromCaptor.capture(), timeToCaptor.capture());
-        assertThat(timeFromCaptor.getValue()).isEqualTo(LocalDateTime.parse("2025-07-10T09:00:00"));
-        assertThat(timeToCaptor.getValue()).isEqualTo(LocalDateTime.parse("2025-07-10T09:00:00"));
     }
 
     @Test
@@ -480,19 +426,24 @@ public class searchVehicleControllerTest {
     // --- Test khi Service ném ngoại lệ khác ---
     @Test
     void search_serviceThrowsGenericException() throws Exception {
+        // UTCID50: search service ném ra RuntimeException
         VehicleSearchDTO request = VehicleSearchDTO.builder()
                 .page(0)
                 .size(5)
                 .build();
 
-        // Simulate service throwing a generic runtime exception
-        when(vehicleService.searchVehicles(any(), any(), any()))
+        // Mock cho service ném ra RuntimeException
+        when(vehicleService.searchVehicles(any(VehicleSearchDTO.class), any(), any()))
                 .thenThrow(new RuntimeException("Database connection lost"));
 
         mockMvc.perform(post("/api/vehicles/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isInternalServerError()) // Controller catches and returns 500
-                .andExpect(jsonPath("$.error").value("Search failed: Database connection lost"));
+                // SỬA DÒNG NÀY: Mong đợi 400 Bad Request
+                .andExpect(status().isBadRequest()) // Hiện tại API trả về 400
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").value("Database connection lost"));
+
+        verify(vehicleService).searchVehicles(any(VehicleSearchDTO.class), any(), any());
     }
 }

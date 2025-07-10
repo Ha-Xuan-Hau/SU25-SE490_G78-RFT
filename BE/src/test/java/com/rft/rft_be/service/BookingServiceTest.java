@@ -1,4 +1,5 @@
 package com.rft.rft_be.service;
+import com.rft.rft_be.dto.booking.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.entity.*;
@@ -36,6 +37,8 @@ public class BookingServiceTest {
     private BookedTimeSlotRepository bookedTimeSlotRepository;
     @Mock
     private BookingResponseMapper bookingResponseMapper;
+    @Mock
+    private BookingCleanupTask bookingCleanupTask;
 
     private BookingRequestDTO request;
     private User user;

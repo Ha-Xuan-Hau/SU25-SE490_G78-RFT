@@ -1,29 +1,44 @@
 package com.rft.rft_be.service.vehicle;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.entity.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+
+import com.rft.rft_be.entity.Brand;
+import com.rft.rft_be.entity.Model;
+import com.rft.rft_be.entity.Penalty;
+import com.rft.rft_be.entity.Rating;
+import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.mapper.RatingMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
-import com.rft.rft_be.repository.*;
+import com.rft.rft_be.repository.BookedTimeSlotRepository;
+import com.rft.rft_be.repository.BrandRepository;
+import com.rft.rft_be.repository.ModelRepository;
+import com.rft.rft_be.repository.PenaltyRepository;
+import com.rft.rft_be.repository.RatingRepository;
+import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.repository.VehicleRepository;
 import com.rft.rft_be.service.rating.RatingServiceImpl;
-import jakarta.persistence.criteria.*;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Pageable;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -164,6 +179,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
+
     @Override
     public List<VehicleGetDTO> getVehiclesByPenaltyId(String penaltyId) {
         List<Vehicle> vehicles = vehicleRepository.findByPenaltyId(penaltyId);
@@ -171,6 +187,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
+
     @Override
     public VehicleGetDTO getVehicleByLicensePlate(String licensePlate) {
         Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate)
@@ -349,6 +366,20 @@ public class VehicleServiceImpl implements VehicleService {
 //        if (vehicleDTO.getVehicleImages() != null) {
 //            existingVehicle.setVehicleImages(vehicleDTO.getVehicleImages());
 //        }
+
+        if (vehicleDTO.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(vehicleDTO.getVehicleImages()
+                        .stream()
+                        .map(VehicleImageDTO::getImageUrl)
+                        .collect(Collectors.toList())
+                );
+                existingVehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                // handle error
+            }
+        }
 
         if (vehicleDTO.getNumberSeat() != null) {
             existingVehicle.setNumberSeat(vehicleDTO.getNumberSeat());

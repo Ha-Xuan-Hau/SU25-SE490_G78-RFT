@@ -150,41 +150,91 @@ export default function ManageContracts() {
         console.log("Fetching contracts for provider:", providerId);
 
         // Fetch PROCESSING, RENTING, and FINISHED contracts
-        const [processingResult, rentingResult, finishedResult] =
-          await Promise.all([
-            getContractsByProviderAndStatus(
-              providerId,
-              "PROCESSING"
-            ) as Promise<ApiResponse<ContractData[]>>,
-            getContractsByProviderAndStatus(providerId, "RENTING") as Promise<
-              ApiResponse<ContractData[]>
-            >,
-            getContractsByProviderAndStatus(providerId, "FINISHED") as Promise<
-              ApiResponse<ContractData[]>
-            >,
-          ]);
+        //       const [processingResult, rentingResult, finishedResult] =
+        //         await Promise.all([
+        //           getContractsByProviderAndStatus(
+        //             providerId,
+        //             "PROCESSING"
+        //           ) as Promise<ApiResponse<ContractData[]>>,
+        //           getContractsByProviderAndStatus(providerId, "RENTING") as Promise<
+        //             ApiResponse<ContractData[]>
+        //           >,
+        //           getContractsByProviderAndStatus(providerId, "FINISHED") as Promise<
+        //             ApiResponse<ContractData[]>
+        //           >,
+        //         ]);
+
+        //       const allContracts: ContractData[] = [];
+
+        //       if (processingResult.success) {
+        //         allContracts.push(...(processingResult.data || []));
+        //       }
+
+        //       if (rentingResult.success) {
+        //         allContracts.push(...(rentingResult.data || []));
+        //       }
+
+        //       if (finishedResult.success) {
+        //         allContracts.push(...(finishedResult.data || []));
+        //       }
+
+        //       setContracts(allContracts);
+        //       hasFetchedRef.current = providerId; // Mark as fetched for this provider
+
+        //       if (
+        //         !processingResult.success &&
+        //         !rentingResult.success &&
+        //         !finishedResult.success
+        //       ) {
+        //         showApiError("Không thể tải dữ liệu hợp đồng");
+        //       }
+        //     } catch (error) {
+        //       console.error("Error fetching contracts:", error);
+        //       showApiError(error, "Có lỗi xảy ra khi tải dữ liệu");
+        //     } finally {
+        //       setLoading(false);
+        //     }
+        //   },
+        //   [provider, providerLoading]
+        // );
+        const [
+          processingResult,
+          rentingResult,
+          finishedResult,
+          cancelledResult,
+        ] = await Promise.all([
+          getContractsByProviderAndStatus(providerId, "PROCESSING") as Promise<
+            ApiResponse<ContractData[]>
+          >,
+          getContractsByProviderAndStatus(providerId, "RENTING") as Promise<
+            ApiResponse<ContractData[]>
+          >,
+          getContractsByProviderAndStatus(providerId, "FINISHED") as Promise<
+            ApiResponse<ContractData[]>
+          >,
+          getContractsByProviderAndStatus(providerId, "CANCELLED") as Promise<
+            ApiResponse<ContractData[]>
+          >,
+        ]);
 
         const allContracts: ContractData[] = [];
-
-        if (processingResult.success) {
+        if (processingResult.success)
           allContracts.push(...(processingResult.data || []));
-        }
-
-        if (rentingResult.success) {
+        if (rentingResult.success)
           allContracts.push(...(rentingResult.data || []));
-        }
-
-        if (finishedResult.success) {
+        if (finishedResult.success)
           allContracts.push(...(finishedResult.data || []));
-        }
+        if (cancelledResult.success)
+          allContracts.push(...(cancelledResult.data || []));
 
         setContracts(allContracts);
-        hasFetchedRef.current = providerId; // Mark as fetched for this provider
+        hasFetchedRef.current = providerId;
 
         if (
           !processingResult.success &&
           !rentingResult.success &&
-          !finishedResult.success
+          !finishedResult.success &&
+          !cancelledResult.success
         ) {
           showApiError("Không thể tải dữ liệu hợp đồng");
         }
@@ -206,16 +256,45 @@ export default function ManageContracts() {
   }, [fetchContracts, providerLoading]);
 
   // Filter contracts based on active tab and search text
+  // const getFilteredContracts = () => {
+  //   let filtered = contracts;
+
+  //   // Filter by tab
+  //   if (activeTab === "processing") {
+  //     filtered = contracts.filter(
+  //       (contract) => contract.status === "PROCESSING"
+  //     );
+  //   } else if (activeTab === "renting") {
+  //     filtered = contracts.filter((contract) => contract.status === "RENTING");
+  //   }
+  //   // "all" tab shows all contracts
+
+  //   // Filter by search text
+  //   if (searchText.trim()) {
+  //     const searchLower = searchText.toLowerCase().trim();
+  //     filtered = filtered.filter(
+  //       (contract) =>
+  //         contract.userName.toLowerCase().includes(searchLower) ||
+  //         contract.vehicleLicensePlate.toLowerCase().includes(searchLower)
+  //     );
+  //   }
+
+  //   return filtered;
+  // };
   const getFilteredContracts = () => {
     let filtered = contracts;
-
-    // Filter by tab
     if (activeTab === "processing") {
       filtered = contracts.filter(
         (contract) => contract.status === "PROCESSING"
       );
     } else if (activeTab === "renting") {
       filtered = contracts.filter((contract) => contract.status === "RENTING");
+    } else if (activeTab === "finished") {
+      filtered = contracts.filter((contract) => contract.status === "FINISHED");
+    } else if (activeTab === "cancelled") {
+      filtered = contracts.filter(
+        (contract) => contract.status === "CANCELLED"
+      );
     }
     // "all" tab shows all contracts
 
@@ -228,7 +307,6 @@ export default function ManageContracts() {
           contract.vehicleLicensePlate.toLowerCase().includes(searchLower)
       );
     }
-
     return filtered;
   };
 
@@ -333,16 +411,19 @@ export default function ManageContracts() {
       width: 250,
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <Image
+          {/* <Image
             width={80}
             height={60}
             src={record.vehicleThumb || "/placeholder.svg"}
             alt={record.vehicleModel}
             className="rounded-md object-cover"
             fallback="/placeholder.svg?height=60&width=80"
-          />
+          /> */}
           <div>
-            <div className="font-semibold">{record.vehicleLicensePlate}</div>
+            <div className="font-semibold">
+              {" "}
+              {record.vehicleThumb} - {record.vehicleLicensePlate}
+            </div>
             <div className="text-sm text-gray-500">
               {record.vehicleBrand} {record.vehicleModel}
             </div>
@@ -469,6 +550,22 @@ export default function ManageContracts() {
                       contracts.filter((c) => c.status === "RENTING").length
                     })`,
               },
+              {
+                key: "finished",
+                label: loading
+                  ? "Đã hoàn thành"
+                  : `Đã hoàn thành (${
+                      contracts.filter((c) => c.status === "FINISHED").length
+                    })`,
+              },
+              {
+                key: "cancelled",
+                label: loading
+                  ? "Đã hủy"
+                  : `Đã hủy (${
+                      contracts.filter((c) => c.status === "CANCELLED").length
+                    })`,
+              },
             ]}
           />
         </div>
@@ -498,16 +595,17 @@ export default function ManageContracts() {
                 {displayContracts.map((contract) => (
                   <Card key={contract.id} className="shadow-md">
                     <div className="flex items-center gap-4 mb-2">
-                      <Image
+                      {/* <Image
                         width={80}
                         height={60}
                         src={contract.vehicleThumb || "/placeholder.svg"}
                         alt={contract.vehicleModel}
                         className="rounded-md object-cover"
                         fallback="/placeholder.svg?height=60&width=80"
-                      />
+                      /> */}
                       <div className="flex-1">
                         <div className="font-semibold text-lg">
+                          {contract.vehicleThumb} -
                           {contract.vehicleLicensePlate}
                         </div>
                         <div className="text-sm text-gray-500">

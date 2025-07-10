@@ -66,8 +66,13 @@ public class UserServiceImpl implements UserService {
                 .stream()
                 .map(DriverLicense::getClassField) // Chỉ lấy classField
                 .collect(Collectors.toList());
+        List<String> registeredVehicles = userRegisterVehicleRepository.findByUserId(id)
+                .stream()
+                .map(UserRegisterVehicle::getVehicleType) // Lấy vehicleType
+                .collect(Collectors.toList());
         UserDTO userDTO = userMapper.toDTO(user);
         userDTO.setValidLicenses(validLicenseClasses);
+        userDTO.setRegisteredVehicles(registeredVehicles);
 
         return userDTO;
     }

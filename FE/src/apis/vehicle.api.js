@@ -32,7 +32,7 @@ export async function getVehicleById(vehicleId) {
 export async function createVehicle({ body, accessToken }) {
     const { data } = await apiClient.request({
         method: "POST",
-        url: `/vehicles/createVehicles`,
+        url: `/vehicles`,
         headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
@@ -114,10 +114,9 @@ export async function getBookedSlotById(vehicleId) {
 }
 
 export async function updateVehicle({ vehicleId, body, accessToken }) {
-    console.log(vehicleId, body);
     const { data } = await apiClient.request({
         method: "PUT",
-        url: `/vehicles/updateVehicle/${vehicleId}`,
+        url: `/vehicles/${vehicleId}`,
         headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
@@ -127,6 +126,7 @@ export async function updateVehicle({ vehicleId, body, accessToken }) {
 
     return data;
 }
+
 export const updateCarStatus = async ({ accessToken, vehicleId, status }) => {
     const { data } = await apiClient.request({
         method: "PUT",
