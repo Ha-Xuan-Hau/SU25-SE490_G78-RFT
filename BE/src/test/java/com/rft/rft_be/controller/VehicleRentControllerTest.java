@@ -283,4 +283,137 @@ public class VehicleRentControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isCreated())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true));
     }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidVehicleTypeEnum() throws Exception {
+        request.setVehicleType("PLANE"); // Không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidHaveDriverEnum_successButNull() throws Exception {
+        request.setHaveDriver("MAYBE"); // Không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidInsuranceStatusEnum_successButNull() throws Exception {
+        request.setInsuranceStatus("MAYBE"); // Không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidShipToAddressEnum_successButNull() throws Exception {
+        request.setShipToAddress("SOMETIMES"); // Không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidTransmissionEnum_successButNull() throws Exception {
+        request.setTransmission("SEMI-AUTO"); // Không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidFuelTypeEnum_successButNull() throws Exception {
+        request.setFuelType("DIESEL"); // Không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerVehicle_InvalidStatusEnum_successButNull() throws Exception {
+        request.setStatus("BROKEN"); // Không hợp lệ
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders
+                        .post("/api/vehicle-rent/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
+    }
 }
