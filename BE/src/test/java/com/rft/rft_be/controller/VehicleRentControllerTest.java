@@ -121,8 +121,6 @@ public class VehicleRentControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.data.licensePlate").value(request.getLicensePlate()));
     }
 
-
-
     @Test
     @WithMockUser(username = "testuser", roles = {"PROVIDER"})
     void registerVehicle_MissingVehicleType_fail() throws Exception {
