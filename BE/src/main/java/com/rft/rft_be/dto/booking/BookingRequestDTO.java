@@ -18,6 +18,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingRequestDTO {
 
+    @NotBlank(message = "vehicleId không được phép trống")
     String vehicleId;
 
     @NotNull(message = "Thời gian bắt đầu không được phép trống.")
