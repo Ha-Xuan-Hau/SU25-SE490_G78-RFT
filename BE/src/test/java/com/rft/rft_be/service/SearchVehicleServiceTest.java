@@ -58,6 +58,7 @@ public class SearchVehicleServiceTest {
                 .vehicleType(Vehicle.VehicleType.CAR)
                 .costPerDay(BigDecimal.valueOf(800000))
                 .user(User.builder().address("123 Lê Lợi").build())
+                .status(Vehicle.Status.AVAILABLE) // <-- THÊM DÒNG NÀY ĐỂ ĐẶT TRẠNG THÁI
                 .build();
 
         when(bookedTimeSlotRepository.findBusyVehicleIds(any(), any())).thenReturn(Collections.emptyList());
@@ -105,6 +106,7 @@ public class SearchVehicleServiceTest {
                 .id("vehicle_001")
                 .vehicleType(Vehicle.VehicleType.CAR)
                 .user(User.builder().address("123 Lê Lợi").build())
+                .status(Vehicle.Status.AVAILABLE) // <-- THÊM DÒNG NÀY
                 .build();
 
         when(bookedTimeSlotRepository.findBusyVehicleIds(any(), any())).thenReturn(Collections.emptyList());
@@ -152,6 +154,7 @@ public class SearchVehicleServiceTest {
                 .id("vehicle_001")
                 .vehicleType(Vehicle.VehicleType.CAR)
                 .user(User.builder().address("123 Lê Lợi").build())
+                .status(Vehicle.Status.AVAILABLE) // <-- THÊM DÒNG NÀY ĐỂ ĐẶT TRẠNG THÁI
                 .build();
 
         when(vehicleRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(vehicle)));
@@ -180,7 +183,10 @@ public class SearchVehicleServiceTest {
                 .vehicleType(Vehicle.VehicleType.CAR)
                 .numberSeat(7)
                 .user(User.builder().address("Hà Nội").build())
+                // THÊM DÒNG NÀY ĐỂ SET TRẠNG THÁI CHO VEHICLE
+                .status(Vehicle.Status.AVAILABLE) // Hoặc trạng thái mặc định nào đó bạn muốn
                 .build();
+
 
         when(bookedTimeSlotRepository.findBusyVehicleIds(any(), any())).thenReturn(Collections.emptyList());
         when(vehicleRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(vehicle)));
