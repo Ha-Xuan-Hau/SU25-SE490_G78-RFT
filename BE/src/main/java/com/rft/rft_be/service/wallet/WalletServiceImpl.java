@@ -11,6 +11,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -122,6 +123,23 @@ public class WalletServiceImpl implements  WalletService {
         if (tx.getStatus() != WalletTransaction.Status.PENDING) {
             throw new RuntimeException("Chỉ giao dịch ở trạng thái PENDING mới được hủy");
         }
+        tx.setStatus(WalletTransaction.Status.CANCELLED);
+        txRepository.save(tx);
+    }
+    @Override
+    public void cancelWithdrawalAsUser(String transactionId, String userId) {
+        WalletTransaction tx = txRepository.findById(transactionId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
+
+        // ✅ Kiểm tra quyền sở hữu
+        if (!tx.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("Bạn không có quyền hủy giao dịch này");
+        }
+
+        if (tx.getStatus() != WalletTransaction.Status.PENDING) {
+            throw new RuntimeException("Chỉ giao dịch ở trạng thái PENDING mới được hủy");
+        }
+
         tx.setStatus(WalletTransaction.Status.CANCELLED);
         txRepository.save(tx);
     }
