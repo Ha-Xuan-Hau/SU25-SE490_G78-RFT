@@ -34,6 +34,7 @@ import carBrands from "@/data/car-brands.json";
 import carModels from "@/data/car-models.json";
 import motorbikeBrands from "@/data/motorbike-brand.json";
 import { showError, showSuccess, showWarning } from "@/utils/toast.utils";
+import { getPenaltiesByUserId } from "@/apis/provider.api";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -91,6 +92,21 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
       : [];
 
   const modelOptions = vehicleType === VehicleType.CAR ? carModels : [];
+
+  const [rentalRules, setRentalRules] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchRentalRules() {
+      if (!user?.id) return;
+      try {
+        const res = await getPenaltiesByUserId(user.id);
+        setRentalRules(res.penalties || []);
+      } catch (error) {
+        // Có thể showError nếu muốn
+      }
+    }
+    fetchRentalRules();
+  }, [user]);
 
   // 1. useEffect đầu: chỉ setVehicleType khi có dữ liệu
   useEffect(() => {
@@ -161,10 +177,17 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
 
   // Loading state for form submission
 
-  const rentalRuleOptions = [
-    { value: "penalty_001", label: "Phạt 10% nếu hủy quá 24 giờ" },
-    { value: "penalty_002", label: "Phạt 50,000 VNĐ nếu hủy quá 12 giờ" },
-  ];
+  const rentalRuleOptions = rentalRules.map((rule) => ({
+    value: rule.id,
+    label:
+      rule.penaltyType === "FIXED"
+        ? `Phạt ${rule.penaltyValue?.toLocaleString(
+            "vi-VN"
+          )} VNĐ nếu hủy trong vòng ${rule.minCancelHour} giờ`
+        : `Phạt ${rule.penaltyValue}% nếu hủy trong vòng ${rule.minCancelHour} giờ`,
+    penaltyType: rule.penaltyType,
+    penaltyValue: rule.penaltyValue,
+  }));
 
   const featureOptions = [
     { label: "GPS", value: "GPS" },
@@ -226,14 +249,14 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         images: imageUrls,
         vehicleFeatures: featureNames,
         fuelType: vehicle.fuelType,
-        rentalRule: vehicle.rentalRule,
+        rentalRule: vehicle.penalty?.id,
         isMultipleVehicles: false,
         haveDriver: vehicle.haveDriver || "NO",
         insuranceStatus: vehicle.insuranceStatus || "NO",
         shipToAddress: vehicle.shipToAddress || "NO",
       });
     }
-    // Chỉ chạy lại khi vehicleType đổi (tức là options đã đúng)
+    // Chỉ chạy lại khi vehicleType đổi
   }, [vehicleType, vehicleDetail.data, form, brandOptions, modelOptions]);
 
   const handleVehicleTypeChange = (type: VehicleType) => {
@@ -311,14 +334,30 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
             vehicleQuantity: isMultipleVehicles ? values.vehicleQuantity : 1,
             status: isActive ? "AVAILABLE" : "UNAVAILABLE",
             yearManufacture: values.yearOfManufacture,
-            vehicleImages: values.images, // <-- Sửa lại dòng này
+            vehicleImages: values.images,
             numberSeat: Number(values.numberSeat),
+            penaltyId: values.rentalRule,
           };
           delete submitData.yearOfManufacture;
           delete submitData.images;
 
           // Thêm log này để xem request gửi lên BE
           console.log("Submit data:", submitData);
+
+          // Kiểm tra rule loại cố định
+          const selectedRule = rentalRuleOptions.find(
+            (opt) => opt.value === values.rentalRule
+          );
+          if (
+            selectedRule?.penaltyType === "FIXED" &&
+            selectedRule.penaltyValue > values.costPerDay
+          ) {
+            showError(
+              "Giá trị phí phạt cố định phải nhỏ hơn hoặc bằng giá thuê xe/ngày!"
+            );
+            setSubmitting(false);
+            return;
+          }
 
           if (isInsert) {
             await apiCreateVehicle.mutateAsync({
@@ -420,7 +459,31 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         </div>
 
         <div className="md:w-3/5">
-          <Card title="Thông tin xe" className="mb-4">
+          <Card
+            title={
+              <div className="flex items-center gap-3 justify-between">
+                <div className="flex items-center gap-3">
+                  <span>Thông tin xe</span>
+                  <Tag
+                    color={isActive ? "green" : "orange"}
+                    className="rounded-full px-3 py-1"
+                  >
+                    {isActive ? "Đang hoạt động" : "Không hoạt động"}
+                  </Tag>
+                </div>
+                {vehicleId && (
+                  <Button
+                    danger={!isActive}
+                    onClick={() => setIsActive((prev) => !prev)}
+                    type="default"
+                  >
+                    {isActive ? "Ẩn xe" : "Hiện xe"}
+                  </Button>
+                )}
+              </div>
+            }
+            className="mb-4"
+          >
             <div className="grid md:grid-cols-2 gap-4">
               <Form.Item
                 label="Tên hiển thị xe"
@@ -449,7 +512,15 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                 >
                   <Select
                     placeholder="Chọn loại nhiên liệu"
-                    options={fuelTypeOptions}
+                    options={
+                      vehicleType === VehicleType.MOTORBIKE
+                        ? fuelTypeOptions.filter(
+                            (opt) =>
+                              opt.value === "GASOLINE" ||
+                              opt.value === "ELECTRIC"
+                          )
+                        : fuelTypeOptions
+                    }
                   />
                 </Form.Item>
               )}
@@ -480,26 +551,28 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                 </Form.Item>
               )}
 
-              <Form.Item
-                label="Hãng xe"
-                name="brandId"
-                rules={[
-                  {
-                    required: true,
-                    message: "Vui lòng chọn hãng xe",
-                  },
-                ]}
-              >
-                <Select
-                  placeholder="Chọn hãng xe"
-                  options={brandOptions.map((b) => ({
-                    value: b.value,
-                    label: b.label,
-                  }))}
-                  showSearch
-                  optionFilterProp="label"
-                />
-              </Form.Item>
+              {vehicleType !== VehicleType.BICYCLE && (
+                <Form.Item
+                  label="Hãng xe"
+                  name="brandId"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Vui lòng chọn hãng xe",
+                    },
+                  ]}
+                >
+                  <Select
+                    placeholder="Chọn hãng xe"
+                    options={brandOptions.map((b) => ({
+                      value: b.value,
+                      label: b.label,
+                    }))}
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                </Form.Item>
+              )}
 
               {vehicleType === VehicleType.CAR && (
                 <Form.Item
@@ -519,45 +592,46 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                 </Form.Item>
               )}
 
-              {(vehicleType === VehicleType.MOTORBIKE ||
-                vehicleType === VehicleType.BICYCLE) && (
-                <Form.Item
-                  label="Tạo nhiều xe cùng loại"
-                  name="isMultipleVehicles"
-                  valuePropName="checked"
-                  className="md:col-span-2"
-                  tooltip={
-                    vehicleType === VehicleType.MOTORBIKE
-                      ? "Khi tạo nhiều xe cùng loại, bạn không cần nhập biển số cho từng xe"
-                      : "Cho phép tạo nhiều xe đạp cùng loại cùng lúc"
-                  }
-                >
-                  <div className="flex items-center">
-                    <Switch
-                      checked={isMultipleVehicles}
-                      onChange={(checked) => {
-                        setIsMultipleVehicles(checked);
-                        if (checked) {
-                          form.setFieldsValue({
-                            licensePlate: undefined,
-                            vehicleQuantity: 2,
-                          });
-                        } else {
-                          form.setFieldsValue({
-                            vehicleQuantity: undefined,
-                          });
-                        }
-                      }}
-                    />
-                    <span className="ml-2">
-                      {vehicleType === VehicleType.MOTORBIKE
-                        ? "Tôi muốn đăng ký nhiều xe máy cùng loại (không cần nhập biển số)"
-                        : "Tôi muốn đăng ký nhiều xe đạp cùng loại"}
-                    </span>
-                  </div>
-                </Form.Item>
-              )}
-              {isMultipleVehicles && (
+              {!vehicleId &&
+                (vehicleType === VehicleType.MOTORBIKE ||
+                  vehicleType === VehicleType.BICYCLE) && (
+                  <Form.Item
+                    label="Tạo nhiều xe cùng loại"
+                    name="isMultipleVehicles"
+                    valuePropName="checked"
+                    className="md:col-span-2"
+                    tooltip={
+                      vehicleType === VehicleType.MOTORBIKE
+                        ? "Khi tạo nhiều xe cùng loại, bạn không cần nhập biển số cho từng xe"
+                        : "Cho phép tạo nhiều xe đạp cùng loại cùng lúc"
+                    }
+                  >
+                    <div className="flex items-center">
+                      <Switch
+                        checked={isMultipleVehicles}
+                        onChange={(checked) => {
+                          setIsMultipleVehicles(checked);
+                          if (checked) {
+                            form.setFieldsValue({
+                              licensePlate: undefined,
+                              vehicleQuantity: 2,
+                            });
+                          } else {
+                            form.setFieldsValue({
+                              vehicleQuantity: undefined,
+                            });
+                          }
+                        }}
+                      />
+                      <span className="ml-2">
+                        {vehicleType === VehicleType.MOTORBIKE
+                          ? "Tôi muốn đăng ký nhiều xe máy cùng loại (không cần nhập biển số)"
+                          : "Tôi muốn đăng ký nhiều xe đạp cùng loại"}
+                      </span>
+                    </div>
+                  </Form.Item>
+                )}
+              {!vehicleId && isMultipleVehicles && (
                 <Form.Item
                   label="Số lượng xe"
                   name="vehicleQuantity"
@@ -591,15 +665,17 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
               )}
 
               {/* Thông báo nhắc nhở cho xe máy khi tạo nhiều */}
-              {isMultipleVehicles && vehicleType === VehicleType.MOTORBIKE && (
-                <div className="md:col-span-2 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-700">
-                  <p>
-                    <strong>Lưu ý:</strong> Khi tạo nhiều xe máy cùng loại, bạn
-                    cần cập nhật biển số xe cho từng xe sau khi đăng ký thành
-                    công.
-                  </p>
-                </div>
-              )}
+              {!vehicleId &&
+                isMultipleVehicles &&
+                vehicleType === VehicleType.MOTORBIKE && (
+                  <div className="md:col-span-2 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-700">
+                    <p>
+                      <strong>Lưu ý:</strong> Khi tạo nhiều xe máy cùng loại,
+                      bạn cần cập nhật biển số xe cho từng xe sau khi đăng ký
+                      thành công.
+                    </p>
+                  </div>
+                )}
 
               {vehicleType === VehicleType.CAR && (
                 <Form.Item
@@ -797,19 +873,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
             </div>
           </Card>
 
-          {vehicleId && (
-            <div className="flex justify-between mb-4">
-              <Button
-                danger={!isActive}
-                onClick={() => setIsActive((prev) => !prev)}
-                type="default"
-              >
-                {isActive ? "Ẩn xe" : "Hiện xe"}
-              </Button>
-              <div />
-            </div>
-          )}
-
           <div className="flex justify-end">
             <Button
               type="primary"
@@ -948,7 +1011,7 @@ export default function UserRegisterVehicle() {
           color={status === "AVAILABLE" ? "green" : "orange"}
           className="rounded-full px-3 py-1"
         >
-          {status === "AVAILABLE" ? "Đã duyệt" : "Chờ duyệt"}
+          {status === "AVAILABLE" ? "Đang hoạt động" : "Không hoạt đ"}
         </Tag>
       ),
     },

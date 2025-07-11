@@ -237,6 +237,8 @@ public class VehicleServiceImpl implements VehicleService {
                     .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + createVehicleDTO.getPenaltyId()));
         }
 
+
+
         // Create new vehicle entity
         Vehicle vehicle = Vehicle.builder()
                 .user(user)
@@ -245,7 +247,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .penalty(penalty)
                 .licensePlate(createVehicleDTO.getLicensePlate())
                 .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
-                .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
+//                .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
                 .numberSeat(createVehicleDTO.getNumberSeat())
                 .yearManufacture(createVehicleDTO.getYearManufacture())
                 .description(createVehicleDTO.getDescription())
@@ -257,6 +259,24 @@ public class VehicleServiceImpl implements VehicleService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+
+
+        if (createVehicleDTO.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(
+                        createVehicleDTO.getVehicleImages()
+                                .stream()
+                                .map(VehicleImageDTO::getImageUrl)
+                                .collect(Collectors.toList())
+                );
+                vehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                vehicle.setVehicleImages("[]");
+            }
+        } else {
+            vehicle.setVehicleImages("[]");
+        }
 
         // Set enum values with validation
         if (createVehicleDTO.getVehicleType() != null && !createVehicleDTO.getVehicleType().trim().isEmpty()) {
@@ -344,7 +364,16 @@ public class VehicleServiceImpl implements VehicleService {
         // Update fields (only update non-null values from DTO)
         if (vehicleDTO.getLicensePlate() != null && !vehicleDTO.getLicensePlate().trim().isEmpty()) {
             // Check if new license plate already exists (excluding current record)
-            if (!existingVehicle.getLicensePlate().equals(vehicleDTO.getLicensePlate())) {
+            if (existingVehicle.getLicensePlate() != null &&
+                    !existingVehicle.getLicensePlate().equals(vehicleDTO.getLicensePlate())) {
+                boolean exists = vehicleRepository.existsByLicensePlate(vehicleDTO.getLicensePlate());
+                if (exists) {
+                    throw new RuntimeException("Vehicle with license plate " + vehicleDTO.getLicensePlate() + " already exists");
+                }
+            }
+            else if (existingVehicle.getLicensePlate() == null &&
+                    vehicleDTO.getLicensePlate() != null) {
+                // Nếu DB là null mà DTO có biển số, cũng cần kiểm tra trùng
                 boolean exists = vehicleRepository.existsByLicensePlate(vehicleDTO.getLicensePlate());
                 if (exists) {
                     throw new RuntimeException("Vehicle with license plate " + vehicleDTO.getLicensePlate() + " already exists");
@@ -673,7 +702,7 @@ public class VehicleServiceImpl implements VehicleService {
                     .model(model)
                     .penalty(penalty)
                     .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
-                    .vehicleImages(createVehicleDTO.getVehicleImages())
+//                    .vehicleImages(createVehicleDTO.getVehicleImages())
                     .numberSeat(createVehicleDTO.getNumberSeat())
                     .yearManufacture(createVehicleDTO.getYearManufacture())
                     .description(createVehicleDTO.getDescription())
@@ -682,12 +711,31 @@ public class VehicleServiceImpl implements VehicleService {
                     .thumb(createVehicleDTO.getThumb())
                     .totalRatings(0)
                     .likes(0)
+//                    .status(Vehicle.Status.UNAVAILABLE)
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
 
             // Set enum fields
             setEnums(createVehicleDTO, vehicle);
+
+            // Xử lý ảnh xe
+            if (createVehicleDTO.getVehicleImages() != null) {
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    String imagesJson = mapper.writeValueAsString(
+                            createVehicleDTO.getVehicleImages()
+                                    .stream()
+                                    .map(VehicleImageDTO::getImageUrl)
+                                    .collect(Collectors.toList())
+                    );
+                    vehicle.setVehicleImages(imagesJson);
+                } catch (Exception e) {
+                    vehicle.setVehicleImages("[]");
+                }
+            } else {
+                vehicle.setVehicleImages("[]");
+            }
 
             savedVehicles.add(vehicle);
         }

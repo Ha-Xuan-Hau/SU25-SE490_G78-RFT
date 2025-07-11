@@ -3,6 +3,7 @@ package com.rft.rft_be.dto.vehicle;
 
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -16,14 +17,14 @@ public class CreateVehicleDTO {
     private String licensePlate;
     private String vehicleType;
     private String vehicleFeatures;
-    private String vehicleImages;
+    List<VehicleImageDTO> vehicleImages;
     private String haveDriver;
     private String insuranceStatus; // YES, NO
     private String shipToAddress; // YES, NO
     private Integer numberSeat;
     private Integer yearManufacture;
-    private String transmission; // MANUAL, AUTOMATIC 1
-    private String fuelType; // GASOLINE, ELECTRIC 1
+    private String transmission; // MANUAL, AUTOMATIC
+    private String fuelType; // GASOLINE, ELECTRIC
     private String description;
     private Integer numberVehicle; //tuy loai xe
     private BigDecimal costPerDay;

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@/types/user";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import { apiClient } from "@/apis/client";
 
 export type AuthMode =
   | "login"
@@ -22,6 +23,7 @@ interface AuthContextType {
   login: (userData: User, token: string) => void;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
+  refreshUserFromApi: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,6 +110,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const refreshUserFromApi = async () => {
+    // Gọi API /users/get-user như trong Recoil
+    const value = window.localStorage.getItem("access_token");
+    if (value) {
+      const token = value.replace(/^"|"$/g, "");
+      const response = await apiClient.request({
+        method: "GET",
+        url: "/users/get-user",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      setUser(response.data);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -120,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         updateUser,
+        refreshUserFromApi,
       }}
     >
       {children}

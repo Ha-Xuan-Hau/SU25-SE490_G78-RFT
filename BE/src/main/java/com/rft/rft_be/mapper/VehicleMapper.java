@@ -41,6 +41,7 @@ public interface VehicleMapper {
     @Mapping(source = "vehicleFeatures", target = "vehicleFeatures", qualifiedByName = "stringToFeatureList")
     @Mapping(source = "vehicleImages", target = "vehicleImages", qualifiedByName = "jsonToImageList")
     @Mapping(source = "user.address", target = "address")
+    @Mapping(source = "penalty", target = "penalty")
     @Mapping(target = "openTime", expression = "java(vehicle.getUser() != null && vehicle.getUser().getOpenTime() != null ? vehicle.getUser().getOpenTime().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern(\"HH:mm:ss\")) : null)")
     @Mapping(target = "closeTime", expression = "java(vehicle.getUser() != null && vehicle.getUser().getCloseTime() != null ? vehicle.getUser().getCloseTime().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern(\"HH:mm:ss\")) : null)")
     VehicleDetailDTO vehicleToVehicleDetail(Vehicle vehicle);
@@ -64,6 +65,7 @@ public interface VehicleMapper {
     @Mapping(source = "fuelType", target = "fuelType", qualifiedByName = "enumToString")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
     @Mapping(source = "user.address", target = "address")
+    @Mapping(source = "penalty", target = "penalty")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
 
     @Named("stringToFeatureList")

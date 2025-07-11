@@ -3,6 +3,8 @@ package com.rft.rft_be.dto.vehicle;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.rft.rft_be.dto.penalty.PenaltyDTO;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,4 +41,5 @@ public class VehicleDetailDTO {
     List<UserCommentDTO> userComments;
     String openTime;
     String closeTime;
+    PenaltyDTO penalty;
 }
