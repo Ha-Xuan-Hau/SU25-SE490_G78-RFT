@@ -14,12 +14,17 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -40,6 +45,19 @@ class WithdrawControllerTest {
     private CreateWithdrawalRequestDTO requestDTO;
     private WalletTransactionDTO responseDTO;
 
+    private JwtAuthenticationToken buildJwtAuthToken(String userId) {
+        Instant now = Instant.now();
+        Map<String, Object> claims = Map.of("userId", userId);
+        Jwt jwt = new Jwt(
+                "fake-token",
+                now,
+                now.plusSeconds(3600), // expiresAt
+                Map.of("alg", "none"),
+                claims
+        );
+        return new JwtAuthenticationToken(jwt, List.of(() -> "USER")); // quyền đúng với controller
+    }
+
     @BeforeEach
     void init() {
         objectMapper = new ObjectMapper();
@@ -59,16 +77,14 @@ class WithdrawControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = {"USER"})
     void createWithdrawal_validRequest_success() throws Exception {
-        // GIVEN
         Mockito.when(walletService.createWithdrawal(ArgumentMatchers.any(CreateWithdrawalRequestDTO.class)))
                 .thenReturn(responseDTO);
 
-        // WHEN // THEN
         mockMvc.perform(post("/api/wallet/withdrawals")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(requestDTO))
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("user-001")))
                         .with(SecurityMockMvcRequestPostProcessors.csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("txn-001"))
@@ -78,37 +94,76 @@ class WithdrawControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = {"USER"})
     void createWithdrawal_insufficientBalance_fail() throws Exception {
-        // GIVEN
         requestDTO.setAmount(new BigDecimal("99999999"));
         Mockito.when(walletService.createWithdrawal(ArgumentMatchers.any(CreateWithdrawalRequestDTO.class)))
                 .thenThrow(new RuntimeException("Số dư không đủ"));
 
-        // WHEN // THEN
         mockMvc.perform(post("/api/wallet/withdrawals")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(requestDTO))
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("user-001")))
                         .with(SecurityMockMvcRequestPostProcessors.csrf()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("message").value("Số dư không đủ"));
+                .andExpect(jsonPath("$.message").value("Số dư không đủ"));
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = {"USER"})
     void createWithdrawal_invalidInput_fail() throws Exception {
-        // GIVEN
         CreateWithdrawalRequestDTO invalidRequest = CreateWithdrawalRequestDTO.builder()
                 .userId("user-001")
                 .amount(null)
                 .build();
 
-        // WHEN // THEN
         mockMvc.perform(post("/api/wallet/withdrawals")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(invalidRequest))
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("user-001")))
                         .with(SecurityMockMvcRequestPostProcessors.csrf()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("errors.amount").value("Số tiền không được bỏ trống"));
+                .andExpect(jsonPath("$.errors.amount").value("Số tiền không được bỏ trống"));
+    }
+
+    @Test
+    void createWithdrawal_amountZero_fail() throws Exception {
+        CreateWithdrawalRequestDTO zeroAmountRequest = CreateWithdrawalRequestDTO.builder()
+                .userId("user-001")
+                .amount(BigDecimal.ZERO)
+                .build();
+
+        mockMvc.perform(post("/api/wallet/withdrawals")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(zeroAmountRequest))
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("user-001")))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.amount").value("Số tiền phải lớn hơn 0"));
+    }
+
+    @Test
+    void createWithdrawal_negativeAmount_fail() throws Exception {
+        CreateWithdrawalRequestDTO negativeAmountRequest = CreateWithdrawalRequestDTO.builder()
+                .userId("user-001")
+                .amount(new BigDecimal("-1000"))
+                .build();
+
+        mockMvc.perform(post("/api/wallet/withdrawals")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(negativeAmountRequest))
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("user-001")))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.amount").value("Số tiền phải lớn hơn 0"));
+    }
+
+    @Test
+    void createWithdrawal_invalidUserId_fail() throws Exception {
+        mockMvc.perform(post("/api/wallet/withdrawals")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(requestDTO))
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("user-999")))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Bạn không có quyền truy cập tài nguyên này"));
     }
 }
