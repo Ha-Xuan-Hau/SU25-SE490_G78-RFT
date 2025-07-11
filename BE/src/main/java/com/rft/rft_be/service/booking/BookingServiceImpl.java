@@ -417,12 +417,24 @@ public class BookingServiceImpl implements BookingService {
     public void deliverVehicle(String bookingId, String token) {
         String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
+
         if (!booking.getVehicle().getUser().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Chỉ chủ xe mới được phép giao xe.");
         }
+
         if (booking.getStatus() != Booking.Status.CONFIRMED) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái CONFIRMED mới được giao xe.");
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = booking.getTimeBookingStart();
+        long hoursUntilStart = ChronoUnit.HOURS.between(now, startTime);
+
+        if (hoursUntilStart > 8 || hoursUntilStart < 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Bạn chỉ có thể giao xe trong khoảng từ 5 đến 8 tiếng trước thời gian bắt đầu chuyến đi.");
+        }
+
         booking.setStatus(Booking.Status.DELIVERED);
         bookingRepository.save(booking);
     }
