@@ -11,6 +11,7 @@ import {
   Row,
   Col,
   Divider,
+  message,
 } from "antd";
 import {
   UserOutlined,
@@ -25,7 +26,7 @@ import {
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import EditProfileModal from "@/components/EditProfileComponent";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function ProviderAccountPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -56,17 +57,34 @@ export default function ProviderAccountPage() {
   };
 
   const formatTimestamp = (
-    timestamp: number | string | undefined | null
+    timestamp: number | string | number[] | undefined | null
   ): string => {
     if (!timestamp) return "";
-    const date = new Date(
-      typeof timestamp === "number" ? timestamp * 1000 : timestamp
-    );
-    return `${date.getDate().toString().padStart(2, "0")}/${(
-      date.getMonth() + 1
-    )
-      .toString()
-      .padStart(2, "0")}/${date.getFullYear()}`;
+
+    if (Array.isArray(timestamp) && timestamp.length >= 5) {
+      const [year, month, day, hour, minute] = timestamp;
+      return `${day.toString().padStart(2, "0")}/${month
+        .toString()
+        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    if (typeof timestamp === "number" || typeof timestamp === "string") {
+      const date = new Date(
+        typeof timestamp === "number" ? timestamp * 1000 : timestamp
+      );
+      return `${date.getDate().toString().padStart(2, "0")}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${date.getFullYear()} ${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    return "";
   };
 
   useEffect(() => {
@@ -167,7 +185,7 @@ export default function ProviderAccountPage() {
             <div className="flex items-center">
               <div className="w-36 text-gray-500 flex-shrink-0">Vai trò</div>
               <div className="font-medium">
-                {user?.role === "PROVIDER" ? "Chủ thuê" : "Chủ thuê"}
+                {user?.role === "USER" ? "Người dùng" : "Chủ thuê"}
               </div>
             </div>
 

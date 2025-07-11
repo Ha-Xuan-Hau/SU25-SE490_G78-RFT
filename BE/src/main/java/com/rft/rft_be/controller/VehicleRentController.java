@@ -5,12 +5,15 @@ import com.rft.rft_be.dto.vehicle.vehicleRent.PageResponseDTO;
 import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
 import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
+
 import com.rft.rft_be.service.vehicleRent.VehicleRentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -119,6 +122,20 @@ public class VehicleRentController {
             log.error("Error counting vehicles for user: {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponseDTO.error("Failed to count vehicles: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{vehicleId}/toggle-status")
+    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> toggleVehicleStatus(
+            @PathVariable String vehicleId) {
+
+        try {
+            VehicleGetDTO vehicle = vehicleRentService.toggleVehicleStatus( vehicleId);
+            return ResponseEntity.ok(ApiResponseDTO.success("Đã chuyển đổi trạng thái xe thành công", vehicle));
+        } catch (Exception e) {
+            log.error("Lỗi khi chuyển đổi trạng thái xe: {} cho người dùng: {}", vehicleId, e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseDTO.error("Không thể chuyển đổi trạng thái xe: " + e.getMessage()));
         }
     }
 }

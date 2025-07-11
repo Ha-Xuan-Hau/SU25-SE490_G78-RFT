@@ -1,14 +1,11 @@
-package com.rft.rft_be.service.authenticationService;
+package com.rft.rft_be.service.AuthenticationService;
 
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import com.rft.rft_be.dto.authentication.AuthenticationRequest;
-import com.rft.rft_be.dto.authentication.AuthenticationResponse;
-import com.rft.rft_be.dto.authentication.IntrospectRequest;
-import com.rft.rft_be.dto.authentication.IntrospectResponse;
+import com.rft.rft_be.dto.authentication.*;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.mail.EmailSenderService;
@@ -19,9 +16,10 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -43,6 +41,7 @@ public class AuthenticationService {
     UserRepository userRepository;
     OtpService otpService;
     EmailSenderService emailSenderService;
+    PasswordEncoder passwordEncoder;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -105,6 +104,28 @@ public class AuthenticationService {
         emailSenderService.sendHtmlEmail(email, subject, filled);
     }
 
+    public void changePassword(ChangePasswordRequest request) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
+
+        if (!user.getPassword().equals(passwordEncoder.encode(request.getPassword()))) {
+            throw new IllegalStateException("Sai mật khẩu hiện tại");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Mật khẩu và mật khẩu xác nhận lại không trùng nhau. Hãy thử lại");
+        }
+
+        if (!isPasswordValid(request.getNewPassword())) {
+            throw new IllegalArgumentException("Mật khẩu phải chứa ít nhất một số, một ký tự chữ, và bảy ký tự.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
     public void logout(IntrospectRequest request) {
 
 
@@ -155,5 +176,11 @@ public class AuthenticationService {
     private String generateOtp() {
         int otp = 100000 + random.nextInt(900000); // tạo số từ 100000 đến 999999
         return String.valueOf(otp);
+    }
+
+    private boolean isPasswordValid(String password) {
+        // Password must contain at least one number, one letter, and be at least 7 characters long
+        String regex = "^(?=.*[0-9])(?=.*[a-zA-Z]).{7,}$";
+        return password.matches(regex);
     }
 }

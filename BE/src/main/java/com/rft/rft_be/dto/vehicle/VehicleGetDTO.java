@@ -1,16 +1,22 @@
 package com.rft.rft_be.dto.vehicle;
 
-
-import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.rft.rft_be.dto.penalty.PenaltyDTO;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class VehicleGetDTO {
+
     private String id;
     private String userId;
     private String userName;
@@ -44,4 +50,5 @@ public class VehicleGetDTO {
     private LocalDateTime updatedAt;
     Double rating;
     private String address;
+    private PenaltyDTO penalty;
 }

@@ -1,28 +1,45 @@
 package com.rft.rft_be.service.vehicle;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.entity.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+
+import com.rft.rft_be.entity.Brand;
+import com.rft.rft_be.entity.Model;
+import com.rft.rft_be.entity.Penalty;
+import com.rft.rft_be.entity.Rating;
+import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.mapper.RatingMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
-import com.rft.rft_be.repository.*;
+import com.rft.rft_be.repository.BookedTimeSlotRepository;
+import com.rft.rft_be.repository.BrandRepository;
+import com.rft.rft_be.repository.ModelRepository;
+import com.rft.rft_be.repository.PenaltyRepository;
+import com.rft.rft_be.repository.RatingRepository;
+import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.repository.VehicleRepository;
 import com.rft.rft_be.service.rating.RatingServiceImpl;
-import jakarta.persistence.criteria.*;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Pageable;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -163,6 +180,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
+
     @Override
     public List<VehicleGetDTO> getVehiclesByPenaltyId(String penaltyId) {
         List<Vehicle> vehicles = vehicleRepository.findByPenaltyId(penaltyId);
@@ -170,6 +188,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
+
     @Override
     public VehicleGetDTO getVehicleByLicensePlate(String licensePlate) {
         Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate)
@@ -218,6 +237,8 @@ public class VehicleServiceImpl implements VehicleService {
                     .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + createVehicleDTO.getPenaltyId()));
         }
 
+
+
         // Create new vehicle entity
         Vehicle vehicle = Vehicle.builder()
                 .user(user)
@@ -226,7 +247,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .penalty(penalty)
                 .licensePlate(createVehicleDTO.getLicensePlate())
                 .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
-                .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
+//                .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
                 .numberSeat(createVehicleDTO.getNumberSeat())
                 .yearManufacture(createVehicleDTO.getYearManufacture())
                 .description(createVehicleDTO.getDescription())
@@ -238,6 +259,24 @@ public class VehicleServiceImpl implements VehicleService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+
+
+        if (createVehicleDTO.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(
+                        createVehicleDTO.getVehicleImages()
+                                .stream()
+                                .map(VehicleImageDTO::getImageUrl)
+                                .collect(Collectors.toList())
+                );
+                vehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                vehicle.setVehicleImages("[]");
+            }
+        } else {
+            vehicle.setVehicleImages("[]");
+        }
 
         // Set enum values with validation
         if (createVehicleDTO.getVehicleType() != null && !createVehicleDTO.getVehicleType().trim().isEmpty()) {
@@ -325,7 +364,16 @@ public class VehicleServiceImpl implements VehicleService {
         // Update fields (only update non-null values from DTO)
         if (vehicleDTO.getLicensePlate() != null && !vehicleDTO.getLicensePlate().trim().isEmpty()) {
             // Check if new license plate already exists (excluding current record)
-            if (!existingVehicle.getLicensePlate().equals(vehicleDTO.getLicensePlate())) {
+            if (existingVehicle.getLicensePlate() != null &&
+                    !existingVehicle.getLicensePlate().equals(vehicleDTO.getLicensePlate())) {
+                boolean exists = vehicleRepository.existsByLicensePlate(vehicleDTO.getLicensePlate());
+                if (exists) {
+                    throw new RuntimeException("Vehicle with license plate " + vehicleDTO.getLicensePlate() + " already exists");
+                }
+            }
+            else if (existingVehicle.getLicensePlate() == null &&
+                    vehicleDTO.getLicensePlate() != null) {
+                // Nếu DB là null mà DTO có biển số, cũng cần kiểm tra trùng
                 boolean exists = vehicleRepository.existsByLicensePlate(vehicleDTO.getLicensePlate());
                 if (exists) {
                     throw new RuntimeException("Vehicle with license plate " + vehicleDTO.getLicensePlate() + " already exists");
@@ -348,6 +396,20 @@ public class VehicleServiceImpl implements VehicleService {
 //        if (vehicleDTO.getVehicleImages() != null) {
 //            existingVehicle.setVehicleImages(vehicleDTO.getVehicleImages());
 //        }
+
+        if (vehicleDTO.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(vehicleDTO.getVehicleImages()
+                        .stream()
+                        .map(VehicleImageDTO::getImageUrl)
+                        .collect(Collectors.toList())
+                );
+                existingVehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                // handle error
+            }
+        }
 
         if (vehicleDTO.getNumberSeat() != null) {
             existingVehicle.setNumberSeat(vehicleDTO.getNumberSeat());
@@ -589,5 +651,132 @@ public class VehicleServiceImpl implements VehicleService {
                     .fuelType(vehicle.getFuelType() != null ? vehicle.getFuelType().name() : null)
                     .build();
         });
+    }
+
+    @Override
+    public List<VehicleGetDTO> createVehicleBulk(CreateVehicleDTO createVehicleDTO) {
+        if (createVehicleDTO.getLicensePlate() == null || createVehicleDTO.getLicensePlate().trim().isEmpty()) {
+            throw new RuntimeException("License plate is required");
+        }
+        if (createVehicleDTO.getCostPerDay() == null || createVehicleDTO.getCostPerDay().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Cost per day must be greater than 0");
+        }
+
+        // Check if license plate already exists
+        boolean exists = vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate());
+        if (exists) {
+            throw new RuntimeException("Vehicle with license plate " + createVehicleDTO.getLicensePlate() + " already exists");
+        }
+
+        // Validate foreign key references (optional - can be null)
+        User user = null;
+        if (createVehicleDTO.getUserId() != null && !createVehicleDTO.getUserId().trim().isEmpty()) {
+            user = userRepository.findById(createVehicleDTO.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + createVehicleDTO.getUserId()));
+        }
+
+        Brand brand = null;
+        if (createVehicleDTO.getBrandId() != null && !createVehicleDTO.getBrandId().trim().isEmpty()) {
+            brand = brandRepository.findById(createVehicleDTO.getBrandId())
+                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + createVehicleDTO.getBrandId()));
+        }
+
+        Model model = null;
+        if (createVehicleDTO.getModelId() != null && !createVehicleDTO.getModelId().trim().isEmpty()) {
+            model = modelRepository.findById(createVehicleDTO.getModelId())
+                    .orElseThrow(() -> new RuntimeException("Model not found with id: " + createVehicleDTO.getModelId()));
+        }
+
+        Penalty penalty = null;
+        if (createVehicleDTO.getPenaltyId() != null && !createVehicleDTO.getPenaltyId().trim().isEmpty()) {
+            penalty = penaltyRepository.findById(createVehicleDTO.getPenaltyId())
+                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + createVehicleDTO.getPenaltyId()));
+        }
+
+        List<Vehicle> savedVehicles = new ArrayList<>();
+
+        for (int i = 0; i < createVehicleDTO.getVehicleQuantity(); i++) {
+            Vehicle vehicle = Vehicle.builder()
+                    .user(user)
+                    .brand(brand)
+                    .model(model)
+                    .penalty(penalty)
+                    .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
+//                    .vehicleImages(createVehicleDTO.getVehicleImages())
+                    .numberSeat(createVehicleDTO.getNumberSeat())
+                    .yearManufacture(createVehicleDTO.getYearManufacture())
+                    .description(createVehicleDTO.getDescription())
+                    .numberVehicle(1)
+                    .costPerDay(createVehicleDTO.getCostPerDay())
+                    .thumb(createVehicleDTO.getThumb())
+                    .totalRatings(0)
+                    .likes(0)
+//                    .status(Vehicle.Status.UNAVAILABLE)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            // Set enum fields
+            setEnums(createVehicleDTO, vehicle);
+
+            // Xử lý ảnh xe
+            if (createVehicleDTO.getVehicleImages() != null) {
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    String imagesJson = mapper.writeValueAsString(
+                            createVehicleDTO.getVehicleImages()
+                                    .stream()
+                                    .map(VehicleImageDTO::getImageUrl)
+                                    .collect(Collectors.toList())
+                    );
+                    vehicle.setVehicleImages(imagesJson);
+                } catch (Exception e) {
+                    vehicle.setVehicleImages("[]");
+                }
+            } else {
+                vehicle.setVehicleImages("[]");
+            }
+
+            savedVehicles.add(vehicle);
+        }
+
+        vehicleRepository.saveAll(savedVehicles);
+
+        return savedVehicles.stream().map(vehicleMapper::vehicleGet).collect(Collectors.toList());
+    }
+
+    private void setEnums(CreateVehicleDTO dto, Vehicle vehicle) {
+        try {
+            if (dto.getVehicleType() != null)
+                vehicle.setVehicleType(Vehicle.VehicleType.valueOf(dto.getVehicleType().toUpperCase()));
+            if (dto.getHaveDriver() != null)
+                vehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(dto.getHaveDriver().toUpperCase()));
+            else
+                vehicle.setHaveDriver(Vehicle.HaveDriver.NO);
+
+            if (dto.getInsuranceStatus() != null)
+                vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(dto.getInsuranceStatus().toUpperCase()));
+            else
+                vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.NO);
+
+            if (dto.getShipToAddress() != null)
+                vehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(dto.getShipToAddress().toUpperCase()));
+            else
+                vehicle.setShipToAddress(Vehicle.ShipToAddress.NO);
+
+            if (dto.getTransmission() != null)
+                vehicle.setTransmission(Vehicle.Transmission.valueOf(dto.getTransmission().toUpperCase()));
+
+            if (dto.getFuelType() != null)
+                vehicle.setFuelType(Vehicle.FuelType.valueOf(dto.getFuelType().toUpperCase()));
+
+            if (dto.getStatus() != null)
+                vehicle.setStatus(Vehicle.Status.valueOf(dto.getStatus().toUpperCase()));
+            else
+                vehicle.setStatus(Vehicle.Status.UNAVAILABLE);
+
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid enum value: " + e.getMessage());
+        }
     }
 }

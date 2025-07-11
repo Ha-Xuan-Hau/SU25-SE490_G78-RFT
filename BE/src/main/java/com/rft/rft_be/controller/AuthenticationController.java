@@ -5,7 +5,7 @@ import com.rft.rft_be.dto.authentication.*;
 import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.dto.user.UserRegisterDTO;
 import com.rft.rft_be.mapper.UserMapper;
-import com.rft.rft_be.service.authenticationService.AuthenticationService;
+import com.rft.rft_be.service.AuthenticationService.AuthenticationService;
 import com.rft.rft_be.service.otp.OtpService;
 import com.rft.rft_be.service.user.UserService;
 import jakarta.validation.Valid;
@@ -59,8 +59,13 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<UserDetailDTO> register(@RequestBody UserRegisterDTO request){
         UserDetailDTO createdUser =userService.register(request);
-
         return ResponseEntity.ok(createdUser);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authenticationService.changePassword(request);
+        return ResponseEntity.ok("Mật khẩu đã được đổi thành công");
     }
 
 }

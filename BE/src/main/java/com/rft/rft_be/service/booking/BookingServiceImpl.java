@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.ParseException;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -96,7 +97,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // Validate thời gian trong khung giờ hoạt động (7h-20h)
-        validateOperatingHours(start, end);
+        validateOperatingHours(start, end, vehicle);
 
         // CRITICAL: Double-check availability với pessimistic locking để tránh race condition
         // Sử dụng synchronized block hoặc database-level locking
@@ -140,7 +141,7 @@ public class BookingServiceImpl implements BookingService {
         // Thêm phí giao xe (nếu có)
         BigDecimal deliveryCost = BigDecimal.ZERO;
         if ("delivery".equals(request.getPickupMethod())) {
-            deliveryCost = BigDecimal.valueOf(50000); // 50k phí giao xe
+            deliveryCost = BigDecimal.valueOf(0); // 50k phí giao xe
         }
 
         BigDecimal totalCostBeforeDiscount = baseCost.add(deliveryCost);
@@ -221,36 +222,36 @@ public class BookingServiceImpl implements BookingService {
     }
 
     // Thêm method validate mới
-    private void validateOperatingHours(LocalDateTime start, LocalDateTime end) {
-        // LocalDateTime already in Vietnam time, no need to convert
-        int startHour = start.getHour();
-        int endHour = end.getHour();
-        int startMinute = start.getMinute();
-        int endMinute = end.getMinute();
+    private void validateOperatingHours(LocalDateTime start, LocalDateTime end, Vehicle vehicle) {
+        User owner = vehicle.getUser();
+        LocalTime openTime = owner.getOpenTime().toLocalTime();
+        LocalTime closeTime = owner.getCloseTime().toLocalTime();
 
-        // DEBUG: Log chi tiết thời gian để debug
-        log.info("DEBUG validateOperatingHours - Start VN: {} ({}:{}), End VN: {} ({}:{})",
-                start, startHour, startMinute, end, endHour, endMinute);
+        LocalTime startTime = start.toLocalTime();
+        LocalTime endTime = end.toLocalTime();
 
-        // Validate giờ hoạt động (7h-20h30) - cho phép start từ 7-20h, end từ 7-20h30
-        if (startHour < 7 || startHour >= 21) {
-            log.error("Start hour validation failed: {} (must be 7-20)", startHour);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giờ bắt đầu phải từ 7:00 đến 20:59");
-        }
+        // DEBUG
+        log.info("Validate operating hours: open={}, close={}, start={}, end={}", openTime, closeTime, startTime, endTime);
 
-        // End time: cho phép từ 7:00 đến 20:30 (không cho 21:00 trở đi)
-        if (endHour < 7 || endHour >= 21) {
-            log.error("End hour validation failed: {} (must be 7-20)", endHour);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giờ kết thúc phải từ 7:00 đến 20:30");
+        // Nếu openTime = closeTime = 00:00 => hoạt động 24h, không cần check
+        boolean is24h = openTime.equals(LocalTime.MIDNIGHT) && closeTime.equals(LocalTime.MIDNIGHT);
+
+        if (!is24h) {
+            if (startTime.isBefore(openTime) || !startTime.isBefore(closeTime)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        String.format("Giờ bắt đầu phải trong khoảng %s đến %s", openTime, closeTime.minusMinutes(1)));
+            }
+            if (endTime.isAfter(closeTime) || !endTime.isAfter(openTime)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        String.format("Giờ kết thúc phải trong khoảng %s đến %s", openTime.plusMinutes(1), closeTime));
+            }
         }
 
         // Validate phút chỉ được :00 hoặc :30
-        if ((startMinute != 0 && startMinute != 30) || (endMinute != 0 && endMinute != 30)) {
-            log.error("Minute validation failed: start={}:{}, end={}:{}", startHour, startMinute, endHour, endMinute);
+        if ((startTime.getMinute() != 0 && startTime.getMinute() != 30)
+                || (endTime.getMinute() != 0 && endTime.getMinute() != 30)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian chỉ được chọn theo bước 30 phút (:00 hoặc :30)");
         }
-
-        log.info("Operating hours validation passed");
     }
 
     private Coupon validateAndApplyCoupon(String couponId, BigDecimal orderAmount) {
@@ -416,12 +417,24 @@ public class BookingServiceImpl implements BookingService {
     public void deliverVehicle(String bookingId, String token) {
         String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
+
         if (!booking.getVehicle().getUser().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Chỉ chủ xe mới được phép giao xe.");
         }
+
         if (booking.getStatus() != Booking.Status.CONFIRMED) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái CONFIRMED mới được giao xe.");
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = booking.getTimeBookingStart();
+        long hoursUntilStart = ChronoUnit.HOURS.between(now, startTime);
+
+        if (hoursUntilStart > 8 || hoursUntilStart < 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Bạn chỉ có thể giao xe trong khoảng từ 5 đến 8 tiếng trước thời gian bắt đầu chuyến đi.");
+        }
+
         booking.setStatus(Booking.Status.DELIVERED);
         bookingRepository.save(booking);
     }
@@ -471,14 +484,19 @@ public class BookingServiceImpl implements BookingService {
     public void completeBooking(String bookingId, String token, BigDecimal costSettlement, String note) {
         String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
-//        if (!booking.getUser().getId().equals(currentUserId)) {
-//            throw new AccessDeniedException("Chỉ người thuê xe mới được hoàn tất đơn đặt.");
-//        }
+
         if (booking.getStatus() != Booking.Status.RETURNED) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái RETURNED mới được hoàn tất.");
         }
         booking.setStatus(Booking.Status.COMPLETED);
         bookingRepository.save(booking);
+
+        //free bookedTimeSlot
+        bookedTimeSlotRepository.deleteByVehicleIdAndTimeRange(
+                booking.getVehicle().getId(),
+                booking.getTimeBookingStart(),
+                booking.getTimeBookingEnd()
+        );
 
         String finalContractId = null;
         List<Contract> contracts = contractRepository.findByBookingId(bookingId);
@@ -490,7 +508,7 @@ public class BookingServiceImpl implements BookingService {
             // Create FinalContract với costSettlement và note từ FE
             CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
                     .contractId(contract.getId())
-                    .userId(currentUserId)
+//                    .userId(currentUserId)
                     .timeFinish(LocalDateTime.now())
                     .costSettlement(costSettlement)
                     .note(note)

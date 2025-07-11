@@ -24,6 +24,14 @@ import {
 } from "@ant-design/icons";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import { useUserState } from "@/recoils/user.state";
+import {
+  getPenaltiesByUserId,
+  createPenalty,
+  updatePenalty,
+  deletePenalty,
+  getPenaltyById,
+} from "@/apis/provider.api";
+import { showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -39,28 +47,6 @@ interface PenaltyRule {
   user_id: string;
 }
 
-// Dummy data - Sẽ được thay thế bằng API call
-const initialPenaltyRules: PenaltyRule[] = [
-  {
-    id: "1",
-    penalty_type: "PERCENT",
-    penalty_value: 50,
-    min_cancel_hour: 24,
-    description:
-      "Phí hủy 50% giá trị đơn hàng nếu hủy trong vòng 24 giờ sau khi đơn được xác nhận",
-    user_id: "user3",
-  },
-  {
-    id: "2",
-    penalty_type: "FIXED",
-    penalty_value: 500000,
-    min_cancel_hour: 12,
-    description:
-      "Phí hủy cố định 500.000 VNĐ nếu hủy trong vòng 12 giờ sau khi đơn được xác nhận",
-    user_id: "user3",
-  },
-];
-
 export default function ManagePenaltiesPage() {
   const [user] = useUserState();
   const [penaltyRules, setPenaltyRules] = useState<PenaltyRule[]>([]);
@@ -70,25 +56,34 @@ export default function ManagePenaltiesPage() {
   const [currentRule, setCurrentRule] = useState<PenaltyRule | null>(null);
   const [form] = Form.useForm();
 
-  // Fetch penalty rules
-  useEffect(() => {
-    // Trong thực tế, đây sẽ là API call
-    const fetchPenaltyRules = async () => {
-      try {
-        setLoading(true);
-        // Mô phỏng API call
-        setTimeout(() => {
-          setPenaltyRules(initialPenaltyRules);
-          setLoading(false);
-        }, 500);
-      } catch (error) {
-        console.error("Error fetching penalty rules:", error);
-        setLoading(false);
-      }
-    };
+  // Map dữ liệu từ BE sang FE
+  function mapBackendPenalties(penalties: any[]): PenaltyRule[] {
+    return (penalties || []).map((item: any) => ({
+      id: item.id,
+      penalty_type: item.penaltyType,
+      penalty_value: item.penaltyValue,
+      min_cancel_hour: item.minCancelHour,
+      description: item.description,
+      user_id: item.userId,
+      user_name: item.userName,
+    }));
+  }
 
+  // Fetch penalty rules from BE
+  useEffect(() => {
+    const fetchPenaltyRules = async () => {
+      if (!user?.id) return;
+      setLoading(true);
+      try {
+        const res = await getPenaltiesByUserId(user.id);
+        setPenaltyRules(mapBackendPenalties(res.penalties));
+      } catch (error) {
+        showError("Không lấy được danh sách quy định phạt");
+      }
+      setLoading(false);
+    };
     fetchPenaltyRules();
-  }, []);
+  }, [user]);
 
   // Format tiền VNĐ
   const formatCurrency = (value: number) => {
@@ -147,8 +142,7 @@ export default function ManagePenaltiesPage() {
   const handleSaveRule = () => {
     form
       .validateFields()
-      .then((values) => {
-        // Nếu mô tả không được nhập, sử dụng mô tả tự động
+      .then(async (values) => {
         if (!values.description || values.description.trim() === "") {
           values.description = generateDescription(
             values.penalty_type,
@@ -156,27 +150,35 @@ export default function ManagePenaltiesPage() {
             values.min_cancel_hour
           );
         }
-
-        if (modalMode === "add") {
-          // Thêm rule mới
-          const newRule: PenaltyRule = {
-            id: Date.now().toString(), // Trong thực tế, ID sẽ được tạo từ backend
-            ...values,
-            user_id: user?.id || "user1",
-          };
-          setPenaltyRules([...penaltyRules, newRule]);
-          message.success("Thêm quy định phạt mới thành công!");
-        } else {
-          // Cập nhật rule hiện tại
-          if (currentRule) {
-            const updatedRules = penaltyRules.map((rule) =>
-              rule.id === currentRule.id ? { ...rule, ...values } : rule
-            );
-            setPenaltyRules(updatedRules);
-            message.success("Cập nhật quy định phạt thành công!");
+        setLoading(true);
+        try {
+          if (modalMode === "add") {
+            await createPenalty({
+              userId: user.id,
+              penaltyType: values.penalty_type,
+              penaltyValue: values.penalty_value,
+              minCancelHour: values.min_cancel_hour,
+              description: values.description,
+            });
+            showSuccess("Thêm quy định phạt mới thành công!");
+          } else if (modalMode === "edit" && currentRule) {
+            await updatePenalty(currentRule.id, {
+              userId: user.id,
+              penaltyType: values.penalty_type,
+              penaltyValue: values.penalty_value,
+              minCancelHour: values.min_cancel_hour,
+              description: values.description,
+            });
+            showSuccess("Cập nhật quy định phạt thành công!");
           }
+          setModalVisible(false);
+          // Reload list
+          const res = await getPenaltiesByUserId(user.id);
+          setPenaltyRules(mapBackendPenalties(res.penalties));
+        } catch (error) {
+          showError("Lưu quy định phạt thất bại!");
         }
-        setModalVisible(false);
+        setLoading(false);
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
@@ -184,10 +186,17 @@ export default function ManagePenaltiesPage() {
   };
 
   // Xử lý xóa rule
-  const handleDeleteRule = (id: string) => {
-    const updatedRules = penaltyRules.filter((rule) => rule.id !== id);
-    setPenaltyRules(updatedRules);
-    message.success("Xóa quy định phạt thành công!");
+  const handleDeleteRule = async (id: string) => {
+    setLoading(true);
+    try {
+      await deletePenalty(id);
+      showSuccess("Xóa quy định phạt thành công!");
+      const res = await getPenaltiesByUserId(user.id);
+      setPenaltyRules(mapBackendPenalties(res.penalties));
+    } catch (error) {
+      showError("Xóa quy định phạt thất bại!");
+    }
+    setLoading(false);
   };
 
   // Columns cho bảng
@@ -310,8 +319,8 @@ export default function ManagePenaltiesPage() {
           layout="vertical"
           initialValues={{
             penalty_type: "PERCENT",
-            penalty_value: 50,
-            min_cancel_hour: 24,
+            penalty_value: 0,
+            min_cancel_hour: 1,
           }}
         >
           <Form.Item
@@ -398,7 +407,7 @@ export default function ManagePenaltiesPage() {
             <InputNumber
               style={{ width: "100%" }}
               placeholder="Ví dụ: 24"
-              formatter={(value) => `${value} giờ`}
+              formatter={(value) => `${value}`}
               addonAfter="giờ"
             />
           </Form.Item>

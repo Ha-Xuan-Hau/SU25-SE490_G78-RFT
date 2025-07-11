@@ -90,12 +90,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
       icon: "mdi:file-document",
       label: "Hợp đồng thuê xe",
     },
-    {
-      key: "final-contracts",
-      path: "/provider/manage-final-contracts",
-      icon: "mdi:file-check",
-      label: "Tất toán hợp đồng",
-    },
+    // {
+    //   key: "final-contracts",
+    //   path: "/provider/manage-final-contracts",
+    //   icon: "mdi:file-check",
+    //   label: "Tất toán hợp đồng",
+    // },
     {
       key: "final-contracts",
       path: "/provider/manage-penalties",
