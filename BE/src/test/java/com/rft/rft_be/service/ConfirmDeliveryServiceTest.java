@@ -5,42 +5,50 @@ import com.rft.rft_be.entity.Booking;
 import com.rft.rft_be.entity.Contract;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Vehicle;
-import com.rft.rft_be.exception.ResourceNotFoundException;
+
+import com.rft.rft_be.repository.BookedTimeSlotRepository;
 import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.ContractRepository;
 import com.rft.rft_be.service.Contract.FinalContractService;
 import com.rft.rft_be.service.booking.BookingServiceImpl;
-import org.springframework.boot.test.mock.mockito.SpyBean;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
+
+
+
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 class ConfirmDeliveryServiceTest {
 
-    @SpyBean
-    private BookingServiceImpl bookingService;
-
-    @MockBean
+    @Mock
     private BookingRepository bookingRepository;
 
-    @MockBean
+    @Mock
     private ContractRepository contractRepository;
 
-    @MockBean
+    @Mock
     private FinalContractService finalContractService;
+
+    @Mock
+    private BookedTimeSlotRepository bookedTimeSlotRepository;
+
+    @Spy
+    @InjectMocks
+    private BookingServiceImpl bookingService;
 
     private Booking sharedBooking;
     private Vehicle sharedVehicle;
@@ -48,18 +56,20 @@ class ConfirmDeliveryServiceTest {
 
     @BeforeEach
     void setUp() {
-        doReturn("staff-001").when(bookingService).extractUserIdFromToken(anyString());
-
         sharedStaff = new User();
         sharedStaff.setId("staff-001");
 
         sharedVehicle = new Vehicle();
+        sharedVehicle.setId("vehicle-001");
         sharedVehicle.setUser(sharedStaff);
 
         sharedBooking = new Booking();
         sharedBooking.setId("booking-001");
         sharedBooking.setVehicle(sharedVehicle);
-        sharedBooking.setUser(sharedStaff); // default user
+        sharedBooking.setUser(sharedStaff);
+        sharedBooking.setTimeBookingStart(LocalDateTime.now().plusHours(7));
+
+        doReturn("staff-001").when(bookingService).extractUserIdFromToken(anyString());
     }
 
     @Test
@@ -72,6 +82,15 @@ class ConfirmDeliveryServiceTest {
 
         assertEquals(Booking.Status.DELIVERED, sharedBooking.getStatus());
         verify(bookingRepository).save(sharedBooking);
+    }
+
+    @Test
+    void deliverVehicle_bookingNotFound_shouldThrowException() {
+        when(bookingRepository.findById("not-found")).thenReturn(Optional.empty());
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            bookingService.deliverVehicle("not-found", "any-token");
+        });
+        assertTrue(exception.getMessage().contains("Booking not found: not-found"));
     }
 
     @Test
@@ -165,3 +184,4 @@ class ConfirmDeliveryServiceTest {
         assertTrue(exception.getMessage().contains("Chỉ đơn đặt ở trạng thái RETURNED mới được hoàn tất"));
     }
 }
+
