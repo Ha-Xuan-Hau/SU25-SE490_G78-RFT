@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Input, Form, notification, Typography, Card } from "antd"; // Import Card
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 
-const { Title, Text } = Typography; // Thêm Text nếu cần
+const { Title, Text } = Typography;
 
 // Interface cho form values
 interface PasswordFormValues {
