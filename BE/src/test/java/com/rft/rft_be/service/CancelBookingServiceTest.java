@@ -1,6 +1,6 @@
 package com.rft.rft_be.service;
 
-import com.rft.rft_be.dto.booking.BookingCleanupTask;
+import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.CancelBookingRequestDTO;
 import com.rft.rft_be.entity.Booking;
 import com.rft.rft_be.entity.User;
@@ -37,7 +37,8 @@ public class CancelBookingServiceTest {
     @Mock VehicleRepository vehicleRepository;
     @Mock VehicleMapper vehicleMapper;
     @Mock BookingResponseMapper bookingResponseMapper;
-    @Mock BookingCleanupTask bookingCleanupTask;
+    @Mock
+    BookingCleanupTask bookingCleanupTask;
     @Mock WalletRepository walletRepository;
     @Mock WalletTransactionRepository walletTransactionRepository;
     @Mock ContractRepository contractRepository;

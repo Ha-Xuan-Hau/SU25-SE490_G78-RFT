@@ -1,5 +1,5 @@
 package com.rft.rft_be.service;
-import com.rft.rft_be.dto.booking.BookingCleanupTask;
+import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.entity.*;
