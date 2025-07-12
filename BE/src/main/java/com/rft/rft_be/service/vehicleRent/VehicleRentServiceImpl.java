@@ -2,15 +2,9 @@ package com.rft.rft_be.service.vehicleRent;
 
 import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.vehicle.vehicleRent.*;
-import com.rft.rft_be.entity.Brand;
-import com.rft.rft_be.entity.Model;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Vehicle;
+import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.VehicleMapper;
-import com.rft.rft_be.repository.BrandRepository;
-import com.rft.rft_be.repository.ModelRepository;
-import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.VehicleRepository;
+import com.rft.rft_be.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -39,6 +33,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final ModelRepository modelRepository;
     private final UserRepository userRepository;
     private final VehicleMapper vehicleMapper;
+    private final PenaltyRepository penaltyRepository;
 
     @Override
     public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
@@ -125,13 +120,18 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (licensePlate != null && vehicleRepository.existsByLicensePlateAndUserId(licensePlate, userId)) {
             throw new RuntimeException("License plate already exists for this user");
         }
-
+        Penalty penalty = null;
+        if (request.getPenaltyId() != null && !request.getPenaltyId().trim().isEmpty()) {
+            penalty = penaltyRepository.findById(request.getPenaltyId())
+                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + request.getPenaltyId()));
+        }
         LocalDateTime now = LocalDateTime.now();
 
         Vehicle vehicle = Vehicle.builder()
                 .user(user)
                 .brand(brand)
                 .model(model)
+                .penalty(penalty)
                 .licensePlate(licensePlate)
                 .vehicleType(parseVehicleType(request.getVehicleType()))
                 .vehicleFeatures(request.getVehicleFeatures())
