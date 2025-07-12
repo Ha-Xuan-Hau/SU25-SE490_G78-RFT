@@ -161,13 +161,19 @@ public class PaymentControllerTest {
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(true);
 
         // WHEN // THEN
-        mockMvc.perform(MockMvcRequestBuilders
-                        .get("/api/payment/vn-pay-callback")
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/vn-pay-callback?vnp_ResponseCode="+vnpParams.get("vnp_ResponseCode")
+                                +"&vnp_TxnRef="+vnpParams.get("vnp_TxnRef"))
                         .param("vnp_ResponseCode", "01")
                         .param("vnp_TxnRef", "booking_001"))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("01"))
-                .andExpect(MockMvcResultMatchers.jsonPath("message").value("Error"));
+                .andExpect(MockMvcResultMatchers.status().isFound())
+                .andReturn();
+
+        String redirecteUrl = result.getResponse().getRedirectedUrl();
+        assertTrue(redirecteUrl.contains("/payment/callback"));
+        assertTrue(redirecteUrl.contains("vnp_TxnRef=booking_001"));
+        assertTrue(redirecteUrl.contains("vnp_ResponseCode=01"));
+
     }
 
     @Test
@@ -176,15 +182,18 @@ public class PaymentControllerTest {
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(false);
 
         // WHEN // THEN
-        mockMvc.perform(MockMvcRequestBuilders
-                        .get("/api/payment/vn-pay-callback")
+        // WHEN // THEN
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/vn-pay-callback?vnp_ResponseCode="+vnpParams.get("vnp_ResponseCode")
+                                +"&vnp_TxnRef="+vnpParams.get("vnp_TxnRef"))
                         .param("vnp_ResponseCode", "00")
                         .param("vnp_TxnRef", "booking_001"))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.content()
-                        .encoding("UTF-8"))
-                .andExpect(MockMvcResultMatchers.content()
-                        .string("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo."));
+                .andExpect(MockMvcResultMatchers.status().isFound())
+                .andReturn();
+
+        String redirecteUrl = result.getResponse().getRedirectedUrl();
+        assertTrue(redirecteUrl.contains("/payment/callback"));
+        assertTrue(redirecteUrl.contains("error=INVALID_SIGNATURE"));
     }
 
     @Test
@@ -262,13 +271,18 @@ public class PaymentControllerTest {
         Mockito.doNothing().when(paymentService).addWalletMoney(ArgumentMatchers.anyMap());
 
         // WHEN // THEN
-        mockMvc.perform(MockMvcRequestBuilders
-                        .get("/api/payment/topUpCallBack")
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/topUpCallBack?vnp_ResponseCode="+vnpParams.get("vnp_ResponseCode")
+                                +"&vnp_TxnRef="+vnpParams.get("vnp_TxnRef"))
                         .param("vnp_ResponseCode", "00")
                         .param("vnp_TxnRef", "booking_001"))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("00"))
-                .andExpect(MockMvcResultMatchers.jsonPath("message").value("Success"));
+                .andExpect(MockMvcResultMatchers.status().isFound())
+                .andReturn();
+
+        String redirecteUrl = result.getResponse().getRedirectedUrl();
+        assertTrue(redirecteUrl.contains("/payment/wallet-callback"));
+        assertTrue(redirecteUrl.contains("vnp_TxnRef=booking_001"));
+        assertTrue(redirecteUrl.contains("vnp_ResponseCode=00"));
     }
 
     @Test
@@ -278,13 +292,18 @@ public class PaymentControllerTest {
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(true);
 
         // WHEN // THEN
-        mockMvc.perform(MockMvcRequestBuilders
-                        .get("/api/payment/topUpCallBack")
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/topUpCallBack?vnp_ResponseCode="+vnpParams.get("vnp_ResponseCode")
+                                +"&vnp_TxnRef="+vnpParams.get("vnp_TxnRef"))
                         .param("vnp_ResponseCode", "01")
                         .param("vnp_TxnRef", "booking_001"))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("01"))
-                .andExpect(MockMvcResultMatchers.jsonPath("message").value("Error"));
+                .andExpect(MockMvcResultMatchers.status().isFound())
+                .andReturn();
+
+        String redirecteUrl = result.getResponse().getRedirectedUrl();
+        assertTrue(redirecteUrl.contains("/payment/wallet-callback"));
+        assertTrue(redirecteUrl.contains("vnp_TxnRef=booking_001"));
+        assertTrue(redirecteUrl.contains("vnp_ResponseCode=01"));
     }
 
     @Test
@@ -293,14 +312,16 @@ public class PaymentControllerTest {
         Mockito.when(paymentService.validateVNPayResponse(ArgumentMatchers.anyMap())).thenReturn(false);
 
         // WHEN // THEN
-        mockMvc.perform(MockMvcRequestBuilders
-                        .get("/api/payment/topUpCallBack")
-                        .param("vnp_ResponseCode", "01")
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/api/payment/topUpCallBack?vnp_ResponseCode="+vnpParams.get("vnp_ResponseCode")
+                                +"&vnp_TxnRef="+vnpParams.get("vnp_TxnRef"))
+                        .param("vnp_ResponseCode", "00")
                         .param("vnp_TxnRef", "booking_001"))
-                        .andExpect(MockMvcResultMatchers.status().isBadRequest())
-                        .andExpect(MockMvcResultMatchers.content()
-                                .encoding("UTF-8"))
-                        .andExpect(MockMvcResultMatchers.content()
-                                .string("Chữ ký không hợp lệ. Dữ liệu có thể bị giả mạo."));
+                .andExpect(MockMvcResultMatchers.status().isFound())
+                .andReturn();
+
+        String redirecteUrl = result.getResponse().getRedirectedUrl();
+        assertTrue(redirecteUrl.contains("/payment/wallet-callback"));
+        assertTrue(redirecteUrl.contains("error=INVALID_SIGNATURE"));
     }
 }

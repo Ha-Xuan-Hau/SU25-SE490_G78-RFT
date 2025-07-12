@@ -135,21 +135,21 @@ public class FinalContractServiceImpl implements FinalContractService {
             if (createFinalContractDTO.getContractId() == null || createFinalContractDTO.getContractId().trim().isEmpty()) {
                 throw new RuntimeException("Contract ID is required");
             }
-            if (createFinalContractDTO.getUserId() == null || createFinalContractDTO.getUserId().trim().isEmpty()) {
-                throw new RuntimeException("User ID is required");
-            }
+//            if (createFinalContractDTO.getUserId() == null || createFinalContractDTO.getUserId().trim().isEmpty()) {
+//                throw new RuntimeException("User ID is required");
+//            }
 
             // Validate foreign key references
             Contract contract = contractRepository.findById(createFinalContractDTO.getContractId())
                     .orElseThrow(() -> new RuntimeException("Contract not found with id: " + createFinalContractDTO.getContractId()));
 
-            User user = userRepository.findById(createFinalContractDTO.getUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + createFinalContractDTO.getUserId()));
+//            User user = userRepository.findById(createFinalContractDTO.getUserId())
+//                    .orElseThrow(() -> new RuntimeException("User not found with id: " + createFinalContractDTO.getUserId()));
 
             // Create new final contract entity
             FinalContract finalContract = FinalContract.builder()
                     .contract(contract)
-                    .user(user)
+//                    .user(user)
                     .image(createFinalContractDTO.getImage())
                     .timeFinish(createFinalContractDTO.getTimeFinish())
                     .costSettlement(createFinalContractDTO.getCostSettlement())

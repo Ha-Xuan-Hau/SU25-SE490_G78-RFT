@@ -4,7 +4,7 @@ import { ProfileLayout } from "@/layouts/ProfileLayout";
 import { VehicleRentalCard } from "@/components/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { getUserBookings } from "@/apis/booking.api";
-import { getRatingByBookingAndUser, upsertRating } from "@/apis/booking.api";
+import { getRatingByBookingAndUser, upUserRating } from "@/apis/booking.api";
 
 import { showError, showSuccess } from "@/utils/toast.utils";
 import { Empty, Spin } from "antd";
@@ -179,7 +179,7 @@ export default function BookingHistoryPage() {
 
   const handleSubmitRating = async (star: number, comment: string) => {
     if (!selectedBooking || !userId) return;
-    await upsertRating({
+    await upUserRating({
       bookingId: selectedBooking._id,
       carId: selectedBooking.carId._id,
       userId,

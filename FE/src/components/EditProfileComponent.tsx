@@ -14,14 +14,17 @@ import {
 } from "antd";
 import {
   UserOutlined,
-  UploadOutlined,
   LoadingOutlined,
-  PlusOutlined,
   CameraOutlined,
 } from "@ant-design/icons";
 import moment from "moment";
-import type { RcFile, UploadProps, UploadFile } from "antd/es/upload/interface";
+import type { RcFile, UploadProps } from "antd/es/upload/interface";
 import { User } from "@/types/user";
+import { updateUserProfile } from "@/apis/user.api";
+import { showError, showSuccess } from "@/utils/toast.utils";
+import { useRefreshUser } from "@/recoils/user.state";
+import { useAuth } from "@/context/AuthContext";
+import useLocalStorage from "@/hooks/useLocalStorage";
 
 // Định nghĩa interface cho props
 interface EditProfileModalProps {
@@ -41,23 +44,33 @@ interface FormValues {
   profilePicture?: string;
 }
 
-const getBase64 = (img: RcFile, callback: (url: string) => void) => {
-  const reader = new FileReader();
-  reader.addEventListener("load", () => callback(reader.result as string));
-  reader.readAsDataURL(img);
+// Hàm upload ảnh lên Cloudinary
+const uploadToCloudinary = async (file: RcFile) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append(
+    "upload_preset",
+    process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
+  );
+  const res = await fetch(process.env.NEXT_PUBLIC_CLOUDINARY_API!, {
+    method: "POST",
+    body: formData,
+  });
+  const data = await res.json();
+  return data.secure_url;
 };
 
 const beforeUpload = (file: RcFile) => {
   const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png";
   if (!isJpgOrPng) {
-    message.error("Bạn chỉ có thể tải lên file JPG/PNG!");
+    // message.error("Bạn chỉ có thể tải lên file JPG/PNG!");
+    showError("Bạn chỉ có thể tải lên file JPG/PNG!");
   }
-
   const isLt1M = file.size / 1024 / 1024 < 1;
   if (!isLt1M) {
-    message.error("Ảnh phải nhỏ hơn 1MB!");
+    // message.error("Ảnh phải nhỏ hơn 1MB!");
+    showError("Ảnh phải nhỏ hơn 1MB!");
   }
-
   return isJpgOrPng && isLt1M;
 };
 
@@ -71,6 +84,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [imageUrl, setImageUrl] = useState<string>();
   const [imageLoading, setImageLoading] = useState<boolean>(false);
+  const refreshUser = useRefreshUser();
+  const { refreshUserFromApi } = useAuth();
+  const [, setUserProfile] = useLocalStorage("user_profile", "");
 
   useEffect(() => {
     if (openEditModal && currentUser) {
@@ -86,68 +102,62 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               .set("date", currentUser.dateOfBirth[2])
           : undefined,
       });
-
       setImageUrl(currentUser.profilePicture);
     }
   }, [openEditModal, currentUser, form]);
 
+  // Xử lý upload ảnh lên Cloudinary
+  const handleChange: UploadProps["onChange"] = async (info) => {
+    if (info.file.status === "uploading") {
+      setImageLoading(true);
+      return;
+    }
+    if (info.file.status === "done" || info.file.originFileObj) {
+      setImageLoading(true);
+      try {
+        const url = await uploadToCloudinary(info.file.originFileObj as RcFile);
+        setImageUrl(url);
+      } catch {
+        message.error("Tải ảnh thất bại");
+      }
+      setImageLoading(false);
+    } else if (info.file.status === "error") {
+      setImageLoading(false);
+      message.error("Tải ảnh thất bại");
+    }
+  };
+
   // Hàm xử lý cập nhật thông tin người dùng
-  const handleUpdateProfile = (values: FormValues) => {
+  const handleUpdateProfile = async (values: FormValues) => {
     setLoading(true);
-
-    // Chuyển đổi ngày sinh từ moment sang mảng [năm, tháng, ngày]
     const dateOfBirth = values.dateOfBirth
-      ? [
-          values.dateOfBirth.year(),
-          values.dateOfBirth.month() + 1,
-          values.dateOfBirth.date(),
-        ]
+      ? values.dateOfBirth.format("YYYY-MM-DD")
       : undefined;
-
-    // Giả lập API call với setTimeout
-    setTimeout(() => {
-      // Cập nhật dữ liệu người dùng trong state
-      const updatedUserData: Partial<User> = {
+    try {
+      const updated = await updateUserProfile(currentUser?.id, {
         fullName: values.fullName,
         email: values.email,
         phone: values.phone,
         address: values.address,
         dateOfBirth,
         profilePicture: imageUrl,
-      };
-
+      });
       if (onUserUpdate) {
-        onUserUpdate(updatedUserData);
+        onUserUpdate(updated);
       }
-
-      // Hiển thị thông báo thành công
-      notification.success({
-        message: "Cập nhật thành công",
-        description: "Thông tin của bạn đã được cập nhật",
-      });
-
-      // Đóng modal
+      // notification.success({
+      //   message: "Cập nhật thành công",
+      //   description: "Thông tin của bạn đã được cập nhật",
+      // });
+      await refreshUser();
+      await refreshUserFromApi();
+      setUserProfile(updated);
+      showSuccess("Cập nhật thành công");
       handleCancleEditModal();
-      setLoading(false);
-    }, 1000);
-  };
-
-  const handleChange: UploadProps["onChange"] = (info) => {
-    if (info.file.status === "uploading") {
-      setImageLoading(true);
-      return;
+    } catch (err) {
+      showError("Cập nhật thất bại");
     }
-
-    if (info.file.status === "done") {
-      // Get this url from response in real world
-      getBase64(info.file.originFileObj as RcFile, (url) => {
-        setImageLoading(false);
-        setImageUrl(url);
-      });
-    } else if (info.file.status === "error") {
-      setImageLoading(false);
-      message.error("Tải ảnh thất bại");
-    }
+    setLoading(false);
   };
 
   return (
@@ -236,7 +246,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 },
               ]}
             >
-              <Input placeholder="Nhập email của bạn" />
+              <Input placeholder="Nhập email của bạn" disabled />
             </Form.Item>
           </Col>
         </Row>

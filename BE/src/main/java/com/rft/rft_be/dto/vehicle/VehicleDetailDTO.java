@@ -1,10 +1,16 @@
 package com.rft.rft_be.dto.vehicle;
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.math.BigDecimal;
 import java.util.List;
+
+import com.rft.rft_be.dto.penalty.PenaltyDTO;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.FieldDefaults;
 
 @Data
 @NoArgsConstructor
@@ -12,6 +18,7 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleDetailDTO {
+
     String id;
     String licensePlate;
     String vehicleType;
@@ -32,4 +39,7 @@ public class VehicleDetailDTO {
     Double rating;
     String address;
     List<UserCommentDTO> userComments;
+    String openTime;
+    String closeTime;
+    PenaltyDTO penalty;
 }

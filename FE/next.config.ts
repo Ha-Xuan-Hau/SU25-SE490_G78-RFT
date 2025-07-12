@@ -45,6 +45,29 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  webpack: (config) => {
+    const fileLoaderRule = config.module.rules.find((rule: any) =>
+      rule.test?.test?.(".svg")
+    );
+    config.resolve.alias.canvas = false;
+
+    config.module.rules.push(
+      {
+        ...fileLoaderRule,
+        test: /\.svg$/i,
+        resourceQuery: /url/, // *.svg?url
+      },
+      {
+        test: /\.svg$/i,
+        resourceQuery: { not: /url/ }, // exclude if *.svg?url
+        use: ["@svgr/webpack"],
+      }
+    );
+
+    fileLoaderRule.exclude = /\.svg$/i;
+
+    return config;
+  },
 };
 
 export default nextConfig;

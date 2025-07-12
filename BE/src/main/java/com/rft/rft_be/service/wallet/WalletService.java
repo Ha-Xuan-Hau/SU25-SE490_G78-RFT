@@ -21,4 +21,6 @@ public interface WalletService {
     List<WalletTransactionDTO> getAllWithdrawals(String status);
     WalletTransactionDTO getWithdrawalById(String id);
     void updateWithdrawalStatus(String id, String status);
+    void cancelWithdrawalAsUser(String transactionId, String userId);
+
 }

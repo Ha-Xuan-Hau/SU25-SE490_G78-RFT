@@ -6,6 +6,7 @@ import com.rft.rft_be.dto.payment.VNPayResponse;
 import com.rft.rft_be.dto.wallet.CreateWithdrawalRequestDTO;
 import com.rft.rft_be.dto.wallet.WalletTransactionDTO;
 import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.service.payment.PaymentService;
 import com.rft.rft_be.service.wallet.WalletService;
@@ -23,6 +24,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -49,8 +51,6 @@ public class PaymentServiceTest {
     @MockBean
     private HttpServletRequest request;
 
-    private VNPayUtil vnPayUtil;
-
     private PaymentRequest paymentRequest;
     private VNPayResponse vnPayResponse;
     private Booking booking;
@@ -59,7 +59,7 @@ public class PaymentServiceTest {
     private Map<String, String> vnpParamsCallback; // For validateVNPayResponse and addWalletMoney
     private WalletTransactionDTO walletTransaction;
     private final String vnpayHashSecret = "A41OWOUDJKP8C3FUSAM2UD7XQLIFVCMK";
-    private final String vnpTmnCode = "EYEGOV1A";// Generic mock hash
+    private final String vnpTmnCode = "EYEGOV1A";
 
     @BeforeEach
     void initData() {
@@ -78,7 +78,6 @@ public class PaymentServiceTest {
         ReflectionTestUtils.setField(paymentService, "vnp_ReturnUrl", "http://localhost:8080/api/payment/vn-pay-callback");
         ReflectionTestUtils.setField(paymentService, "vnp_ReturnWalletUrl", "http://localhost:8080/api/payment/wallet-callback");
 
-
         paymentRequest = PaymentRequest.builder()
                 .amout(new BigDecimal("1600000")) // 1,600,000 VND
                 .bookingId("booking_003")
@@ -93,7 +92,6 @@ public class PaymentServiceTest {
         booking = Booking.builder()
                 .id("booking_003")
                 .status(Booking.Status.UNPAID)
-                .codeTransaction("71799119")
                 .totalCost(new BigDecimal("1600000"))
                 .build();
 
@@ -109,7 +107,7 @@ public class PaymentServiceTest {
         vnpParamsCreate.put("vnp_OrderInfo", "Thanh toan don hang:19597463");
         vnpParamsCreate.put("vnp_OrderType", "other");
         vnpParamsCreate.put("vnp_ReturnUrl", "http://localhost:8080/api/payment/vn-pay-callback");
-        vnpParamsCreate.put("vnp_TmnCode", "EYEGOV1A");
+        vnpParamsCreate.put("vnp_TmnCode", vnpTmnCode);
         vnpParamsCreate.put("vnp_TxnRef", "71799119");
         vnpParamsCreate.put("vnp_Version", "2.1.0");
 
@@ -122,14 +120,19 @@ public class PaymentServiceTest {
         vnpParamsCallback.put("vnp_OrderInfo", "Thanh toan don hang:19597463");
         vnpParamsCallback.put("vnp_PayDate", "20250709191438");
         vnpParamsCallback.put("vnp_ResponseCode", "00");
-        vnpParamsCallback.put("vnp_TmnCode", "EYEGOV1A");
+        vnpParamsCallback.put("vnp_TmnCode", vnpTmnCode);
         vnpParamsCallback.put("vnp_TransactionNo", "15064925");
         vnpParamsCallback.put("vnp_TransactionStatus", "00");
         vnpParamsCallback.put("vnp_TxnRef", "71799119");
-        vnpParamsCallback.put("vnp_SecureHash", "4a3577df734c99312888adaa2a7f558ffbf4445f4e0f04a84d6564d350d2408ea5ccd1c5c050423b12ff7e367fed692d63cdac6a8a64a6b050a393c489d7fb60"); // Use mock hash
+        vnpParamsCallback.put("vnp_SecureHash", "4a3577df734c99312888adaa2a7f558ffbf4445f4e0f04a84d6564d350d2408ea5ccd1c5c050423b12ff7e367fed692d63cdac6a8a64a6b050a393c489d7fb60");
 
         walletTransaction = new WalletTransactionDTO();
         walletTransaction.setId("71799119");
+        walletTransaction.setAmount(BigDecimal.valueOf(1600000));
+        walletTransaction.setUserId("user123");
+        walletTransaction.setStatus(WalletTransaction.Status.PENDING.name());
+        LocalDateTime localDateTime = LocalDateTime.of(2025, 7, 9, 19, 28, 48);
+        walletTransaction.setCreatedAt(localDateTime);
 
         // Mock authentication
         JwtAuthenticationToken authentication = mock(JwtAuthenticationToken.class);
@@ -144,33 +147,24 @@ public class PaymentServiceTest {
     void createVnPayPayment_validRequest_success() {
         // GIVEN
         mockVnpConfig.put("vnp_TxnRef", "71799119");
-        when(walletService.createTopUp(any(CreateWithdrawalRequestDTO.class))).thenReturn(walletTransaction);
+
         when(bookingRepository.findById(anyString())).thenReturn(Optional.of(booking));
+        booking.setCodeTransaction("71799119");
         when(bookingRepository.save(any())).thenReturn(booking);
         when(vnPayConfig.getVnp_PayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
         when(vnPayConfig.getVNPayConfig()).thenReturn(mockVnpConfig);
         when(vnPayConfig.getSecretKey()).thenReturn(vnpayHashSecret);
         when(request.getHeader("X-FORWARDED-FOR")).thenReturn("0:0:0:0:0:0:0:1");
 
-        // Tạo paramsMap mẫu để gọi getPaymentURL thực tế
-        Map<String, String> paramsMap = new HashMap<>();
-        paramsMap = mockVnpConfig;
-        paramsMap.put("vnp_Amount", "160000000");
-        paramsMap.put("vnp_TxnRef", "71799119");
-        paramsMap.put("vnp_OrderInfo", "Thanh toan don hang:19597463");
-        paramsMap.put("vnp_TmnCode", "EYEGOV1A");
-        paramsMap.put("vnp_ReturnUrl", "http://localhost:8080/api/payment/vn-pay-callback");
-        paramsMap.put("vnp_IpAddr", "0:0:0:0:0:0:0:1"); // Thêm vnp_IpAddr để kiểm tra
-
         // WHEN
         VNPayResponse response = paymentService.createVnPayPayment(paymentRequest, request);
 
         // THEN
+        Assertions.assertThat(booking.getId()).isEqualTo("booking_003");
         Assertions.assertThat(response.getCode()).isEqualTo("00");
         Assertions.assertThat(response.getMessage()).isEqualTo("success");
         Assertions.assertThat(response.getPaymentUrl())
                 .startsWith(vnPayResponse.getPaymentUrl());
-
     }
 
     @Test
@@ -179,12 +173,12 @@ public class PaymentServiceTest {
         when(bookingRepository.findById(anyString())).thenReturn(Optional.empty());
 
         // WHEN
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            paymentService.createVnPayPayment(paymentRequest, request);
-        });
+        VNPayResponse response = paymentService.createVnPayPayment(paymentRequest, request);
 
         // THEN
-        Assertions.assertThat(exception.getMessage()).isEqualTo("Không tìm thấy đơn booking");
+        Assertions.assertThat(response.getCode()).isEqualTo("error");
+        Assertions.assertThat(response.getMessage()).isEqualTo("Đã xảy ra lỗi khi tạo thanh toán VNPay. Không tìm thấy đơn booking");
+        Assertions.assertThat(response.getPaymentUrl()).isNull();
     }
 
     @Test
@@ -194,32 +188,33 @@ public class PaymentServiceTest {
         when(bookingRepository.findById(anyString())).thenReturn(Optional.of(booking));
 
         // WHEN
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            paymentService.createVnPayPayment(paymentRequest, request);
-        });
+        VNPayResponse response = paymentService.createVnPayPayment(paymentRequest, request);
 
         // THEN
-        Assertions.assertThat(exception.getMessage()).isEqualTo("Hóa đơn đã thanh toán");
+        Assertions.assertThat(response.getCode()).isEqualTo("error");
+        Assertions.assertThat(response.getMessage()).isEqualTo("Đã xảy ra lỗi khi tạo thanh toán VNPay. Hóa đơn đã thanh toán");
+        Assertions.assertThat(response.getPaymentUrl()).isNull();
     }
 
     @Test
     void createTopUpPayment_validRequest_success() {
         // GIVEN
+        vnPayResponse.setPaymentUrl( "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=160000000&vnp_Command=pay&vnp_CreateDate=20250709191248&vnp_CurrCode=VND&vnp_ExpireDate=20250709192748&vnp_IpAddr=0%3A0%3A0%3A0%3A0%3A0%3A0%3A1&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang%3A19597463&vnp_OrderType=other&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A8080%2Fapi%2Fpayment%2Fwallet-callback&vnp_TmnCode=EYEGOV1A&vnp_TxnRef=71799119&vnp_Version=2.1.0&vnp_SecureHash=95e2502521aa7fb2899090f23778a65f4d1542130a3a7861d0d7a102e7dce79440c8bf27c450d6e9b0ffb5a6ad928323ba3966cd96f9200b61e7077e5af634ab");
         when(walletService.createTopUp(any(CreateWithdrawalRequestDTO.class))).thenReturn(walletTransaction);
         when(vnPayConfig.getVnp_PayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
-        when(vnPayConfig.getVNPayConfig()).thenReturn(new HashMap<>(Map.of("vnp_TxnRef", "71799119")));
-        when(vnPayUtil.getIpAddress(request)).thenReturn("0:0:0:0:0:0:0:1");
-        when(vnPayUtil.getPaymentURL(anyMap(), eq(true))).thenReturn("vnp_Amount=160000000&vnp_TxnRef=71799119");
-        when(vnPayUtil.getPaymentURL(anyMap(), eq(false))).thenReturn("hashData");
-        when(vnPayConfig.getSecretKey()).thenReturn("A41OWOUDJKP8C3FUSAM2UD7XQLIFVCMK");
+        when(vnPayConfig.getVNPayConfig()).thenReturn(mockVnpConfig);
+        when(vnPayConfig.getSecretKey()).thenReturn(vnpayHashSecret);
+        when(request.getHeader("X-FORWARDED-FOR")).thenReturn("0:0:0:0:0:0:0:1");
 
         // WHEN
         VNPayResponse response = paymentService.createTopUpPayment(paymentRequest, request);
 
         // THEN
+        Assertions.assertThat(walletTransaction.getId()).isEqualTo("71799119");
         Assertions.assertThat(response.getCode()).isEqualTo("00");
         Assertions.assertThat(response.getMessage()).isEqualTo("success");
-        Assertions.assertThat(response.getPaymentUrl()).startsWith("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=160000000&vnp_TxnRef=71799119");
+        Assertions.assertThat(response.getPaymentUrl())
+                .startsWith(vnPayResponse.getPaymentUrl());
         verify(walletService).createTopUp(any(CreateWithdrawalRequestDTO.class));
     }
 
@@ -234,7 +229,7 @@ public class PaymentServiceTest {
         });
 
         // THEN
-        Assertions.assertThat(exception.getMessage()).isEqualTo("Số tiền không đuược nhỏ hơn 0");
+        Assertions.assertThat(exception.getMessage()).isEqualTo("Số tiền không được nhỏ hơn 0");
     }
 
     @Test
@@ -248,14 +243,14 @@ public class PaymentServiceTest {
         });
 
         // THEN
-        Assertions.assertThat(exception.getMessage()).isEqualTo("Số tiền không đuược nhỏ hơn 0");
+        Assertions.assertThat(exception.getMessage()).isEqualTo("Số tiền không được nhỏ hơn 0");
     }
 
     @Test
     void addWalletMoney_validRealParams_success() {
         // GIVEN
         doAnswer(invocation -> {
-            String userId = invocation.getArgument(0);
+            String txnRef = invocation.getArgument(0);
             BigDecimal amount = invocation.getArgument(1);
             return null;
         }).when(walletService).updateWalletBalance(anyString(), any(BigDecimal.class));
@@ -303,10 +298,7 @@ public class PaymentServiceTest {
     @Test
     void validateVNPayResponse_validRealSignature_success() {
         // GIVEN
-        Map<String, String> filteredParams = new HashMap<>(vnpParamsCallback);
-        filteredParams.remove("vnp_SecureHash");
-        when(vnPayUtil.getPaymentURL(eq(filteredParams), eq(false))).thenReturn("hashData");
-        when(vnPayConfig.getSecretKey()).thenReturn("secretKey");
+        when(vnPayConfig.getSecretKey()).thenReturn(vnpayHashSecret);
 
         // WHEN
         boolean isValid = paymentService.validateVNPayResponse(vnpParamsCallback);
@@ -318,11 +310,7 @@ public class PaymentServiceTest {
     @Test
     void validateVNPayResponse_invalidRealSignature_fail() {
         // GIVEN
-        Map<String, String> filteredParams = new HashMap<>(vnpParamsCallback);
-        filteredParams.remove("vnp_SecureHash");
-        when(vnPayUtil.getPaymentURL(eq(filteredParams), eq(false))).thenReturn("hashData");
-        when(vnPayConfig.getSecretKey()).thenReturn("secretKey");
-        when(vnPayUtil.hmacSHA512(eq("secretKey"), eq("hashData"))).thenReturn("invalidHash");
+        when(vnPayConfig.getSecretKey()).thenReturn("wrongSecretKey");
 
         // WHEN
         boolean isValid = paymentService.validateVNPayResponse(vnpParamsCallback);
@@ -343,4 +331,18 @@ public class PaymentServiceTest {
         // THEN
         Assertions.assertThat(isValid).isFalse();
     }
+    @Test
+    void validateVNPayResponse_invalidDetailResponse_fail(){
+        // GIVEN
+        Map<String, String> invalidParams = new HashMap<>(vnpParamsCallback);
+        // xử thông tin giao dịch 1600000 -> 1700000
+        invalidParams.put("vnp_Amount", "170000000");
+
+        // WHEN
+        boolean isValid = paymentService.validateVNPayResponse(invalidParams);
+
+        //THEN
+        Assertions.assertThat(isValid).isFalse();
+    }
+
 }

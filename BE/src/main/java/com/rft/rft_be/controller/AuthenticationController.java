@@ -59,8 +59,13 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<UserDetailDTO> register(@RequestBody UserRegisterDTO request){
         UserDetailDTO createdUser =userService.register(request);
-
         return ResponseEntity.ok(createdUser);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authenticationService.changePassword(request);
+        return ResponseEntity.ok("Mật khẩu đã được đổi thành công");
     }
 
 }

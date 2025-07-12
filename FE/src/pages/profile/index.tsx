@@ -11,6 +11,7 @@ import {
   Row,
   Col,
   Divider,
+  message,
 } from "antd";
 import {
   UserOutlined,
@@ -60,7 +61,6 @@ export default function AccountPage() {
   ): string => {
     if (!timestamp) return "";
 
-    // Nếu là mảng [year, month, day, hour, minute] hoặc [year, month, day, hour, minute, second]
     if (Array.isArray(timestamp) && timestamp.length >= 5) {
       const [year, month, day, hour, minute] = timestamp;
       return `${day.toString().padStart(2, "0")}/${month
@@ -70,7 +70,6 @@ export default function AccountPage() {
         .padStart(2, "0")}`;
     }
 
-    // Nếu là timestamp số hoặc string
     if (typeof timestamp === "number" || typeof timestamp === "string") {
       const date = new Date(
         typeof timestamp === "number" ? timestamp * 1000 : timestamp

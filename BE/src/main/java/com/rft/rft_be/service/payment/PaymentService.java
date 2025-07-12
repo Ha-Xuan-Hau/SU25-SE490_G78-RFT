@@ -98,7 +98,7 @@ public class PaymentService {
             // Trả về lỗi cho phía client
             return VNPayResponse.builder()
                     .code("error")
-                    .message("Đã xảy ra lỗi khi tạo thanh toán VNPay")
+                    .message("Đã xảy ra lỗi khi tạo thanh toán VNPay. " + e.getMessage())
                     .paymentUrl(null)
                     .build();
         }
@@ -107,8 +107,8 @@ public class PaymentService {
     public VNPayResponse createTopUpPayment(PaymentRequest dto, HttpServletRequest request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        if(dto.getAmout().compareTo(BigDecimal.ZERO) < 0){
-            throw new IllegalStateException("Số tiền không đuược nhỏ hơn 0");
+        if(dto.getAmout().compareTo(BigDecimal.ZERO) <= 0){
+            throw new IllegalStateException("Số tiền không được nhỏ hơn 0");
         }
 
         WalletTransactionDTO walletTransaction =  walletService.createTopUp(new CreateWithdrawalRequestDTO(userId, dto.getAmout()));
@@ -164,7 +164,7 @@ public class PaymentService {
         String hashData = VNPayUtil.getPaymentURL(filteredParams, false);
         // 4. Tính lại chữ ký với secretKey
         String calculatedHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
-        // 5. So sánh chữ ký trả về với chữ ký vừa tính lại (không phân biệt hoa/thường)
+        // 5. So sánh chữ ký trả về với chữ ký vừa tính lại
         return receivedHash.equalsIgnoreCase(calculatedHash);
     }
 

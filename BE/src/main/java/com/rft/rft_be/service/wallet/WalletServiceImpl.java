@@ -11,6 +11,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -31,7 +32,7 @@ public class WalletServiceImpl implements  WalletService {
     @Override
     public WalletDTO getWalletByUserId(String userId) {
         Wallet wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
 
         return toDTO(wallet);
     }
@@ -39,7 +40,7 @@ public class WalletServiceImpl implements  WalletService {
     @Override
     public WalletDTO updateWallet(UpdateWalletRequestDTO dto) {
         Wallet wallet = walletRepository.findByUserId(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
 
         wallet.setBankAccountNumber(dto.getBankAccountNumber());
         wallet.setBankAccountName(dto.getBankAccountName());
@@ -89,9 +90,9 @@ public class WalletServiceImpl implements  WalletService {
     @Override
     public WalletTransactionDTO createWithdrawal(CreateWithdrawalRequestDTO dto) {
         Wallet wallet = walletRepository.findByUserId(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
         if (wallet.getBalance().compareTo(dto.getAmount()) < 0) {
-            throw new RuntimeException("Insufficient balance");
+            throw new RuntimeException("Số dư không đủ");
         }
         WalletTransaction tx = new WalletTransaction();
         tx.setAmount(dto.getAmount());
@@ -105,7 +106,7 @@ public class WalletServiceImpl implements  WalletService {
     @Override
     public WalletTransactionDTO createTopUp(CreateWithdrawalRequestDTO dto) {
         Wallet wallet = walletRepository.findByUserId(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
         WalletTransaction tx = new WalletTransaction();
         tx.setAmount(dto.getAmount());
         tx.setStatus(WalletTransaction.Status.PENDING);
@@ -118,10 +119,27 @@ public class WalletServiceImpl implements  WalletService {
     @Override
     public void cancelWithdrawal(String transactionId) {
         WalletTransaction tx = txRepository.findById(transactionId)
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
-        if (!"PENDING".equals(tx.getStatus())) {
-            throw new RuntimeException("Only PENDING transaction can be cancelled");
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
+        if (tx.getStatus() != WalletTransaction.Status.PENDING) {
+            throw new RuntimeException("Chỉ giao dịch ở trạng thái PENDING mới được hủy");
         }
+        tx.setStatus(WalletTransaction.Status.CANCELLED);
+        txRepository.save(tx);
+    }
+    @Override
+    public void cancelWithdrawalAsUser(String transactionId, String userId) {
+        WalletTransaction tx = txRepository.findById(transactionId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
+
+        // ✅ Kiểm tra quyền sở hữu
+        if (!tx.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("Bạn không có quyền hủy giao dịch này");
+        }
+
+        if (tx.getStatus() != WalletTransaction.Status.PENDING) {
+            throw new RuntimeException("Chỉ giao dịch ở trạng thái PENDING mới được hủy");
+        }
+
         tx.setStatus(WalletTransaction.Status.CANCELLED);
         txRepository.save(tx);
     }
@@ -134,18 +152,18 @@ public class WalletServiceImpl implements  WalletService {
     @Override
     public WalletTransactionDTO getWithdrawalById(String id) {
         return walletMapper.toTransactionDTO(txRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Transaction not found")));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch")));
     }
 
     @Override
     public void updateWithdrawalStatus(String id, String status) {
         WalletTransaction tx = txRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
 
         try {
             tx.setStatus(WalletTransaction.Status.valueOf(status.toUpperCase()));
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid status: " + status);
+            throw new RuntimeException("Trạng thái khôn khả dụng: " + status);
         }
 
         txRepository.save(tx);

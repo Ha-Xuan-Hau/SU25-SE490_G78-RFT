@@ -264,13 +264,19 @@ export default function VehicleDetail() {
   }, [dates]);
 
   // Tạo disabledTime và disabledDate functions sử dụng logic giống booking page
+  const openTime = vehicle?.openTime || "00:00";
+  const closeTime = vehicle?.closeTime || "00:00";
+
   const disabledRangeTime = useMemo(() => {
-    if (!vehicle?.vehicleType) {
-      return createDisabledTimeFunction("CAR", []);
-    }
-    const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-    return createDisabledTimeFunction(vehicleType, bookedTimeSlots);
-  }, [vehicle?.vehicleType, bookedTimeSlots]);
+    if (!vehicle?.vehicleType)
+      return createDisabledTimeFunction("CAR", [], openTime, closeTime);
+    return createDisabledTimeFunction(
+      vehicle.vehicleType.toUpperCase() as VehicleType,
+      bookedTimeSlots,
+      openTime,
+      closeTime
+    );
+  }, [vehicle?.vehicleType, bookedTimeSlots, openTime, closeTime]);
 
   const disabledDateFunction = useMemo(() => {
     return (current: Dayjs): boolean => {
@@ -707,9 +713,27 @@ export default function VehicleDetail() {
 
             {/* Cancellation policy */}
             <div className="mt-10">
-              <h2 className="font-medium text-2xl">Chính sách hủy chuyến</h2>
+              <h2 className="font-medium text-2xl">Chính sách thuê xe</h2>
               <div className="mt-4 text-lg">
-                Miễn phí hủy chuyến trong vòng 1 giờ sau khi đặt cọc
+                {/* Hiển thị khung giờ thuê */}
+                {vehicle?.openTime === "00:00:00" &&
+                vehicle?.closeTime === "00:00:00" ? (
+                  <span>
+                    Xe có thể thuê bất kỳ thời gian nào trong ngày (24/7).
+                  </span>
+                ) : (
+                  <span>
+                    Khách có thể thuê xe vào khung giờ từ{" "}
+                    <b>{vehicle?.openTime?.slice(0, 5)}</b> đến{" "}
+                    <b>{vehicle?.closeTime?.slice(0, 5)}</b> mỗi ngày.
+                  </span>
+                )}
+                {/* Hiển thị penalty nếu có */}
+                {vehicle?.penalty?.description && (
+                  <div className="mt-2 text-base ">
+                    <b>Chính sách hủy:</b> {vehicle.penalty.description}
+                  </div>
+                )}
               </div>
             </div>
 

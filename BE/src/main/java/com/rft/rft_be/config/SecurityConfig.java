@@ -76,8 +76,11 @@ public class SecurityConfig {
                                 .anyRequest().authenticated()
 
                 );
-        httpSecurity.oauth2ResourceServer(oauth2
-                -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()))
+        httpSecurity.oauth2ResourceServer(oauth2 ->
+                oauth2.jwt(jwtConfigurer -> jwtConfigurer
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                        .decoder(jwtDecoder())
+                )
         );
 
         return httpSecurity.build();

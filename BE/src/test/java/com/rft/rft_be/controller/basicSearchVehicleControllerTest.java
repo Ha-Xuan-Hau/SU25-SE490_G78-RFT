@@ -3,8 +3,8 @@ package com.rft.rft_be.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.vehicle.BasicSearchDTO;
 import com.rft.rft_be.dto.vehicle.VehicleSearchResultDTO;
-import com.rft.rft_be.service.vehicle.VehicleService;
 
+import com.rft.rft_be.service.vehicle.VehicleService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
