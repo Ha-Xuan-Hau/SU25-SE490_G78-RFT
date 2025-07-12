@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -72,9 +73,34 @@ public class BookingServiceImpl implements BookingService {
     CouponRepository couponRepository;
     FinalContractService finalContractService;
 
+    private static final Pattern PHONE_NUMBER_PATTERN = Pattern.compile("^(0|\\+84)[3|5|7|8|9]\\d{8}$");
+
     @Override
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request, String userId) {
+        if (request.getPhoneNumber() == null || !PHONE_NUMBER_PATTERN.matcher(request.getPhoneNumber()).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam hợp lệ");
+        }
+
+        if (request.getVehicleId() == null || request.getVehicleId().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID xe không được phép trống.");
+        }
+
+        if (request.getPenaltyType() == null || request.getPenaltyType().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại phí phạt không được phép trống.");
+        }
+        try {
+            Booking.PenaltyType.valueOf(request.getPenaltyType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại phí phạt không hợp lệ. Chỉ chấp nhận 'PERCENT' hoặc 'FIXED'.");
+        }
+        if (request.getPenaltyValue() == null || request.getPenaltyValue().compareTo(BigDecimal.ZERO) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giá trị phí phạt không được phép âm.");
+        }
+
+        if (request.getMinCancelHour() == null || request.getMinCancelHour() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian hủy tối thiểu không được phép âm.");
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
 
