@@ -52,9 +52,26 @@ const ListVehiclePage = () => {
   };
 
   // Hàm xử lý thay đổi trang
-  const handlePageChange = (page: number) => {
+  const handlePageChange = async (page: number) => {
     setCurrentPage(page);
-    // TODO: Implement pagination API call when needed
+    setIsLoadingVehicles(true);
+    setErrorVehicles(null);
+    try {
+      const result = await getVehicles({
+        ...filters,
+        page: page - 1,
+        size: pageSize,
+      });
+      const vehicles = Array.isArray(result)
+        ? result
+        : result.content || result.vehicles || [];
+      setVehicles(vehicles);
+      setTotalItems(result.totalItems || vehicles.length);
+    } catch (err) {
+      setErrorVehicles((err as Error).message || "Không thể tải danh sách xe.");
+    } finally {
+      setIsLoadingVehicles(false);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
