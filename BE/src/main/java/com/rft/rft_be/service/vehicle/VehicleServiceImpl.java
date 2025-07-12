@@ -1,28 +1,45 @@
 package com.rft.rft_be.service.vehicle;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.entity.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+
+import com.rft.rft_be.entity.Brand;
+import com.rft.rft_be.entity.Model;
+import com.rft.rft_be.entity.Penalty;
+import com.rft.rft_be.entity.Rating;
+import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.mapper.RatingMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
-import com.rft.rft_be.repository.*;
+import com.rft.rft_be.repository.BookedTimeSlotRepository;
+import com.rft.rft_be.repository.BrandRepository;
+import com.rft.rft_be.repository.ModelRepository;
+import com.rft.rft_be.repository.PenaltyRepository;
+import com.rft.rft_be.repository.RatingRepository;
+import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.repository.VehicleRepository;
 import com.rft.rft_be.service.rating.RatingServiceImpl;
-import jakarta.persistence.criteria.*;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Pageable;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -163,6 +180,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
+
     @Override
     public List<VehicleGetDTO> getVehiclesByPenaltyId(String penaltyId) {
         List<Vehicle> vehicles = vehicleRepository.findByPenaltyId(penaltyId);
@@ -170,6 +188,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
     }
+
     @Override
     public VehicleGetDTO getVehicleByLicensePlate(String licensePlate) {
         Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate)
@@ -177,137 +196,157 @@ public class VehicleServiceImpl implements VehicleService {
         return vehicleMapper.vehicleGet(vehicle);
     }
 
-    @Override
-    @Transactional
-    public VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO) {
-        if (createVehicleDTO.getLicensePlate() == null || createVehicleDTO.getLicensePlate().trim().isEmpty()) {
-            throw new RuntimeException("License plate is required");
-        }
-        if (createVehicleDTO.getCostPerDay() == null || createVehicleDTO.getCostPerDay().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Cost per day must be greater than 0");
-        }
-
-        // Check if license plate already exists
-        boolean exists = vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate());
-        if (exists) {
-            throw new RuntimeException("Vehicle with license plate " + createVehicleDTO.getLicensePlate() + " already exists");
-        }
-
-        // Validate foreign key references (optional - can be null)
-        User user = null;
-        if (createVehicleDTO.getUserId() != null && !createVehicleDTO.getUserId().trim().isEmpty()) {
-            user = userRepository.findById(createVehicleDTO.getUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + createVehicleDTO.getUserId()));
-        }
-
-        Brand brand = null;
-        if (createVehicleDTO.getBrandId() != null && !createVehicleDTO.getBrandId().trim().isEmpty()) {
-            brand = brandRepository.findById(createVehicleDTO.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + createVehicleDTO.getBrandId()));
-        }
-
-        Model model = null;
-        if (createVehicleDTO.getModelId() != null && !createVehicleDTO.getModelId().trim().isEmpty()) {
-            model = modelRepository.findById(createVehicleDTO.getModelId())
-                    .orElseThrow(() -> new RuntimeException("Model not found with id: " + createVehicleDTO.getModelId()));
-        }
-
-        Penalty penalty = null;
-        if (createVehicleDTO.getPenaltyId() != null && !createVehicleDTO.getPenaltyId().trim().isEmpty()) {
-            penalty = penaltyRepository.findById(createVehicleDTO.getPenaltyId())
-                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + createVehicleDTO.getPenaltyId()));
-        }
-
-        // Create new vehicle entity
-        Vehicle vehicle = Vehicle.builder()
-                .user(user)
-                .brand(brand)
-                .model(model)
-                .penalty(penalty)
-                .licensePlate(createVehicleDTO.getLicensePlate())
-                .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
-                .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
-                .numberSeat(createVehicleDTO.getNumberSeat())
-                .yearManufacture(createVehicleDTO.getYearManufacture())
-                .description(createVehicleDTO.getDescription())
-                .numberVehicle(createVehicleDTO.getNumberVehicle() != null ? createVehicleDTO.getNumberVehicle() : 1)
-                .costPerDay(createVehicleDTO.getCostPerDay())
-                .thumb(createVehicleDTO.getThumb())
-                .totalRatings(0)
-                .likes(0)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        // Set enum values with validation
-        if (createVehicleDTO.getVehicleType() != null && !createVehicleDTO.getVehicleType().trim().isEmpty()) {
-            try {
-                vehicle.setVehicleType(Vehicle.VehicleType.valueOf(createVehicleDTO.getVehicleType().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid vehicle type: " + createVehicleDTO.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
-            }
-        }
-
-        if (createVehicleDTO.getHaveDriver() != null && !createVehicleDTO.getHaveDriver().trim().isEmpty()) {
-            try {
-                vehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(createVehicleDTO.getHaveDriver().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid have driver: " + createVehicleDTO.getHaveDriver() + ". Valid values are: YES, NO");
-            }
-        } else {
-            vehicle.setHaveDriver(Vehicle.HaveDriver.NO);
-        }
-
-        if (createVehicleDTO.getInsuranceStatus() != null && !createVehicleDTO.getInsuranceStatus().trim().isEmpty()) {
-            try {
-                vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(createVehicleDTO.getInsuranceStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid insurance status: " + createVehicleDTO.getInsuranceStatus() + ". Valid values are: YES, NO");
-            }
-        } else {
-            vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.NO);
-        }
-
-        if (createVehicleDTO.getShipToAddress() != null && !createVehicleDTO.getShipToAddress().trim().isEmpty()) {
-            try {
-                vehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(createVehicleDTO.getShipToAddress().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid ship to address: " + createVehicleDTO.getShipToAddress() + ". Valid values are: YES, NO");
-            }
-        } else {
-            vehicle.setShipToAddress(Vehicle.ShipToAddress.NO);
-        }
-
-        if (createVehicleDTO.getTransmission() != null && !createVehicleDTO.getTransmission().trim().isEmpty()) {
-            try {
-                vehicle.setTransmission(Vehicle.Transmission.valueOf(createVehicleDTO.getTransmission().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid transmission: " + createVehicleDTO.getTransmission() + ". Valid values are: MANUAL, AUTOMATIC");
-            }
-        }
-
-        if (createVehicleDTO.getFuelType() != null && !createVehicleDTO.getFuelType().trim().isEmpty()) {
-            try {
-                vehicle.setFuelType(Vehicle.FuelType.valueOf(createVehicleDTO.getFuelType().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid fuel type: " + createVehicleDTO.getFuelType() + ". Valid values are: GASOLINE, ELECTRIC");
-            }
-        }
-
-        if (createVehicleDTO.getStatus() != null && !createVehicleDTO.getStatus().trim().isEmpty()) {
-            try {
-                vehicle.setStatus(Vehicle.Status.valueOf(createVehicleDTO.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid status: " + createVehicleDTO.getStatus() + ". Valid values are: AVAILABLE, UNAVAILABLE");
-            }
-        } else {
-            vehicle.setStatus(Vehicle.Status.AVAILABLE);
-        }
-
-        // Save vehicle
-        Vehicle savedVehicle = vehicleRepository.save(vehicle);
-        return vehicleMapper.vehicleGet(savedVehicle);
-    }
+//    @Override
+//    @Transactional
+//    public VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO) {
+//        if (createVehicleDTO.getLicensePlate() == null || createVehicleDTO.getLicensePlate().trim().isEmpty()) {
+//            throw new RuntimeException("License plate is required");
+//        }
+//        if (createVehicleDTO.getCostPerDay() == null || createVehicleDTO.getCostPerDay().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+//            throw new RuntimeException("Cost per day must be greater than 0");
+//        }
+//
+//        // Check if license plate already exists
+//        boolean exists = vehicleRepository.existsByLicensePlate(createVehicleDTO.getLicensePlate());
+//        if (exists) {
+//            throw new RuntimeException("Vehicle with license plate " + createVehicleDTO.getLicensePlate() + " already exists");
+//        }
+//
+//        // Validate foreign key references (optional - can be null)
+//        User user = null;
+//        if (createVehicleDTO.getUserId() != null && !createVehicleDTO.getUserId().trim().isEmpty()) {
+//            user = userRepository.findById(createVehicleDTO.getUserId())
+//                    .orElseThrow(() -> new RuntimeException("User not found with id: " + createVehicleDTO.getUserId()));
+//        }
+//
+//        Brand brand = null;
+//        if (createVehicleDTO.getBrandId() != null && !createVehicleDTO.getBrandId().trim().isEmpty()) {
+//            brand = brandRepository.findById(createVehicleDTO.getBrandId())
+//                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + createVehicleDTO.getBrandId()));
+//        }
+//
+//        Model model = null;
+//        if (createVehicleDTO.getModelId() != null && !createVehicleDTO.getModelId().trim().isEmpty()) {
+//            model = modelRepository.findById(createVehicleDTO.getModelId())
+//                    .orElseThrow(() -> new RuntimeException("Model not found with id: " + createVehicleDTO.getModelId()));
+//        }
+//
+//        Penalty penalty = null;
+//        if (createVehicleDTO.getPenaltyId() != null && !createVehicleDTO.getPenaltyId().trim().isEmpty()) {
+//            penalty = penaltyRepository.findById(createVehicleDTO.getPenaltyId())
+//                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + createVehicleDTO.getPenaltyId()));
+//        }
+//
+//
+//
+//        // Create new vehicle entity
+//        Vehicle vehicle = Vehicle.builder()
+//                .user(user)
+//                .brand(brand)
+//                .model(model)
+//                .penalty(penalty)
+//                .licensePlate(createVehicleDTO.getLicensePlate())
+//                .vehicleFeatures(createVehicleDTO.getVehicleFeatures())
+////                .vehicleImages(createVehicleDTO.getVehicleImages()) // Note: VehicleImages with capital V
+//                .numberSeat(createVehicleDTO.getNumberSeat())
+//                .yearManufacture(createVehicleDTO.getYearManufacture())
+//                .description(createVehicleDTO.getDescription())
+//                .numberVehicle(createVehicleDTO.getNumberVehicle() != null ? createVehicleDTO.getNumberVehicle() : 1)
+//                .costPerDay(createVehicleDTO.getCostPerDay())
+//                .thumb(createVehicleDTO.getThumb())
+//                .totalRatings(0)
+//                .likes(0)
+//                .createdAt(LocalDateTime.now())
+//                .updatedAt(LocalDateTime.now())
+//                .build();
+//
+//
+//        if (createVehicleDTO.getVehicleImages() != null) {
+//            ObjectMapper mapper = new ObjectMapper();
+//            try {
+//                String imagesJson = mapper.writeValueAsString(
+//                        createVehicleDTO.getVehicleImages()
+//                                .stream()
+//                                .map(VehicleImageDTO::getImageUrl)
+//                                .collect(Collectors.toList())
+//                );
+//                vehicle.setVehicleImages(imagesJson);
+//            } catch (Exception e) {
+//                vehicle.setVehicleImages("[]");
+//            }
+//        } else {
+//            vehicle.setVehicleImages("[]");
+//        }
+//
+//        // Set enum values with validation
+//        if (createVehicleDTO.getVehicleType() != null && !createVehicleDTO.getVehicleType().trim().isEmpty()) {
+//            try {
+//                vehicle.setVehicleType(Vehicle.VehicleType.valueOf(createVehicleDTO.getVehicleType().toUpperCase()));
+//            } catch (IllegalArgumentException e) {
+//                throw new RuntimeException("Invalid vehicle type: " + createVehicleDTO.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
+//            }
+//        }
+//
+//        if (createVehicleDTO.getHaveDriver() != null && !createVehicleDTO.getHaveDriver().trim().isEmpty()) {
+//            try {
+//                vehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(createVehicleDTO.getHaveDriver().toUpperCase()));
+//            } catch (IllegalArgumentException e) {
+//                throw new RuntimeException("Invalid have driver: " + createVehicleDTO.getHaveDriver() + ". Valid values are: YES, NO");
+//            }
+//        } else {
+//            vehicle.setHaveDriver(Vehicle.HaveDriver.NO);
+//        }
+//
+//        if (createVehicleDTO.getInsuranceStatus() != null && !createVehicleDTO.getInsuranceStatus().trim().isEmpty()) {
+//            try {
+//                vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(createVehicleDTO.getInsuranceStatus().toUpperCase()));
+//            } catch (IllegalArgumentException e) {
+//                throw new RuntimeException("Invalid insurance status: " + createVehicleDTO.getInsuranceStatus() + ". Valid values are: YES, NO");
+//            }
+//        } else {
+//            vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.NO);
+//        }
+//
+//        if (createVehicleDTO.getShipToAddress() != null && !createVehicleDTO.getShipToAddress().trim().isEmpty()) {
+//            try {
+//                vehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(createVehicleDTO.getShipToAddress().toUpperCase()));
+//            } catch (IllegalArgumentException e) {
+//                throw new RuntimeException("Invalid ship to address: " + createVehicleDTO.getShipToAddress() + ". Valid values are: YES, NO");
+//            }
+//        } else {
+//            vehicle.setShipToAddress(Vehicle.ShipToAddress.NO);
+//        }
+//
+//        if (createVehicleDTO.getTransmission() != null && !createVehicleDTO.getTransmission().trim().isEmpty()) {
+//            try {
+//                vehicle.setTransmission(Vehicle.Transmission.valueOf(createVehicleDTO.getTransmission().toUpperCase()));
+//            } catch (IllegalArgumentException e) {
+//                throw new RuntimeException("Invalid transmission: " + createVehicleDTO.getTransmission() + ". Valid values are: MANUAL, AUTOMATIC");
+//            }
+//        }
+//
+//        if (createVehicleDTO.getFuelType() != null && !createVehicleDTO.getFuelType().trim().isEmpty()) {
+//            try {
+//                vehicle.setFuelType(Vehicle.FuelType.valueOf(createVehicleDTO.getFuelType().toUpperCase()));
+//            } catch (IllegalArgumentException e) {
+//                throw new RuntimeException("Invalid fuel type: " + createVehicleDTO.getFuelType() + ". Valid values are: GASOLINE, ELECTRIC");
+//            }
+//        }
+//
+//        if (createVehicleDTO.getStatus() != null && !createVehicleDTO.getStatus().trim().isEmpty()) {
+//            try {
+//                vehicle.setStatus(Vehicle.Status.valueOf(createVehicleDTO.getStatus().toUpperCase()));
+//            } catch (IllegalArgumentException e) {
+//                throw new RuntimeException("Invalid status: " + createVehicleDTO.getStatus() + ". Valid values are: AVAILABLE, UNAVAILABLE");
+//            }
+//        } else {
+//            vehicle.setStatus(Vehicle.Status.AVAILABLE);
+//        }
+//
+//        // Save vehicle
+//        Vehicle savedVehicle = vehicleRepository.save(vehicle);
+//        return vehicleMapper.vehicleGet(savedVehicle);
+//    }
 
     @Override
     public double getAverageRating(String vehicleId) {
@@ -325,7 +364,16 @@ public class VehicleServiceImpl implements VehicleService {
         // Update fields (only update non-null values from DTO)
         if (vehicleDTO.getLicensePlate() != null && !vehicleDTO.getLicensePlate().trim().isEmpty()) {
             // Check if new license plate already exists (excluding current record)
-            if (!existingVehicle.getLicensePlate().equals(vehicleDTO.getLicensePlate())) {
+            if (existingVehicle.getLicensePlate() != null &&
+                    !existingVehicle.getLicensePlate().equals(vehicleDTO.getLicensePlate())) {
+                boolean exists = vehicleRepository.existsByLicensePlate(vehicleDTO.getLicensePlate());
+                if (exists) {
+                    throw new RuntimeException("Vehicle with license plate " + vehicleDTO.getLicensePlate() + " already exists");
+                }
+            }
+            else if (existingVehicle.getLicensePlate() == null &&
+                    vehicleDTO.getLicensePlate() != null) {
+                // Nếu DB là null mà DTO có biển số, cũng cần kiểm tra trùng
                 boolean exists = vehicleRepository.existsByLicensePlate(vehicleDTO.getLicensePlate());
                 if (exists) {
                     throw new RuntimeException("Vehicle with license plate " + vehicleDTO.getLicensePlate() + " already exists");
@@ -348,6 +396,20 @@ public class VehicleServiceImpl implements VehicleService {
 //        if (vehicleDTO.getVehicleImages() != null) {
 //            existingVehicle.setVehicleImages(vehicleDTO.getVehicleImages());
 //        }
+
+        if (vehicleDTO.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(vehicleDTO.getVehicleImages()
+                        .stream()
+                        .map(VehicleImageDTO::getImageUrl)
+                        .collect(Collectors.toList())
+                );
+                existingVehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                // handle error
+            }
+        }
 
         if (vehicleDTO.getNumberSeat() != null) {
             existingVehicle.setNumberSeat(vehicleDTO.getNumberSeat());
