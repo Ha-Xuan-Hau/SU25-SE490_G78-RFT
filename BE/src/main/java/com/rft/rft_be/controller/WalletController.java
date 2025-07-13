@@ -80,8 +80,6 @@ public class WalletController {
         }
     }
 
-
-
     @PutMapping("/withdrawals/{id}/cancel")
     @PreAuthorize("hasAnyAuthority('USER', 'PROVIDER')")
     public ResponseEntity<Void> cancelWithdrawal(@PathVariable String id,

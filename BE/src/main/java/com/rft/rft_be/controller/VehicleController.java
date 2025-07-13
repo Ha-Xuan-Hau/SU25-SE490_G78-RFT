@@ -167,26 +167,27 @@ public class VehicleController {
         }
     }
 
-    @PostMapping
-    public ResponseEntity<?> createVehicle(@RequestBody CreateVehicleDTO createVehicleDTO) {
-        try {
-            if(createVehicleDTO.getIsMultipleVehicles()){
-                List<VehicleGetDTO> createdVehicleList = vehicleService.createVehicleBulk(createVehicleDTO);
-                return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicleList);
-            }else{
-                VehicleGetDTO createdVehicle = vehicleService.createVehicle(createVehicleDTO);
-                return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
-            }
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to create vehicle: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
+
+//    @PostMapping
+//    public ResponseEntity<?> createVehicle(@RequestBody CreateVehicleDTO createVehicleDTO) {
+//        try {
+//            if(createVehicleDTO.getIsMultipleVehicles()){
+//                List<VehicleGetDTO> createdVehicleList = vehicleService.createVehicleBulk(createVehicleDTO);
+//                return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicleList);
+//            }else{
+//                VehicleGetDTO createdVehicle = vehicleService.createVehicle(createVehicleDTO);
+//                return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
+//            }
+//        } catch (RuntimeException e) {
+//            Map<String, String> error = new HashMap<>();
+//            error.put("error", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+//        } catch (Exception e) {
+//            Map<String, String> error = new HashMap<>();
+//            error.put("error", "Failed to create vehicle: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+//        }
+//    }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateVehicle(@PathVariable String id, @RequestBody VehicleGetDTO vehicleDTO) {
@@ -342,19 +343,5 @@ public class VehicleController {
     }
 
     // Sau cần chuyển sang VehicleRentController
-    @PostMapping("/registerBulk")
-    public ResponseEntity<?> registerBulk(@Valid @RequestBody CreateVehicleDTO dto){
-        try {
-            VehicleGetDTO createdVehicle = vehicleService.createVehicle(dto);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to create vehicle: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
+
 }

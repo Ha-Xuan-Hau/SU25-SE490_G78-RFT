@@ -1,10 +1,10 @@
-package com.rft.rft_be.dto.booking;
+package com.rft.rft_be.cleanUp;
 
 import com.rft.rft_be.entity.Booking;
 import com.rft.rft_be.repository.BookedTimeSlotRepository;
 import com.rft.rft_be.repository.BookingRepository;
-import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;

@@ -131,11 +131,11 @@ export default function ManagePenaltiesPage() {
   // Hàm tạo mô tả tự động dựa trên các giá trị của form
   const generateDescription = (type: string, value: number, hours: number) => {
     if (type === "PERCENT") {
-      return `Phí hủy ${value}% giá trị đơn hàng nếu hủy trong vòng ${hours} giờ sau khi đơn đặt xe được chấp nhận`;
+      return `Phí hủy ${value}% giá trị đơn hàng nếu hủy quá ${hours} giờ sau khi đơn đặt xe được chấp nhận`;
     } else {
       return `Phí hủy cố định ${formatCurrency(
         value
-      )} nếu hủy trong vòng ${hours} giờ sau khi đơn đặt xe được chấp nhận`;
+      )} nếu hủy quá ${hours} giờ sau khi đơn đặt xe được chấp nhận`;
     }
   };
 
