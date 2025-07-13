@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -88,7 +89,7 @@ public class BookingController {
                 completeRequest.getCostSettlement(),
                 completeRequest.getNote()
         );
-        return ResponseEntity.ok("Hoàn tất đơn thành công");
+        return ResponseEntity.ok().contentType(MediaType.valueOf("text/plain;charset=UTF-8")).body("Hoàn tất đơn thành công");
     }
 
     @PostMapping("/{bookingId}/cancel")
@@ -111,7 +112,7 @@ public class BookingController {
     public ResponseEntity<?> payWithWallet(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         bookingService.payBookingWithWallet(bookingId, token);
-        return ResponseEntity.ok("Thanh toán bằng ví thành công");
+        return ResponseEntity.ok().contentType(MediaType.valueOf("text/plain;charset=UTF-8")).body("Thanh toán bằng ví thành công");
     }
 
     @GetMapping
