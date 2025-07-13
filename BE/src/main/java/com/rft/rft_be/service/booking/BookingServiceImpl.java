@@ -248,7 +248,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     // Thêm method validate mới
-    private void validateOperatingHours(LocalDateTime start, LocalDateTime end, Vehicle vehicle) {
+    public void validateOperatingHours(LocalDateTime start, LocalDateTime end, Vehicle vehicle) {
         User owner = vehicle.getUser();
         LocalTime openTime = owner.getOpenTime().toLocalTime();
         LocalTime closeTime = owner.getCloseTime().toLocalTime();
@@ -280,7 +280,7 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    private Coupon validateAndApplyCoupon(String couponId, BigDecimal orderAmount) {
+    public Coupon validateAndApplyCoupon(String couponId, BigDecimal orderAmount) {
         // 1. Kiểm tra coupon tồn tại
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mã giảm giá không tồn tại"));
@@ -429,7 +429,7 @@ public class BookingServiceImpl implements BookingService {
         String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (!booking.getVehicle().getUser().getId().equals(currentUserId)) {
-            throw new AccessDeniedException("Chỉ chủ xe mới được xác nhận đơn đặt xe này");
+            throw new IllegalStateException("Chỉ chủ xe mới được xác nhận đơn đặt xe này");
         }
         if (booking.getStatus() != Booking.Status.PENDING) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái PENDING mới được xác nhận.");
