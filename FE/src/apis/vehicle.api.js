@@ -1,26 +1,11 @@
 import { apiClient } from './client';
 
-export async function getVehicles(params) {
-    try {
-        const response = await apiClient.request({
-            method: 'GET',
-            url: '/vehicles',
-            params: params || {},
-        });
-
-        const data = response.data;
-        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
-    } catch (error) {
-        console.error("Error fetching vehicles:", error);
-        throw error;
-    }
-}
-
-// export async function getVehicles() {
+// export async function getVehicles(params) {
 //     try {
 //         const response = await apiClient.request({
 //             method: 'GET',
 //             url: '/vehicles',
+//             params: params || {},
 //         });
 
 //         const data = response.data;
@@ -30,6 +15,21 @@ export async function getVehicles(params) {
 //         throw error;
 //     }
 // }
+
+export async function getVehicles() {
+    try {
+        const response = await apiClient.request({
+            method: 'GET',
+            url: '/vehicles',
+        });
+
+        const data = response.data;
+        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+    } catch (error) {
+        console.error("Error fetching vehicles:", error);
+        throw error;
+    }
+}
 
 export async function getVehicleById(vehicleId) {
     try {
