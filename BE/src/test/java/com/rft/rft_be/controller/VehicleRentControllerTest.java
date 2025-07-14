@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
 import com.rft.rft_be.dto.vehicle.VehicleImageDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.PageResponseDTO;
 import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
+import com.rft.rft_be.dto.vehicle.VehicleDetailDTO;
 import com.rft.rft_be.service.vehicleRent.VehicleRentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -414,4 +417,164 @@ public class VehicleRentControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("Vehicle registered successfully"));
     }
+
+    // --- BẮT ĐẦU BỔ SUNG TEST CHO CÁC ENDPOINT KHÁC ---
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void getUserVehicles_success() throws Exception {
+        var pageResponse = new PageResponseDTO<com.rft.rft_be.dto.vehicle.VehicleDTO>();
+        Mockito.when(vehicleRentService.getUserVehicles(Mockito.anyInt(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyString()))
+                .thenReturn(pageResponse);
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/my-vehicles")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortBy", "createdAt")
+                        .param("sortDir", "desc"))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void getUserVehicles_fail() throws Exception {
+        Mockito.when(vehicleRentService.getUserVehicles(Mockito.anyInt(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyString()))
+                .thenThrow(new RuntimeException("error!"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/my-vehicles"))
+                .andExpect(MockMvcResultMatchers.status().isInternalServerError())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void getVehicleById_success() throws Exception {
+        Mockito.when(vehicleRentService.getVehicleById(Mockito.anyString())).thenReturn(new VehicleDetailDTO());
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/vehicleId123"))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void getVehicleById_fail() throws Exception {
+        Mockito.when(vehicleRentService.getVehicleById(Mockito.anyString())).thenThrow(new RuntimeException("not found"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/vehicleId123"))
+                .andExpect(MockMvcResultMatchers.status().isNotFound())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void updateVehicle_success() throws Exception {
+        Mockito.when(vehicleRentService.updateVehicle(Mockito.anyString(), Mockito.any(VehicleRentUpdateDTO.class)))
+                .thenReturn(mockVehicleGetDTO);
+        VehicleRentUpdateDTO updateDTO = new VehicleRentUpdateDTO();
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = objectMapper.writeValueAsString(updateDTO);
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/vehicle-rent/vehicleId123")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void updateVehicle_fail() throws Exception {
+        Mockito.when(vehicleRentService.updateVehicle(Mockito.anyString(), Mockito.any(VehicleRentUpdateDTO.class)))
+                .thenThrow(new RuntimeException("update fail"));
+        VehicleRentUpdateDTO updateDTO = new VehicleRentUpdateDTO();
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = objectMapper.writeValueAsString(updateDTO);
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/vehicle-rent/vehicleId123")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void countUserVehicles_success() throws Exception {
+        Mockito.when(vehicleRentService.countUserVehicles(Mockito.anyString())).thenReturn(5L);
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/count").header("User-Id", "testUserId"))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data").value(5));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void countUserVehicles_fail() throws Exception {
+        Mockito.when(vehicleRentService.countUserVehicles(Mockito.anyString())).thenThrow(new RuntimeException("fail count"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/count").header("User-Id", "testUserId"))
+                .andExpect(MockMvcResultMatchers.status().isInternalServerError())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void toggleVehicleStatus_success() throws Exception {
+        Mockito.when(vehicleRentService.toggleVehicleStatus(Mockito.anyString())).thenReturn(mockVehicleGetDTO);
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/vehicle-rent/vehicleId123/toggle-status")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void toggleVehicleStatus_fail() throws Exception {
+        Mockito.when(vehicleRentService.toggleVehicleStatus(Mockito.anyString())).thenThrow(new RuntimeException("toggle fail"));
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/vehicle-rent/vehicleId123/toggle-status")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerBulk_success() throws Exception {
+        Mockito.when(vehicleRentService.createVehicle(Mockito.any(VehicleRentCreateDTO.class))).thenReturn(mockVehicleGetDTO);
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/vehicle-rent/registerBulk")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.id").value(mockVehicleGetDTO.getId()));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerBulk_runtimeException() throws Exception {
+        Mockito.when(vehicleRentService.createVehicle(Mockito.any(VehicleRentCreateDTO.class))).thenThrow(new RuntimeException("bulk error"));
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/vehicle-rent/registerBulk")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(content)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.error").value("bulk error"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = {"PROVIDER"})
+    void registerBulk_exception() throws Exception {
+        Mockito.when(vehicleRentService.createVehicle(Mockito.any(VehicleRentCreateDTO.class)))
+            .thenThrow(new RuntimeException("bulk fail"));
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = objectMapper.writeValueAsString(request);
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/vehicle-rent/registerBulk")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE)
+                    .content(content)
+                    .with(SecurityMockMvcRequestPostProcessors.csrf()))
+            .andExpect(MockMvcResultMatchers.status().isBadRequest())
+            .andExpect(MockMvcResultMatchers.jsonPath("$.error").value("bulk fail"));
+    }
+
 }
