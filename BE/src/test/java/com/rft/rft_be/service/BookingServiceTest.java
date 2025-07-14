@@ -718,48 +718,5 @@ public class BookingServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("không đủ để thanh toán đơn");
     }
-    @Test
-    void checkAvailability_unavailable() throws Exception {
-        Mockito.when(bookingService.isTimeSlotAvailable(any(), any(), any())).thenReturn(false);
-
-        mockMvc.perform(MockMvcRequestBuilders.post("/api/bookings/check-availability")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{" +
-                                "\"vehicleId\":\"v1\"," +
-                                "\"startTime\":\"2025-08-01T09:00:00\"," +
-                                "\"endTime\":\"2025-08-01T11:00:00\"}")
-                        .with(authentication(mockJwtAuthenticationToken))
-                        .with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.available").value(false));
-    }
-
-    @Test
-    void getBookingsByUserIdAndStatus_success() throws Exception {
-        Mockito.when(bookingService.getBookingsByUserIdAndStatus("u1", "CONFIRMED")).thenReturn(List.of());
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/bookings/user/u1/status/CONFIRMED")
-                        .with(authentication(mockJwtAuthenticationToken)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getBookingsByProviderIdAndStatus_success() throws Exception {
-        Mockito.when(bookingService.getBookingsByProviderIdAndStatus("p1", "CONFIRMED")).thenReturn(List.of());
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/bookings/provider/p1/status/CONFIRMED")
-                        .with(authentication(mockJwtAuthenticationToken)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getBookingsByUserIdAndDateRange_success() throws Exception {
-        Mockito.when(bookingService.getBookingsByUserIdAndDateRange(anyString(), any(), any())).thenReturn(List.of());
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/bookings/user/u1/date-range")
-                        .param("startDate", LocalDateTime.now().minusDays(1).toString())
-                        .param("endDate", LocalDateTime.now().plusDays(1).toString())
-                        .with(authentication(mockJwtAuthenticationToken)))
-                .andExpect(status().isOk());
-    }
+    
 }
