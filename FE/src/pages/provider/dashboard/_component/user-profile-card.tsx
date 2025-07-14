@@ -1,23 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
-// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+//import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Clock, Book, CheckCircle, Eye } from "lucide-react";
 
 export default function UserProfileCard() {
   return (
-    <Card className="relative overflow-hidden rounded-lg shadow-sm">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--color-accent)] rounded-bl-full flex items-end justify-start p-2">
-        <div className="w-16 h-16 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
-          <div className="w-10 h-10 bg-[var(--color-fourth)] rounded-full"></div>
-        </div>
-      </div>
-      <div className="absolute top-0 right-0 w-0 h-0 border-t-[60px] border-t-transparent border-r-[60px] border-r-[var(--color-secondary)]"></div>
-      <div className="absolute top-0 right-0 w-0 h-0 border-t-[40px] border-t-transparent border-r-[40px] border-r-[var(--color-primary)]"></div>
-      <div className="absolute top-0 right-0 w-0 h-0 border-t-[20px] border-t-transparent border-r-[20px] border-r-[var(--color-accent)]"></div>
+    <Card className="relative overflow-hidden rounded-lg shadow-sm h-full">
+      {/* Decorative pattern removed to avoid rendering issues and simplify */}
+      {/* If you wish to add a decorative pattern, consider a simpler SVG background or a single image */}
 
-      <CardContent className="p-6 pt-16 flex flex-col items-center text-center">
-        {/* <h2 className="text-xl font-semibold mb-4 w-full text-left">Profile</h2>
-        <Avatar className="w-24 h-24 mb-4 border-4 border-white shadow-md">
+      <CardContent className="p-6 pt-16 flex flex-col items-center text-center h-full">
+        <h2 className="text-xl font-semibold mb-4 w-full text-left">Profile</h2>
+        {/* <Avatar className="w-24 h-24 mb-4 border-4 border-white shadow-md">
           <AvatarImage src="/images/profile.png" alt="Kari wiza" />
           <AvatarFallback>KW</AvatarFallback>
         </Avatar> */}

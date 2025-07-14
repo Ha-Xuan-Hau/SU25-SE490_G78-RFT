@@ -980,7 +980,7 @@ const BookingPage: React.FC = () => {
             <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8">
               <div className="text-center">
                 <div className="font-semibold text-green-800 text-2xl mb-2">
-                  Đặt xe thành công!
+                  Tạo đơn hàng thành công!
                 </div>
                 <div className="text-green-600 text-lg">
                   Mã đơn hàng:{" "}
