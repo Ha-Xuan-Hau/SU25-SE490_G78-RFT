@@ -47,7 +47,14 @@ public class RatingServiceImpl implements RatingService {
             throw new RuntimeException("Only completed bookings can be rated.");
         }
 
-        Rating rating = ratingRepository.findByBookingId(dto.getBookingId())
+        if (dto.getVehicleId() == null || dto.getVehicleId().isBlank()) {
+            throw new RuntimeException("Vehicle ID is required for rating.");
+        }
+
+        Vehicle vehicle = vehicleRepository.findById(dto.getVehicleId())
+                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+
+        Rating rating = ratingRepository.findByBookingIdAndVehicleId(dto.getBookingId(), dto.getVehicleId())
                 .orElseGet(() -> {
                     Rating r = ratingMapper.toEntity(dto);
                     r.setCreatedAt(LocalDateTime.now());
@@ -58,13 +65,12 @@ public class RatingServiceImpl implements RatingService {
         rating.setComment(dto.getComment());
         rating.setBooking(booking);
         rating.setUser(booking.getUser());
-        rating.setVehicle(booking.getVehicle());
+        rating.setVehicle(vehicle);
         rating.setUpdatedAt(LocalDateTime.now());
 
         Rating saved = ratingRepository.save(rating);
-        updateTotalRatingForVehicle(saved.getVehicle().getId());
+        updateTotalRatingForVehicle(vehicle.getId());
         return ratingMapper.toDTO(saved);
-
     }
 
     @Override

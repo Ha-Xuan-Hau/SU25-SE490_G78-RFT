@@ -24,12 +24,17 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
     List<Contract> findByBookingIdAndStatus(@Param("bookingId") String bookingId, @Param("status") Contract.Status status);
 
 
-    @Query("SELECT c FROM Contract c " +
-            "JOIN Booking b ON c.booking.id = b.id " +
-            "JOIN Vehicle v ON b.vehicle.id = v.id " +
-            "WHERE v.user.id = :vehicleOwnerId AND c.status = :status")
-    List<Contract> findByUserIdAndStatus(@Param("vehicleOwnerId") String vehicleOwnerId,
-                                                 @Param("status") Contract.Status status);
+    @Query("SELECT c FROM Contract c WHERE c.user.id = :userId AND c.status = :status")
+    List<Contract> findByUserIdAndStatus(@Param("userId") String userId, @Param("status") Contract.Status status);
+
+
+    //   @Query("SELECT c FROM Contract c " +
+    //          "JOIN Booking b ON c.booking.id = b.id " +
+//            "JOIN Vehicle v ON b.vehicle.id = v.id " +
+    //          "WHERE v.user.id = :vehicleOwnerId AND c.status = :status")
+    //   List<Contract> findByUserIdAndStatus(@Param("vehicleOwnerId") String vehicleOwnerId,
+    //                                              @Param("status") Contract.Status status);
+
 //
 //    // Find all contracts by vehicle owner ID (all statuses)
 //    @Query("SELECT c FROM Contract c " +
@@ -67,7 +72,18 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
 //                                           @Param("status") Contract.Status status);
 
 
-    @Query("SELECT c FROM Contract c WHERE c.booking.vehicle.user.id = :providerId AND c.status = :status")
-    List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId, @Param("status") Contract.Status status);
+    // @Query("SELECT c FROM Contract c WHERE c.booking.vehicle.user.id = :providerId AND c.status = :status")
+    //   List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId, @Param("status") Contract.Status status);
+
+    @Query("""
+                SELECT DISTINCT c
+                FROM Contract c
+                JOIN BookingDetail bd ON bd.booking.id = c.booking.id
+                JOIN Vehicle v ON bd.vehicle.id = v.id
+                JOIN User u ON v.user.id = u.id
+                WHERE u.id = :providerId AND c.status = :status
+            """)
+    List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId,
+                                             @Param("status") Contract.Status status);
 }
 
