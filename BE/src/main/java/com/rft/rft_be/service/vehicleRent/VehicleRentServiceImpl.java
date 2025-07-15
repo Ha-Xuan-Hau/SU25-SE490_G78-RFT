@@ -232,21 +232,21 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         log.info("Vehicle updated successfully: {}", vehicleId);
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
-    @Override
-    @Transactional
-    public void deleteVehicle( String vehicleId) {
-        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getToken().getClaim("userId");
-        log.info("Deleting vehicle: {} for user: {}", vehicleId, userId);
-
-        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to delete it"));
-
-        // Delete the vehicle
-        vehicleRepository.delete(vehicle);
-
-        log.info("Vehicle deleted successfully: {}", vehicleId);
-    }
+//    @Override
+//    @Transactional
+//    public void deleteVehicle( String vehicleId) {
+//        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+//        String userId = authentication.getToken().getClaim("userId");
+//        log.info("Deleting vehicle: {} for user: {}", vehicleId, userId);
+//
+//        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+//                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to delete it"));
+//
+//        // Delete the vehicle
+//        vehicleRepository.delete(vehicle);
+//
+//        log.info("Vehicle deleted successfully: {}", vehicleId);
+//    }
 
     @Override
     public VehicleDetailDTO getVehicleById( String vehicleId) {
