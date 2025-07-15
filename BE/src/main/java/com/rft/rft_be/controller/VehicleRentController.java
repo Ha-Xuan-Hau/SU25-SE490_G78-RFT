@@ -98,20 +98,20 @@ public class VehicleRentController {
 
 
 
-    @DeleteMapping("/{vehicleId}")
-    public ResponseEntity<ApiResponseDTO<Void>> deleteVehicle(
-
-            @PathVariable String vehicleId) {
-
-        try {
-            vehicleRentService.deleteVehicle( vehicleId);
-            return ResponseEntity.ok(ApiResponseDTO.success("Vehicle deleted successfully", null));
-        } catch (Exception e) {
-            log.error("Error deleting vehicle: {} for user: {}", vehicleId,  e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponseDTO.error("Failed to delete vehicle: " + e.getMessage()));
-        }
-    }
+//    @DeleteMapping("/{vehicleId}")
+//    public ResponseEntity<ApiResponseDTO<Void>> deleteVehicle(
+//
+//            @PathVariable String vehicleId) {
+//
+//        try {
+//            vehicleRentService.deleteVehicle( vehicleId);
+//            return ResponseEntity.ok(ApiResponseDTO.success("Vehicle deleted successfully", null));
+//        } catch (Exception e) {
+//            log.error("Error deleting vehicle: {} for user: {}", vehicleId,  e);
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+//                    .body(ApiResponseDTO.error("Failed to delete vehicle: " + e.getMessage()));
+//        }
+//    }
 
 
     @GetMapping("/count")
