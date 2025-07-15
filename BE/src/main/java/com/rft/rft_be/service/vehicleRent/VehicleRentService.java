@@ -12,7 +12,7 @@ public interface VehicleRentService {
     PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir);
     VehicleGetDTO createVehicle( VehicleRentCreateDTO request);
     VehicleGetDTO updateVehicle( String vehicleId, VehicleRentUpdateDTO request);
-    void deleteVehicle( String vehicleId);
+    //void deleteVehicle( String vehicleId);
     VehicleDetailDTO getVehicleById( String vehicleId);
     long countUserVehicles(String userId);
     VehicleGetDTO toggleVehicleStatus(String vehicleId);
