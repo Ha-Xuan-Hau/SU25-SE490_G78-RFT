@@ -7,6 +7,9 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.vehicle.*;
+import com.rft.rft_be.entity.*;
+import com.rft.rft_be.mapper.ExtraFeeRuleMapper;
+import com.rft.rft_be.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,21 +18,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import com.rft.rft_be.entity.Brand;
-import com.rft.rft_be.entity.Model;
-import com.rft.rft_be.entity.Penalty;
-import com.rft.rft_be.entity.Rating;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.mapper.RatingMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
-import com.rft.rft_be.repository.BookedTimeSlotRepository;
-import com.rft.rft_be.repository.BrandRepository;
-import com.rft.rft_be.repository.ModelRepository;
-import com.rft.rft_be.repository.PenaltyRepository;
-import com.rft.rft_be.repository.RatingRepository;
-import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.VehicleRepository;
 import com.rft.rft_be.service.rating.RatingServiceImpl;
 
 import jakarta.persistence.criteria.Join;
@@ -47,20 +37,21 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class VehicleServiceImpl implements VehicleService {
 
-    private final BookedTimeSlotRepository bookedTimeSlotsRepository;
-    private final UserRepository userRepository;
-    private final BrandRepository brandRepository;
-    private final ModelRepository modelRepository;
-    private final PenaltyRepository penaltyRepository;
+    BookedTimeSlotRepository bookedTimeSlotsRepository;
+    UserRepository userRepository;
+    BrandRepository brandRepository;
+    ModelRepository modelRepository;
+    PenaltyRepository penaltyRepository;
+    ExtraFeeRuleRepository extraFeeRuleRepository;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     VehicleRepository vehicleRepository;
     VehicleMapper vehicleMapper;
-
     RatingRepository ratingRepository;
     RatingMapper ratingMapper;
-    private final RatingServiceImpl ratingServiceImpl;
+    ExtraFeeRuleMapper extraFeeRuleMapper;
 
     @Override
     public List<VehicleGetDTO> getAllVehicles() {
@@ -93,6 +84,9 @@ public class VehicleServiceImpl implements VehicleService {
         VehicleDetailDTO vehicleDetailDTO = vehicleMapper.vehicleToVehicleDetail(vehicle);
         vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicleId(id)));
         vehicleDetailDTO.setRating(ratingRepository.findAverageByVehicleId(id));
+        ExtraFeeRule test = extraFeeRuleRepository.findByVehicleId(id);
+        log.info("day la thong tin: "+test.getId());
+        vehicleDetailDTO.setExtraFeeRule(extraFeeRuleMapper.toDto(extraFeeRuleRepository.findByVehicleId(id)));
         return vehicleDetailDTO;
     }
 
