@@ -331,62 +331,77 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
-    @Override
-    public List<VehicleThumbGroupDTO> getProviderMotorbikeAndBicycleGroupedByThumb() {
-        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getToken().getClaim("userId");
-        List<Vehicle> motorbikes = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.MOTORBIKE);
-        List<Vehicle> bicycles = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.BICYCLE);
-
-        List<Vehicle> all = new ArrayList<>();
-        all.addAll(motorbikes);
-        all.addAll(bicycles);
-
-        // Gom nhóm theo thumb
-        Map<String, List<Vehicle>> grouped = all.stream()
-                .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
-
-        // Map sang DTO
-        List<VehicleThumbGroupDTO> result = grouped.entrySet().stream()
-                .map(entry -> VehicleThumbGroupDTO.builder()
-                        .thumb(entry.getKey())
-                        .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
-                        .vehicleNumber(entry.getValue().size())
-                        .build())
-                .collect(Collectors.toList());
-        return result;
-    }
 
     @Override
-    public List<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb() {
+    public PageResponseDTO<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         List<Vehicle> motorbikes = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.MOTORBIKE);
         Map<String, List<Vehicle>> grouped = motorbikes.stream()
                 .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
-        return grouped.entrySet().stream()
+        List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
                 .map(entry -> VehicleThumbGroupDTO.builder()
                         .thumb(entry.getKey())
                         .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
                         .vehicleNumber(entry.getValue().size())
                         .build())
                 .collect(Collectors.toList());
+
+        // Optional: sort groupList by sortBy and sortDir if needed (currently not implemented)
+        // Manual pagination
+        int totalElements = groupList.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        List<VehicleThumbGroupDTO> pagedContent = groupList.subList(fromIndex, toIndex);
+
+        return PageResponseDTO.<VehicleThumbGroupDTO>builder()
+                .content(pagedContent)
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
+                .build();
     }
 
     @Override
-    public List<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb() {
+    public PageResponseDTO<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         List<Vehicle> bicycles = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.BICYCLE);
         Map<String, List<Vehicle>> grouped = bicycles.stream()
                 .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
-        return grouped.entrySet().stream()
+        List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
                 .map(entry -> VehicleThumbGroupDTO.builder()
                         .thumb(entry.getKey())
                         .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
                         .vehicleNumber(entry.getValue().size())
                         .build())
                 .collect(Collectors.toList());
+
+        // Optional: sort groupList by sortBy and sortDir if needed (currently not implemented)
+        // Manual pagination
+        int totalElements = groupList.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        List<VehicleThumbGroupDTO> pagedContent = groupList.subList(fromIndex, toIndex);
+
+        return PageResponseDTO.<VehicleThumbGroupDTO>builder()
+                .content(pagedContent)
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
+                .build();
     }
 
     @Override
