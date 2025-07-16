@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class VehicleGetDTO {
-
     private String id;
     private String userId;
     private String userName;
