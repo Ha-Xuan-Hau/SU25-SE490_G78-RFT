@@ -15,7 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VehicleCarDetailDTO {
+public class VehicleCardDetailDTO {
     private String id;
     private String userId;
     private String userName;
@@ -23,25 +23,17 @@ public class VehicleCarDetailDTO {
     private String brandName;
     private String modelId;
     private String modelName;
-    private String penaltyId;
-    private String penaltyType;
-    private BigDecimal penaltyValue;
-    private Integer minCancelHour;
     private String licensePlate;
     private String vehicleType;
     private String vehicleFeatures;
     private List<VehicleImageDTO> vehicleImages;
     private String haveDriver;
-    private String insuranceStatus;
     private String shipToAddress;
     private Integer numberSeat;
     private Integer yearManufacture;
     private String transmission;
     private String fuelType;
-    private String description;
-    private Integer numberVehicle;
     private BigDecimal costPerDay;
-    private String status;
     private String thumb;
     private Integer totalRatings;
     private Integer likes;
@@ -49,6 +41,4 @@ public class VehicleCarDetailDTO {
     private LocalDateTime updatedAt;
     private Double rating;
     private String address;
-    private PenaltyDTO penalty;
-    private ExtraFeeRuleDTO extraFeeRule;
 }

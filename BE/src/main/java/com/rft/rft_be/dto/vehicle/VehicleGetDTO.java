@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.rft.rft_be.dto.extraFeeRule.ExtraFeeRuleDTO;
 import com.rft.rft_be.dto.penalty.PenaltyDTO;
 
 import lombok.AllArgsConstructor;
@@ -19,6 +20,7 @@ public class VehicleGetDTO {
     private String id;
     private String userId;
     private String userName;
+    private String userProfilePicture;
     private String brandId;
     private String brandName;
     private String modelId;
@@ -30,7 +32,7 @@ public class VehicleGetDTO {
     private String licensePlate;
     private String vehicleType;
     private String vehicleFeatures;
-    List<VehicleImageDTO> vehicleImages;
+    private List<VehicleImageDTO> vehicleImages;
     private String haveDriver;
     private String insuranceStatus;
     private String shipToAddress;
@@ -47,7 +49,8 @@ public class VehicleGetDTO {
     private Integer likes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    Double rating;
+    private Double rating;
     private String address;
     private PenaltyDTO penalty;
+    private ExtraFeeRuleDTO extraFeeRule;
 }

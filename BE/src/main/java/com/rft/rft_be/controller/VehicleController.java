@@ -28,7 +28,7 @@ public class VehicleController {
     private VehicleService vehicleService;
 
     @GetMapping
-    public ResponseEntity<List<VehicleGetDTO>> getAllVehicles() {
+    public ResponseEntity<List<VehicleCardDetailDTO>> getAllVehicles() {
         return ResponseEntity.ok(vehicleService.getAllVehicles());
     }
 
@@ -254,7 +254,7 @@ public class VehicleController {
     @GetMapping("/count")
     public ResponseEntity<?> getVehicleCount() {
         try {
-            List<VehicleGetDTO> allVehicles = vehicleService.getAllVehicles();
+            List<VehicleCardDetailDTO> allVehicles = vehicleService.getAllVehicles();
             Map<String, Object> response = new HashMap<>();
             response.put("total", allVehicles.size());
             return ResponseEntity.ok(response);
