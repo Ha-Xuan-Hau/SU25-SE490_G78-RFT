@@ -24,7 +24,7 @@ public interface BookingService {
 
     void returnVehicle(String bookingId, String token);
 
-    void completeBooking(String bookingId, String token, BigDecimal costSettlement, String note);
+    void completeBooking(String bookingId, String token,LocalDateTime timeFinish ,BigDecimal costSettlement, String note);
 
     List<BookingResponseDTO> getAllBookings();
 

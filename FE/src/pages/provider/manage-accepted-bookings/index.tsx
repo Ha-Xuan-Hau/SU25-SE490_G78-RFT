@@ -43,7 +43,12 @@ import {
   updateBookingStatus,
   cancelBooking,
 } from "@/apis/booking.api";
-import { showApiError } from "@/utils/toast.utils";
+import {
+  showApiError,
+  showApiSuccess,
+  showError,
+  showSuccess,
+} from "@/utils/toast.utils";
 import CancelBookingModal from "@/components/CancelBookingModal";
 
 // Define TypeScript interfaces for backend booking data
@@ -102,7 +107,7 @@ interface FormValues {
   timeBookingEnd: number[];
   totalCost: number;
   timeFinish?: dayjs.Dayjs;
-  cost_settlement?: number;
+  costSettlement?: number;
   note?: string;
 }
 
@@ -427,12 +432,21 @@ export default function ManageAcceptedBookings() {
           action = "confirm";
       }
 
-      await updateBookingStatus(bookingId, action);
-      message.success(`Cập nhật trạng thái hợp đồng thành công`);
-      await fetchBookings(true); // Force refresh data
-    } catch (error) {
+      const res = (await updateBookingStatus(bookingId, action)) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!res.success) {
+        showApiError(res.error);
+        return;
+      }
+      showApiSuccess("Cập nhật trạng thái hợp đồng thành công");
+      await fetchBookings(true);
+    } catch (error: any) {
       console.error("Error updating contract status:", error);
-      message.error("Lỗi khi cập nhật trạng thái hợp đồng");
+      showApiError(
+        error?.response?.data?.message || "Lỗi khi cập nhật trạng thái hợp đồng"
+      );
     } finally {
       setLoading(false);
     }
@@ -480,7 +494,7 @@ export default function ManageAcceptedBookings() {
         const newAmount = totalCost - refund;
 
         form.setFieldsValue({
-          cost_settlement: newAmount || 0,
+          costSettlement: newAmount || 0,
         });
       }
     }
@@ -572,7 +586,7 @@ export default function ManageAcceptedBookings() {
             icon={<PlusCircleOutlined />}
             className="w-full"
           >
-            Tất toán
+            Xác nhận trả xe
           </Button>
         );
 
@@ -666,8 +680,18 @@ export default function ManageAcceptedBookings() {
     setLoading(true);
     try {
       const payload = {
-        costSettlement: values.cost_settlement,
+        costSettlement: values.costSettlement,
         note: values.note,
+        timeFinish: values.timeFinish
+          ? [
+              values.timeFinish.year(),
+              values.timeFinish.month() + 1,
+              values.timeFinish.date(),
+              values.timeFinish.hour(),
+              values.timeFinish.minute(),
+              values.timeFinish.second(),
+            ]
+          : undefined,
       };
       const res = (await updateBookingStatus(
         values.id,
@@ -685,11 +709,11 @@ export default function ManageAcceptedBookings() {
             : booking
         )
       );
-      message.success("Tất toán hợp đồng thành công");
+      showApiSuccess("Tất toán hợp đồng thành công");
       setOpen(false);
       await fetchBookings(true);
     } catch {
-      message.error("Lỗi khi tất toán hợp đồng. Vui lòng thử lại sau.");
+      showApiError("Lỗi khi tất toán hợp đồng. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }
@@ -707,10 +731,17 @@ export default function ManageAcceptedBookings() {
       userName: booking.userName,
       phoneNumber: booking.phoneNumber,
       address: booking.address,
+      vehicleThumb: booking.vehicleThumb,
       vehicleLicensePlate: booking.vehicleLicensePlate,
       timeBookingStart: booking.timeBookingStart,
       timeBookingEnd: booking.timeBookingEnd,
       totalCost: booking.totalCost,
+      timeFinish: booking.updatedAt
+        ? dayjs(
+            `${booking.updatedAt[0]}-${booking.updatedAt[1]}-${booking.updatedAt[2]} ${booking.updatedAt[3]}:${booking.updatedAt[4]}:${booking.updatedAt[5]}`
+          )
+        : undefined,
+      costSettlement: booking.totalCost,
     });
   };
 
@@ -828,8 +859,7 @@ export default function ManageAcceptedBookings() {
       width: 280,
       ...getColumnSearchProps("vehicleLicensePlate"),
       render: (_, record) => {
-        const vehicleImage =
-          record.vehicleImage || record.vehicleThumb || "/placeholder.svg";
+        const vehicleImage = record.vehicleImage || "/placeholder.svg";
         return (
           <div className="flex items-center gap-3">
             <Image.PreviewGroup
@@ -849,16 +879,11 @@ export default function ManageAcceptedBookings() {
               />
             </Image.PreviewGroup>
             <div>
-              <div className="font-semibold">{record.vehicleLicensePlate}</div>
+              <div className="font-semibold">{record.id}</div>
               <div className="text-sm text-gray-500">
-                {record.vehicleModel || record.vehicleType}
+                {record.vehicleBrand} {record.vehicleLicensePlate}
               </div>
-              <div className="text-xs text-gray-400">
-                {record.vehicleSeats || record.vehicleNumberSeat || 5} chỗ •{" "}
-                {record.vehicleYear ||
-                  record.vehicleYearManufacture ||
-                  new Date().getFullYear()}
-              </div>
+              <div className="text-xs text-gray-400">{record.vehicleThumb}</div>
 
               {/* Hiển thị tiến trình của hợp đồng */}
               <div className="mt-1">
@@ -1061,28 +1086,34 @@ export default function ManageAcceptedBookings() {
             <div className="col-span-2">
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item label="Tên khách hàng" name="userName">
-                  <Input readOnly />
+                  <Input disabled />
                 </Form.Item>
                 <Form.Item label="Số điện thoại" name="phoneNumber">
-                  <Input readOnly />
+                  <Input disabled />
                 </Form.Item>
-                <Form.Item label="Biển số xe" name="vehicleLicensePlate">
-                  <Input readOnly />
+                <Form.Item label="Mã đặt xe" name="id">
+                  <Input disabled />
                 </Form.Item>
-                <Form.Item label="Tổng giá tiền thuê" name="totalCost">
+                <Form.Item label="Tổng giá tiền thuê (VNĐ)" name="totalCost">
                   <InputNumber
-                    readOnly
+                    disabled
                     formatter={(value) =>
-                      `${value} VNĐ`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                     }
                     parser={(value) => value!.replace(/VNĐ\s?|(,*)/g, "")}
                     className="w-full"
                   />
                 </Form.Item>
+                <Form.Item label="Tên xe" name="vehicleThumb">
+                  <Input disabled />
+                </Form.Item>
+                <Form.Item label="Biển số xe" name="vehicleLicensePlate">
+                  <Input disabled />
+                </Form.Item>
               </div>
 
               <Form.Item label="Địa chỉ" name="address">
-                <Input.TextArea readOnly rows={2} />
+                <Input.TextArea disabled rows={2} />
               </Form.Item>
 
               <Divider>Thông tin tất toán</Divider>
@@ -1090,25 +1121,25 @@ export default function ManageAcceptedBookings() {
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item label="Thời gian trả xe thực tế" name="timeFinish">
                   <DatePicker
-                    format="DD-MM-YYYY"
+                    format="DD-MM-YYYY HH:mm:ss"
                     disabledDate={disabledDate}
                     onChange={handleDays}
                     className="w-full"
                     placeholder="Chọn ngày trả xe"
+                    disabled
                   />
                 </Form.Item>
                 <Form.Item
-                  label="Giá trị kết toán hợp đồng"
-                  name="cost_settlement"
+                  label="Giá trị kết toán hợp đồng (VNĐ)"
+                  name="costSettlement"
                 >
                   <InputNumber
-                    readOnly
+                    disabled
                     formatter={(value) =>
-                      `${value} VNĐ`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                     }
                     parser={(value) => value!.replace(/VNĐ\s?|(,*)/g, "")}
                     className="w-full"
-                    placeholder="Tự động tính toán"
                   />
                 </Form.Item>
               </div>

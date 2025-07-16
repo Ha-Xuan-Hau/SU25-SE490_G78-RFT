@@ -2,6 +2,7 @@ import { Vehicle } from "@/types/vehicle";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
+import { translateENtoVI } from "@/lib/viDictionary";
 
 const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
   const {
@@ -56,7 +57,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
                 className="mb-1"
               />
               <p className="text-black dark:text-white truncate w-full">
-                {transmission}
+                {translateENtoVI(transmission)}
               </p>
             </div>
             <div className="flex flex-col items-center text-center">
@@ -73,7 +74,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
             <div className="flex flex-col items-center text-center">
               <Icon icon={"mdi:fuel"} width={16} height={16} className="mb-1" />
               <p className="text-black dark:text-white truncate w-full">
-                {fuelType}
+                {translateENtoVI(fuelType)}
               </p>
             </div>
           </div>

@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.rft.rft_be.entity.FinalContract;
+import com.rft.rft_be.repository.FinalContractRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,13 +20,6 @@ import com.rft.rft_be.repository.ContractRepository;
 import com.rft.rft_be.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +29,7 @@ public class ContractServiceImpl implements ContractService {
     private final ContractMapper contractMapper;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final FinalContractRepository finalContractRepository;
 
     @Override
     public List<ContractDTO> getAllContracts() {
@@ -110,11 +106,21 @@ public class ContractServiceImpl implements ContractService {
         try {
             Contract.Status contractStatus = Contract.Status.valueOf(status.toUpperCase());
             List<Contract> contracts = contractRepository.findByProviderIdAndStatus(providerId, contractStatus);
-            return contracts.stream()
+            List<ContractDTO> contractDTOs = contracts.stream()
                     .map(contractMapper::toDTO)
                     .collect(Collectors.toList());
+            // Nếu status là FINISHED thì lấy thêm timeFinish từ finalContracts
+            if (contractStatus == Contract.Status.FINISHED) {
+                for (ContractDTO dto : contractDTOs) {
+                    List<FinalContract> finalContracts = finalContractRepository.findByContractId(dto.getId());
+                    if (finalContracts != null && !finalContracts.isEmpty()) {
+                        dto.setTimeFinish(finalContracts.get(0).getTimeFinish());
+                    }
+                }
+            }
+            return contractDTOs;
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid status: " + status + ". Valid values are: DRAFT, FINISHED, CANCELLED");
+            throw new RuntimeException("Invalid status: " + status + ". Valid values are: PROCESSING, RENTING, FINISHED, CANCELLED");
         }
     }
 
