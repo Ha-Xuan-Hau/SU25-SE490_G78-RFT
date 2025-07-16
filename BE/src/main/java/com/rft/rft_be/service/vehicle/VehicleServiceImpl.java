@@ -54,11 +54,11 @@ public class VehicleServiceImpl implements VehicleService {
     ExtraFeeRuleMapper extraFeeRuleMapper;
 
     @Override
-    public List<VehicleGetDTO> getAllVehicles() {
+    public List<VehicleCardDetailDTO> getAllVehicles() {
         return vehicleRepository.findAllWithPenalty()
                 .stream()
                 .map(vehicle -> {
-                    VehicleGetDTO dto = vehicleMapper.vehicleGet(vehicle);
+                    VehicleCardDetailDTO dto = vehicleMapper.vehicleToVehicleCard(vehicle);
                     dto.setRating(getAverageRating(vehicle.getId()));
 
                     return dto;
@@ -72,6 +72,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
 
         VehicleGetDTO dto = vehicleMapper.vehicleGet(vehicle);
+        dto.setExtraFeeRule(extraFeeRuleMapper.toDto(extraFeeRuleRepository.findByVehicleId(id)));
         dto.setRating(getAverageRating(id));
 
         return dto;
@@ -84,8 +85,6 @@ public class VehicleServiceImpl implements VehicleService {
         VehicleDetailDTO vehicleDetailDTO = vehicleMapper.vehicleToVehicleDetail(vehicle);
         vehicleDetailDTO.setUserComments(ratingMapper.RatingToUserListCommentDTO(ratingRepository.findAllByVehicleId(id)));
         vehicleDetailDTO.setRating(ratingRepository.findAverageByVehicleId(id));
-        ExtraFeeRule test = extraFeeRuleRepository.findByVehicleId(id);
-        log.info("day la thong tin: "+test.getId());
         vehicleDetailDTO.setExtraFeeRule(extraFeeRuleMapper.toDto(extraFeeRuleRepository.findByVehicleId(id)));
         return vehicleDetailDTO;
     }

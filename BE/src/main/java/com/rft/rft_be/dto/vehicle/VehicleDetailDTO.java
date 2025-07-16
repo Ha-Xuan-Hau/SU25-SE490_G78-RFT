@@ -24,7 +24,9 @@ public class VehicleDetailDTO {
     String id;
     String licensePlate;
     String vehicleType;
-
+    String userId;
+    String userName;
+    String userProfilePicture;
     //    String vehicleFeatures;
     List<VehicleFeatureDTO> vehicleFeatures;
     List<VehicleImageDTO> vehicleImages;
