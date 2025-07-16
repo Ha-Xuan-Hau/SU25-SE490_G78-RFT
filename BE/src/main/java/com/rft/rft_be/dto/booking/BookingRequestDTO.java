@@ -2,11 +2,9 @@ package com.rft.rft_be.dto.booking;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -18,8 +16,9 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingRequestDTO {
 
-    @NotBlank(message = "vehicleId không được phép trống")
-    String vehicleId;
+    @NotNull(message = "Danh sách vehicleId không được để trống")
+    @Size(min = 1, message = "Cần đặt ít nhất một xe")
+    List<@NotBlank(message = "vehicleId không được phép trống") String> vehicleIds;
 
     @NotNull(message = "Thời gian bắt đầu không được phép trống.")
     @Future(message = "Thời gian bắt đầu phải ở tương lai.")
@@ -37,9 +36,9 @@ public class BookingRequestDTO {
 
     String address;
 
+    @Pattern(regexp = "office|delivery", message = "Phương thức nhận xe phải là 'office' hoặc 'delivery'.")
+    String pickupMethod;
 
-    @Pattern(regexp = "office|delivery", message = "Phương thức nhận xe phải là 'nhận tại văn phòng' hoặc 'giao xe tận nơi'.")
-    String pickupMethod; // "office" hoặc "delivery"
     String couponId;
     String penaltyType;
     BigDecimal penaltyValue;
