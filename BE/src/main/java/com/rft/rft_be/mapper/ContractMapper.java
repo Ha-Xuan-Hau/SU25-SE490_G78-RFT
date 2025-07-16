@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
-public abstract class ContractMapper {
+public interface ContractMapper {
 
     @Mapping(source = "booking.id", target = "bookingId")
     @Mapping(source = "user.id", target = "userId")
@@ -46,92 +46,92 @@ public abstract class ContractMapper {
     @Mapping(source = "booking.address", target = "bookingAddress")
     @Mapping(source = "booking.totalCost", target = "bookingTotalCost")
     @Mapping(source = "booking.status", target = "bookingStatus", qualifiedByName = "enumToString")
-    public abstract ContractDTO toDTO(Contract contract);
+    ContractDTO toDTO(Contract contract);
 
     @Mapping(source = "contract.id", target = "contractId")
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.fullName", target = "userName")
     @Mapping(source = "contract.status", target = "contractStatus", qualifiedByName = "enumToString")
-    public abstract FinalContractDTO finalContract(FinalContract finalContract);
+    FinalContractDTO finalContract(FinalContract finalContract);
+
+    // ------------------ Helpers ------------------
 
     @Named("enumToString")
-    protected String enumToString(Enum<?> enumValue) {
+    default String enumToString(Enum<?> enumValue) {
         return enumValue != null ? enumValue.name() : null;
     }
 
-    // --- Vehicle Field Getters ---
-
-    protected Vehicle getFirstVehicle(Contract contract) {
+    default Vehicle getFirstVehicle(Contract contract) {
         List<BookingDetail> details = contract.getBooking().getBookingDetails();
         return (details != null && !details.isEmpty()) ? details.get(0).getVehicle() : null;
     }
 
-    protected String getProviderId(Contract contract) {
+    default String getProviderId(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return (v != null && v.getUser() != null) ? v.getUser().getId() : null;
     }
 
-    protected String getProviderName(Contract contract) {
+    default String getProviderName(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return (v != null && v.getUser() != null) ? v.getUser().getFullName() : null;
     }
 
-    protected String getVehicleId(Contract contract) {
+    default String getVehicleId(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getId() : null;
     }
 
-    protected String getVehicleLicensePlate(Contract contract) {
+    default String getVehicleLicensePlate(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getLicensePlate() : null;
     }
 
-    protected String getVehicleType(Contract contract) {
+    default String getVehicleType(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null && v.getVehicleType() != null ? v.getVehicleType().name() : null;
     }
 
-    protected String getVehicleBrand(Contract contract) {
+    default String getVehicleBrand(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null && v.getBrand() != null ? v.getBrand().getName() : null;
     }
 
-    protected String getVehicleModel(Contract contract) {
+    default String getVehicleModel(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null && v.getModel() != null ? v.getModel().getName() : null;
     }
 
-    protected Integer getVehicleNumberSeat(Contract contract) {
+    default Integer getVehicleNumberSeat(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getNumberSeat() : null;
     }
 
-    protected Integer getVehicleYearManufacture(Contract contract) {
+    default Integer getVehicleYearManufacture(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getYearManufacture() : null;
     }
 
-    protected String getVehicleTransmission(Contract contract) {
+    default String getVehicleTransmission(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null && v.getTransmission() != null ? v.getTransmission().name() : null;
     }
 
-    protected String getVehicleFuelType(Contract contract) {
+    default String getVehicleFuelType(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null && v.getFuelType() != null ? v.getFuelType().name() : null;
     }
 
-    protected BigDecimal getVehicleCostPerDay(Contract contract) {
+    default BigDecimal getVehicleCostPerDay(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getCostPerDay() : null;
     }
 
-    protected String getVehicleThumb(Contract contract) {
+    default String getVehicleThumb(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getThumb() : null;
     }
 
-    protected String getVehicleDescription(Contract contract) {
+    default String getVehicleDescription(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getDescription() : null;
     }
