@@ -18,7 +18,7 @@ import {
 import Image from "next/image";
 import dayjs, { Dayjs } from "dayjs";
 import { RangePickerProps } from "antd/es/date-picker";
-
+import { translateENtoVI } from "@/lib/viDictionary";
 import {
   calculateRentalDuration,
   calculateRentalPrice,
@@ -304,7 +304,7 @@ const BookingPage: React.FC = () => {
           }
 
           const bookingRequestData = {
-            vehicleId: id,
+            vehicleIds: [id],
             timeBookingStart: formatTimeForBackend(selectedDates[0]),
             timeBookingEnd: formatTimeForBackend(selectedDates[1]),
             fullname: formValues.fullname,
@@ -605,7 +605,7 @@ const BookingPage: React.FC = () => {
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-800">
-                    Địa chỉ giao xe
+                    Địa chỉ nhận xe
                   </h3>
                 </div>
 
@@ -621,7 +621,7 @@ const BookingPage: React.FC = () => {
                     <div className="flex items-center mb-2">
                       <Radio checked={costGetCar === 0} />
                       <span className="ml-2 font-semibold text-gray-800 text-base">
-                        Nhận tại văn phòng
+                        Tôi muốn nhận xe tại văn phòng
                       </span>
                     </div>
                     <div className="text-gray-600 text-base">
@@ -644,7 +644,7 @@ const BookingPage: React.FC = () => {
                       <div className="flex items-center mb-2">
                         <Radio checked={costGetCar === 1} />
                         <span className="ml-2 font-semibold text-gray-800 text-base">
-                          Giao tận nơi
+                          Tôi muốn xe được giao đến địa chỉ của tôi
                         </span>
                       </div>
                       <div className="text-gray-600 text-base">
@@ -980,10 +980,10 @@ const BookingPage: React.FC = () => {
             <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8">
               <div className="text-center">
                 <div className="font-semibold text-green-800 text-2xl mb-2">
-                  Tạo đơn hàng thành công!
+                  Đặt xe thành công!
                 </div>
                 <div className="text-green-600 text-lg">
-                  Mã đơn hàng:{" "}
+                  Mã đặt xe:{" "}
                   <span className="font-mono font-bold">#{bookingData.id}</span>
                 </div>
               </div>
@@ -997,9 +997,6 @@ const BookingPage: React.FC = () => {
                     <h3 className="text-2xl font-bold text-gray-800 mb-2">
                       Chọn phương thức thanh toán
                     </h3>
-                    <p className="text-gray-600 text-lg">
-                      Vui lòng chọn phương thức thanh toán phù hợp
-                    </p>
                   </div>
 
                   <div className="space-y-4">
@@ -1092,7 +1089,7 @@ const BookingPage: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600 text-lg">Trạng thái:</span>
                       <span className="text-orange-600 font-semibold text-lg bg-orange-100 px-3 py-1 rounded-lg">
-                        {bookingData.status}
+                        {translateENtoVI(bookingData.status)}
                       </span>
                     </div>
 
@@ -1217,7 +1214,7 @@ const BookingPage: React.FC = () => {
                 <div className="bg-gray-50 rounded-lg p-6 mb-6">
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Mã đơn hàng:</span>
+                      <span className="text-gray-600">Mã đặt xe:</span>
                       <span className="font-mono font-semibold">
                         #{bookingData.id}
                       </span>
@@ -1246,8 +1243,8 @@ const BookingPage: React.FC = () => {
                     <span className="text-white text-xs font-bold">!</span>
                   </div>
                   <p className="text-blue-800 text-sm">
-                    Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất để xác
-                    nhận và hướng dẫn giao nhận xe.
+                    Chúng tôi sẽ thông báo đến bạn trong thời gian sớm nhất để
+                    xác nhận và hướng dẫn giao nhận xe.
                   </p>
                 </div>
               </div>

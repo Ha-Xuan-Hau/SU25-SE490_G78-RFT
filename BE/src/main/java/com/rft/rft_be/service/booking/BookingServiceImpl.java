@@ -400,9 +400,14 @@ public class BookingServiceImpl implements BookingService {
         LocalDateTime startTime = booking.getTimeBookingStart();
         long hoursUntilStart = ChronoUnit.HOURS.between(now, startTime);
 
-        if (hoursUntilStart > 8 || hoursUntilStart < 5) {
+//        if (hoursUntilStart > 8 || hoursUntilStart < 5) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+//                    "Bạn chỉ có thể giao xe trong khoảng từ 5 đến 8 tiếng trước thời gian bắt đầu chuyến đi.");
+//        }
+
+        if (hoursUntilStart > 8) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Bạn chỉ có thể giao xe trong khoảng từ 5 đến 8 tiếng trước thời gian bắt đầu chuyến đi.");
+                    "Bạn chỉ có thể giao xe trong khoảng từ 8 tiếng trước thời gian bắt đầu chuyến đi.");
         }
 
         booking.setStatus(Booking.Status.DELIVERED);
@@ -451,7 +456,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public void completeBooking(String bookingId, String token, BigDecimal costSettlement, String note) {
+    public void completeBooking(String bookingId, String token,LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
         String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
@@ -481,7 +486,7 @@ public class BookingServiceImpl implements BookingService {
             CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
                     .contractId(contract.getId())
 //                    .userId(currentUserId)
-                    .timeFinish(LocalDateTime.now())
+                    .timeFinish(timeFinish)
                     .costSettlement(costSettlement)
                     .note(note)
                     .build();

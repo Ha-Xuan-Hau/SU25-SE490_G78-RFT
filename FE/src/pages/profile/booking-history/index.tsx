@@ -16,6 +16,7 @@ interface BackendBooking {
   userId: string;
   userName: string;
   vehicleId: string;
+  vehicleImage: string;
   vehicleLicensePlate: string;
   vehicleType: string;
   timeBookingStart: number[]; // [year, month, day, hour, minute]
@@ -28,19 +29,22 @@ interface BackendBooking {
   status: string;
   createdAt: number[];
   updatedAt: number[];
+  vehicleThumb: string;
 }
 
 // Frontend booking interface (transformed for UI display)
 interface Booking {
   _id: string;
   status: string;
-  carId: {
+  vehicleId: {
     _id: string;
     model: {
       name: string;
     };
     yearManufacture: number;
-    thumb: string;
+    vehicleThumb: string;
+    vehicleImage: string;
+    vehicleLicensePlate: string;
   };
   timeBookingStart: string;
   timeBookingEnd: string;
@@ -61,13 +65,16 @@ const transformBooking = (backendBooking: BackendBooking): Booking => {
   return {
     _id: backendBooking.id,
     status: statusMapping[backendBooking.status] || backendBooking.status,
-    carId: {
+    vehicleId: {
       _id: backendBooking.vehicleId,
       model: {
-        name: `${backendBooking.vehicleType} - ${backendBooking.vehicleLicensePlate}`, // Use license plate as name since we don't have model info
+        name: backendBooking.vehicleId, // Dùng id làm tên xe
       },
-      yearManufacture: new Date().getFullYear(), // Default to current year since we don't have this info
-      thumb: "/images/demo1.png", // Default image since we don't have vehicle images from this API
+      yearManufacture: new Date().getFullYear(), // Default to current year since we don't có năm sản xuất
+      vehicleThumb: backendBooking.vehicleThumb,
+      vehicleImage: backendBooking.vehicleImage || "/images/demo1.png", // Thêm dòng này
+      vehicleLicensePlate:
+        backendBooking.vehicleLicensePlate || "Không xác định",
     },
     timeBookingStart: convertArrayToISO(backendBooking.timeBookingStart),
     timeBookingEnd: convertArrayToISO(backendBooking.timeBookingEnd),
@@ -181,7 +188,7 @@ export default function BookingHistoryPage() {
     if (!selectedBooking || !userId) return;
     await upUserRating({
       bookingId: selectedBooking._id,
-      carId: selectedBooking.carId._id,
+      vehicleId: selectedBooking.vehicleId._id,
       userId,
       star,
       comment,
@@ -715,7 +722,7 @@ export default function BookingHistoryPage() {
         open={ratingModalOpen}
         handleCancel={handleCloseRating}
         bookingId={selectedBooking?._id || ""}
-        carId={selectedBooking?.carId._id || ""}
+        vehicleId={selectedBooking?.vehicleId._id || ""}
         initialStar={
           selectedBooking && currentRatingMap[selectedBooking._id]?.star
         }

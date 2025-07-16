@@ -23,6 +23,13 @@ export interface Vehicle {
   minCancelHour?: number; // Minimum hours before cancellation allowed
   openTime?: string; // Opening time for the vehicle rental
   closeTime?: string; // Closing time for the vehicle rental
+
+  maxKmPerDay?: number; // Maximum kilometers allowed per day
+  feePerExtraKm?: number; // Fee for extra kilometers beyond the limit
+  allowedHourLate?: number; // Allowed hours late for return
+  feePerExtraHour?: number; // Fee for extra hours beyond the allowed late time
+  cleaningFee?: number; // Fee for cleaning the vehicle after use
+  smellRemovalFee?: number; // Fee for removing odors from the vehicle
 }
 
 export interface VehicleFeature {
