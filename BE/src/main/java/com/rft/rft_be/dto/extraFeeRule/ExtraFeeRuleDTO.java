@@ -1,6 +1,15 @@
 package com.rft.rft_be.dto.extraFeeRule;
 
-public class extraFeeRuleDTO {
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ExtraFeeRuleDTO {
     Integer maxKmPerDay;
     Integer feePerExtraKm;
     Integer allowedHourLate;
