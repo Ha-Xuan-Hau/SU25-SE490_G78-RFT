@@ -143,8 +143,11 @@ public interface VehicleMapper {
             dto.setUser(mapToUserProfileDTO(booking.getUser()));
         }
 
-        if (booking.getVehicle() != null) {
-            dto.setVehicle(mapToVehicleForBookingDTO(booking.getVehicle()));
+        if (booking.getBookingDetails() != null && !booking.getBookingDetails().isEmpty()) {
+            List<VehicleForBookingDTO> vehicleDTOs = booking.getBookingDetails().stream()
+                    .map(detail -> mapToVehicleForBookingDTO(detail.getVehicle()))
+                    .collect(Collectors.toList());
+            dto.setVehicles(vehicleDTOs);
         }
         return dto;
     }

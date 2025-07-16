@@ -2,6 +2,7 @@ package com.rft.rft_be.dto.booking;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.rft.rft_be.dto.UserProfileDTO;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
@@ -25,7 +26,9 @@ public class BookingResponseDTO {
 
     String id;
     UserProfileDTO user;
-    VehicleForBookingDTO vehicle;
+
+    List<VehicleForBookingDTO> vehicles;
+
     LocalDateTime timeBookingStart;
     LocalDateTime timeBookingEnd;
     String phoneNumber;
@@ -42,7 +45,7 @@ public class BookingResponseDTO {
     LocalDateTime updatedAt;
 
     // Additional fields for booking calculation
-    String priceType; // "hourly" hoặc "daily"
-    String rentalDuration; // formatted duration
-    BigDecimal discountAmount; // discount amount applied
+    String priceType;         // "hourly" hoặc "daily"
+    String rentalDuration;    // formatted duration
+    BigDecimal discountAmount;
 }
