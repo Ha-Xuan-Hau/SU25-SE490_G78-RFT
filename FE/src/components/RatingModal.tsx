@@ -5,7 +5,7 @@ interface RatingModalProps {
   open: boolean;
   handleCancel: () => void;
   bookingId: string;
-  carId: string;
+  vehicleId: string;
   initialStar?: number;
   initialComment?: string;
   onSubmit: (star: number, comment: string) => void;
@@ -15,7 +15,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
   open,
   handleCancel,
   bookingId,
-  carId,
+  vehicleId,
   initialStar = 5,
   initialComment = "",
   onSubmit,

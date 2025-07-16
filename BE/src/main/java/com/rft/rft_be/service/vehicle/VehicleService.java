@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface VehicleService {
-    List<VehicleGetDTO> getAllVehicles();
+    List<VehicleCardDetailDTO> getAllVehicles();
     VehicleGetDTO getVehicleById(String id);
     //List<CategoryDTO> getAllVehiclesByCategory();
     VehicleDetailDTO getVehicleDetailById(String id);

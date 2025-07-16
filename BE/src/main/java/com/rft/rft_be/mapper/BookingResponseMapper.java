@@ -1,25 +1,39 @@
 package com.rft.rft_be.mapper;
 
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
+import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
 import com.rft.rft_be.entity.Booking;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
+import com.rft.rft_be.entity.BookingDetail;
+import com.rft.rft_be.entity.Vehicle;
+import org.mapstruct.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
-@Mapper(componentModel = "spring", uses = {})
-public interface BookingResponseMapper {
-    @Mapping(source = "vehicle.vehicleType", target = "vehicle.vehicleTypes", qualifiedByName = "enumToString")
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Mapper(componentModel = "spring", uses = {VehicleMapper.class})
+public abstract class BookingResponseMapper {
+
+    @Autowired
+    protected VehicleMapper vehicleMapper;
+
     @Mapping(source = "penaltyType", target = "penaltyType", qualifiedByName = "bookingEnumToString")
     @Mapping(source = "timeTransaction", target = "timeTransaction")
     @Mapping(source = "coupon.id", target = "couponId")
-    BookingResponseDTO toResponseDTO(Booking booking);
+    public abstract BookingResponseDTO toResponseDTO(Booking booking);
 
     @Named("bookingEnumToString")
-    default String bookingEnumToString(Enum<?> e) {
+    protected String bookingEnumToString(Enum<?> e) {
         return e != null ? e.name() : null;
     }
-    @Named("enumToString")
-    static String enumToString(Enum<?> e) {
-        return e != null ? e.name() : null;
+
+    @AfterMapping
+    protected void mapVehicles(Booking booking, @MappingTarget BookingResponseDTO dto) {
+        if (booking.getBookingDetails() != null && !booking.getBookingDetails().isEmpty()) {
+            List<VehicleForBookingDTO> vehicleDTOs = booking.getBookingDetails().stream()
+                    .map(detail -> vehicleMapper.mapToVehicleForBookingDTO(detail.getVehicle()))
+                    .collect(Collectors.toList());
+            dto.setVehicles(vehicleDTOs);
+        }
     }
 }

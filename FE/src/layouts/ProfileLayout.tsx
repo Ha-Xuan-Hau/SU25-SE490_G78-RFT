@@ -40,7 +40,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
       key: "car-rental",
       path: "/profile/booking-history",
       icon: "mdi:car-multiple",
-      label: "Lịch sử thuê xe",
+      label: "Lịch sử đặt xe",
     },
     {
       key: "change-password",

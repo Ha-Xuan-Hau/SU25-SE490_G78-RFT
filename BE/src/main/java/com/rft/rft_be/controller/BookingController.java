@@ -55,25 +55,25 @@ public class BookingController {
     @PostMapping("/{bookingId}/confirm")
     public ResponseEntity<?> confirmBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         bookingService.confirmBooking(bookingId, extractToken(authHeader));
-        return ResponseEntity.ok("Xác nhận đơn thành công");
+        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Xác nhận đơn thành công");
     }
 
     @PostMapping("/{bookingId}/deliver")
     public ResponseEntity<?> deliverVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         bookingService.deliverVehicle(bookingId, extractToken(authHeader));
-        return ResponseEntity.ok("Giao xe thành công");
+        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Giao xe thành công");
     }
 
     @PostMapping("/{bookingId}/receive")
     public ResponseEntity<?> receiveVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         bookingService.receiveVehicle(bookingId, extractToken(authHeader));
-        return ResponseEntity.ok("Nhận xe thành công");
+        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Nhận xe thành công");
     }
 
     @PostMapping("/{bookingId}/return")
     public ResponseEntity<?> returnVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         bookingService.returnVehicle(bookingId, extractToken(authHeader));
-        return ResponseEntity.ok("Trả xe thành công");
+        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Trả xe thành công");
     }
 
     @PostMapping("/{bookingId}/complete")
@@ -85,10 +85,11 @@ public class BookingController {
         bookingService.completeBooking(
                 bookingId,
                 extractToken(authHeader),
+                completeRequest.getTimeFinish(),
                 completeRequest.getCostSettlement(),
                 completeRequest.getNote()
         );
-        return ResponseEntity.ok("Hoàn tất đơn thành công");
+        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Hoàn tất đơn thành công");
     }
 
     @PostMapping("/{bookingId}/cancel")
@@ -111,7 +112,7 @@ public class BookingController {
     public ResponseEntity<?> payWithWallet(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         bookingService.payBookingWithWallet(bookingId, token);
-        return ResponseEntity.ok("Thanh toán bằng ví thành công");
+        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Thanh toán bằng ví thành công");
     }
 
     @GetMapping
