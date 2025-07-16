@@ -35,6 +35,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final UserRepository userRepository;
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
+    private final ExtraFeeRuleRepository extraFeeRuleRepository;
 
     @Override
     public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
@@ -158,6 +159,24 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
 
+        ExtraFeeRule extraFeeRule = new ExtraFeeRule().builder()
+                .vehicle(savedVehicle)
+                .maxKmPerDay(request.getMaxKmPerDay())
+                .feePerExtraKm(request.getFeePerExtraKm())
+                .allowedHourLate(request.getAllowedHourLate())
+                .feePerExtraHour(request.getFeePerExtraHour())
+                .cleaningFee(request.getCleaningFee())
+                .smellRemovalFee(request.getSmellRemovalFee())
+                .applyBatteryChargeFee("ELECTRIC".equalsIgnoreCase(request.getFuelType()))
+                .batteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent())
+                .driverFeePerDay(request.getDriverFeePerDay())
+                .hasDriverOption(request.getHasDriverOption())
+                .driverFeePerHour(request.getDriverFeePerHour())
+                .hasHourlyRental(request.getHasHourlyRental())
+                .build();
+
+        extraFeeRuleRepository.save(extraFeeRule);
+
         // Fetch with brand and model for response
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(savedVehicle.getId())
                 .orElse(savedVehicle);
@@ -174,6 +193,8 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
+
+        ExtraFeeRule extraFeeRule = extraFeeRuleRepository.findByVehicleId(vehicleId);
 
         // Validate brand if provided
         if (request.getBrandId() != null) {
@@ -218,7 +239,17 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (request.getNumberVehicle() != null) vehicle.setNumberVehicle(request.getNumberVehicle());
         if (request.getCostPerDay() != null) vehicle.setCostPerDay(request.getCostPerDay());
         if (request.getStatus() != null) vehicle.setStatus(parseStatus(request.getStatus()));
-        if (request.getThumb() != null) vehicle.setThumb(request.getThumb());
+        if (request.getFeePerExtraKm() != null) extraFeeRule.setFeePerExtraKm(request.getFeePerExtraKm());
+        if (request.getAllowedHourLate() != null) extraFeeRule.setAllowedHourLate(request.getAllowedHourLate());
+        if (request.getFeePerExtraHour() != null) extraFeeRule.setFeePerExtraHour(request.getFeePerExtraHour());
+        if (request.getCleaningFee() != null) extraFeeRule.setCleaningFee(request.getCleaningFee());
+        if (request.getSmellRemovalFee() != null) extraFeeRule.setSmellRemovalFee(request.getSmellRemovalFee());
+        extraFeeRule.setApplyBatteryChargeFee("ELECTRIC".equalsIgnoreCase(request.getFuelType()));
+        if (request.getBatteryChargeFeePerPercent() != null) extraFeeRule.setBatteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent());
+        if (request.getDriverFeePerDay() != null) extraFeeRule.setDriverFeePerDay(request.getDriverFeePerDay());
+        if (request.getHasDriverOption() != null) extraFeeRule.setHasDriverOption(request.getHasDriverOption());
+        if (request.getDriverFeePerHour() != null) extraFeeRule.setDriverFeePerHour(request.getDriverFeePerHour());
+        if (request.getHasHourlyRental() != null) extraFeeRule.setHasHourlyRental(request.getHasHourlyRental());
 
         // Manually set updatedAt timestamp using reflection
         LocalDateTime now = LocalDateTime.now();

@@ -42,4 +42,16 @@ public class VehicleRentUpdateDTO {
 
     private String status;
     private String thumb;
+
+    private Integer maxKmPerDay;
+    private Integer feePerExtraKm;
+    private Integer allowedHourLate;
+    private Integer feePerExtraHour;
+    private Integer cleaningFee;
+    private Integer smellRemovalFee;
+    private Integer batteryChargeFeePerPercent;
+    private Integer driverFeePerDay;
+    private Boolean hasDriverOption;
+    private Integer driverFeePerHour;
+    private Boolean hasHourlyRental;
 }

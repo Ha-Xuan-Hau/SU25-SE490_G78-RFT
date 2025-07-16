@@ -35,7 +35,7 @@ public class VehicleRentController {
             @RequestParam(defaultValue = "desc") String sortDir) {
 
         try {
-            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles( page, size, sortBy, sortDir);
+            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles(page, size, sortBy, sortDir);
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicles retrieved successfully", vehicles));
         } catch (Exception e) {
             log.error("Error retrieving vehicles for user: {}",  e);

@@ -466,7 +466,7 @@ INSERT INTO `extra_fee_rule` (
     `allowed_hour_late`, `fee_per_extra_hour`, `cleaning_fee`, 
     `smell_removal_fee`, `battery_charge_fee_per_percent`, 
     `apply_battery_charge_fee`, `driver_fee_per_day`, 
-    `has_driver_option`, `rental_fee_per_hour`, `has_hourly_rental`
+    `has_driver_option`, `driver_fee_per_hour`, `has_hourly_rental`
 ) VALUES
 -- Phụ phí cho xe ô tô (vehicle_001: Toyota Camry 2020)
 ('efr_001', 'vehicle_001', 300, 5000, 2, 50000, 100000, 150000, 0, FALSE, 300000, TRUE, 100000, TRUE),
