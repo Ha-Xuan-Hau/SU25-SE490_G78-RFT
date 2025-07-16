@@ -554,6 +554,45 @@ public class BookingServiceImpl implements BookingService {
             refundAmount = booking.getTotalCost();
         }
 
+        //Return money to wallet
+        // Hoàn tiền về ví người thuê nếu có refundAmount > 0
+
+
+
+        if (refundAmount.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
+            //Lay user dua vao booking
+            Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
+            renterWallet.setBalance(renterWallet.getBalance().add(refundAmount));
+            walletRepository.save(renterWallet);
+
+            // Ghi log giao dịch hoàn tiền
+            WalletTransaction refundTx = WalletTransaction.builder()
+                    .wallet(renterWallet)
+                    .user(booking.getUser())
+                    .amount(refundAmount)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(refundTx);
+        }
+
+        // Chuyển phí phạt về ví chủ xe nếu có
+        if (penalty.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
+            Wallet providerWallet = walletRepository.findByUserId(providerId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+            providerWallet.setBalance(providerWallet.getBalance().add(penalty));
+            walletRepository.save(providerWallet);
+
+            // Ghi log giao dịch nhận phí phạt
+            WalletTransaction penaltyTx = WalletTransaction.builder()
+                    .wallet(providerWallet)
+                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
+                    .amount(penalty)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(penaltyTx);
+        }
+
         // Update booking status
         booking.setStatus(Booking.Status.CANCELLED);
         bookingRepository.save(booking);
