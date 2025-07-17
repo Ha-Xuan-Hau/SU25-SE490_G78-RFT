@@ -66,7 +66,6 @@ public class VehicleRentController {
 
     @GetMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleDetailDTO>> getVehicleById(
-
             @PathVariable String vehicleId) {
 
         try {
