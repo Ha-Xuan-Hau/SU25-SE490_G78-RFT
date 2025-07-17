@@ -3,6 +3,7 @@ package com.rft.rft_be.service.vehicleRent;
 import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.vehicle.vehicleRent.*;
 import com.rft.rft_be.entity.*;
+import com.rft.rft_be.mapper.ExtraFeeRuleMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 import com.rft.rft_be.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
     private final ExtraFeeRuleRepository extraFeeRuleRepository;
+    private final ExtraFeeRuleMapper extraFeeRuleMapper;
 
     @Override
     public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
@@ -288,8 +290,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to view it"));
+        VehicleDetailDTO dto = vehicleMapper.vehicleToVehicleDetail(vehicle);
+        dto.setExtraFeeRule(extraFeeRuleMapper.toDto(extraFeeRuleRepository.findByVehicleId(vehicleId)));
 
-        return vehicleMapper.vehicleToVehicleDetail(vehicle);
+        return dto;
     }
 
     @Override
