@@ -35,50 +35,27 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final UserRepository userRepository;
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
-
-    @Override
-    public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
+     @Override
+    public PageResponseDTO<VehicleGetDTO> getProviderCar( int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        List<Vehicle> userCars = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
-
-        // Sắp xếp danh sách
-        Sort sort = sortDir.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-
-        // Áp dụng sắp xếp
-        if (sortBy != null && !sortBy.trim().isEmpty()) {
-            userCars.sort((v1, v2) -> {
-                try {
-                    Field field = Vehicle.class.getDeclaredField(sortBy);
-                    field.setAccessible(true);
-                    Object val1 = field.get(v1);
-                    Object val2 = field.get(v2);
-
-                    if (val1 == null && val2 == null) return 0;
-                    if (val1 == null) return sortDir.equalsIgnoreCase("desc") ? 1 : -1;
-                    if (val2 == null) return sortDir.equalsIgnoreCase("desc") ? -1 : 1;
-
-                    int comparison = val1.toString().compareTo(val2.toString());
-                    return sortDir.equalsIgnoreCase("desc") ? -comparison : comparison;
-                } catch (Exception e) {
-                    log.warn("Could not sort by field: {}", sortBy);
-                    return 0;
-                }
-            });
-        }
-        int totalElements = userCars.size();
+        log.info("Getting cars for user: {}, page: {}, size: {}", userId, page, size);
+        
+        // Lấy tất cả xe ô tô của user
+        List<Vehicle> cars = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
+        
+        // Thực hiện phân trang thủ công
+        int totalElements = cars.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
         int fromIndex = Math.min(page * size, totalElements);
         int toIndex = Math.min(fromIndex + size, totalElements);
+        List<Vehicle> pagedCars = cars.subList(fromIndex, toIndex);
 
-        List<Vehicle> pagedCars = userCars.subList(fromIndex, toIndex);
-
-        List<VehicleDTO> vehicleResponses = pagedCars.stream()
-                .map(vehicleMapper::toDTO)
+        List<VehicleGetDTO> vehicleResponses = pagedCars.stream()
+                .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
 
-        return PageResponseDTO.<VehicleDTO>builder()
+        return PageResponseDTO.<VehicleGetDTO>builder()
                 .content(vehicleResponses)
                 .currentPage(page)
                 .totalPages(totalPages)
