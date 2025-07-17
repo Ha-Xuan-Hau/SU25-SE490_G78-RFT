@@ -1,6 +1,7 @@
 "use client";
 
 // --- Imports ---
+import { translateENtoVI } from "@/lib/viDictionary";
 // Hooks
 import React, { useState, useEffect, useMemo } from "react";
 import { useDatesState } from "@/recoils/dates.state";
@@ -629,19 +630,23 @@ export default function VehicleDetail() {
                 <div className="flex items-center gap-1">
                   <Icon icon={"mdi:car-shift-pattern"} width={24} height={24} />
                   <p className="text-xl font-normal text-black dark:text-white">
-                    {vehicle?.transmission}
+                    {vehicle?.transmission
+                      ? translateENtoVI(vehicle.transmission)
+                      : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Icon icon={"mdi:car-seat"} width={24} height={24} />
                   <p className="text-xl font-normal text-black dark:text-white">
-                    {vehicle?.numberSeat} Ghế ngồi
+                    {vehicle?.numberSeat
+                      ? `${vehicle.numberSeat} Ghế ngồi`
+                      : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Icon icon={"mdi:fuel"} width={24} height={24} />
                   <p className="text-xl font-normal text-black dark:text-white">
-                    {vehicle?.fuelType}
+                    {vehicle?.fuelType ? translateENtoVI(vehicle.fuelType) : ""}
                   </p>
                 </div>
               </div>
@@ -664,7 +669,7 @@ export default function VehicleDetail() {
                   {features.map((feature, index) => (
                     <div key={index} className="flex items-center gap-3">
                       <p className="text-lg dark:text-white text-dark">
-                        {feature.name}
+                        {feature.name ? translateENtoVI(feature.name) : ""}
                       </p>
                     </div>
                   ))}
@@ -689,7 +694,7 @@ export default function VehicleDetail() {
                       <span>GPLX & CCCD gắn chip (đối chiếu)</span>
                     </div>
                     <div className="flex gap-2 items-center">
-                      <span>GPLX (đối chiếu) & Passport (giữ lại)</span>
+                      <span>GPLX (đối chiếu) & Hộ chiếu (giữ lại)</span>
                     </div>
                   </div>
                 </div>
@@ -698,7 +703,7 @@ export default function VehicleDetail() {
 
             {/* Terms and conditions */}
             <div className="mt-10">
-              <h2 className="font-medium text-2xl">Điều khoản</h2>
+              <h2 className="font-medium text-2xl">Quy định thuê xe của RFT</h2>
               <ul className="mt-4 text-lg">
                 <li>Sử dụng xe đúng mục đích.</li>
                 <li>
@@ -1004,6 +1009,85 @@ export default function VehicleDetail() {
                 </button>
               </div>
             </div>
+            {/* Bảng phụ phí phát sinh */}
+            {vehicle?.vehicleType === "CAR" && (
+              <div className="mt-8 bg-white rounded-xl shadow p-6 border border-gray-200">
+                <h3 className="text-lg font-bold mb-4 text-gray-700">
+                  Phụ phí có thể phát sinh
+                </h3>
+                <ul className="space-y-4">
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800">
+                        Phí vượt giới hạn
+                      </span>
+                      <span className="text-green-600 font-bold">
+                        {vehicle?.extraFeeRule?.feePerExtraKm?.toLocaleString() ||
+                          "-"}
+                        đ/km
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-sm mt-1">
+                      Phụ phí phát sinh nếu lộ trình di chuyển vượt quá{" "}
+                      {vehicle?.extraFeeRule?.maxKmPerDay?.toLocaleString() ||
+                        "-"}
+                      km khi thuê xe 1 ngày
+                    </div>
+                  </li>
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800">
+                        Phí quá giờ
+                      </span>
+                      <span className="text-green-600 font-bold">
+                        {vehicle?.extraFeeRule?.feePerExtraHour?.toLocaleString() ||
+                          "-"}
+                        đ/giờ
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-sm mt-1">
+                      Phụ phí phát sinh nếu hoàn trả xe trễ hơn{" "}
+                      {vehicle?.extraFeeRule?.allowedHourLate?.toLocaleString() ||
+                        "-"}{" "}
+                      giờ. Trường hợp trễ quá số giờ này, phụ phí thêm 1 ngày
+                      thuê
+                    </div>
+                  </li>
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800">
+                        Phí vệ sinh
+                      </span>
+                      <span className="text-green-600 font-bold">
+                        {vehicle?.extraFeeRule?.cleaningFee?.toLocaleString() ||
+                          "-"}
+                        đ
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-sm mt-1">
+                      Phụ phí phát sinh khi xe hoàn trả không đảm bảo vệ sinh
+                      (như vết bẩn, bụi, cát, sinh lầy...)
+                    </div>
+                  </li>
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800">
+                        Phí khử mùi
+                      </span>
+                      <span className="text-green-600 font-bold">
+                        {vehicle?.extraFeeRule?.smellRemovalFee?.toLocaleString() ||
+                          "-"}
+                        đ
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-sm mt-1">
+                      Phụ phí phát sinh khi xe hoàn trả bị ám mùi khó chịu (mùi
+                      thuốc lá, thực phẩm nặng mùi...)
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1026,18 +1110,11 @@ export default function VehicleDetail() {
         <div className="py-3">
           <p className="mb-4">
             Bạn cần cập nhật thông tin giấy phép lái xe để thuê{" "}
-            {vehicle.vehicleType === "CAR"
-              ? "xe ô tô"
-              : vehicle.vehicleType === "MOTORBIKE"
-              ? "xe máy"
-              : "xe"}
-            .
+            {vehicle.vehicleType === "CAR" ? "xe ô tô" : "xe"}.
           </p>
           <p className="font-medium mb-4">Yêu cầu giấy phép:</p>
           <ul className="list-disc pl-5 mb-4">
-            <li>Xe ô tô: Bằng lái loại B</li>
-            <li>Xe máy: Bằng lái loại A1 hoặc B1</li>
-            <li>Xe đạp: Không yêu cầu bằng lái</li>
+            <li>Xe ô tô: Bằng lái loại B2</li>
           </ul>
         </div>
         <Link href="/profile">

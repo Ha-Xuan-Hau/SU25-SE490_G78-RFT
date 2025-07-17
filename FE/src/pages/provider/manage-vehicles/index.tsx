@@ -59,6 +59,10 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
   const [isMultipleVehicles, setIsMultipleVehicles] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
+  const [licenseModalVisible, setLicenseModalVisible] = useState(false);
+  const [licensePlates, setLicensePlates] = useState<string[]>([]);
+  const [licenseError, setLicenseError] = useState<string | null>(null);
+
   const registeredVehicles = user?.registeredVehicles || [];
 
   const [vehicleType, setVehicleType] = useState<VehicleType>(
@@ -218,6 +222,46 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleType]);
 
+  // Theo dõi giá trị vehicleQuantity để cập nhật số lượng input động
+  useEffect(() => {
+    if (isMultipleVehicles && vehicleType === VehicleType.MOTORBIKE) {
+      const qty = Number(form.getFieldValue("vehicleQuantity"));
+      if (qty && qty > 0) {
+        setLicensePlates((prev) => {
+          const arr = Array(qty).fill("");
+          for (let i = 0; i < Math.min(prev.length, qty); i++) {
+            arr[i] = prev[i];
+          }
+          return arr;
+        });
+      } else {
+        setLicensePlates([]);
+      }
+    } else {
+      setLicensePlates([]);
+    }
+  }, [isMultipleVehicles, vehicleType]);
+
+  // Theo dõi giá trị vehicleQuantity để cập nhật số lượng input động
+  useEffect(() => {
+    if (isMultipleVehicles && vehicleType === VehicleType.MOTORBIKE) {
+      const qty = Number(form.getFieldValue("vehicleQuantity"));
+      if (qty && qty > 0) {
+        setLicensePlates((prev) => {
+          const arr = Array(qty).fill("");
+          for (let i = 0; i < Math.min(prev.length, qty); i++) {
+            arr[i] = prev[i];
+          }
+          return arr;
+        });
+      } else {
+        setLicensePlates([]);
+      }
+    } else {
+      setLicensePlates([]);
+    }
+  }, [isMultipleVehicles, vehicleType, form.getFieldValue("vehicleQuantity")]);
+
   useEffect(() => {
     if (vehicleDetail.data?.data) {
       const vehicle = vehicleDetail.data.data;
@@ -297,43 +341,54 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
         insuranceStatus: "NO",
         shipToAddress: "NO",
       }}
+      onValuesChange={(changed, allValues) => {
+        if (
+          isMultipleVehicles &&
+          vehicleType === VehicleType.MOTORBIKE &&
+          typeof allValues.vehicleQuantity === "number"
+        ) {
+          const qty = allValues.vehicleQuantity;
+          setLicensePlates((prev) => {
+            const arr = Array(qty).fill("");
+            for (let i = 0; i < Math.min(prev.length, qty); i++) {
+              arr[i] = prev[i];
+            }
+            return arr;
+          });
+        }
+      }}
       onFinish={async (values) => {
         setSubmitting(true);
         try {
           const formattedFeatures =
             values.vehicleFeatures?.map((name: string) => ({ name })) || [];
 
-          // const submitData = {
-          //   ...values,
-          //   vehicleFeatures: values.vehicleFeatures.join(","), // hoặc .join(",") nếu BE yêu cầu CSV
-          //   vehicleType,
-          //   userId: user?.id || user?.result?.id,
-          //   licensePlate:
-          //     isMultipleVehicles && vehicleType === VehicleType.MOTORBIKE
-          //       ? "MULTIPLE_VEHICLES"
-          //       : values.licensePlate,
-          //   isMultipleVehicles: isMultipleVehicles,
-          //   vehicleQuantity: isMultipleVehicles ? values.vehicleQuantity : 1,
-          //   status: isActive ? "AVAILABLE" : "UNAVAILABLE",
-          //   yearManufacture: values.yearOfManufacture,
-          //   vehicleImages: JSON.stringify(values.images), // hoặc .join(",") nếu BE yêu cầu CSV
-          //   numberSeat: Number(values.numberSeat), // chuyển về số
-          // };
-          // delete submitData.yearOfManufacture;
-          // delete submitData.images;
+          // Always send licensePlate as array
+          let licensePlateArr: string[] = [];
+          let quantity = 1;
+          if (isMultipleVehicles && vehicleType === VehicleType.MOTORBIKE) {
+            // licensePlates state is the array of plates
+            licensePlateArr = licensePlates.filter(
+              (lp) => lp && lp.trim() !== ""
+            );
+            quantity = values.vehicleQuantity || licensePlateArr.length;
+          } else {
+            // Single vehicle: wrap in array
+            if (values.licensePlate) {
+              licensePlateArr = [values.licensePlate];
+            }
+            quantity = 1;
+          }
+
           const submitData = {
             ...values,
             vehicleFeatures: values.vehicleFeatures.join(","),
             vehicleType,
             userId: user?.id || user?.result?.id,
-            licensePlate:
-              isMultipleVehicles && vehicleType === VehicleType.MOTORBIKE
-                ? "MULTIPLE_VEHICLES"
-                : values.licensePlate,
+            licensePlate: licensePlateArr,
             isMultipleVehicles: isMultipleVehicles,
-            vehicleQuantity: isMultipleVehicles ? values.vehicleQuantity : 1,
+            vehicleQuantity: quantity,
             status: isActive ? "AVAILABLE" : "UNAVAILABLE",
-            yearManufacture: values.yearOfManufacture,
             vehicleImages: values.images,
             numberSeat: Number(values.numberSeat),
             penaltyId: values.rentalRule,
@@ -457,6 +512,53 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
             </Form.Item>
           </Card>
         </div>
+
+        {/* Form nhập biển số động cho nhiều xe máy, nằm dưới Card hình ảnh xe, không chung div */}
+        {!vehicleId &&
+          isMultipleVehicles &&
+          vehicleType === VehicleType.MOTORBIKE && (
+            <div className="md:w-md mb-4">
+              <Card title="Nhập biển số cho từng xe">
+                {licensePlates.map((lp, idx) => (
+                  <Form.Item
+                    key={idx}
+                    label={`Biển số xe ${idx + 1}`}
+                    required
+                    validateStatus={lp.trim() === "" ? "error" : ""}
+                    help={lp.trim() === "" ? "Vui lòng nhập biển số xe" : ""}
+                  >
+                    <Input
+                      value={lp}
+                      onChange={(e) => {
+                        const arr = [...licensePlates];
+                        arr[idx] = e.target.value;
+                        setLicensePlates(arr);
+                      }}
+                      placeholder="Nhập biển số xe"
+                    />
+                  </Form.Item>
+                ))}
+                {/* Hiển thị lỗi nếu có biển số trùng nhau */}
+                {(() => {
+                  const trimmed = licensePlates
+                    .map((lp) => lp.trim())
+                    .filter((lp) => lp !== "");
+                  const unique = new Set(trimmed);
+                  if (
+                    trimmed.length === licensePlates.length &&
+                    unique.size !== licensePlates.length
+                  ) {
+                    return (
+                      <div className="text-red-500">
+                        Các biển số phải khác nhau.
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </Card>
+            </div>
+          )}
 
         <div className="md:w-3/5">
           <Card
@@ -625,7 +727,7 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                       />
                       <span className="ml-2">
                         {vehicleType === VehicleType.MOTORBIKE
-                          ? "Tôi muốn đăng ký nhiều xe máy cùng loại (không cần nhập biển số)"
+                          ? "Tôi muốn đăng ký nhiều xe máy cùng loại (yêu cầu nhập đủ biển số cho từng xe)"
                           : "Tôi muốn đăng ký nhiều xe đạp cùng loại"}
                       </span>
                     </div>
@@ -663,19 +765,6 @@ function RegisterVehicleForm({ vehicleId, onOk }: RegisterVehicleFormProps) {
                   />
                 </Form.Item>
               )}
-
-              {/* Thông báo nhắc nhở cho xe máy khi tạo nhiều */}
-              {!vehicleId &&
-                isMultipleVehicles &&
-                vehicleType === VehicleType.MOTORBIKE && (
-                  <div className="md:col-span-2 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-700">
-                    <p>
-                      <strong>Lưu ý:</strong> Khi tạo nhiều xe máy cùng loại,
-                      bạn cần cập nhật biển số xe cho từng xe sau khi đăng ký
-                      thành công.
-                    </p>
-                  </div>
-                )}
 
               {vehicleType === VehicleType.CAR && (
                 <Form.Item
@@ -1077,7 +1166,7 @@ export default function UserRegisterVehicle() {
             pagination={{
               current: page + 1,
               pageSize: size,
-              total: myCarsData?.data?.totalElements || 0, // <-- Thêm dòng này
+              total: myCarsData?.data?.totalElements || 0,
               showSizeChanger: true,
               showQuickJumper: true,
               pageSizeOptions: ["5", "10", "20"],
@@ -1118,7 +1207,7 @@ export default function UserRegisterVehicle() {
       <Modal
         open={registerVehicleModal}
         title={editVehicleId ? "Cập nhật thông tin xe" : "Đăng ký xe mới"}
-        width={1000}
+        width={1400}
         style={{ top: 20 }}
         destroyOnClose
         footer={null}

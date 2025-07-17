@@ -27,6 +27,7 @@ import {
   Spin,
   Tabs,
 } from "antd";
+import dayjs from "dayjs";
 import type { ColumnType } from "antd/es/table";
 
 // Define TypeScript interfaces
@@ -64,6 +65,7 @@ interface ContractData {
   bookingAddress: string;
   bookingTotalCost: number;
   bookingStatus: string;
+  timeFinish: string | number[];
 }
 
 interface ApiResponse<T> {
@@ -336,8 +338,12 @@ export default function ManageContracts() {
       vehicleLicensePlate: contract.vehicleLicensePlate,
       bookingStartTime: formatDateTime(contract.bookingStartTime),
       bookingEndTime: formatDateTime(contract.bookingEndTime),
+
       bookingTotalCost:
         contract.bookingTotalCost.toLocaleString("vi-VN") + " VNĐ",
+      timeFinish: contract.timeFinish
+        ? formatDateTime(contract.timeFinish)
+        : "N/A",
     });
   };
 
@@ -414,22 +420,17 @@ export default function ManageContracts() {
           {/* <Image
             width={80}
             height={60}
-            src={record.vehicleThumb || "/placeholder.svg"}
+            src={record.vehicleIma || "/placeholder.svg"}
             alt={record.vehicleModel}
             className="rounded-md object-cover"
             fallback="/placeholder.svg?height=60&width=80"
           /> */}
           <div>
-            <div className="font-semibold">
-              {" "}
-              {record.vehicleThumb} - {record.vehicleLicensePlate}
-            </div>
+            <div className="font-semibold"> {record.bookingId}</div>
             <div className="text-sm text-gray-500">
-              {record.vehicleBrand} {record.vehicleModel}
+              {record.vehicleBrand} {record.vehicleLicensePlate}
             </div>
-            <div className="text-xs text-gray-400">
-              {record.vehicleNumberSeat} chỗ • {record.vehicleYearManufacture}
-            </div>
+            <div className="text-xs text-gray-400">{record.vehicleThumb}</div>
           </div>
         </div>
       ),
@@ -444,9 +445,9 @@ export default function ManageContracts() {
           <div className="text-sm text-gray-500">{record.userPhone}</div>
           <div
             className="text-xs text-gray-400 truncate"
-            title={record.userAddress}
+            title={record.bookingAddress}
           >
-            {record.userAddress}
+            {record.bookingAddress}
           </div>
         </div>
       ),
@@ -605,15 +606,13 @@ export default function ManageContracts() {
                       /> */}
                       <div className="flex-1">
                         <div className="font-semibold text-lg">
-                          {contract.vehicleThumb} -
-                          {contract.vehicleLicensePlate}
+                          {contract.bookingId}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {contract.vehicleBrand} {contract.vehicleModel}
+                          {contract.vehicleBrand} {contract.vehicleLicensePlate}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {contract.vehicleNumberSeat} chỗ •{" "}
-                          {contract.vehicleYearManufacture}
+                          {contract.vehicleThumb}
                         </div>
                       </div>
                     </div>
@@ -709,35 +708,43 @@ export default function ManageContracts() {
         <Form form={form} layout="vertical" className="mt-6">
           <div className="grid grid-cols-2 gap-6">
             <div>
+              <Form.Item label="Mã đặt xe" name="id">
+                <Input disabled />
+              </Form.Item>
               <Form.Item label="Tên xe" name="vehicleThumb">
-                <Input readOnly />
+                <Input disabled />
+              </Form.Item>
+              <Form.Item label="Biển số xe" name="vehicleLicensePlate">
+                <Input disabled />
               </Form.Item>
               <Form.Item label="Tên khách hàng" name="userName">
-                <Input readOnly />
+                <Input disabled />
               </Form.Item>
               <Form.Item label="Số điện thoại" name="userPhone">
-                <Input readOnly />
+                <Input disabled />
               </Form.Item>
               <Form.Item label="Địa chỉ nhận xe" name="userAddress">
-                <Input.TextArea readOnly rows={2} />
+                <Input.TextArea disabled rows={2} />
               </Form.Item>
             </div>
 
             <div>
-              <Form.Item label="Biển số xe" name="vehicleLicensePlate">
-                <Input readOnly />
-              </Form.Item>
               <Form.Item label="Thời gian bắt đầu thuê" name="bookingStartTime">
-                <Input readOnly />
+                <Input disabled />
               </Form.Item>
               <Form.Item label="Thời gian kết thúc thuê" name="bookingEndTime">
-                <Input readOnly />
+                <Input disabled />
               </Form.Item>
+
+              <Form.Item label="Thời gian khách trả xe" name="timeFinish">
+                <Input disabled />
+              </Form.Item>
+
               <Form.Item label="Tổng giá tiền thuê" name="bookingTotalCost">
-                <Input readOnly />
+                <Input disabled />
               </Form.Item>
               <Form.Item label="Contract ID" hidden name="id">
-                <Input readOnly />
+                <Input disabled />
               </Form.Item>
             </div>
           </div>

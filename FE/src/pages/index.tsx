@@ -9,7 +9,7 @@ export default function HomePage() {
     <main>
       <Banner />
       <Vehicle />
-      <HighLight />
+      {/* <HighLight /> */}
       <More />
       <FAQ />
     </main>

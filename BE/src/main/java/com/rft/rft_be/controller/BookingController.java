@@ -85,6 +85,7 @@ public class BookingController {
         bookingService.completeBooking(
                 bookingId,
                 extractToken(authHeader),
+                completeRequest.getTimeFinish(),
                 completeRequest.getCostSettlement(),
                 completeRequest.getNote()
         );
