@@ -65,8 +65,8 @@ public class ExtraFeeRule {
     private Boolean hasDriverOption;
 
     @ColumnDefault("0")
-    @Column(name = "rental_fee_per_hour")
-    private Integer rentalFeePerHour;
+    @Column(name = "driver_fee_per_hour")
+    private Integer driverFeePerHour;
 
     @ColumnDefault("0")
     @Column(name = "has_hourly_rental")

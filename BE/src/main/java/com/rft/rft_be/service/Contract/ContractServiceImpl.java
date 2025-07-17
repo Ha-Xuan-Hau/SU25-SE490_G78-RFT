@@ -215,13 +215,22 @@ public class ContractServiceImpl implements ContractService {
         booking.setStatus(Booking.Status.PENDING);
         bookingRepository.save(booking);
 
-        // Lấy thông tin người cho thuê xe
-        User provider = booking.getVehicle().getUser();
+        // Lấy provider từ bookingDetails (chỉ lấy từ 1 xe vì cùng 1 chủ)
+        if (booking.getBookingDetails() == null || booking.getBookingDetails().isEmpty()) {
+            throw new RuntimeException("Đơn booking không chứa xe nào.");
+        }
+
+        User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
+
         // Tạo contract mới
         Contract contract = new Contract();
         contract.setUser(provider);
         contract.setBooking(booking);
         contract.setCostSettlement(booking.getTotalCost());
+        contract.setStatus(Contract.Status.PROCESSING); // có thể set mặc định nếu cần
+        contract.setCreatedAt(LocalDateTime.now());
+        contract.setUpdatedAt(LocalDateTime.now());
+
         contractRepository.save(contract);
     }
 }

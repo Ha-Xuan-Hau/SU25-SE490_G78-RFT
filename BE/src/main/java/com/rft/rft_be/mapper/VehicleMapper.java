@@ -21,7 +21,6 @@ import java.time.format.DateTimeFormatter;
 
 @Mapper(componentModel = "spring")
 public interface VehicleMapper {
-
     @Mapping(source = "brand.name", target = "brandName")
     @Mapping(source = "model.name", target = "modelName")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
@@ -33,6 +32,9 @@ public interface VehicleMapper {
     // @Mapping(source = "totalRatings", target = "rating")
     VehicleDTO toDTO(Vehicle vehicle);
 
+    @Mapping(source = "user.id", target = "userId")
+    @Mapping(source = "user.fullName", target = "userName")
+    @Mapping(source = "user.profilePicture", target = "userProfilePicture")
     @Mapping(source = "brand.name", target = "brandName")
     @Mapping(source = "model.name", target = "modelName")
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
@@ -48,6 +50,7 @@ public interface VehicleMapper {
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.fullName", target = "userName")
+    @Mapping(source = "user.profilePicture", target = "userProfilePicture")
     @Mapping(source = "brand.id", target = "brandId")
     @Mapping(source = "brand.name", target = "brandName")
     @Mapping(source = "model.id", target = "modelId")
@@ -67,6 +70,21 @@ public interface VehicleMapper {
     @Mapping(source = "user.address", target = "address")
     @Mapping(source = "penalty", target = "penalty")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
+
+    @Mapping(source = "user.id", target = "userId")
+    @Mapping(source = "user.fullName", target = "userName")
+    @Mapping(source = "brand.id", target = "brandId")
+    @Mapping(source = "brand.name", target = "brandName")
+    @Mapping(source = "model.id", target = "modelId")
+    @Mapping(source = "model.name", target = "modelName")
+    @Mapping(source = "vehicleImages", target = "vehicleImages", qualifiedByName = "jsonToImageList")
+    @Mapping(source = "vehicleType", target = "vehicleType", qualifiedByName = "enumToString")
+    @Mapping(source = "haveDriver", target = "haveDriver", qualifiedByName = "enumToString")
+    @Mapping(source = "shipToAddress", target = "shipToAddress", qualifiedByName = "enumToString")
+    @Mapping(source = "transmission", target = "transmission", qualifiedByName = "enumToString")
+    @Mapping(source = "fuelType", target = "fuelType", qualifiedByName = "enumToString")
+    @Mapping(source = "user.address", target = "address")
+    VehicleCardDetailDTO vehicleToVehicleCard(Vehicle vehicle);
 
     @Named("stringToFeatureList")
     static List<VehicleFeatureDTO> stringToFeatureList(String features) {
@@ -143,8 +161,11 @@ public interface VehicleMapper {
             dto.setUser(mapToUserProfileDTO(booking.getUser()));
         }
 
-        if (booking.getVehicle() != null) {
-            dto.setVehicle(mapToVehicleForBookingDTO(booking.getVehicle()));
+        if (booking.getBookingDetails() != null && !booking.getBookingDetails().isEmpty()) {
+            List<VehicleForBookingDTO> vehicleDTOs = booking.getBookingDetails().stream()
+                    .map(detail -> mapToVehicleForBookingDTO(detail.getVehicle()))
+                    .collect(Collectors.toList());
+            dto.setVehicles(vehicleDTOs);
         }
         return dto;
     }

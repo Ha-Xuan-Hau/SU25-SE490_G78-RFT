@@ -24,7 +24,6 @@ public class BookingDetail {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "booking_id", nullable = false)
     private Booking booking;
 
