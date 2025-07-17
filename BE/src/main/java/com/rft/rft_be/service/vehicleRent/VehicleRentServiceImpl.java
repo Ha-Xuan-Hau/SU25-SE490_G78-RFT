@@ -35,35 +35,41 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final UserRepository userRepository;
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
-    private final ExtraFeeRuleRepository extraFeeRuleRepository;
 
+     
+
+    private final ExtraFeeRuleRepository extraFeeRuleRepository;
     @Override
-    public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
+    public PageResponseDTO<VehicleGetDTO> getProviderCar( int page, int size, String sortBy, String sortDir) {
+
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        log.info("Getting vehicles for user: {}, page: {}, size: {}", userId, page, size);
+        log.info("Getting cars for user: {}, page: {}, size: {}", userId, page, size);
+        
+        // Lấy tất cả xe ô tô của user
+        List<Vehicle> cars = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
+        
+        // Thực hiện phân trang thủ công
+        int totalElements = cars.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        List<Vehicle> pagedCars = cars.subList(fromIndex, toIndex);
 
-        Sort sort = sortDir.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Vehicle> vehiclePage = vehicleRepository.findByUserIdWithBrandAndModel(userId, pageable);
-
-        List<VehicleDTO> vehicleResponses = vehiclePage.getContent()
-                .stream()
-                .map(vehicleMapper::toDTO)
+        List<VehicleGetDTO> vehicleResponses = pagedCars.stream()
+                .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
 
-        return PageResponseDTO.<VehicleDTO>builder()
+        return PageResponseDTO.<VehicleGetDTO>builder()
                 .content(vehicleResponses)
-                .currentPage(vehiclePage.getNumber())
-                .totalPages(vehiclePage.getTotalPages())
-                .totalElements(vehiclePage.getTotalElements())
-                .size(vehiclePage.getSize())
-                .hasNext(vehiclePage.hasNext())
-                .hasPrevious(vehiclePage.hasPrevious())
-                .first(vehiclePage.isFirst())
-                .last(vehiclePage.isLast())
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
                 .build();
     }
 
