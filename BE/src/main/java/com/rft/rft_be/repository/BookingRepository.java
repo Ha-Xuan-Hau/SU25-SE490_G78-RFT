@@ -104,6 +104,7 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
         JOIN bd.vehicle v
         JOIN v.user u
         WHERE u.id = :providerId AND b.status = :status
+        ORDER BY COALESCE(c.updatedAt, c.createdAt) DESC
     """)
     List<Booking> findByProviderIdAndStatus(
             @Param("providerId") String providerId,
