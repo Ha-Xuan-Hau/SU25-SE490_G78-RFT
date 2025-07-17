@@ -1,10 +1,7 @@
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.vehicle.vehicleRent.ApiResponseDTO;
-import com.rft.rft_be.dto.vehicle.vehicleRent.PageResponseDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.*;
 import com.rft.rft_be.dto.vehicle.*;
-import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
-import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
 
 import com.rft.rft_be.service.vehicleRent.VehicleRentService;
 import jakarta.validation.Valid;
@@ -17,6 +14,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -28,7 +26,7 @@ public class VehicleRentController {
     private final VehicleRentService vehicleRentService;
 
 
-    @GetMapping("/my-vehicles")
+    @GetMapping("/my-car")
     public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleDTO>>> getUserVehicles(
 
             @RequestParam(defaultValue = "0") int page,
@@ -37,7 +35,7 @@ public class VehicleRentController {
             @RequestParam(defaultValue = "desc") String sortDir) {
 
         try {
-            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles( page, size, sortBy, sortDir);
+            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles(page, size, sortBy, sortDir);
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicles retrieved successfully", vehicles));
         } catch (Exception e) {
             log.error("Error retrieving vehicles for user: {}",  e);
@@ -156,4 +154,86 @@ public class VehicleRentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+    @PostMapping("/create-or-update-number")
+    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> createOrUpdateVehicleWithNumber(@Valid @RequestBody VehicleRentCreateDTO request) {
+        try {
+            VehicleGetDTO vehicle = vehicleRentService.createOrUpdateVehicleWithNumberVehicle(request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponseDTO.success("Tạo/cập nhật xe thành công", vehicle));
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo/cập nhật xe: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseDTO.error("Không thể tạo/cập nhật xe: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{vehicleId}/update-common")
+    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateCommonVehicleInfo(@PathVariable String vehicleId, @Valid @RequestBody VehicleRentUpdateDTO request) {
+        try {
+            VehicleGetDTO vehicle = vehicleRentService.updateCommonVehicleInfo(vehicleId, request);
+            return ResponseEntity.ok(ApiResponseDTO.success("Cập nhật thông tin chung thành công", vehicle));
+        } catch (Exception e) {
+            log.error("Lỗi khi cập nhật thông tin chung: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseDTO.error("Không thể cập nhật thông tin chung: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{vehicleId}/update-specific")
+    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> updateSpecificVehicleInfo(@PathVariable String vehicleId, @Valid @RequestBody VehicleRentUpdateDTO request) {
+        try {
+            VehicleGetDTO vehicle = vehicleRentService.updateSpecificVehicleInfo(vehicleId, request);
+            return ResponseEntity.ok(ApiResponseDTO.success("Cập nhật thông tin riêng thành công", vehicle));
+        } catch (Exception e) {
+            log.error("Lỗi khi cập nhật thông tin riêng: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseDTO.error("Không thể cập nhật thông tin riêng: " + e.getMessage()));
+        }
+    }
+    @GetMapping("/my-motorbike")
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleThumbGroupDTO>>> getMyMotorbikeGrouped(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir){
+        try {
+            PageResponseDTO<VehicleThumbGroupDTO> data = vehicleRentService.getProviderMotorbikeGroupedByThumb(page, size, sortBy, sortDir);
+            return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe máy thành công", data));
+
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy danh sách nhóm xe máy: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponseDTO.error("Không thể lấy danh sách nhóm xe máy: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/my-bicycle")
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleThumbGroupDTO>>> getMyBicycleGrouped(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        try {
+            PageResponseDTO<VehicleThumbGroupDTO> data = vehicleRentService.getProviderBicycleGroupedByThumb(page, size, sortBy, sortDir);
+            return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe đạp thành công", data));
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy danh sách nhóm xe đạp: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponseDTO.error("Không thể lấy danh sách nhóm xe đạp: " + e.getMessage()));
+        }
+    }
+
+//    @GetMapping("/my-motorbike-bicycle")
+//    public ResponseEntity<ApiResponseDTO<List<VehicleThumbGroupDTO>>> getMyMotorbikeAndBicycleGrouped() {
+//        try {
+//            List<VehicleThumbGroupDTO> data = vehicleRentService.getProviderMotorbikeAndBicycleGroupedByThumb();
+//            return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe thành công", data));
+//        } catch (Exception e) {
+//            log.error("Lỗi khi lấy danh sách nhóm xe: {}", e.getMessage(), e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(ApiResponseDTO.error("Không thể lấy danh sách nhóm xe: " + e.getMessage()));
+//        }
+//    }
+
 }
