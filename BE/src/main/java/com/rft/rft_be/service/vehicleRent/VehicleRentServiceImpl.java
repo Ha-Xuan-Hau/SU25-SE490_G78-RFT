@@ -40,29 +40,54 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        log.info("Getting vehicles for user: {}, page: {}, size: {}", userId, page, size);
+        List<Vehicle> userCars = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
 
+        // Sắp xếp danh sách
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
 
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Vehicle> vehiclePage = vehicleRepository.findByUserIdWithBrandAndModel(userId, pageable);
+        // Áp dụng sắp xếp
+        if (sortBy != null && !sortBy.trim().isEmpty()) {
+            userCars.sort((v1, v2) -> {
+                try {
+                    Field field = Vehicle.class.getDeclaredField(sortBy);
+                    field.setAccessible(true);
+                    Object val1 = field.get(v1);
+                    Object val2 = field.get(v2);
 
-        List<VehicleDTO> vehicleResponses = vehiclePage.getContent()
-                .stream()
+                    if (val1 == null && val2 == null) return 0;
+                    if (val1 == null) return sortDir.equalsIgnoreCase("desc") ? 1 : -1;
+                    if (val2 == null) return sortDir.equalsIgnoreCase("desc") ? -1 : 1;
+
+                    int comparison = val1.toString().compareTo(val2.toString());
+                    return sortDir.equalsIgnoreCase("desc") ? -comparison : comparison;
+                } catch (Exception e) {
+                    log.warn("Could not sort by field: {}", sortBy);
+                    return 0;
+                }
+            });
+        }
+        int totalElements = userCars.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+
+        List<Vehicle> pagedCars = userCars.subList(fromIndex, toIndex);
+
+        List<VehicleDTO> vehicleResponses = pagedCars.stream()
                 .map(vehicleMapper::toDTO)
                 .collect(Collectors.toList());
 
         return PageResponseDTO.<VehicleDTO>builder()
                 .content(vehicleResponses)
-                .currentPage(vehiclePage.getNumber())
-                .totalPages(vehiclePage.getTotalPages())
-                .totalElements(vehiclePage.getTotalElements())
-                .size(vehiclePage.getSize())
-                .hasNext(vehiclePage.hasNext())
-                .hasPrevious(vehiclePage.hasPrevious())
-                .first(vehiclePage.isFirst())
-                .last(vehiclePage.isLast())
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
                 .build();
     }
 
