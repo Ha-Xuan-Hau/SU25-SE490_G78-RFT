@@ -35,17 +35,19 @@ interface ApiResponse {
 // Định nghĩa interface cho props
 interface BookingInfo {
   _id: string;
-  carId: {
+  vehicleId: {
     _id: string;
     model?: {
       name: string;
     };
     yearManufacture: number;
-    thumb: string;
+    vehicleThumb: string;
+    vehicleLicensePlate: string;
     // Thêm các thông tin khác của xe nếu có, ví dụ:
     // transmission?: string; // Tự động/Số sàn
     // seats?: number; // Số chỗ
     // fuelType?: string; // Xăng/Dầu/Điện
+    vehicleImage: string; // Hình ảnh xe
   };
   timeBookingStart: string;
   timeBookingEnd: string;
@@ -135,15 +137,16 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
-  const [carId, setCarId] = useState<string | null>(null);
+  const [vehicleId, setCarId] = useState<string | null>(null);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [returnModalVisible, setReturnModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmReceiveModal, setConfirmReceiveModal] = useState(false);
 
-  const showModal = (bookingId: string, carId: string) => {
+  const showModal = (bookingId: string, vehicleId: string) => {
     setBookingId(bookingId);
-    setCarId(carId);
+    setCarId(vehicleId);
     setOpen(true);
   };
 
@@ -335,8 +338,11 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         {/* Ảnh xe */}
         <div className="flex-shrink-0 w-full md:w-48 h-32 relative rounded-lg overflow-hidden">
           <Image
-            src={info?.carId?.thumb || "/placeholder.svg?height=128&width=192"}
-            alt={info?.carId?.model?.name || "Car image"}
+            src={
+              info?.vehicleId?.vehicleImage ||
+              "/placeholder.svg?height=128&width=192"
+            }
+            alt={info?.vehicleId?.model?.name || "Car image"}
             fill
             sizes="(max-width: 768px) 100vw, 192px" // Responsive sizes
             className="object-cover rounded-lg"
@@ -348,8 +354,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                {info?.carId?.model?.name || "Unknown Model"}{" "}
-                {info?.carId?.yearManufacture || "N/A"}
+                {info?._id}
               </h3>
               {/* Thêm biển số xe nếu có */}
               {/* <p className="text-sm text-gray-500">Biển số: 51A-12345</p> */}
@@ -403,14 +408,49 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
 
             {/* Nút "Nhận xe" cho booking đã được giao */}
             {isDelivered() && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleReceiveVehicle}
-                disabled={loading}
-              >
-                {loading ? "Đang xử lý..." : "Nhận xe"}
-              </Button>
+              <>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setConfirmReceiveModal(true)}
+                  disabled={loading}
+                >
+                  {loading ? "Đang xử lý..." : "Nhận xe"}
+                </Button>
+                {/* Modal xác nhận nhận xe */}
+                {confirmReceiveModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-sm">
+                      <h2 className="text-lg font-semibold mb-2">
+                        Xác nhận nhận xe
+                      </h2>
+                      <p className="mb-4 text-gray-700">
+                        Bạn có chắc chắn muốn xác nhận đã nhận xe này không?
+                      </p>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmReceiveModal(false)}
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={async () => {
+                            setConfirmReceiveModal(false);
+                            await handleReceiveVehicle();
+                          }}
+                          disabled={loading}
+                        >
+                          Xác nhận
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Nút "Trả xe" cho booking đã được khách nhận */}
@@ -471,8 +511,13 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         onConfirm={handleReturnVehicle}
         loading={loading}
         vehicleInfo={{
-          licensePlate: info?.carId?.model?.name?.split(" - ")[1] || "N/A",
-          model: info?.carId?.model?.name || "Không xác định",
+          bookingId: info._id,
+          vehicleThumb:
+            info?.vehicleId?.vehicleThumb ||
+            info?.vehicleId?.model?.name ||
+            "Không xác định",
+          licensePlate:
+            info?.vehicleId?.vehicleLicensePlate || "Không xác định",
         }}
       />
     </Card>

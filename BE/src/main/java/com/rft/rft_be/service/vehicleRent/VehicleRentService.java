@@ -12,7 +12,7 @@ import java.util.List;
 
 
 public interface VehicleRentService {
-    PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir);
+    PageResponseDTO<VehicleGetDTO> getProviderCar( int page, int size, String sortBy, String sortDir);
     VehicleGetDTO createVehicle( VehicleRentCreateDTO request);
     VehicleGetDTO updateVehicle( String vehicleId, VehicleRentUpdateDTO request);
     //void deleteVehicle( String vehicleId);

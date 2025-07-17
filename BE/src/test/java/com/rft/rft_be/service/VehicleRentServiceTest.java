@@ -688,7 +688,7 @@ public class VehicleRentServiceTest {
         when(vehicleMapper.toDTO(any(Vehicle.class))).thenReturn(mockVehicleDTO);
 
         // Act
-        PageResponseDTO<VehicleDTO> result = vehicleRentService.getUserVehicles(0, 10, "createdAt", "desc");
+        PageResponseDTO<VehicleGetDTO> result = vehicleRentService.getProviderCar(0, 10, "createdAt", "desc");
 
         // Assert
         assertNotNull(result);
@@ -703,7 +703,7 @@ public class VehicleRentServiceTest {
         when(vehicleRepository.findByUserIdWithBrandAndModel(anyString(), any(Pageable.class))).thenReturn(null);
 
         // Act & Assert
-        assertThrows(NullPointerException.class, () -> vehicleRentService.getUserVehicles(0, 10, "createdAt", "desc"));
+        assertThrows(NullPointerException.class, () -> vehicleRentService.getProviderCar(0, 10, "createdAt", "desc"));
     }
 
     @Test

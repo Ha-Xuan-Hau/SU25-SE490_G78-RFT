@@ -351,13 +351,11 @@ export default function ManagePendingBookings() {
             fallback="/placeholder.svg?height=60&width=80"
           />
           <div>
-            <div className="font-semibold">{record.vehicleLicensePlate}</div>
+            <div className="font-semibold">{record.id}</div>
             <div className="text-sm text-gray-500">
-              {record.vehicleBrand} {record.vehicleModel}
+              {record.vehicleBrand} {record.vehicleLicensePlate}
             </div>
-            <div className="text-xs text-gray-400">
-              {record.vehicleNumberSeat} chỗ • {record.vehicleYearManufacture}
-            </div>
+            <div className="text-xs text-gray-400">{record.vehicleThumb}</div>
           </div>
         </div>
       ),
@@ -488,24 +486,20 @@ export default function ManagePendingBookings() {
                       <Image
                         width={80}
                         height={60}
-                        src={
-                          booking.vehicleThumb ||
-                          booking.vehicleImage ||
-                          "/placeholder.svg"
-                        }
+                        src={booking.vehicleImage || "/placeholder.svg"}
                         alt={booking.vehicleModel || "Vehicle"}
                         className="rounded-md object-cover"
                         fallback="/placeholder.svg?height=60&width=80"
                       />
                       <div className="flex-1">
                         <div className="font-semibold text-lg">
-                          {booking.vehicleLicensePlate}
+                          {booking.id}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {booking.vehicleBrand} {booking.vehicleModel}
+                          {booking.vehicleBrand} {booking.vehicleLicensePlate}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {booking.vehicleNumberSeat} chỗ •{" "}
+                          {booking.vehicleModel} chỗ •{" "}
                           {booking.vehicleYearManufacture}
                         </div>
                       </div>
@@ -631,11 +625,7 @@ export default function ManagePendingBookings() {
                 <Image
                   width={80}
                   height={60}
-                  src={
-                    selectedBooking.vehicleThumb ||
-                    selectedBooking.vehicleImage ||
-                    "/placeholder.svg"
-                  }
+                  src={selectedBooking.vehicleImage || "/placeholder.svg"}
                   alt={`${selectedBooking.vehicleBrand} ${selectedBooking.vehicleModel}`}
                   className="rounded-md object-cover"
                   fallback="/placeholder.svg?height=60&width=80"
@@ -712,11 +702,7 @@ export default function ManagePendingBookings() {
             <Image
               width={100}
               height={75}
-              src={
-                form.getFieldValue("vehicleThumb") ||
-                form.getFieldValue("vehicleImage") ||
-                "/placeholder.svg"
-              }
+              src={form.getFieldValue("vehicleImage") || "/placeholder.svg"}
               alt="Vehicle"
               className="rounded-md object-cover"
               fallback="/placeholder.svg?height=75&width=100"

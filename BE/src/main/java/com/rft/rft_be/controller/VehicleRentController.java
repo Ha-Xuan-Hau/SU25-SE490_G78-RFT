@@ -27,7 +27,7 @@ public class VehicleRentController {
 
 
     @GetMapping("/my-car")
-    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleDTO>>> getUserVehicles(
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleGetDTO>>> getUserVehicles(
 
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -35,7 +35,9 @@ public class VehicleRentController {
             @RequestParam(defaultValue = "desc") String sortDir) {
 
         try {
-            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles(page, size, sortBy, sortDir);
+
+            PageResponseDTO<VehicleGetDTO> vehicles = vehicleRentService.getProviderCar( page, size, sortBy, sortDir);
+
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicles retrieved successfully", vehicles));
         } catch (Exception e) {
             log.error("Error retrieving vehicles for user: {}",  e);

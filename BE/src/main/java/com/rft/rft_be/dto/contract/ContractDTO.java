@@ -56,6 +56,9 @@ public class ContractDTO {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime bookingEndTime;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime timeFinish;
+
     private String bookingAddress;
     private BigDecimal bookingTotalCost;
     private String bookingStatus;

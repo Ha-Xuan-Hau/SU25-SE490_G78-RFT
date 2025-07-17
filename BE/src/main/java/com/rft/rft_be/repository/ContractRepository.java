@@ -82,6 +82,7 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
                 JOIN Vehicle v ON bd.vehicle.id = v.id
                 JOIN User u ON v.user.id = u.id
                 WHERE u.id = :providerId AND c.status = :status
+                ORDER BY COALESCE(c.updatedAt, c.createdAt) DESC
             """)
     List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId,
                                              @Param("status") Contract.Status status);
