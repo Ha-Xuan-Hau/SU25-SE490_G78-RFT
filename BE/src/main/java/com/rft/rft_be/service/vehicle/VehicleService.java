@@ -34,4 +34,6 @@ public interface VehicleService {
     void deleteExpiredBookedTimeSlots();
     Page<VehicleSearchResultDTO> basicSearch(String address, String type, LocalDateTime from, LocalDateTime to, Pageable pageable);
     List<VehicleGetDTO> createVehicleBulk(CreateVehicleDTO createVehicleDTO);
+    AvailableVehicleQuantityOnlyDTO getQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to);
+    AvailableVehicleListWithQuantityDTO getListAndQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to);
 }
