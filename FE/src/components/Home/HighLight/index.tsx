@@ -10,85 +10,61 @@ const featuredLocations = [
     id: 1,
     name: "TP. Hồ Chí Minh",
     cars: "5000+ xe",
-    image: "/images/ho-chi-minh.png", // Using the provided image for the first card
+    image: "/images/hcm.jpg",
   },
   {
     id: 2,
     name: "Hà Nội",
     cars: "2500+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 3,
     name: "Đà Nẵng",
     cars: "500+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
-  },
-  {
-    id: 4,
-    name: "Bình Dương",
-    cars: "500+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 5,
     name: "Hải Phòng",
     cars: "300+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
-  },
-  {
-    id: 6,
-    name: "Cần Thơ",
-    cars: "200+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
-  },
-  {
-    id: 7,
-    name: "Huế",
-    cars: "150+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 8,
     name: "Nha Trang",
     cars: "100+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 9,
     name: "Đà Lạt",
     cars: "100+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 10,
     name: "Vũng Tàu",
     cars: "80+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 11,
     name: "Phú Quốc",
     cars: "70+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 12,
     name: "Quảng Ninh",
     cars: "60+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
   {
     id: 13,
     name: "Thanh Hóa",
     cars: "50+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
-  },
-  {
-    id: 14,
-    name: "Bắc Giang",
-    cars: "40+ xe",
-    image: "/placeholder.svg", // Simplified placeholder path
+    image: "/placeholder.svg",
   },
 ];
 

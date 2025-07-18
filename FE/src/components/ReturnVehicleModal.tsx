@@ -8,6 +8,8 @@ interface ReturnVehicleModalProps {
   onConfirm: () => void;
   loading?: boolean;
   vehicleInfo?: {
+    bookingId?: string;
+    vehicleThumb?: string;
     licensePlate?: string;
     model?: string;
   };
@@ -52,12 +54,22 @@ export const ReturnVehicleModal: React.FC<ReturnVehicleModalProps> = ({
           Bạn có chắc chắn muốn xác nhận đã trả xe không?
         </p>
 
-        {vehicleInfo && (
-          <div className="bg-gray-50 p-3 rounded-lg mb-4">
-            <div className="text-sm text-gray-600">Thông tin xe:</div>
-            <div className="font-medium">{vehicleInfo.model}</div>
-            <div className="text-sm text-gray-500">
-              Biển số: {vehicleInfo.licensePlate}
+        {!!vehicleInfo && (
+          <div className="bg-gray-50 p-3 rounded-lg mb-4 flex items-center gap-3">
+            {/* Thumb is the vehicle name, not an image */}
+            <div>
+              <div className="text-xs text-gray-500 mb-1">
+                Mã booking:{" "}
+                <span className="font-semibold">
+                  {vehicleInfo.bookingId || "N/A"}
+                </span>
+              </div>
+              <div className="font-medium">
+                {vehicleInfo.vehicleThumb || "Không xác định"}
+              </div>
+              <div className="text-sm text-gray-500">
+                Biển số: {vehicleInfo.licensePlate || "N/A"}
+              </div>
             </div>
           </div>
         )}
