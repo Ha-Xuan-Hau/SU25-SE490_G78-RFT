@@ -134,6 +134,7 @@ public class Vehicle {
         GASOLINE, ELECTRIC
     }
     public enum Status {
-        AVAILABLE, UNAVAILABLE
+        PENDING ,AVAILABLE, UNAVAILABLE, SUSPENDED
+
     }
 }

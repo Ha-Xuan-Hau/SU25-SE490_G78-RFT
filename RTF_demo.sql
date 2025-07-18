@@ -24,13 +24,12 @@ CREATE TABLE `users` (
 CREATE TABLE `user_report` (
     `id` varchar(255) NOT NULL,
     `reporter_id` varchar(255) NOT NULL,      -- Người thực hiện report
-    `reported_user_id` varchar(255) NOT NULL, -- Người bị report
+    `reported_id` varchar(255) NOT NULL, -- id(có thể là id người dùng, id xe) bị report
     `type` VARCHAR(50) NOT NULL,        -- Loại report (spam, lừa đảo, ngôn từ kích động,...)
     `reason` TEXT NOT NULL,             -- Mô tả lý do chi tiết
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (reporter_id) REFERENCES users(id),
-    FOREIGN KEY (reported_user_id) REFERENCES users(id)
+    FOREIGN KEY (reporter_id) REFERENCES users(id)
 ) COMMENT = 'Lưu các lần người dùng bị report, phân loại theo type';
 
 CREATE TABLE `user_register_vehicle` (
