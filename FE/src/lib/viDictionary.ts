@@ -1,7 +1,7 @@
 // Bộ từ điển dịch tiếng Anh sang tiếng Việt cho các đặc điểm xe, tiện nghi, ...
 export const viDictionary: Record<string, string> = {
-  AUTOMATIC: "Tự động",
-  MANUAL: "Số tay",
+  AUTOMATIC: "Hộp số tự động",
+  MANUAL: "Hộp số sàn",
   GASOLINE: "Xăng",
   DIESEL: "Dầu diesel",
   ELECTRIC: "Điện",

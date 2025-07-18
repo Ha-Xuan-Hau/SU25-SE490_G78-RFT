@@ -1021,7 +1021,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí vượt giới hạn
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.feePerExtraKm?.toLocaleString() ||
                           "-"}
                         đ/km
@@ -1039,7 +1039,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí quá giờ
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.feePerExtraHour?.toLocaleString() ||
                           "-"}
                         đ/giờ
@@ -1058,7 +1058,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí vệ sinh
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.cleaningFee?.toLocaleString() ||
                           "-"}
                         đ
@@ -1074,7 +1074,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí khử mùi
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.smellRemovalFee?.toLocaleString() ||
                           "-"}
                         đ

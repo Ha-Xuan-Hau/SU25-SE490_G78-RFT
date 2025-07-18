@@ -1,3 +1,8 @@
+export enum VehicleType {
+  CAR = "Car",
+  MOTORBIKE = "Motorbike",
+  BICYCLE = "Bicycle",
+}
 export interface Vehicle {
   id: string;
   licensePlate: string;

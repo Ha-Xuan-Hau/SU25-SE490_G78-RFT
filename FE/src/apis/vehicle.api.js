@@ -1,20 +1,21 @@
+// Cập nhật ảnh và biển số cho 1 xe máy trong nhóm
+export async function updateSingleMotorbikeInGroup({ vehicleId, images, licensePlate, accessToken }) {
+    const { data } = await apiClient.request({
+        method: "PUT",
+        url: `/vehicles/update-single-motorbike/${vehicleId}`,
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+        },
+        data: {
+            images,
+            licensePlate,
+        },
+    });
+    return data;
+}
 import { apiClient } from './client';
 
-// export async function getVehicles(params) {
-//     try {
-//         const response = await apiClient.request({
-//             method: 'GET',
-//             url: '/vehicles',
-//             params: params || {},
-//         });
-
-//         const data = response.data;
-//         return Array.isArray(data) ? data : data.content || data.items || data.data || [];
-//     } catch (error) {
-//         console.error("Error fetching vehicles:", error);
-//         throw error;
-//     }
-// }
 
 export async function getVehicles() {
     try {
