@@ -139,4 +139,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
             @Param("busyVehicleIds") List<String> busyVehicleIds,
             Pageable pageable
     );
+    List<Vehicle> findByThumbAndUserIdAndStatus(String thumb, String userId, Vehicle.Status status);
+
 }
