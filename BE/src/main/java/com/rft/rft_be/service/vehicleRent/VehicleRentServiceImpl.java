@@ -3,6 +3,7 @@ package com.rft.rft_be.service.vehicleRent;
 import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.dto.vehicle.vehicleRent.*;
 import com.rft.rft_be.entity.*;
+import com.rft.rft_be.mapper.ExtraFeeRuleMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 import com.rft.rft_be.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -36,33 +37,42 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
 
+
+
+    private final ExtraFeeRuleRepository extraFeeRuleRepository;
+    private final ExtraFeeRuleMapper extraFeeRuleMapper;
+
     @Override
-    public PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir) {
+    public PageResponseDTO<VehicleGetDTO> getProviderCar( int page, int size, String sortBy, String sortDir) {
+
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        log.info("Getting vehicles for user: {}, page: {}, size: {}", userId, page, size);
+        log.info("Getting cars for user: {}, page: {}, size: {}", userId, page, size);
 
-        Sort sort = sortDir.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        // Lấy tất cả xe ô tô của user
+        List<Vehicle> cars = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
 
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Vehicle> vehiclePage = vehicleRepository.findByUserIdWithBrandAndModel(userId, pageable);
+        // Thực hiện phân trang thủ công
+        int totalElements = cars.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        List<Vehicle> pagedCars = cars.subList(fromIndex, toIndex);
 
-        List<VehicleDTO> vehicleResponses = vehiclePage.getContent()
-                .stream()
-                .map(vehicleMapper::toDTO)
+        List<VehicleGetDTO> vehicleResponses = pagedCars.stream()
+                .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());
 
-        return PageResponseDTO.<VehicleDTO>builder()
+        return PageResponseDTO.<VehicleGetDTO>builder()
                 .content(vehicleResponses)
-                .currentPage(vehiclePage.getNumber())
-                .totalPages(vehiclePage.getTotalPages())
-                .totalElements(vehiclePage.getTotalElements())
-                .size(vehiclePage.getSize())
-                .hasNext(vehiclePage.hasNext())
-                .hasPrevious(vehiclePage.hasPrevious())
-                .first(vehiclePage.isFirst())
-                .last(vehiclePage.isLast())
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
                 .build();
     }
 
@@ -158,6 +168,24 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
 
+        ExtraFeeRule extraFeeRule = new ExtraFeeRule().builder()
+                .vehicle(savedVehicle)
+                .maxKmPerDay(request.getMaxKmPerDay())
+                .feePerExtraKm(request.getFeePerExtraKm())
+                .allowedHourLate(request.getAllowedHourLate())
+                .feePerExtraHour(request.getFeePerExtraHour())
+                .cleaningFee(request.getCleaningFee())
+                .smellRemovalFee(request.getSmellRemovalFee())
+                .applyBatteryChargeFee("ELECTRIC".equalsIgnoreCase(request.getFuelType()))
+                .batteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent())
+                .driverFeePerDay(request.getDriverFeePerDay())
+                .hasDriverOption(request.getHasDriverOption())
+                .driverFeePerHour(request.getDriverFeePerHour())
+                .hasHourlyRental(request.getHasHourlyRental())
+                .build();
+
+        extraFeeRuleRepository.save(extraFeeRule);
+
         // Fetch with brand and model for response
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(savedVehicle.getId())
                 .orElse(savedVehicle);
@@ -174,6 +202,8 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
+
+        ExtraFeeRule extraFeeRule = extraFeeRuleRepository.findByVehicleId(vehicleId);
 
         // Validate brand if provided
         if (request.getBrandId() != null) {
@@ -218,7 +248,17 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (request.getNumberVehicle() != null) vehicle.setNumberVehicle(request.getNumberVehicle());
         if (request.getCostPerDay() != null) vehicle.setCostPerDay(request.getCostPerDay());
         if (request.getStatus() != null) vehicle.setStatus(parseStatus(request.getStatus()));
-        if (request.getThumb() != null) vehicle.setThumb(request.getThumb());
+        if (request.getFeePerExtraKm() != null) extraFeeRule.setFeePerExtraKm(request.getFeePerExtraKm());
+        if (request.getAllowedHourLate() != null) extraFeeRule.setAllowedHourLate(request.getAllowedHourLate());
+        if (request.getFeePerExtraHour() != null) extraFeeRule.setFeePerExtraHour(request.getFeePerExtraHour());
+        if (request.getCleaningFee() != null) extraFeeRule.setCleaningFee(request.getCleaningFee());
+        if (request.getSmellRemovalFee() != null) extraFeeRule.setSmellRemovalFee(request.getSmellRemovalFee());
+        extraFeeRule.setApplyBatteryChargeFee("ELECTRIC".equalsIgnoreCase(request.getFuelType()));
+        if (request.getBatteryChargeFeePerPercent() != null) extraFeeRule.setBatteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent());
+        if (request.getDriverFeePerDay() != null) extraFeeRule.setDriverFeePerDay(request.getDriverFeePerDay());
+        if (request.getHasDriverOption() != null) extraFeeRule.setHasDriverOption(request.getHasDriverOption());
+        if (request.getDriverFeePerHour() != null) extraFeeRule.setDriverFeePerHour(request.getDriverFeePerHour());
+        if (request.getHasHourlyRental() != null) extraFeeRule.setHasHourlyRental(request.getHasHourlyRental());
 
         // Manually set updatedAt timestamp using reflection
         LocalDateTime now = LocalDateTime.now();
@@ -257,8 +297,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to view it"));
+        VehicleDetailDTO dto = vehicleMapper.vehicleToVehicleDetail(vehicle);
+        dto.setExtraFeeRule(extraFeeRuleMapper.toDto(extraFeeRuleRepository.findByVehicleId(vehicleId)));
 
-        return vehicleMapper.vehicleToVehicleDetail(vehicle);
+        return dto;
     }
 
     @Override
@@ -300,62 +342,77 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
-    @Override
-    public List<VehicleThumbGroupDTO> getProviderMotorbikeAndBicycleGroupedByThumb() {
-        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getToken().getClaim("userId");
-        List<Vehicle> motorbikes = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.MOTORBIKE);
-        List<Vehicle> bicycles = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.BICYCLE);
-
-        List<Vehicle> all = new ArrayList<>();
-        all.addAll(motorbikes);
-        all.addAll(bicycles);
-
-        // Gom nhóm theo thumb
-        Map<String, List<Vehicle>> grouped = all.stream()
-                .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
-
-        // Map sang DTO
-        List<VehicleThumbGroupDTO> result = grouped.entrySet().stream()
-                .map(entry -> VehicleThumbGroupDTO.builder()
-                        .thumb(entry.getKey())
-                        .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
-                        .vehicleNumber(entry.getValue().size())
-                        .build())
-                .collect(Collectors.toList());
-        return result;
-    }
 
     @Override
-    public List<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb() {
+    public PageResponseDTO<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         List<Vehicle> motorbikes = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.MOTORBIKE);
         Map<String, List<Vehicle>> grouped = motorbikes.stream()
                 .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
-        return grouped.entrySet().stream()
+        List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
                 .map(entry -> VehicleThumbGroupDTO.builder()
                         .thumb(entry.getKey())
                         .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
                         .vehicleNumber(entry.getValue().size())
                         .build())
                 .collect(Collectors.toList());
+
+        // Optional: sort groupList by sortBy and sortDir if needed (currently not implemented)
+        // Manual pagination
+        int totalElements = groupList.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        List<VehicleThumbGroupDTO> pagedContent = groupList.subList(fromIndex, toIndex);
+
+        return PageResponseDTO.<VehicleThumbGroupDTO>builder()
+                .content(pagedContent)
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
+                .build();
     }
 
     @Override
-    public List<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb() {
+    public PageResponseDTO<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         List<Vehicle> bicycles = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.BICYCLE);
         Map<String, List<Vehicle>> grouped = bicycles.stream()
                 .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
-        return grouped.entrySet().stream()
+        List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
                 .map(entry -> VehicleThumbGroupDTO.builder()
                         .thumb(entry.getKey())
                         .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
                         .vehicleNumber(entry.getValue().size())
                         .build())
                 .collect(Collectors.toList());
+
+        // Optional: sort groupList by sortBy and sortDir if needed (currently not implemented)
+        // Manual pagination
+        int totalElements = groupList.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        List<VehicleThumbGroupDTO> pagedContent = groupList.subList(fromIndex, toIndex);
+
+        return PageResponseDTO.<VehicleThumbGroupDTO>builder()
+                .content(pagedContent)
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
+                .build();
     }
 
     @Override

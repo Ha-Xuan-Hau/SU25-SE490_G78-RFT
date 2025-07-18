@@ -26,8 +26,8 @@ public class VehicleRentController {
     private final VehicleRentService vehicleRentService;
 
 
-    @GetMapping("/my-vehicles")
-    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleDTO>>> getUserVehicles(
+    @GetMapping("/my-car")
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleGetDTO>>> getUserVehicles(
 
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -35,7 +35,9 @@ public class VehicleRentController {
             @RequestParam(defaultValue = "desc") String sortDir) {
 
         try {
-            PageResponseDTO<VehicleDTO> vehicles = vehicleRentService.getUserVehicles( page, size, sortBy, sortDir);
+
+            PageResponseDTO<VehicleGetDTO> vehicles = vehicleRentService.getProviderCar( page, size, sortBy, sortDir);
+
             return ResponseEntity.ok(ApiResponseDTO.success("Vehicles retrieved successfully", vehicles));
         } catch (Exception e) {
             log.error("Error retrieving vehicles for user: {}",  e);
@@ -64,7 +66,6 @@ public class VehicleRentController {
 
     @GetMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleDetailDTO>> getVehicleById(
-
             @PathVariable String vehicleId) {
 
         try {
@@ -190,12 +191,16 @@ public class VehicleRentController {
                     .body(ApiResponseDTO.error("Không thể cập nhật thông tin riêng: " + e.getMessage()));
         }
     }
-
     @GetMapping("/my-motorbike")
-    public ResponseEntity<ApiResponseDTO<List<VehicleThumbGroupDTO>>> getMyMotorbikeGrouped() {
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleThumbGroupDTO>>> getMyMotorbikeGrouped(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir){
         try {
-            List<VehicleThumbGroupDTO> data = vehicleRentService.getProviderMotorbikeGroupedByThumb();
+            PageResponseDTO<VehicleThumbGroupDTO> data = vehicleRentService.getProviderMotorbikeGroupedByThumb(page, size, sortBy, sortDir);
             return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe máy thành công", data));
+
         } catch (Exception e) {
             log.error("Lỗi khi lấy danh sách nhóm xe máy: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -204,9 +209,14 @@ public class VehicleRentController {
     }
 
     @GetMapping("/my-bicycle")
-    public ResponseEntity<ApiResponseDTO<List<VehicleThumbGroupDTO>>> getMyBicycleGrouped() {
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleThumbGroupDTO>>> getMyBicycleGrouped(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
         try {
-            List<VehicleThumbGroupDTO> data = vehicleRentService.getProviderBicycleGroupedByThumb();
+            PageResponseDTO<VehicleThumbGroupDTO> data = vehicleRentService.getProviderBicycleGroupedByThumb(page, size, sortBy, sortDir);
             return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe đạp thành công", data));
         } catch (Exception e) {
             log.error("Lỗi khi lấy danh sách nhóm xe đạp: {}", e.getMessage(), e);
@@ -215,16 +225,16 @@ public class VehicleRentController {
         }
     }
 
-    @GetMapping("/my-motorbike-bicycle")
-    public ResponseEntity<ApiResponseDTO<List<VehicleThumbGroupDTO>>> getMyMotorbikeAndBicycleGrouped() {
-        try {
-            List<VehicleThumbGroupDTO> data = vehicleRentService.getProviderMotorbikeAndBicycleGroupedByThumb();
-            return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe thành công", data));
-        } catch (Exception e) {
-            log.error("Lỗi khi lấy danh sách nhóm xe: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponseDTO.error("Không thể lấy danh sách nhóm xe: " + e.getMessage()));
-        }
-    }
+//    @GetMapping("/my-motorbike-bicycle")
+//    public ResponseEntity<ApiResponseDTO<List<VehicleThumbGroupDTO>>> getMyMotorbikeAndBicycleGrouped() {
+//        try {
+//            List<VehicleThumbGroupDTO> data = vehicleRentService.getProviderMotorbikeAndBicycleGroupedByThumb();
+//            return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe thành công", data));
+//        } catch (Exception e) {
+//            log.error("Lỗi khi lấy danh sách nhóm xe: {}", e.getMessage(), e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(ApiResponseDTO.error("Không thể lấy danh sách nhóm xe: " + e.getMessage()));
+//        }
+//    }
 
 }

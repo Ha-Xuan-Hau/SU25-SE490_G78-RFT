@@ -27,10 +27,8 @@ public class UserReport {
     @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "reported_user_id", nullable = false)
-    private User reportedUser;
+    @Column(name = "reported_id", nullable = false)
+    private String reportedId;
 
     @Size(max = 50)
     @NotNull

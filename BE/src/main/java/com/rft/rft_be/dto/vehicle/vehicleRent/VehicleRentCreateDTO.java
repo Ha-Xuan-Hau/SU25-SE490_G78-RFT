@@ -11,10 +11,7 @@ import java.math.BigDecimal;
 public class VehicleRentCreateDTO {
 
     private String brandId;
-
-
     private String modelId;
-
     private String penaltyId;
     private String licensePlate;
 
@@ -45,4 +42,17 @@ public class VehicleRentCreateDTO {
     private BigDecimal costPerDay;
     private String status;
     private String thumb;
+
+    private Integer maxKmPerDay;
+    private Integer feePerExtraKm;
+    private Integer allowedHourLate;
+    private Integer feePerExtraHour;
+    private Integer cleaningFee;
+    private Integer smellRemovalFee;
+    private Integer batteryChargeFeePerPercent;
+    private Integer driverFeePerDay;
+    private Boolean hasDriverOption;
+    private Integer driverFeePerHour;
+    private Boolean hasHourlyRental;
+
 }

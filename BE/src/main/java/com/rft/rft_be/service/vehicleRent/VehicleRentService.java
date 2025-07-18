@@ -12,16 +12,16 @@ import java.util.List;
 
 
 public interface VehicleRentService {
-    PageResponseDTO<VehicleDTO> getUserVehicles( int page, int size, String sortBy, String sortDir);
+    PageResponseDTO<VehicleGetDTO> getProviderCar( int page, int size, String sortBy, String sortDir);
     VehicleGetDTO createVehicle( VehicleRentCreateDTO request);
     VehicleGetDTO updateVehicle( String vehicleId, VehicleRentUpdateDTO request);
     //void deleteVehicle( String vehicleId);
     VehicleDetailDTO getVehicleById( String vehicleId);
     long countUserVehicles(String userId);
     VehicleGetDTO toggleVehicleStatus(String vehicleId);
-    List<VehicleThumbGroupDTO> getProviderMotorbikeAndBicycleGroupedByThumb();
-    List<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb();
-    List<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb();
+   // List<VehicleThumbGroupDTO> getProviderMotorbikeAndBicycleGroupedByThumb();
+    PageResponseDTO<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb(int page, int size, String sortBy, String sortDir);
+    PageResponseDTO<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb(int page, int size, String sortBy, String sortDir);
     VehicleGetDTO createOrUpdateVehicleWithNumberVehicle(VehicleRentCreateDTO request);
     VehicleGetDTO updateCommonVehicleInfo(String vehicleId, VehicleRentUpdateDTO request);
     VehicleGetDTO updateSpecificVehicleInfo(String vehicleId, VehicleRentUpdateDTO request);
