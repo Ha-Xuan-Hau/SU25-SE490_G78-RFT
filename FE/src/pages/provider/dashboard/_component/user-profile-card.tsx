@@ -38,12 +38,9 @@ export default function UserProfileCard() {
               12
             </h4>
           </div>
-          <div className="flex flex-col items-center p-2 bg-gray-50 rounded-md">
-            <Eye className="w-5 h-5 text-purple-500 mb-1" />
-            <span className="text-sm font-semibold text-purple-500">34K</span>
-          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      {/* <!-- Metric Item End --> */}
+    </div>
   );
 }
