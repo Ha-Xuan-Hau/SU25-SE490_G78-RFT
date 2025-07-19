@@ -124,4 +124,13 @@ public class ReportServiceImpl implements ReportService {
                 .sorted(Comparator.comparing(ReportDTO::getCreatedAt).reversed())
                 .collect(Collectors.toList());
     }
+    @Override
+    public List<ReportDTO> getUserReports() {
+        return getReportsSeparatedByTargetType().getUserReports();
+    }
+
+    @Override
+    public List<ReportDTO> getVehicleReports() {
+        return getReportsSeparatedByTargetType().getVehicleReports();
+    }
 }

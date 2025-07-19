@@ -1,4 +1,5 @@
 package com.rft.rft_be.dto.rating;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -15,6 +16,8 @@ public class RatingDTO {
     String bookingId;
     String comment;
     int star;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     LocalDateTime createdAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     LocalDateTime updatedAt;
 }

@@ -13,4 +13,7 @@ public interface ReportService {
     ReportGroupedByTargetDTO getReportsSeparatedByTargetType();
     List<ReportDTO> searchUserReports(String keyword);
     List<ReportDTO> searchVehicleReports(String keyword);
+    List<ReportDTO> getUserReports();
+    List<ReportDTO> getVehicleReports();
+
 }

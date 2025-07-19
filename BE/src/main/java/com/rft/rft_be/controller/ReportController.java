@@ -45,4 +45,13 @@ public class ReportController {
     public ResponseEntity<List<ReportDTO>> searchVehicleReports(@RequestParam String keyword) {
         return ResponseEntity.ok(reportService.searchVehicleReports(keyword));
     }
+    @GetMapping("/user-reports")
+    public ResponseEntity<List<ReportDTO>> getUserReports() {
+        return ResponseEntity.ok(reportService.getUserReports());
+    }
+
+    @GetMapping("/vehicle-reports")
+    public ResponseEntity<List<ReportDTO>> getVehicleReports() {
+        return ResponseEntity.ok(reportService.getVehicleReports());
+    }
 }
