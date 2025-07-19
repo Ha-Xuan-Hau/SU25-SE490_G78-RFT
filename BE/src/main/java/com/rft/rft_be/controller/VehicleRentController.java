@@ -200,7 +200,7 @@ public class VehicleRentController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir){
         try {
-            PageResponseDTO<VehicleThumbGroupDTO> data = vehicleRentService.getProviderCar(page, size, sortBy, sortDir);
+            PageResponseDTO<VehicleThumbGroupDTO> data = vehicleRentService.getProviderCarGrouped(page, size, sortBy, sortDir);
             return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe ô tô thành công", data));
 
         } catch (Exception e) {

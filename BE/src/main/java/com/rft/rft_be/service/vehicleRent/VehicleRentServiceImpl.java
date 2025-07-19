@@ -343,7 +343,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     }
 
     @Override
-    public PageResponseDTO<VehicleThumbGroupDTO> getProviderCar(int page, int size, String sortBy, String sortDir) {
+    public PageResponseDTO<VehicleThumbGroupDTO> getProviderCarGrouped(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
 

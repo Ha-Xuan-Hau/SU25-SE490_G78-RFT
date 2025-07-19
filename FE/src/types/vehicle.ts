@@ -5,6 +5,8 @@ export enum VehicleType {
 }
 export interface Vehicle {
   id: string;
+  userId: string;
+  userName: string;
   licensePlate: string;
   vehicleType: string;
   vehicleFeatures: VehicleFeature[];

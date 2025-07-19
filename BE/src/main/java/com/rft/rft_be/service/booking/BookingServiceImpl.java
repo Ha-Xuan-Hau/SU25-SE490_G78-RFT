@@ -200,15 +200,16 @@ public class BookingServiceImpl implements BookingService {
         boolean is24h = openTime.equals(LocalTime.MIDNIGHT) && closeTime.equals(LocalTime.MIDNIGHT);
 
         if (!is24h) {
-            if (startTime.isBefore(openTime) || !startTime.isBefore(closeTime)) {
+            if (startTime.isBefore(openTime) || startTime.isAfter(closeTime)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Giờ bắt đầu phải trong khoảng %s đến %s", openTime, closeTime.minusMinutes(1)));
+                        String.format("Giờ bắt đầu phải trong khoảng %s đến %s", openTime, closeTime));
             }
-            if (endTime.isAfter(closeTime) || !endTime.isAfter(openTime)) {
+            if (endTime.isBefore(openTime) || endTime.isAfter(closeTime)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Giờ kết thúc phải trong khoảng %s đến %s", openTime.plusMinutes(1), closeTime));
+                        String.format("Giờ kết thúc phải trong khoảng %s đến %s", openTime, closeTime));
             }
         }
+
 
         // Validate phút chỉ được :00 hoặc :30
         if ((startTime.getMinute() != 0 && startTime.getMinute() != 30)

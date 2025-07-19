@@ -130,6 +130,48 @@ export async function getBookedSlotById(vehicleId) {
     }
 }
 
+export async function getAvailableThumbQuantity({ thumb, providerId, from, to }) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/vehicles/available-thumb-quantity",
+            data: {
+                thumb,
+                providerId,
+                from,
+                to,
+            },
+        });
+        // data: { quantity: number }
+        return data.quantity || 0;
+    } catch (error) {
+        console.error("Error fetching available thumb quantity:", error);
+        throw error;
+    }
+}
+
+export async function getAvailableThumbList({ thumb, providerId, from, to }) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/vehicles/available-thumb-list",
+            data: {
+                thumb,
+                providerId,
+                from,
+                to,
+            },
+        });
+        // data: { vehicles: [...], quantity: number }
+        // DTO
+        return Array.isArray(data.vehicles) ? data.vehicles : data.content || data.items || data.data || [];
+    } catch (error) {
+        console.error("Error fetching available thumb list:", error);
+        throw error;
+    }
+}
+
+
 export async function updateVehicle({ vehicleId, body, accessToken }) {
     const { data } = await apiClient.request({
         method: "PUT",

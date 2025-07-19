@@ -2,28 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useUserState, useRefreshUser } from "@/recoils/user.state";
-import {
-  Typography,
-  Button,
-  Spin,
-  Avatar,
-  Card,
-  Row,
-  Col,
-  Divider,
-  message,
-  Image,
-} from "antd";
-import {
-  UserOutlined,
-  EditOutlined,
-  CalendarOutlined,
-  PhoneOutlined,
-  MailOutlined,
-  HomeOutlined,
-  IdcardOutlined,
-  ClockCircleOutlined,
-} from "@ant-design/icons";
+import { Typography, Spin, Avatar } from "antd";
+import { UserOutlined } from "@ant-design/icons";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import EditProfileModal from "@/components/EditProfileComponent";
 
