@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 public class PaymentRequest {
     @NotNull(message = "Số tiền không được bỏ trống")
     @DecimalMin(value = "0.01", inclusive = true, message = "Số tiền phải lớn hơn 0")
-    BigDecimal amout;
+    BigDecimal amount;
     String bankCode;
     String bookingId;
 }

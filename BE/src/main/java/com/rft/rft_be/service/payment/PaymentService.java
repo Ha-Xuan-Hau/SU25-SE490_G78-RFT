@@ -107,12 +107,12 @@ public class PaymentService {
     public VNPayResponse createTopUpPayment(PaymentRequest dto, HttpServletRequest request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        if(dto.getAmout().compareTo(BigDecimal.ZERO) <= 0){
+        if(dto.getAmount().compareTo(BigDecimal.ZERO) <= 0){
             throw new IllegalStateException("Số tiền không được nhỏ hơn 0");
         }
 
-        WalletTransactionDTO walletTransaction =  walletService.createTopUp(new CreateWithdrawalRequestDTO(userId, dto.getAmout()));
-        long amount = dto.getAmout().multiply(BigDecimal.valueOf(100)) // nhân 100 theo yêu cầu
+        WalletTransactionDTO walletTransaction =  walletService.createTopUp(new CreateWithdrawalRequestDTO(userId, dto.getAmount()));
+        long amount = dto.getAmount().multiply(BigDecimal.valueOf(100)) // nhân 100 theo yêu cầu
                 .setScale(0, RoundingMode.HALF_UP) // làm tròn đúng chuẩn tài chính
                 .longValue();
         String bankCode = dto.getBankCode();

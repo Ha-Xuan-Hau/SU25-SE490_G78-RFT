@@ -26,25 +26,25 @@ public class VehicleRentController {
     private final VehicleRentService vehicleRentService;
 
 
-    @GetMapping("/my-car")
-    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleGetDTO>>> getUserVehicles(
-
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
-
-        try {
-
-            PageResponseDTO<VehicleGetDTO> vehicles = vehicleRentService.getProviderCar( page, size, sortBy, sortDir);
-
-            return ResponseEntity.ok(ApiResponseDTO.success("Vehicles retrieved successfully", vehicles));
-        } catch (Exception e) {
-            log.error("Error retrieving vehicles for user: {}",  e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponseDTO.error("Failed to retrieve vehicles: " + e.getMessage()));
-        }
-    }
+//    @GetMapping("/my-car")
+//    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleGetDTO>>> getUserVehicles(
+//
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size,
+//            @RequestParam(defaultValue = "createdAt") String sortBy,
+//            @RequestParam(defaultValue = "desc") String sortDir) {
+//
+//        try {
+//
+//            PageResponseDTO<VehicleGetDTO> vehicles = vehicleRentService.getProviderCar( page, size, sortBy, sortDir);
+//
+//            return ResponseEntity.ok(ApiResponseDTO.success("Vehicles retrieved successfully", vehicles));
+//        } catch (Exception e) {
+//            log.error("Error retrieving vehicles for user: {}",  e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(ApiResponseDTO.error("Failed to retrieve vehicles: " + e.getMessage()));
+//        }
+//    }
 
 
     @PostMapping("/register")
@@ -66,6 +66,7 @@ public class VehicleRentController {
 
     @GetMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleDetailDTO>> getVehicleById(
+
             @PathVariable String vehicleId) {
 
         try {
@@ -191,6 +192,24 @@ public class VehicleRentController {
                     .body(ApiResponseDTO.error("Không thể cập nhật thông tin riêng: " + e.getMessage()));
         }
     }
+
+    @GetMapping("/my-car")
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleThumbGroupDTO>>> getMyCarGrouped(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir){
+        try {
+            PageResponseDTO<VehicleThumbGroupDTO> data = vehicleRentService.getProviderCarGrouped(page, size, sortBy, sortDir);
+            return ResponseEntity.ok(ApiResponseDTO.success("Lấy danh sách nhóm xe ô tô thành công", data));
+
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy danh sách nhóm xe ô tô: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponseDTO.error("Không thể lấy danh sách nhóm xe ô tô: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/my-motorbike")
     public ResponseEntity<ApiResponseDTO<PageResponseDTO<VehicleThumbGroupDTO>>> getMyMotorbikeGrouped(
             @RequestParam(defaultValue = "0") int page,

@@ -38,7 +38,12 @@ import Coupon from "@/components/Coupon";
 import { coupon as CouponType } from "@/types/coupon";
 
 // Import API services
-import { getVehicleById, getBookedSlotById } from "@/apis/vehicle.api";
+import {
+  getVehicleById,
+  getBookedSlotById,
+  getAvailableThumbQuantity,
+  getAvailableThumbList,
+} from "@/apis/vehicle.api";
 import {
   createBooking,
   payWithWallet,
@@ -108,8 +113,10 @@ interface AvailabilityCheckResponse {
 // Component chính
 const BookingPage: React.FC = () => {
   const router = useRouter();
-  const { id } = router.query;
-
+  const { id, quantity } = router.query;
+  const [selectedQuantity, setSelectedQuantity] = useState(
+    Number(quantity) || 1
+  );
   // State
   const [current, setCurrent] = useState<number>(0);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
@@ -123,8 +130,9 @@ const BookingPage: React.FC = () => {
   const [bookingData, setBookingData] = useState<BookingResponse | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("VNPAY");
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [availableQuantity, setAvailableQuantity] = useState(1);
 
-  // NEW: Rental calculation states
+  //  Rental calculation states
   const [rentalCalculation, setRentalCalculation] =
     useState<RentalCalculation | null>(null);
   const [hourlyRate, setHourlyRate] = useState<number>(0);
@@ -132,7 +140,7 @@ const BookingPage: React.FC = () => {
     null
   );
 
-  // NEW: Buffer time states
+  //  Buffer time states
   const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>(
     []
   );
@@ -303,8 +311,34 @@ const BookingPage: React.FC = () => {
             throw new Error("CONFLICT: Xe vừa được đặt bởi người khác");
           }
 
+          let vehicleIds: string[] = [id as string];
+          if (selectedQuantity > 1 && vehicle?.thumb && vehicle?.userId) {
+            const from = formatTimeForBackend(selectedDates[0]);
+            const to = formatTimeForBackend(selectedDates[1]);
+            const availableList = await getAvailableThumbList({
+              thumb: vehicle.thumb,
+              providerId: vehicle.userId,
+              from,
+              to,
+            });
+            // Lấy đủ số lượng xe, ưu tiên id hiện tại nếu có trong danh sách
+            if (Array.isArray(availableList)) {
+              const ids = availableList.map((v: { id: string }) => v.id);
+              const idStr =
+                typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+              if (ids.includes(idStr)) {
+                vehicleIds = [
+                  idStr,
+                  ...ids.filter((vid) => vid !== idStr),
+                ].slice(0, selectedQuantity);
+              } else {
+                vehicleIds = ids.slice(0, selectedQuantity);
+              }
+            }
+          }
+
           const bookingRequestData = {
-            vehicleIds: [id],
+            vehicleIds,
             timeBookingStart: formatTimeForBackend(selectedDates[0]),
             timeBookingEnd: formatTimeForBackend(selectedDates[1]),
             fullname: formValues.fullname,
@@ -439,9 +473,10 @@ const BookingPage: React.FC = () => {
           message.error(paymentResponse.error || "Lỗi thanh toán ví");
         }
       } else {
-        // Tạo link thanh toán VNPay
+        // Tạo link thanh toán VNPay, truyền thêm amount
         const paymentResponse = (await createVNPayPayment(
-          bookingData.id
+          bookingData.id,
+          bookingData.totalCost
         )) as PaymentResponse;
 
         if (paymentResponse.success && paymentResponse.data?.paymentUrl) {
@@ -518,9 +553,11 @@ const BookingPage: React.FC = () => {
   let subtotal = 0;
 
   if (rentalCalculation && hourlyRate > 0) {
-    subtotal = calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay);
+    subtotal =
+      calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay) *
+      selectedQuantity;
   } else {
-    subtotal = totalDays * costPerDay;
+    subtotal = totalDays * costPerDay * selectedQuantity;
   }
 
   const deliveryFee = 0; // Miễn phí giao xe
@@ -536,6 +573,43 @@ const BookingPage: React.FC = () => {
       });
     }
   }, [user, form]);
+
+  useEffect(() => {
+    const fetchAvailableQuantity = async () => {
+      if (
+        vehicle &&
+        selectedDates &&
+        selectedDates[0] &&
+        selectedDates[1] &&
+        vehicle.thumb &&
+        vehicle.userId
+      ) {
+        try {
+          const from = dayjs(selectedDates[0]).format("YYYY-MM-DDTHH:mm:ss");
+          const to = dayjs(selectedDates[1]).format("YYYY-MM-DDTHH:mm:ss");
+          const quantity = await getAvailableThumbQuantity({
+            thumb: vehicle.thumb,
+            providerId: vehicle.userId,
+            from,
+            to,
+          });
+          setAvailableQuantity(quantity);
+          // Nếu số lượng đang chọn vượt quá khả dụng thì reset lại
+          if (selectedQuantity > quantity) setSelectedQuantity(quantity);
+        } catch (err) {
+          setAvailableQuantity(1);
+          setSelectedQuantity(1);
+        }
+      }
+    };
+    fetchAvailableQuantity();
+  }, [vehicle, selectedDates]);
+
+  useEffect(() => {
+    // Lấy quantity từ query param mỗi khi router.query.quantity thay đổi
+    const quantityFromQuery = Number(router.query.quantity) || 1;
+    setSelectedQuantity(quantityFromQuery);
+  }, [router.query.quantity]);
 
   // Prepare default date values
   const { pickupTime, returnTime } = router.query;
@@ -714,12 +788,44 @@ const BookingPage: React.FC = () => {
                       {vehicle.yearManufacture})
                     </h4>
                     <div className="flex flex-wrap gap-4 text-base text-gray-600">
-                      <span>{vehicle.transmission}</span>
-                      <span>{vehicle.numberSeat} chỗ</span>
-                      <span>{vehicle.fuelType || "Xăng"}</span>
+                      <span>{translateENtoVI(vehicle.transmission)}</span>
+                      <span>{translateENtoVI(vehicle.fuelType)}</span>
                     </div>
-                    <div className="text-2xl font-bold text-red-500">
+                    <div className="text-xl font-bold text-primary">
                       {vehicle.costPerDay.toLocaleString("vi-VN")}₫/ngày
+                    </div>
+                    <div className="flex items-center gap-4 mt-4">
+                      <span className="text-base text-gray-700 dark:text-gray-200">
+                        Số lượng muốn thuê:
+                      </span>
+                      <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
+                        <button
+                          className="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={selectedQuantity <= 1}
+                          onClick={() =>
+                            setSelectedQuantity(selectedQuantity - 1)
+                          }
+                        >
+                          -
+                        </button>
+                        <span className="px-4 py-1 text-lg font-bold text-gray-800 dark:text-gray-100 border-l border-r border-gray-300">
+                          {selectedQuantity}
+                        </span>
+                        <button
+                          className="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={selectedQuantity >= availableQuantity}
+                          onClick={() =>
+                            setSelectedQuantity(selectedQuantity + 1)
+                          }
+                        >
+                          +
+                        </button>
+                      </div>
+                      {availableQuantity > 0 && (
+                        <span className="text-base text-primary font-semibold">
+                          Còn {availableQuantity} xe khả dụng
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

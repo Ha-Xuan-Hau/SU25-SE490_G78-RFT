@@ -10,7 +10,11 @@ import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
 
 // API
-import { getVehicleById, getBookedSlotById } from "@/apis/vehicle.api";
+import {
+  getVehicleById,
+  getBookedSlotById,
+  getAvailableThumbQuantity,
+} from "@/apis/vehicle.api";
 
 // Components
 import { DateRangePicker } from "@/components/antd";
@@ -36,7 +40,7 @@ import {
 } from "@/utils/booking.utils";
 
 // Types and Utils
-import { VehicleFeature } from "@/types/vehicle";
+import { Vehicle, VehicleFeature } from "@/types/vehicle";
 import { Comment as VehicleComment } from "@/types/vehicle";
 import { formatCurrency } from "@/lib/format-currency";
 import dayjs, { Dayjs } from "dayjs";
@@ -91,6 +95,12 @@ export default function VehicleDetail() {
   const [currentCommentPage, setCurrentCommentPage] = useState<number>(1);
   const commentsPerPage = 5;
 
+  //multiple booking
+  const [availableQuantity, setAvailableQuantity] = useState(1);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
+  const [showMultiBooking, setShowMultiBooking] = useState(false);
+
   // --- Dates handling ---
   const updateDates = (value: RangeValue) => {
     // Kiểm tra rõ ràng trước khi cập nhật
@@ -122,6 +132,22 @@ export default function VehicleDetail() {
     queryFn: () => getVehicleById(id as string),
     enabled: !!id,
   });
+
+  // Update totalPrice when selectedQuantity changes
+  useEffect(() => {
+    // Nếu có rentalCalculation và costPerDay
+    if (rentalCalculation && vehicle?.costPerDay) {
+      // Tính giá cho nhiều xe
+      const price = calculateRentalPrice(
+        rentalCalculation,
+        hourlyRate,
+        vehicle.costPerDay
+      );
+      setTotalPrice(price * selectedQuantity);
+    } else if (vehicle?.costPerDay) {
+      setTotalPrice(vehicle.costPerDay * selectedQuantity);
+    }
+  }, [selectedQuantity, rentalCalculation, vehicle?.costPerDay, hourlyRate]);
 
   useEffect(() => {
     if (id) {
@@ -269,22 +295,34 @@ export default function VehicleDetail() {
   const closeTime = vehicle?.closeTime || "00:00";
 
   const disabledRangeTime = useMemo(() => {
-    if (!vehicle?.vehicleType)
-      return createDisabledTimeFunction("CAR", [], openTime, closeTime);
+    // Convert all bookedTimeSlots to Dayjs for all vehicle types
+    const slots = bookedTimeSlots.map((slot) => ({
+      ...slot,
+      startDate: dayjs(parseBackendTime(slot.startDate)),
+      endDate: dayjs(parseBackendTime(slot.endDate)),
+    }));
+    if (!vehicle?.vehicleType) return undefined;
+    // Block for all vehicle types, not just CAR
     return createDisabledTimeFunction(
       vehicle.vehicleType.toUpperCase() as VehicleType,
-      bookedTimeSlots,
+      slots,
       openTime,
       closeTime
     );
   }, [vehicle?.vehicleType, bookedTimeSlots, openTime, closeTime]);
 
   const disabledDateFunction = useMemo(() => {
+    // Convert all bookedTimeSlots to Dayjs for all vehicle types
+    const slots = bookedTimeSlots.map((slot) => ({
+      ...slot,
+      startDate: dayjs(parseBackendTime(slot.startDate)),
+      endDate: dayjs(parseBackendTime(slot.endDate)),
+    }));
     return (current: Dayjs): boolean => {
       if (!current || !vehicle?.vehicleType) return false;
-
       const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-      return isDateDisabled(current, vehicleType, bookedTimeSlots);
+      // Block for all vehicle types
+      return isDateDisabled(current, vehicleType, slots);
     };
   }, [vehicle?.vehicleType, bookedTimeSlots]);
 
@@ -348,7 +386,7 @@ export default function VehicleDetail() {
     vehicleType: string
   ): boolean => {
     // Xe đạp không yêu cầu bằng lái
-    if (vehicleType === "BICYCLE") {
+    if (vehicleType === "BICYCLE" || vehicleType === "MOTORBIKE") {
       return true;
     }
 
@@ -361,8 +399,6 @@ export default function VehicleDetail() {
     switch (vehicleType) {
       case "CAR":
         return userLicenses.some((license) => license === "B");
-      case "MOTORBIKE":
-        return userLicenses.some((license) => ["A1", "B1"].includes(license));
       default:
         return false;
     }
@@ -373,7 +409,7 @@ export default function VehicleDetail() {
       case "CAR":
         return "bằng lái loại B";
       case "MOTORBIKE":
-        return "bằng lái loại A1 hoặc B1";
+        return "không cần bằng lái";
       case "BICYCLE":
         return "không cần bằng lái";
       default:
@@ -430,7 +466,9 @@ export default function VehicleDetail() {
           vehicle?.id
         }?pickupTime=${encodeURIComponent(
           pickupDateTime || ""
-        )}&returnTime=${encodeURIComponent(returnDateTime || "")}`;
+        )}&returnTime=${encodeURIComponent(
+          returnDateTime || ""
+        )}&quantity=${selectedQuantity}`;
         console.log("Booking URL:", bookingUrl);
 
         // Use window.location for a hard navigation if router isn't working
@@ -440,7 +478,7 @@ export default function VehicleDetail() {
   };
 
   // DatePicker handlers
-  const handleDateChange: RangePickerProps["onChange"] = (values) => {
+  const handleDateChange: RangePickerProps["onChange"] = async (values) => {
     if (values && values[0] && values[1]) {
       const startDate = values[0] as Dayjs;
       const endDate = values[1] as Dayjs;
@@ -448,6 +486,39 @@ export default function VehicleDetail() {
       // Update pickup and return times - For URL params, use readable format
       setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
       setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));
+
+      // Chỉ gọi getAvailableThumbQuantity nếu không phải ô tô
+      if (
+        vehicle?.vehicleType === "MOTORBIKE" ||
+        vehicle?.vehicleType === "BICYCLE"
+      ) {
+        const thumb = vehicle?.thumb;
+        const providerId = vehicle?.userId;
+        const from = startDate.format("YYYY-MM-DDTHH:mm:ss");
+        const to = endDate.format("YYYY-MM-DDTHH:mm:ss");
+        try {
+          const quantity = await getAvailableThumbQuantity({
+            thumb,
+            providerId,
+            from,
+            to,
+          });
+          setAvailableQuantity(quantity);
+          setSelectedQuantity(1);
+          setShowMultiBooking(quantity > 1);
+          setAvailableVehicles([]); // reset danh sách xe khi đổi ngày
+        } catch (err) {
+          setAvailableQuantity(1);
+          setShowMultiBooking(false);
+          setAvailableVehicles([]);
+        }
+      } else {
+        // Ô tô: luôn chỉ cho thuê 1 xe
+        setAvailableQuantity(1);
+        setSelectedQuantity(1);
+        setShowMultiBooking(false);
+        setAvailableVehicles([]);
+      }
 
       // Tính toán thời gian thuê mới
       const calculation = calculateRentalDuration(startDate, endDate);
@@ -901,6 +972,62 @@ export default function VehicleDetail() {
                   )}
                 </div>
               </div>
+              {/* Luôn hiển thị số lượng xe khả dụng và nút đặt nhiều xe nếu availableQuantity > 1 */}
+              {availableQuantity > 1 && (
+                <div className="mt-4 border-t border-b py-4 border-gray-200 dark:border-gray-700">
+                  {/* Dòng số lượng xe khả dụng và nút Đặt nhiều xe */}
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    {" "}
+                    {/* Added mb-4 for spacing */}
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">
+                        Số lượng xe khả dụng:
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
+                        {availableQuantity}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dòng số lượng muốn thuê với bộ chọn */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-base text-gray-700 dark:text-gray-200">
+                      Số lượng muốn thuê:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={selectedQuantity <= 1}
+                        onClick={() => {
+                          setSelectedQuantity((prev) => {
+                            const newQty = prev - 1;
+                            return newQty < 1 ? 1 : newQty;
+                          });
+                        }}
+                      >
+                        -
+                      </button>
+                      <span className="px-3 text-lg font-bold text-gray-800 dark:text-gray-100">
+                        {selectedQuantity}
+                      </span>
+                      <button
+                        className="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={selectedQuantity >= availableQuantity}
+                        onClick={() => {
+                          setSelectedQuantity((prev) => {
+                            const newQty = prev + 1;
+                            return newQty > availableQuantity
+                              ? availableQuantity
+                              : newQty;
+                          });
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Price details */}
               <div className="mt-6">
@@ -943,7 +1070,7 @@ export default function VehicleDetail() {
                     </span>
                   </div>
 
-                  {/* THÊM VÀO ĐÂY - Hiển thị breakdown cho hourly rate */}
+                  {/*  Hiển thị breakdown cho hourly rate */}
                   {rentalCalculation?.isHourlyRate && (
                     <div className="text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
                       {rentalCalculation.billingHours > 0 && (
@@ -1009,6 +1136,7 @@ export default function VehicleDetail() {
                 </button>
               </div>
             </div>
+
             {/* Bảng phụ phí phát sinh */}
             {vehicle?.vehicleType === "CAR" && (
               <div className="mt-8 bg-white rounded-xl shadow p-6 border border-gray-200">
@@ -1021,7 +1149,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí vượt giới hạn
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.feePerExtraKm?.toLocaleString() ||
                           "-"}
                         đ/km
@@ -1039,7 +1167,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí quá giờ
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.feePerExtraHour?.toLocaleString() ||
                           "-"}
                         đ/giờ
@@ -1058,7 +1186,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí vệ sinh
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.cleaningFee?.toLocaleString() ||
                           "-"}
                         đ
@@ -1074,7 +1202,7 @@ export default function VehicleDetail() {
                       <span className="font-semibold text-gray-800">
                         Phí khử mùi
                       </span>
-                      <span className="text-green-600 font-bold">
+                      <span className="text-primary font-bold">
                         {vehicle?.extraFeeRule?.smellRemovalFee?.toLocaleString() ||
                           "-"}
                         đ
