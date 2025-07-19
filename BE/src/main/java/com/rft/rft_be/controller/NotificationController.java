@@ -27,7 +27,7 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     // User APIs
-
+    //người dùng get thông báo của mình
     @GetMapping("/my")
     public ResponseEntity<Page<NotificationDetailDTO>> getMyNotifications(
             Authentication authentication,
@@ -46,7 +46,7 @@ public class NotificationController {
         Page<NotificationDetailDTO> notifications = notificationService.getNotificationsByUser(userId, pageable);
         return ResponseEntity.ok(notifications);
     }
-
+    //ng dùng get thông báo chưa đọc
     @GetMapping("/my/unread")
     public ResponseEntity<List<NotificationDetailDTO>> getUnreadNotifications(Authentication authentication) {
         String userId = extractUserIdFromAuth(authentication);
@@ -55,7 +55,7 @@ public class NotificationController {
         List<NotificationDetailDTO> notifications = notificationService.getUnreadNotifications(userId);
         return ResponseEntity.ok(notifications);
     }
-
+    // tổng dố thông báo chưa đọc
     @GetMapping("/my/unread/count")
     public ResponseEntity<Map<String, Long>> getUnreadCount(Authentication authentication) {
         String userId = extractUserIdFromAuth(authentication);
@@ -64,21 +64,21 @@ public class NotificationController {
         Long count = notificationService.getUnreadCount(userId);
         return ResponseEntity.ok(Map.of("unreadCount", count));
     }
-
+    //chuyển trạng thái từ chưa đọc thành đã đọc khi ng dùng nhấn vào thông báo
     @PostMapping("/{id}/click")
     public ResponseEntity<NotificationDetailDTO> clickNotification(@PathVariable String id) {
         log.info("Thông báo đã được nhấp: {}", id);
         NotificationDetailDTO response = notificationService.markAsReadAndGetRedirectUrl(id);
         return ResponseEntity.ok(response);
     }
-
+    //chuyển trạng thái thông báo thành đã đọc
     @PutMapping("/{id}/read")
     public ResponseEntity<NotificationResponseDTO> markAsRead(@PathVariable String id) {
         log.info("Đánh dấu thông báo là đã đọc: {}", id);
         NotificationResponseDTO response = notificationService.markAsRead(id);
         return ResponseEntity.ok(response);
     }
-
+    //chuyển tất cả thông báo thành đã đọc
     @PutMapping("/my/read-all")
     public ResponseEntity<Map<String, String>> markAllAsRead(Authentication authentication) {
         String userId = extractUserIdFromAuth(authentication);
@@ -89,7 +89,7 @@ public class NotificationController {
     }
 
     // Admin APIs
-
+    //admin get tất cả thông báo của ng dùng
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<NotificationDetailDTO>> getAllNotifications(
@@ -107,7 +107,7 @@ public class NotificationController {
         Page<NotificationDetailDTO> notifications = notificationService.getAllNotifications(pageable);
         return ResponseEntity.ok(notifications);
     }
-
+    //admin tạo thông báo
     @PostMapping("/admin/create")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> createNotificationByAdmin(
@@ -153,7 +153,7 @@ public class NotificationController {
             ));
         }
     }
-
+//update thông báo
     @PutMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NotificationResponseDTO> updateNotification(
@@ -164,7 +164,7 @@ public class NotificationController {
         NotificationResponseDTO response = notificationService.updateNotification(id, request);
         return ResponseEntity.ok(response);
     }
-
+//xóa thông báo
     @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> deleteNotification(@PathVariable String id) {
@@ -173,6 +173,7 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Thông báo đã được xóa thành công"));
     }
 
+    //tạo thông báo tới tất cả người dùng
     @PostMapping("/admin/system-announcement")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> createSystemAnnouncement(
@@ -183,7 +184,7 @@ public class NotificationController {
         @SuppressWarnings("unchecked")
         List<String> userIds = (List<String>) request.get("userIds");
 
-        log.info("Creating system announcement for {} users", userIds != null ? userIds.size() : 0);
+        log.info("Tạo thông báo hệ thống cho người dùng {}", userIds != null ? userIds.size() : 0);
 
         if (userIds != null && !userIds.isEmpty()) {
             notificationService.createSystemAnnouncement(message, redirectUrl, userIds);
@@ -192,6 +193,7 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Thông báo hệ thống đã được tạo thành công"));
     }
 
+    //tạo thông báo bảo trì hệ thống cho TẤT CẢ người dùng
     @PostMapping("/admin/maintenance-notice")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> createMaintenanceNotice(
@@ -200,7 +202,7 @@ public class NotificationController {
         String message = request.get("message");
         String scheduledTime = request.get("scheduledTime");
 
-        log.info("Creating maintenance notice: {}", message);
+        log.info("Tạo thông báo bảo trì: {}", message);
         notificationService.createMaintenanceNotice(message, scheduledTime);
 
         return ResponseEntity.ok(Map.of("message", "Thông báo bảo trì đã được tạo thành công"));
@@ -208,6 +210,7 @@ public class NotificationController {
 
     // Booking workflow APIs (called by other services)
 
+    //gửi thông báo khi user đặt hàng thành công
     @PostMapping("/booking/order-placed")
     public ResponseEntity<Map<String, String>> notifyOrderPlaced(@RequestBody Map<String, Object> request) {
         String userId = (String) request.get("userId");
@@ -218,6 +221,7 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Đã gửi thông báo đặt hàng"));
     }
 
+    //gửi thông báo khi thanh toán hoàn tất thành công
     @PostMapping("/booking/payment-completed")
     public ResponseEntity<Map<String, String>> notifyPaymentCompleted(@RequestBody Map<String, Object> request) {
         String userId = (String) request.get("userId");
@@ -228,6 +232,7 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Đã gửi thông báo thanh toán hoàn tất"));
     }
 
+    //gửi thông báo khi đơn hàng được provider/admin chấp thuận
     @PostMapping("/booking/order-approved")
     public ResponseEntity<Map<String, String>> notifyOrderApproved(@RequestBody Map<String, Object> request) {
         String userId = (String) request.get("userId");
@@ -237,6 +242,7 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Đã gửi thông báo đơn hàng đã được chấp thuận"));
     }
 
+    //gửi thông báo khi đơn hàng bị provider/admin từ chối
     @PostMapping("/booking/order-rejected")
     public ResponseEntity<Map<String, String>> notifyOrderRejected(@RequestBody Map<String, Object> request) {
         String userId = (String) request.get("userId");
@@ -247,6 +253,8 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Đã gửi thông báo đơn hàng bị từ chối"));
     }
 
+
+    //gửi thông báo khi xe đã sẵn sàng để bàn giao cho user
     @PostMapping("/booking/vehicle-handover")
     public ResponseEntity<Map<String, String>> notifyVehicleHandover(@RequestBody Map<String, Object> request) {
         String userId = (String) request.get("userId");
@@ -258,6 +266,7 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Đã gửi thông báo bàn giao xe"));
     }
 
+    //gửi thông báo khi user nạp tiền vào wallet thành công
     @PostMapping("/wallet/topup-successful")
     public ResponseEntity<Map<String, String>> notifyTopupSuccessful(@RequestBody Map<String, Object> request) {
         String userId = (String) request.get("userId");

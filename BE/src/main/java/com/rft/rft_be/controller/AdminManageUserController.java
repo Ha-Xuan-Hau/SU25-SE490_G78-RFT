@@ -27,6 +27,7 @@ public class AdminManageUserController {
 
     // ==================== USER MANAGEMENT ENDPOINTS ====================
 
+    //Lấy danh sách tất cả users với filter và pagination
     @GetMapping
     public ResponseEntity<AdminUserListResponseDTO> getUsers(
             @RequestParam(required = false) String name,
@@ -52,6 +53,7 @@ public class AdminManageUserController {
         return ResponseEntity.ok(adminUserService.getUsers(searchDTO));
     }
 
+    //Lấy danh sách chỉ providers
     @GetMapping("/providers")
     public ResponseEntity<AdminUserListResponseDTO> getProviders(
             @RequestParam(required = false) String name,
@@ -76,11 +78,13 @@ public class AdminManageUserController {
         return ResponseEntity.ok(adminUserService.getProviders(searchDTO));
     }
 
+    //Lấy thông tin chi tiết 1 user (profile + payment data)
     @GetMapping("/{userId}")
     public ResponseEntity<AdminUserDetailDTO> getUserDetail(@PathVariable String userId) {
         return ResponseEntity.ok(adminUserService.getUserDetail(userId));
     }
 
+    // Cập nhật trạng thái user (ACTIVE/INACTIVE)
     @PutMapping("/{userId}/status")
     public ResponseEntity<AdminUserDetailDTO> updateUserStatus(
             @PathVariable String userId,
@@ -88,6 +92,7 @@ public class AdminManageUserController {
         return ResponseEntity.ok(adminUserService.updateUserStatus(userId, statusDTO));
     }
 
+    //Tìm kiếm users theo tên
     @GetMapping("/search/name")
     public ResponseEntity<AdminUserListResponseDTO> searchUsersByName(
             @RequestParam String name,
@@ -96,6 +101,7 @@ public class AdminManageUserController {
         return ResponseEntity.ok(adminUserService.searchUsersByName(name, page, size));
     }
 
+    //Tìm kiếm users theo email
     @GetMapping("/search/email")
     public ResponseEntity<AdminUserListResponseDTO> searchUsersByEmail(
             @RequestParam String email,
@@ -104,6 +110,7 @@ public class AdminManageUserController {
         return ResponseEntity.ok(adminUserService.searchUsersByEmail(email, page, size));
     }
 
+    //Tìm kiếm users theo trạng thái
     @GetMapping("/search/status")
     public ResponseEntity<AdminUserListResponseDTO> searchUsersByStatus(
             @RequestParam User.Status status,
@@ -114,6 +121,7 @@ public class AdminManageUserController {
 
     // ==================== NOTIFICATION MANAGEMENT ENDPOINTS ====================
 
+    //Lấy tất cả notifications của 1 user
     @GetMapping("/{userId}/notifications")
     public ResponseEntity<Map<String, Object>> getUserNotifications(
             @PathVariable String userId,
@@ -140,6 +148,7 @@ public class AdminManageUserController {
         return ResponseEntity.ok(response);
     }
 
+    //Lấy notifications chưa đọc của 1 user
     @GetMapping("/{userId}/notifications/unread")
     public ResponseEntity<Map<String, Object>> getUserUnreadNotifications(
             @PathVariable String userId,
@@ -166,6 +175,7 @@ public class AdminManageUserController {
         return ResponseEntity.ok(response);
     }
 
+    // Lấy thống kê notifications (total/unread/read)
     @GetMapping("/{userId}/notifications/count")
     public ResponseEntity<Map<String, Object>> getUserNotificationCounts(@PathVariable String userId) {
         Long totalNotifications = notificationRepository.countByReceiverId(userId);
