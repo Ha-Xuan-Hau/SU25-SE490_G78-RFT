@@ -378,6 +378,16 @@ public class BookingServiceImpl implements BookingService {
         }
         booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
+
+        Contract contract = new Contract();
+        contract.setUser(booking.getBookingDetails().get(0).getVehicle().getUser());
+        contract.setBooking(booking);
+        contract.setCostSettlement(booking.getTotalCost());
+        contract.setStatus(Contract.Status.PROCESSING);
+        contract.setCreatedAt(LocalDateTime.now());
+        contract.setUpdatedAt(LocalDateTime.now());
+
+        contractRepository.save(contract);
     }
 
     @Override
@@ -646,6 +656,7 @@ public class BookingServiceImpl implements BookingService {
                 .message("Hủy đơn đặt xe thành công")
                 .build();
     }
+
     private BigDecimal calculatePenalty(Booking booking) {
         if (booking.getPenaltyType() == Booking.PenaltyType.FIXED) {
             return booking.getPenaltyValue() != null ? booking.getPenaltyValue() : BigDecimal.ZERO;
