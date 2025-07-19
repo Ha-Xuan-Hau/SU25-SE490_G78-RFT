@@ -342,6 +342,19 @@ public class VehicleController {
         }
     }
 
-    // Sau cần chuyển sang VehicleRentController
+    @PostMapping("/available-thumb-quantity")
+    public ResponseEntity<AvailableVehicleQuantityOnlyDTO> getAvailableQuantityByThumb(
+            @RequestBody VehicleAvailabilityByThumbRequestDTO req) {
 
+        return ResponseEntity.ok(vehicleService.getQuantityOfAvailableVehiclesByThumb(
+                req.getThumb(), req.getProviderId(), req.getFrom(), req.getTo()));
+    }
+
+    @PostMapping("/available-thumb-list")
+    public ResponseEntity<AvailableVehicleListWithQuantityDTO> getAvailableListByThumb(
+            @RequestBody VehicleAvailabilityByThumbRequestDTO req) {
+
+        return ResponseEntity.ok(vehicleService.getListAndQuantityOfAvailableVehiclesByThumb(
+                req.getThumb(), req.getProviderId(), req.getFrom(), req.getTo()));
+    }
 }

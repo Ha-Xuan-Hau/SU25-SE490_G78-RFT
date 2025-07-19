@@ -774,4 +774,45 @@ public class VehicleServiceImpl implements VehicleService {
             throw new RuntimeException("Invalid enum value: " + e.getMessage());
         }
     }
+    @Override
+    public AvailableVehicleQuantityOnlyDTO getQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to) {
+        List<String> busyVehicleIds = bookedTimeSlotsRepository.findBusyVehicleIds(from, to);
+
+        List<Vehicle> availableVehicles = vehicleRepository
+                .findByThumbAndUserIdAndStatus(thumb, providerId, Vehicle.Status.AVAILABLE)
+                .stream()
+                .filter(v -> !busyVehicleIds.contains(v.getId()))
+                .toList();
+
+        int totalQuantity = availableVehicles.stream()
+                .mapToInt(v -> v.getNumberVehicle() != null ? v.getNumberVehicle() : 1)
+                .sum();
+
+        return AvailableVehicleQuantityOnlyDTO.builder()
+                .quantity(totalQuantity)
+                .build();
+    }
+    @Override
+    public AvailableVehicleListWithQuantityDTO getListAndQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to) {
+        List<String> busyVehicleIds = bookedTimeSlotsRepository.findBusyVehicleIds(from, to);
+
+        List<Vehicle> availableVehicles = vehicleRepository
+                .findByThumbAndUserIdAndStatus(thumb, providerId, Vehicle.Status.AVAILABLE)
+                .stream()
+                .filter(v -> !busyVehicleIds.contains(v.getId()))
+                .toList();
+
+        int totalQuantity = availableVehicles.stream()
+                .mapToInt(v -> v.getNumberVehicle() != null ? v.getNumberVehicle() : 1)
+                .sum();
+
+        List<VehicleGetDTO> data = availableVehicles.stream()
+                .map(vehicleMapper::vehicleGet)
+                .toList();
+
+        return AvailableVehicleListWithQuantityDTO.builder()
+                .quantity(totalQuantity)
+                .data(data)
+                .build();
+    }
 }
