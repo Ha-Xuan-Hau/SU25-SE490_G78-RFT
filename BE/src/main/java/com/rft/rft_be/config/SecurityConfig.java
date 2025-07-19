@@ -30,7 +30,7 @@ public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/**", "/api/penalties/**", "/api/payment/vn-pay-callback",
-            "/api/payment/topUpCallBack"
+            "/api/payment/topUpCallBack","/api/notifications/**"
     };
     @Value("${jwt.signerKey}")
     private String signerKey;

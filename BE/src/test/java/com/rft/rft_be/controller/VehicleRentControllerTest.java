@@ -423,7 +423,7 @@ public class VehicleRentControllerTest {
     @Test
     @WithMockUser(username = "testuser", roles = {"PROVIDER"})
     void getUserVehicles_success() throws Exception {
-        var pageResponse = new PageResponseDTO<com.rft.rft_be.dto.vehicle.VehicleDTO>();
+        var pageResponse = new PageResponseDTO<com.rft.rft_be.dto.vehicle.VehicleGetDTO>();
         Mockito.when(vehicleRentService.getProviderCar(Mockito.anyInt(), Mockito.anyInt(), Mockito.anyString(), Mockito.anyString()))
                 .thenReturn(pageResponse);
         mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/my-vehicles")
