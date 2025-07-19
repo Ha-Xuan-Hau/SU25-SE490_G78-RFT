@@ -22,4 +22,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
 
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.receiver.id = :receiverId AND n.isRead = false AND n.isDeleted = false")
     Long countUnreadByReceiverId(@Param("receiverId") String receiverId);
+    
+    // Admin methods
+    Page<Notification> findByReceiverId(String receiverId, Pageable pageable);
+    Page<Notification> findByReceiverIdAndIsReadFalse(String receiverId, Pageable pageable);
+    Long countByReceiverId(String receiverId);
+    Long countByReceiverIdAndIsReadFalse(String receiverId);
 }
