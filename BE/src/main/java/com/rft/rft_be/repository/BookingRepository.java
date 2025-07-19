@@ -128,4 +128,9 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
             @Param("timeBookingEnd") LocalDateTime timeBookingEnd,
             @Param("statusList") List<Booking.Status> statusList
     );
+    
+    // Admin methods
+    Long countByUserId(String userId);
+    
+    Long countByUserIdAndStatus(String userId, Booking.Status status);
 }
