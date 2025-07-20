@@ -23,7 +23,7 @@ public interface VehicleRentService {
    PageResponseDTO<VehicleThumbGroupDTO> getProviderCarGrouped(int page, int size, String sortBy, String sortDir);
     PageResponseDTO<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb(int page, int size, String sortBy, String sortDir);
     PageResponseDTO<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb(int page, int size, String sortBy, String sortDir);
-    VehicleGetDTO createOrUpdateVehicleWithNumberVehicle(VehicleRentCreateDTO request);
+    List<VehicleGetDTO> createMotorbie_Bicycle(VehicleRentCreateDTO request);
     VehicleGetDTO updateCommonVehicleInfo(String vehicleId, VehicleRentUpdateDTO request);
     VehicleGetDTO updateSpecificVehicleInfo(String vehicleId, VehicleRentUpdateDTO request);
 }
