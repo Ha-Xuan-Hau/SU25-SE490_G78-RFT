@@ -159,7 +159,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .costPerDay(request.getCostPerDay())
                 .haveDriver(parseHaveDriver(request.getHaveDriver()))
                 .thumb(request.getThumb())
-                .status(Vehicle.Status.AVAILABLE)
+                .status(Vehicle.Status.PENDING)
                 .totalRatings(0)
                 .likes(0)
                 .build();
