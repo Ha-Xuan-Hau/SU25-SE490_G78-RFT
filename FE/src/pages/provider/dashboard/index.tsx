@@ -1,10 +1,7 @@
 import UserProfileCard from "./_component/user-profile-card";
-import CarStatsCard from "./_component/car-stats-card";
 import OrderIncomeCard from "./_component/order-income-card";
 import BusinessRegistrationCard from "./_component/business-registration-card";
-import { Car, Key, Gauge, CarFront } from "lucide-react";
 import ProviderLayout from "@/layouts/ProviderLayout";
-import CarStatsGridCard from "./_component/car-stats-grid-card";
 import StatisticsChart from "./_component/statistic-chart";
 
 export default function ProviderDashboard() {
@@ -26,4 +23,4 @@ export default function ProviderDashboard() {
   );
 }
 
-ProviderDashboard.layout = ProviderLayout;
+ProviderDashboard.Layout = ProviderLayout;

@@ -1,7 +1,7 @@
 // Bộ từ điển dịch tiếng Anh sang tiếng Việt cho các đặc điểm xe, tiện nghi, ...
 export const viDictionary: Record<string, string> = {
-  AUTOMATIC: "Tự động",
-  MANUAL: "Số tay",
+  AUTOMATIC: "Hộp số tự động",
+  MANUAL: "Hộp số sàn",
   GASOLINE: "Xăng",
   DIESEL: "Dầu diesel",
   ELECTRIC: "Điện",
@@ -13,13 +13,21 @@ export const viDictionary: Record<string, string> = {
   "5 Seats": "5 Ghế ngồi",
   "4 Seats": "4 Ghế ngồi",
   "7 Seats": "7 Ghế ngồi",
-  Car: "Xe ô tô",
-  Motorbike: "Xe máy",
-  Bicycle: "Xe đạp",
+  CAR: "Xe ô tô",
+  MOTORBIKE: "Xe máy",
+  BICYCLE: "Xe đạp",
   Seat: "Ghế ngồi",
   Fuel: "Nhiên liệu",
   Transmission: "Hộp số",
+
+  CANCELLED: "Đã hủy",
   UNPAID: "Chưa thanh toán",
+  PENDING: "Đang chờ",
+  CONFIRMED: "Đã xác nhận",
+  DELIVERED: "Đã giao",
+  RECEIVED_BY_CUSTOMER: "Đã nhận bởi khách hàng",
+  RETURNED: "Đã trả",
+  COMPLETED: "Đã hoàn thành",
 };
 
 export function translateENtoVI(text: string): string {

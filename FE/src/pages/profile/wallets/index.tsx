@@ -20,12 +20,14 @@ import {
   InputNumber,
   Tooltip,
   Spin,
-  message,
+  Row,
+  Col,
 } from "antd";
 import {
   EyeOutlined,
   UploadOutlined,
   DownloadOutlined,
+  WalletOutlined,
 } from "@ant-design/icons";
 import { bankCard } from "@/types/bankCard";
 import RegisterBankCardModal from "@/components/RegisterBankCardModal";
@@ -238,253 +240,355 @@ export default function UserWalletsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-96">
-        <Spin size="large" />
+      <div className="min-h-[400px] flex justify-center items-center">
+        <div className="text-center">
+          <Spin size="large" />
+          <p className="mt-4 text-gray-600">Đang tải thông tin ví...</p>
+        </div>
       </div>
     );
   }
+
   return (
     <>
-      <Card className="rounded-lg p-8">
-        <div className="wallet-page">
-          <div className="mb-6 flex items-center justify-between">
-            <Title level={4} className="m-0">
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <WalletOutlined className="text-green-600 text-lg" />
+            </div>
+            <Title level={4} className="m-0 text-gray-900">
               Tài Khoản RFT Của Tôi
             </Title>
           </div>
 
+          <p className="text-gray-600 text-sm">
+            Quản lý tài khoản và thực hiện các giao dịch nạp/rút tiền
+          </p>
+        </div>
+
+        {/* Content Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {cards.length > 0 ? (
-            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+            <div className="divide-y divide-gray-100">
               {cards.map((card) => (
                 <div
                   key={card.id}
-                  className="border-b border-gray-100 last:border-0 p-4 hover:bg-gray-50"
+                  className="p-6 hover:bg-gray-50 transition-colors duration-200"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center">
-                    <div className="flex-grow">
-                      {!card.bankAccountNumber ||
-                      !card.bankAccountName ||
-                      !card.bankAccountType ? (
-                        <div className="text-orange-500 font-medium mb-2">
-                          Bạn chưa thiết lập thông tin thẻ ngân hàng
+                  <Row gutter={[16, 16]} align="middle">
+                    {/* Card Info */}
+                    <Col xs={24} lg={14}>
+                      <div className="space-y-3">
+                        {!card.bankAccountNumber ||
+                        !card.bankAccountName ||
+                        !card.bankAccountType ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <span className="text-orange-500 font-medium">
+                              Bạn chưa thiết lập thông tin thẻ ngân hàng
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="text-gray-900 font-medium">
+                                {card.bankAccountName ?? ""} -{" "}
+                                {card.bankAccountType ?? ""}
+                              </span>
+                            </div>
+                            <div className="ml-4 text-gray-600 font-mono">
+                              {formatCardNumber(card.bankAccountNumber)}
+                            </div>
+                          </>
+                        )}
+                        <div className="ml-4">
+                          <span className="text-sm text-gray-500">
+                            Số dư hiện tại:{" "}
+                          </span>
+                          <span className="text-green-600 font-semibold text-lg">
+                            {formatCurrency(card.balance)}
+                          </span>
                         </div>
-                      ) : (
-                        <>
-                          <div className="mt-1 text-gray-700">
-                            {card.bankAccountName ?? ""} -{" "}
-                            {card.bankAccountType ?? ""}
-                          </div>
-                          <div className="mt-1 text-gray-700">
-                            {formatCardNumber(card.bankAccountNumber)}
-                          </div>
-                        </>
-                      )}
-                      <div className="mt-1 text-green-600 font-medium">
-                        Số dư: {formatCurrency(card.balance)}
                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3 md:mt-0">
-                      <Tooltip title="Xem thẻ">
-                        <Button
-                          icon={<EyeOutlined />}
-                          onClick={() => handleViewCard(card)}
-                          className="flex items-center"
-                        >
-                          Xem thẻ
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Nạp tiền">
-                        <Button
-                          icon={<UploadOutlined />}
-                          onClick={(e) => handleOpenDepositModal(card, e)}
-                          type="primary"
-                          className="flex items-center bg-green-500 hover:bg-green-600 border-none"
-                        >
-                          Nạp tiền
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Gửi yêu cầu rút tiền">
-                        <Button
-                          icon={<DownloadOutlined />}
-                          onClick={(e) => handleOpenWithdrawModal(card, e)}
-                          type="primary"
-                          danger
-                          className="flex items-center"
-                        >
-                          Rút tiền
-                        </Button>
-                      </Tooltip>
-                    </div>
-                  </div>
+                    </Col>
+
+                    {/* Action Buttons */}
+                    <Col xs={24} lg={10}>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                        <Tooltip title="Xem thông tin thẻ">
+                          <Button
+                            icon={<EyeOutlined />}
+                            onClick={() => handleViewCard(card)}
+                            className="flex items-center justify-center"
+                          >
+                            <span className="hidden sm:inline ml-1">
+                              Xem thẻ
+                            </span>
+                          </Button>
+                        </Tooltip>
+
+                        <Tooltip title="Nạp tiền vào tài khoản">
+                          <Button
+                            icon={<UploadOutlined />}
+                            onClick={(e) => handleOpenDepositModal(card, e)}
+                            type="primary"
+                            className="flex items-center justify-center bg-green-500 hover:bg-green-600 border-none"
+                          >
+                            <span className="hidden sm:inline ml-1">
+                              Nạp tiền
+                            </span>
+                          </Button>
+                        </Tooltip>
+
+                        <Tooltip title="Gửi yêu cầu rút tiền">
+                          <Button
+                            icon={<DownloadOutlined />}
+                            onClick={(e) => handleOpenWithdrawModal(card, e)}
+                            type="primary"
+                            danger
+                            className="flex items-center justify-center"
+                          >
+                            <span className="hidden sm:inline ml-1">
+                              Rút tiền
+                            </span>
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    </Col>
+                  </Row>
                 </div>
               ))}
             </div>
           ) : (
-            <Empty
-              description="Bạn chưa có tài khoản RFT nào"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            ></Empty>
+            <div className="p-12">
+              <Empty
+                description={
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Chưa có tài khoản RFT
+                    </h3>
+                    <p className="text-gray-600">
+                      Bạn chưa có tài khoản RFT nào trong hệ thống
+                    </p>
+                  </div>
+                }
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                imageStyle={{ height: 120 }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <RegisterBankCardModal
+        visible={isModalVisible}
+        onCancel={handleCloseModal}
+        onSave={handleSaveCard}
+        card={currentCard}
+        mode={modalMode}
+      />
+
+      {/* Modal nạp tiền */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <UploadOutlined className="text-green-500" />
+            <span>Nạp Tiền Vào Tài Khoản</span>
+          </div>
+        }
+        open={isDepositModalVisible}
+        onCancel={handleCloseDepositModal}
+        footer={null}
+        width={500}
+        centered
+      >
+        <Form
+          form={depositForm}
+          layout="vertical"
+          onFinish={handleTopUp}
+          initialValues={{ amount: null }}
+        >
+          {currentCard && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">
+                Thông tin tài khoản
+              </h4>
+              <div className="space-y-1 text-sm text-gray-600">
+                <p>
+                  <span className="font-medium">Loại tài khoản:</span>{" "}
+                  {currentCard.bankAccountType ?? ""}
+                </p>
+                <p>
+                  <span className="font-medium">Chủ thẻ:</span>{" "}
+                  {currentCard.bankAccountName ?? ""}
+                </p>
+                <p>
+                  <span className="font-medium">Số tài khoản:</span>{" "}
+                  {formatCardNumber(currentCard.bankAccountNumber)}
+                </p>
+                <p className="text-green-600 font-medium">
+                  <span className="text-gray-600 font-normal">
+                    Số dư hiện tại:
+                  </span>{" "}
+                  {formatCurrency(currentCard.balance)}
+                </p>
+              </div>
+            </div>
           )}
 
-          <RegisterBankCardModal
-            visible={isModalVisible}
-            onCancel={handleCloseModal}
-            onSave={handleSaveCard}
-            card={currentCard}
-            mode={modalMode}
-          />
-
-          {/* Modal nạp tiền */}
-          <Modal
-            title="Nạp Tiền Vào Tài Khoản"
-            open={isDepositModalVisible}
-            onCancel={handleCloseDepositModal}
-            footer={null}
+          <Form.Item
+            label="Số tiền nạp"
+            name="amount"
+            rules={[
+              {
+                required: true,
+                message: "Vui lòng nhập số tiền",
+              },
+              {
+                type: "number",
+                max: 10000000,
+                message: "Số tiền tối đa là 10.000.000 VNĐ",
+              },
+            ]}
+            extra="Giới hạn 1 lần nạp là 10.000.000 VNĐ, nhập quá sẽ tự chuyển thành 10.000.000 VNĐ"
           >
-            <Form
-              form={depositForm}
-              layout="vertical"
-              onFinish={handleTopUp}
-              initialValues={{ amount: null }}
-            >
-              {currentCard && (
-                <div className="mb-4">
-                  <p className="font-medium">
-                    {currentCard.bankAccountType ?? ""}
-                  </p>
-                  <p>Chủ thẻ: {currentCard.bankAccountName ?? ""}</p>
-                  <p>
-                    Số tài khoản:{" "}
-                    {formatCardNumber(currentCard.bankAccountNumber)}
-                  </p>
-                  <p className="text-green-600">
-                    Số dư hiện tại: {formatCurrency(currentCard.balance)}
-                  </p>
-                </div>
-              )}
-              <Form.Item
-                label="Giới hạn 1 lần nạp là 10.000.000 VNĐ, nhập quá sẽ tự chuyển thành 10.000.000 VNĐ"
-                name="amount"
-                rules={[
-                  {
-                    required: true,
-                    message: "Vui lòng nhập số tiền",
-                  },
-                  {
-                    type: "number",
-                    max: 10000000,
-                    message: "Số tiền tối đa là 10.000.000 VNĐ",
-                  },
-                ]}
-              >
-                <InputNumber
-                  min={10000}
-                  max={10000000}
-                  placeholder="Nhập số tiền cần nạp"
-                  style={{ width: "100%" }}
-                  formatter={(value) =>
-                    `₫ ${value}`.replace(/\B(?=(?:\d{3})+(?!\d))/g, ".")
-                  }
-                  parser={numberParser}
-                />
-              </Form.Item>
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  className="bg-green-500 hover:bg-green-600 border-none"
-                  block
-                  loading={topUpLoading}
-                >
-                  Xác Nhận Nạp Tiền
-                </Button>
-              </Form.Item>
-            </Form>
-          </Modal>
+            <InputNumber
+              min={10000}
+              max={10000000}
+              placeholder="Nhập số tiền cần nạp"
+              style={{ width: "100%" }}
+              size="large"
+              formatter={(value) =>
+                `₫ ${value}`.replace(/\B(?=(?:\d{3})+(?!\d))/g, ".")
+              }
+              parser={numberParser}
+            />
+          </Form.Item>
 
-          {/* Modal rút tiền */}
-          <Modal
-            title="Rút Tiền Từ Tài Khoản"
-            open={isWithdrawModalVisible}
-            onCancel={handleCloseWithdrawModal}
-            footer={null}
-          >
-            <Form
-              form={withdrawForm}
-              layout="vertical"
-              onFinish={handleWithdraw}
-              initialValues={{ amount: null }}
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              className="bg-green-500 hover:bg-green-600 border-none"
+              size="large"
+              block
+              loading={topUpLoading}
+              icon={<UploadOutlined />}
             >
-              {currentCard && (
-                <div className="mb-4">
-                  <p className="font-medium">
-                    {currentCard.bankAccountType ?? ""}
-                  </p>
-                  <p>Chủ thẻ: {currentCard.bankAccountName ?? ""}</p>
-                  <p>
-                    Số tài khoản:{" "}
-                    {formatCardNumber(currentCard.bankAccountNumber)}
-                  </p>
-                  <p className="text-green-600">
-                    Số dư hiện tại: {formatCurrency(currentCard.balance)}
-                  </p>
-                </div>
-              )}
-              <Form.Item
-                label="Số Tiền"
-                name="amount"
-                rules={[
-                  {
-                    required: true,
-                    message: "Vui lòng nhập số tiền",
-                  },
-                  {
-                    type: "number",
-                    max: 10000000,
-                    message: "Số tiền tối đa là 10.000.000 VNĐ",
-                  },
-                  () => ({
-                    validator(_, value) {
-                      if (
-                        currentCard &&
-                        typeof value === "number" &&
-                        value > (currentCard.balance ?? 0)
-                      ) {
-                        return Promise.reject(
-                          "Số dư không đủ để thực hiện giao dịch này"
-                        );
-                      }
-                      return Promise.resolve();
-                    },
-                  }),
-                ]}
-              >
-                <InputNumber
-                  min={10000}
-                  max={10000000}
-                  placeholder="Nhập số tiền cần rút"
-                  style={{ width: "100%" }}
-                  formatter={(value) =>
-                    `₫ ${value}`.replace(/\B(?=(?:\d{3})+(?!\d))/g, ".")
+              Xác Nhận Nạp Tiền
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal rút tiền */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <DownloadOutlined className="text-red-500" />
+            <span>Rút Tiền Từ Tài Khoản</span>
+          </div>
+        }
+        open={isWithdrawModalVisible}
+        onCancel={handleCloseWithdrawModal}
+        footer={null}
+        width={500}
+        centered
+      >
+        <Form
+          form={withdrawForm}
+          layout="vertical"
+          onFinish={handleWithdraw}
+          initialValues={{ amount: null }}
+        >
+          {currentCard && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">
+                Thông tin tài khoản
+              </h4>
+              <div className="space-y-1 text-sm text-gray-600">
+                <p>
+                  <span className="font-medium">Loại tài khoản:</span>{" "}
+                  {currentCard.bankAccountType ?? ""}
+                </p>
+                <p>
+                  <span className="font-medium">Chủ thẻ:</span>{" "}
+                  {currentCard.bankAccountName ?? ""}
+                </p>
+                <p>
+                  <span className="font-medium">Số tài khoản:</span>{" "}
+                  {formatCardNumber(currentCard.bankAccountNumber)}
+                </p>
+                <p className="text-green-600 font-medium">
+                  <span className="text-gray-600 font-normal">
+                    Số dư hiện tại:
+                  </span>{" "}
+                  {formatCurrency(currentCard.balance)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Form.Item
+            label="Số tiền rút"
+            name="amount"
+            rules={[
+              {
+                required: true,
+                message: "Vui lòng nhập số tiền",
+              },
+              {
+                type: "number",
+                max: 10000000,
+                message: "Số tiền tối đa là 10.000.000 VNĐ",
+              },
+              () => ({
+                validator(_, value) {
+                  if (
+                    currentCard &&
+                    typeof value === "number" &&
+                    value > (currentCard.balance ?? 0)
+                  ) {
+                    return Promise.reject(
+                      "Số dư không đủ để thực hiện giao dịch này"
+                    );
                   }
-                  parser={numberParser}
-                />
-              </Form.Item>
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  danger
-                  block
-                  loading={topUpLoading}
-                >
-                  Xác Nhận Rút Tiền
-                </Button>
-              </Form.Item>
-            </Form>
-          </Modal>
-        </div>
-      </Card>
+                  return Promise.resolve();
+                },
+              }),
+            ]}
+          >
+            <InputNumber
+              min={10000}
+              max={10000000}
+              placeholder="Nhập số tiền cần rút"
+              style={{ width: "100%" }}
+              size="large"
+              formatter={(value) =>
+                `₫ ${value}`.replace(/\B(?=(?:\d{3})+(?!\d))/g, ".")
+              }
+              parser={numberParser}
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              danger
+              size="large"
+              block
+              loading={topUpLoading}
+              icon={<DownloadOutlined />}
+            >
+              Xác Nhận Rút Tiền
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 }

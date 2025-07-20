@@ -18,5 +18,11 @@ public interface RatingRepository extends JpaRepository<Rating, String> {
     @Query("SELECT r FROM Rating r JOIN FETCH r.user WHERE r.vehicle.id = :vehicleId")
     List<Rating> findAllWithUserByVehicleId(@Param("vehicleId") String vehicleId);
     Optional<Rating> findByBookingIdAndVehicleId(String bookingId, String vehicleId);
+    
+    // Admin methods
+    @Query("SELECT AVG(r.star) FROM Rating r WHERE r.user.id = :userId")
+    Double findAverageRatingByUserId(@Param("userId") String userId);
+    
+    Long countByUserId(String userId);
 
 }

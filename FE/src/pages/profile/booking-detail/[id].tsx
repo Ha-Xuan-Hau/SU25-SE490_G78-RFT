@@ -1,281 +1,294 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { Image, Space, Divider, Table } from "antd";
+import { Divider, Card, Tag, Spin, Alert } from "antd";
 import {
-  ContainerOutlined,
-  DownloadOutlined,
-  RotateLeftOutlined,
-  RotateRightOutlined,
-  SwapOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined,
+  CalendarOutlined,
   UserOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
   CarOutlined,
-  SettingOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import moment from "moment";
 import { formatCurrency } from "@/lib/format-currency";
-import { showSuccess, showError } from "@/utils/toast.utils";
-
-// Mock data for car123
-const mockBookingData = {
-  result: {
-    _id: "booking123",
-    carId: {
-      _id: "car123",
-      model: {
-        name: "Toyota Camry",
-      },
-      yearManufacture: 2022,
-      thumb: "/images/demo1.png",
-      cost: 800000,
-      numberSeat: 5,
-      numberCar: "30A-12345",
-      transmissions: "Số tự động",
-    },
-    timeBookingStart: "2023-06-15T00:00:00.000Z",
-    timeBookingEnd: "2023-06-20T00:00:00.000Z",
-    totalCost: 4000000,
-    status: "Đã duyệt",
-    address: "123 Đường Lê Lợi, Quận 1, TP.HCM",
-    phone: "0987654321",
-    bookBy: {
-      fullname: "Nguyễn Văn A",
-      address: "456 Đường Nguyễn Huệ, Quận 1, TP.HCM",
-    },
-    contract: {
-      status: "Đã tất toán",
-      images: [
-        "/images/demo1.png",
-        "/images/contract1.jpg",
-        "/images/contract2.jpg",
-      ],
-    },
-  },
-};
+import { getBookingDetail } from "@/apis/booking.api";
+import { BookingDetail } from "@/types/booking";
+import { translateENtoVI } from "@/lib/viDictionary";
 
 export default function BookingDetailPage() {
   const router = useRouter();
-  const bookingId = router.query.id;
+  const bookingId = router.query.id as string;
+  const [data, setData] = useState<BookingDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data instead of API call
-  const data = mockBookingData;
-  const src = data?.result?.carId?.thumb;
-  const [isPreviewVisible, setPreviewVisible] = useState(false);
+  useEffect(() => {
+    if (!bookingId) return;
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await getBookingDetail(bookingId);
+        setData(res as BookingDetail);
+      } catch (err) {
+        setError("Không thể tải thông tin đơn đặt xe");
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [bookingId]);
 
-  const onDownload = () => {
-    if (!src) {
-      showError("Không có hình ảnh để tải xuống!");
-      return;
+  const formatDateTime = (dateValue: string | number[]) => {
+    if (Array.isArray(dateValue)) {
+      return moment({
+        year: dateValue[0],
+        month: dateValue[1] - 1,
+        day: dateValue[2],
+        hour: dateValue[3],
+        minute: dateValue[4],
+        second: dateValue[5] || 0,
+      }).format("DD/MM/YYYY HH:mm");
     }
-
-    try {
-      // This is a mock implementation
-      const link = document.createElement("a");
-      link.href = src;
-      link.download = "booking-image.png";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      showSuccess("Tải xuống hình ảnh thành công!");
-    } catch (error) {
-      showError("Có lỗi xảy ra khi tải xuống hình ảnh!");
-    }
+    return dateValue ? moment(dateValue).format("DD/MM/YYYY HH:mm") : "";
   };
 
+  const getStatusColor = (status: string) => {
+    const statusColors: { [key: string]: string } = {
+      PENDING: "orange",
+      CONFIRMED: "blue",
+      IN_PROGRESS: "purple",
+      COMPLETED: "green",
+      CANCELLED: "red",
+    };
+    return statusColors[status] || "default";
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spin size="large" tip="Đang tải thông tin..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Alert
+          message="Lỗi"
+          description={error}
+          type="error"
+          showIcon
+          action={
+            <button
+              onClick={() => router.back()}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Quay lại
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
-    <section>
-      <div className="flex flex-col my-6 py-2 max-w-6xl mx-auto">
-        <p className="flex justify-center items-center text-2xl font-bold mt-0 mb-8">
-          Thông tin chi tiết
-        </p>
-        <div className="flex flex-row w-full gap-4">
-          <div className="flex flex-col bg-neutral-50 p-4 ml-5 mr-5 w-1/2 shadow-xl rounded-lg">
-            <div className="flex p-4">
-              <Image
-                width={200}
-                src={src}
-                preview={{
-                  toolbarRender: (
-                    _,
-                    {
-                      transform: { scale },
-                      actions: {
-                        onFlipY,
-                        onFlipX,
-                        onRotateLeft,
-                        onRotateRight,
-                        onZoomOut,
-                        onZoomIn,
-                      },
-                    }
-                  ) => (
-                    <Space size={12} className="toolbar-wrapper">
-                      <SwapOutlined rotate={90} onClick={onFlipY} />
-                      <SwapOutlined onClick={onFlipX} />
-                      <RotateLeftOutlined onClick={onRotateLeft} />
-                      <RotateRightOutlined onClick={onRotateRight} />
-                      <ZoomOutOutlined
-                        disabled={scale === 1}
-                        onClick={onZoomOut}
-                      />
-                      <ZoomInOutlined
-                        disabled={scale === 50}
-                        onClick={onZoomIn}
-                      />
-                    </Space>
-                  ),
-                }}
-              />
-              <div className="flex flex-col ml-5 justify-between">
-                <h2 className="text-green-500 font-semibold">
-                  {data?.result?.carId?.model?.name}{" "}
-                  {data?.result?.carId?.yearManufacture}
-                </h2>
-                <span className="flex items-center text-base font-semibold">
-                  <UserOutlined className="mr-2 text-green-500" />
-                  {data?.result?.carId?.numberSeat} ghế
-                </span>
-                <span className="flex items-center text-base font-semibold">
-                  <CarOutlined className="mr-2 text-green-500" />
-                  {data?.result?.carId?.numberCar}
-                </span>
-                <span className="flex items-center text-base font-semibold">
-                  <SettingOutlined className="mr-2 text-green-500" />
-                  {data?.result?.carId?.transmissions}
-                </span>
-              </div>
-            </div>
-            <Divider className="m-0 w-full border-1 border-gray-400" />
-            <div className="flex flex-col">
-              <div className="grid grid-cols-2 gap-4 ml-5"></div>
-
-              <div className="flex flex-col items-center w-full ">
-                <div className="p-4 w-full">
-                  <h3 className="mt-0">Địa điểm giao xe</h3>
-                  <span className="font-medium text-gray-800">
-                    {data?.result?.address}
-                  </span>
-                </div>
-                <Divider className="m-0 w-full border-1 border-gray-400" />
-
-                <div className="w-full p-4">
-                  <h3 className="mt-0">Thông tin người nhận</h3>
-                  <span className="font-medium text-gray-800 text-sm">
-                    Tên: {data?.result?.bookBy?.fullname}
-                  </span>
-                  <p className="font-medium text-gray-800">
-                    Số điện thoại: {data?.result?.phone}
-                  </p>
-                  <p className="font-medium text-gray-800">
-                    Địa chỉ: {data?.result?.bookBy?.address}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 p-9 bg-neutral-50 shadow-xl rounded-lg w-1/2">
-            <Table
-              className="bg-transparent [&_.ant-table]:bg-transparent [&_.ant-table-thead>tr>th]:border-b-gray-400 [&_.ant-table-tbody>tr>td]:border-b-gray-400"
-              columns={[
-                { dataIndex: "label" },
-                { dataIndex: "price", className: "text-right" },
-              ]}
-              bordered={false}
-              showHeader={false}
-              pagination={false}
-              rowKey={(row) => row.label}
-              dataSource={[
-                {
-                  label: "Ngày nhận xe",
-                  price: moment(data?.result?.timeBookingStart).format(
-                    "DD-MM-YYYY"
-                  ),
-                },
-                {
-                  label: "Ngày trả xe",
-                  price: moment(data?.result?.timeBookingEnd).format(
-                    "DD-MM-YYYY"
-                  ),
-                },
-                {
-                  label: "Đơn giá thuê",
-                  price: formatCurrency(data?.result?.carId?.cost) + "/ngày",
-                },
-                {
-                  label: "Phương thức thanh toán",
-                  price: "VNPay",
-                },
-              ]}
-            />
-            <div className="pl-4 flex items-center justify-between m-0">
-              <h3 className="text-green-500 text-lg m-0">Tổng giá thuê:</h3>
-              <h3 className="text-green-500 text-lg m-0">
-                {formatCurrency(data?.result?.totalCost)}
-              </h3>
-            </div>
-            {data?.result?.contract && (
-              <Image.PreviewGroup
-                preview={{
-                  visible: isPreviewVisible,
-                  onChange: (current, prev) =>
-                    console.log(
-                      `current index: ${current}, prev index: ${prev}`
-                    ),
-                  onVisibleChange: (visible) => setPreviewVisible(visible),
-                  toolbarRender: (
-                    _,
-                    {
-                      transform: { scale },
-                      actions: {
-                        onFlipY,
-                        onFlipX,
-                        onRotateLeft,
-                        onRotateRight,
-                        onZoomOut,
-                        onZoomIn,
-                      },
-                    }
-                  ) => (
-                    <Space size={12} className="toolbar-wrapper">
-                      <SwapOutlined rotate={90} onClick={onFlipY} />
-                      <SwapOutlined onClick={onFlipX} />
-                      <DownloadOutlined onClick={onDownload} />
-                      <RotateLeftOutlined onClick={onRotateLeft} />
-                      <RotateRightOutlined onClick={onRotateRight} />
-                      <ZoomOutOutlined
-                        disabled={scale === 1}
-                        onClick={onZoomOut}
-                      />
-                      <ZoomInOutlined
-                        disabled={scale === 50}
-                        onClick={onZoomIn}
-                      />
-                    </Space>
-                  ),
-                }}
-              >
-                <div className="pl-4 flex justify-end">
-                  <a
-                    className="text-base cursor-pointer"
-                    onClick={() => setPreviewVisible(!isPreviewVisible)}
-                  >
-                    <ContainerOutlined className="mr-1" />
-                    Xem hợp đồng
-                  </a>
-                </div>
-                <div className="hidden">
-                  {data?.result?.contract?.images.map((src, idx) => (
-                    <Image key={idx} src={src} />
-                  ))}
-                </div>
-              </Image.PreviewGroup>
-            )}
+    <div className="min-h-screen bg-gray-50 py-6 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Chi tiết đơn đặt xe
+          </h1>
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <Tag
+              color={getStatusColor(data?.status || "")}
+              className="text-base px-3 py-1"
+            >
+              {translateENtoVI(data?.status || "")}
+            </Tag>
+            <span className="text-gray-500">
+              Mã đơn: {data?.codeTransaction}
+            </span>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Thông tin xe thuê */}
+          <Card
+            title={
+              <div className="flex items-center gap-2">
+                <CarOutlined className="text-blue-500" />
+                <span>
+                  Thông tin xe thuê ({data?.vehicles?.length || 0} xe)
+                </span>
+              </div>
+            }
+            className="shadow-lg"
+          >
+            <div className="space-y-4">
+              {data?.vehicles?.map((vehicle, index) => (
+                <div
+                  key={vehicle.id}
+                  className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                  onClick={() =>
+                    window.open(`/vehicles/${vehicle.id}`, "_blank")
+                  }
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-sm">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-lg text-gray-800">
+                          {vehicle.thumb}
+                        </h4>
+                        <p className="text-gray-600">
+                          <Tag color="blue">
+                            {translateENtoVI(vehicle.vehicleTypes)}
+                          </Tag>
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Biển số:{" "}
+                          <span className="font-mono font-medium">
+                            {vehicle.licensePlate}
+                          </span>
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Chủ xe: {vehicle.user.fullName}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-green-600">
+                        {formatCurrency(vehicle.costPerDay)}/ngày
+                      </div>
+                      <Tag
+                        color={vehicle.status === "AVAILABLE" ? "green" : "red"}
+                        className="mt-1"
+                      >
+                        {vehicle.status === "AVAILABLE"
+                          ? "Đang hoạt động"
+                          : "Không hoạt động"}
+                      </Tag>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Thông tin đặt xe */}
+          <Card
+            title={
+              <div className="flex items-center gap-2">
+                <FileTextOutlined className="text-green-500" />
+                <span>Thông tin đặt xe</span>
+              </div>
+            }
+            className="shadow-lg"
+          >
+            <div className="space-y-6">
+              {/* Thông tin khách hàng */}
+              <div>
+                <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
+                  <UserOutlined className="text-blue-500" />
+                  Thông tin khách hàng
+                </h4>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <UserOutlined className="text-gray-400" />
+                    <span className="font-medium">{data?.user?.fullName}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <PhoneOutlined className="text-gray-400" />
+                    <span>{data?.phoneNumber}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <EnvironmentOutlined className="text-gray-400 mt-1" />
+                    <span className="text-sm">{data?.user?.address}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Divider />
+
+              {/* Địa điểm giao xe */}
+              <div>
+                <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
+                  <EnvironmentOutlined className="text-green-500" />
+                  Địa điểm giao xe
+                </h4>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <span className="text-gray-700">{data?.address}</span>
+                </div>
+              </div>
+
+              <Divider />
+
+              {/* Chi tiết đơn hàng */}
+              <div>
+                <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
+                  <CalendarOutlined className="text-orange-500" />
+                  Chi tiết đơn hàng
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Mã đơn hàng:</span>
+                    <span className="font-mono font-medium">{data?.id}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Ngày nhận xe:</span>
+                    <span className="font-medium text-blue-600">
+                      {formatDateTime(data?.timeBookingStart || "")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Ngày trả xe:</span>
+                    <span className="font-medium text-blue-600">
+                      {formatDateTime(data?.timeBookingEnd || "")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Ngày tạo đơn:</span>
+                    <span className="font-medium">
+                      {formatDateTime(data?.createdAt || "")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <Divider />
+
+              {/* Tổng giá */}
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-xl font-bold text-gray-800">
+                    <h2 className="text-green-500" />
+                    Tổng giá thuê:
+                  </h3>
+                  <h3 className="text-2xl font-bold text-green-600">
+                    {data?.totalCost ? formatCurrency(data.totalCost) : "0 ₫"}
+                  </h3>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Back button */}
+        <div className="text-center mt-8">
+          <button
+            onClick={() => router.back()}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors"
+          >
+            Quay lại
+          </button>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

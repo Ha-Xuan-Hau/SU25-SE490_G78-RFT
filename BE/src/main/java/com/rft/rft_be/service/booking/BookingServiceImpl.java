@@ -200,15 +200,16 @@ public class BookingServiceImpl implements BookingService {
         boolean is24h = openTime.equals(LocalTime.MIDNIGHT) && closeTime.equals(LocalTime.MIDNIGHT);
 
         if (!is24h) {
-            if (startTime.isBefore(openTime) || !startTime.isBefore(closeTime)) {
+            if (startTime.isBefore(openTime) || startTime.isAfter(closeTime)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Giờ bắt đầu phải trong khoảng %s đến %s", openTime, closeTime.minusMinutes(1)));
+                        String.format("Giờ bắt đầu phải trong khoảng %s đến %s", openTime, closeTime));
             }
-            if (endTime.isAfter(closeTime) || !endTime.isAfter(openTime)) {
+            if (endTime.isBefore(openTime) || endTime.isAfter(closeTime)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Giờ kết thúc phải trong khoảng %s đến %s", openTime.plusMinutes(1), closeTime));
+                        String.format("Giờ kết thúc phải trong khoảng %s đến %s", openTime, closeTime));
             }
         }
+
 
         // Validate phút chỉ được :00 hoặc :30
         if ((startTime.getMinute() != 0 && startTime.getMinute() != 30)
@@ -377,6 +378,16 @@ public class BookingServiceImpl implements BookingService {
         }
         booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
+
+        Contract contract = new Contract();
+        contract.setUser(booking.getBookingDetails().get(0).getVehicle().getUser());
+        contract.setBooking(booking);
+        contract.setCostSettlement(booking.getTotalCost());
+        contract.setStatus(Contract.Status.PROCESSING);
+        contract.setCreatedAt(LocalDateTime.now());
+        contract.setUpdatedAt(LocalDateTime.now());
+
+        contractRepository.save(contract);
     }
 
     @Override
@@ -645,6 +656,7 @@ public class BookingServiceImpl implements BookingService {
                 .message("Hủy đơn đặt xe thành công")
                 .build();
     }
+
     private BigDecimal calculatePenalty(Booking booking) {
         if (booking.getPenaltyType() == Booking.PenaltyType.FIXED) {
             return booking.getPenaltyValue() != null ? booking.getPenaltyValue() : BigDecimal.ZERO;
