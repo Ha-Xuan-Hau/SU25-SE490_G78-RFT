@@ -22,7 +22,7 @@ public interface VehicleService {
     List<VehicleGetDTO> getVehiclesByBrandId(String brandId);
     List<VehicleGetDTO> getVehiclesByModelId(String modelId);
     VehicleGetDTO getVehicleByLicensePlate(String licensePlate);
-//    VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO);
+    //    VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO);
     VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleGetDTO);
     void deleteVehicle(String id);
     List<VehicleGetDTO> getVehiclesByHaveDriver(String haveDriver);
