@@ -1,3 +1,5 @@
+import { apiClient } from './client';
+
 /**
  * Lấy chi tiết booking theo bookingId
  * @param {string} bookingId - ID đơn đặt xe
@@ -12,7 +14,6 @@ export const getBookingDetail = async (bookingId) => {
         throw new Error(`Lỗi lấy chi tiết booking: ${error.response?.data?.message || error.message}`);
     }
 };
-import { apiClient } from './client';
 
 /**
  * Tạo booking mới (chưa thanh toán)

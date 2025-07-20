@@ -95,7 +95,6 @@ interface BookingData {
 }
 
 // Use BookingData directly instead of transforming to ContractData
-// Remove the ContractData interface as we'll use BookingData directly
 
 interface FormValues {
   id: string;
@@ -880,10 +879,8 @@ export default function ManageAcceptedBookings() {
             </Image.PreviewGroup>
             <div>
               <div className="font-semibold">{record.id}</div>
-              <div className="text-sm text-gray-500">
-                {record.vehicleBrand} {record.vehicleLicensePlate}
-              </div>
-              <div className="text-xs text-gray-400">{record.vehicleThumb}</div>
+
+              <div className="text-sm text-gray-400">{record.vehicleThumb}</div>
 
               {/* Hiển thị tiến trình của hợp đồng */}
               <div className="mt-1">
@@ -998,7 +995,9 @@ export default function ManageAcceptedBookings() {
     <div className="p-6">
       <Card>
         <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2">Quản lý hợp đồng</h1>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Quản lý đơn đặt xe
+          </h2>
           <p className="text-gray-600">
             Quản lý các hợp đồng thuê xe và tạo hợp đồng tất toán
           </p>
