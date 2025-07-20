@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -146,7 +147,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .licensePlate(licensePlate)
                 .vehicleType(parseVehicleType(request.getVehicleType()))
                 .vehicleFeatures(request.getVehicleFeatures())
-                .vehicleImages(request.getVehicleImages())
+//                .vehicleImages(request.getVehicleImages())
                 .insuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()))
                 .shipToAddress(parseShipToAddress(request.getShipToAddress()))
                 .numberSeat(request.getNumberSeat())
@@ -162,6 +163,23 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .totalRatings(0)
                 .likes(0)
                 .build();
+
+        if (request.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(
+                        request.getVehicleImages()
+                                .stream()
+                                .map(VehicleImageDTO::getImageUrl)
+                                .collect(Collectors.toList())
+                );
+                vehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                vehicle.setVehicleImages("[]");
+            }
+        } else {
+            vehicle.setVehicleImages("[]");
+        }
 
         // Manually set timestamps using reflection
         setTimestamps(vehicle, now, now);
@@ -200,16 +218,36 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         String userId = authentication.getToken().getClaim("userId");
         log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
 
-        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+        Vehicle existingVehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
 
         ExtraFeeRule extraFeeRule = extraFeeRuleRepository.findByVehicleId(vehicleId);
 
+        // Update fields (only update non-null values from DTO)
+        if (request.getLicensePlate() != null && !request.getLicensePlate().trim().isEmpty()) {
+            // Check if new license plate already exists (excluding current record)
+            if (existingVehicle.getLicensePlate() != null &&
+                    !existingVehicle.getLicensePlate().equals(request.getLicensePlate())) {
+                boolean exists = vehicleRepository.existsByLicensePlate(request.getLicensePlate());
+                if (exists) {
+                    throw new RuntimeException("Vehicle with license plate " + request.getLicensePlate() + " already exists");
+                }
+            }
+            else if (existingVehicle.getLicensePlate() == null &&
+                    request.getLicensePlate() != null) {
+                // Nếu DB là null mà DTO có biển số, cũng cần kiểm tra trùng
+                boolean exists = vehicleRepository.existsByLicensePlate(request.getLicensePlate());
+                if (exists) {
+                    throw new RuntimeException("Vehicle with license plate " + request.getLicensePlate() + " already exists");
+                }
+            }
+            existingVehicle.setLicensePlate(request.getLicensePlate());
+        }
         // Validate brand if provided
         if (request.getBrandId() != null) {
             Brand brand = brandRepository.findById(request.getBrandId())
                     .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
-            vehicle.setBrand(brand);
+            existingVehicle.setBrand(brand);
         }
 
         // Validate model if provided
@@ -219,35 +257,40 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
             // If both brand and model are provided, validate they match
             String brandIdToCheck = request.getBrandId() != null ? request.getBrandId() :
-                    (vehicle.getBrand() != null ? vehicle.getBrand().getId() : null);
+                    (existingVehicle.getBrand() != null ? existingVehicle.getBrand().getId() : null);
 
-            vehicle.setModel(model);
+            existingVehicle.setModel(model);
         }
 
-        // Check license plate uniqueness if changed
-        if (request.getLicensePlate() != null &&
-                !request.getLicensePlate().equals(vehicle.getLicensePlate())) {
-            if (vehicleRepository.existsByLicensePlateAndUserIdAndIdNot(
-                    request.getLicensePlate(), userId, vehicleId)) {
-                throw new RuntimeException("License plate already exists for this user");
-            }
-            vehicle.setLicensePlate(request.getLicensePlate());
+        // Update penalty if provided
+        if (request.getPenaltyId() != null && !request.getPenaltyId().trim().isEmpty()) {
+            Penalty penalty = penaltyRepository.findById(request.getPenaltyId())
+                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + request.getPenaltyId()));
+            existingVehicle.setPenalty(penalty);
         }
 
         // Update other fields if provided
-        if (request.getVehicleType() != null) vehicle.setVehicleType(parseVehicleType(request.getVehicleType()));
-        if (request.getVehicleFeatures() != null) vehicle.setVehicleFeatures(request.getVehicleFeatures());
-        if (request.getVehicleImages() != null) vehicle.setVehicleImages(request.getVehicleImages());
-        if (request.getInsuranceStatus() != null) vehicle.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));
-        if (request.getShipToAddress() != null) vehicle.setShipToAddress(parseShipToAddress(request.getShipToAddress()));
-        if (request.getNumberSeat() != null) vehicle.setNumberSeat(request.getNumberSeat());
-        if (request.getYearManufacture() != null) vehicle.setYearManufacture(request.getYearManufacture());
-        if (request.getTransmission() != null) vehicle.setTransmission(parseTransmission(request.getTransmission()));
-        if (request.getFuelType() != null) vehicle.setFuelType(parseFuelType(request.getFuelType()));
-        if (request.getDescription() != null) vehicle.setDescription(request.getDescription());
-        if (request.getNumberVehicle() != null) vehicle.setNumberVehicle(request.getNumberVehicle());
-        if (request.getCostPerDay() != null) vehicle.setCostPerDay(request.getCostPerDay());
-        if (request.getStatus() != null) vehicle.setStatus(parseStatus(request.getStatus()));
+        if (request.getVehicleType() != null) existingVehicle.setVehicleType(parseVehicleType(request.getVehicleType()));
+        if (request.getVehicleFeatures() != null) existingVehicle.setVehicleFeatures(request.getVehicleFeatures());
+        if (request.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(request.getVehicleImages()
+                        .stream()
+                        .map(VehicleImageDTO::getImageUrl)
+                        .collect(Collectors.toList())
+                );
+                existingVehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                // handle error
+            }
+        }
+
+        if (request.getNumberSeat() != null) existingVehicle.setNumberSeat(request.getNumberSeat());
+        if (request.getYearManufacture() != null) existingVehicle.setYearManufacture(request.getYearManufacture());
+        if (request.getDescription() != null) existingVehicle.setDescription(request.getDescription());
+        if (request.getNumberVehicle() != null) existingVehicle.setNumberVehicle(request.getNumberVehicle());
+        if (request.getCostPerDay() != null) existingVehicle.setCostPerDay(request.getCostPerDay());
         if (request.getFeePerExtraKm() != null) extraFeeRule.setFeePerExtraKm(request.getFeePerExtraKm());
         if (request.getAllowedHourLate() != null) extraFeeRule.setAllowedHourLate(request.getAllowedHourLate());
         if (request.getFeePerExtraHour() != null) extraFeeRule.setFeePerExtraHour(request.getFeePerExtraHour());
@@ -260,11 +303,67 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (request.getDriverFeePerHour() != null) extraFeeRule.setDriverFeePerHour(request.getDriverFeePerHour());
         if (request.getHasHourlyRental() != null) extraFeeRule.setHasHourlyRental(request.getHasHourlyRental());
 
+        // Update enum fields
+        if (request.getVehicleType() != null && !request.getVehicleType().trim().isEmpty()) {
+            try {
+                existingVehicle.setVehicleType(Vehicle.VehicleType.valueOf(request.getVehicleType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid vehicle type: " + request.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
+            }
+        }
+
+        if (request.getHaveDriver() != null && !request.getHaveDriver().trim().isEmpty()) {
+            try {
+                existingVehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(request.getHaveDriver().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid have driver: " + request.getHaveDriver() + ". Valid values are: YES, NO");
+            }
+        }
+
+        if (request.getInsuranceStatus() != null && !request.getInsuranceStatus().trim().isEmpty()) {
+            try {
+                existingVehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(request.getInsuranceStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid insurance status: " + request.getInsuranceStatus() + ". Valid values are: YES, NO");
+            }
+        }
+
+        if (request.getShipToAddress() != null && !request.getShipToAddress().trim().isEmpty()) {
+            try {
+                existingVehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(request.getShipToAddress().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid ship to address: " + request.getShipToAddress() + ". Valid values are: YES, NO");
+            }
+        }
+
+        if (request.getTransmission() != null && !request.getTransmission().trim().isEmpty()) {
+            try {
+                existingVehicle.setTransmission(Vehicle.Transmission.valueOf(request.getTransmission().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid transmission: " + request.getTransmission() + ". Valid values are: MANUAL, AUTOMATIC");
+            }
+        }
+
+        if (request.getFuelType() != null && !request.getFuelType().trim().isEmpty()) {
+            try {
+                existingVehicle.setFuelType(Vehicle.FuelType.valueOf(request.getFuelType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid fuel type: " + request.getFuelType() + ". Valid values are: GASOLINE, ELECTRIC");
+            }
+        }
+
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            try {
+                existingVehicle.setStatus(Vehicle.Status.valueOf(request.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid status: " + request.getStatus() + ". Valid values are: AVAILABLE, UNAVAILABLE");
+            }
+        }
         // Manually set updatedAt timestamp using reflection
         LocalDateTime now = LocalDateTime.now();
-        setUpdatedAt(vehicle, now);
+        setUpdatedAt(existingVehicle, now);
 
-        Vehicle updatedVehicle = vehicleRepository.save(vehicle);
+        Vehicle updatedVehicle = vehicleRepository.save(existingVehicle);
 
         // Fetch with brand and model for response
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
@@ -503,8 +602,24 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                     .totalRatings(0)
                     // Các trường riêng biệt lấy từ request
                     .licensePlate(request.getLicensePlate())
-                    .vehicleImages(request.getVehicleImages())
+//                    .vehicleImages(request.getVehicleImages())
                     .build();
+            if (request.getVehicleImages() != null) {
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    String imagesJson = mapper.writeValueAsString(
+                            request.getVehicleImages()
+                                    .stream()
+                                    .map(VehicleImageDTO::getImageUrl)
+                                    .collect(Collectors.toList())
+                    );
+                    newVehicle.setVehicleImages(imagesJson);
+                } catch (Exception e) {
+                    newVehicle.setVehicleImages("[]");
+                }
+            } else {
+                newVehicle.setVehicleImages("[]");
+            }
             setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
             savedVehicle = vehicleRepository.save(newVehicle);
         } else {
@@ -533,8 +648,24 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                     .likes(0)
                     .totalRatings(0)
                     .licensePlate(request.getLicensePlate())
-                    .vehicleImages(request.getVehicleImages())
+//                    .vehicleImages(request.getVehicleImages())
                     .build();
+            if (request.getVehicleImages() != null) {
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    String imagesJson = mapper.writeValueAsString(
+                            request.getVehicleImages()
+                                    .stream()
+                                    .map(VehicleImageDTO::getImageUrl)
+                                    .collect(Collectors.toList())
+                    );
+                    newVehicle.setVehicleImages(imagesJson);
+                } catch (Exception e) {
+                    newVehicle.setVehicleImages("[]");
+                }
+            } else {
+                newVehicle.setVehicleImages("[]");
+            }
             setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
             savedVehicle = vehicleRepository.save(newVehicle);
         }
@@ -592,7 +723,22 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .orElseThrow(() -> new RuntimeException("Vehicle not found: " + vehicleId));
         // Chỉ cập nhật các trường riêng biệt
         if (request.getLicensePlate() != null) vehicle.setLicensePlate(request.getLicensePlate());
-        if (request.getVehicleImages() != null) vehicle.setVehicleImages(request.getVehicleImages());
+        if (request.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String imagesJson = mapper.writeValueAsString(
+                        request.getVehicleImages()
+                                .stream()
+                                .map(VehicleImageDTO::getImageUrl)
+                                .collect(Collectors.toList())
+                );
+                vehicle.setVehicleImages(imagesJson);
+            } catch (Exception e) {
+                vehicle.setVehicleImages("[]");
+            }
+        } else {
+            vehicle.setVehicleImages("[]");
+        }
         setUpdatedAt(vehicle, LocalDateTime.now());
         Vehicle updatedVehicle = vehicleRepository.save(vehicle);
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
