@@ -30,6 +30,8 @@ public interface NotificationService {
     void notifyOrderApproved(String userId, String bookingId);
     void notifyOrderRejected(String userId, String bookingId, String reason);
     void notifyOrderCanceled(String userId, String bookingId, String reason);
+    void notifyBookingCompleted(String userId, String bookingId);
+
 
     // Vehicle handover notifications
     void notifyVehicleHandover(String userId, String bookingId, String vehicleName, String location);

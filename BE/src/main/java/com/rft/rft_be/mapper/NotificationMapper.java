@@ -31,6 +31,7 @@ public class NotificationMapper {
     public static final String SYSTEM_ANNOUNCEMENT = "SYSTEM_ANNOUNCEMENT";
     public static final String MAINTENANCE_NOTICE = "MAINTENANCE_NOTICE";
 
+
     // Message templates
     public static final String ORDER_PLACED_MSG = "Đơn hàng của bạn cho xe %s đã được đặt thành công";
     public static final String PAYMENT_COMPLETED_MSG = "Thanh toán %.0f VND cho đơn hàng đã hoàn thành";
@@ -44,6 +45,8 @@ public class NotificationMapper {
     public static final String TOPUP_SUCCESSFUL_MSG = "Nạp tiền %.0f VND thành công";
     public static final String WITHDRAWAL_APPROVED_MSG = "Yêu cầu rút %.0f VND đã được phê duyệt";
     public static final String PROVIDER_RECEIVED_BOOKING_MSG = "Bạn có booking mới cho xe %s";
+    public static final String BOOKING_COMPLETED = "BOOKING_COMPLETED";
+    public static final String BOOKING_COMPLETED_MSG = "Đơn hàng của bạn đã được hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ!";
 
     // Notification categories for grouping
     public static final String CATEGORY_BOOKING = "BOOKING";
@@ -148,6 +151,8 @@ public class NotificationMapper {
             case USER_RETURN_VEHICLE:
             case PROVIDER_RECEIVED_BOOKING:
                 return Notification.type.BOOKING;
+            case BOOKING_COMPLETED:
+                return Notification.type.BOOKING;
 
             // System notifications
             case SYSTEM_ANNOUNCEMENT:
@@ -212,7 +217,7 @@ public class NotificationMapper {
                 WITHDRAWAL_APPROVED.equals(type) || VEHICLE_HANDOVER.equals(type) ||
                 VEHICLE_PICKUP_CONFIRMED.equals(type) || VEHICLE_RETURN_CONFIRMED.equals(type) ||
                 USER_RETURN_VEHICLE.equals(type) || PROVIDER_RECEIVED_BOOKING.equals(type) ||
-                SYSTEM_ANNOUNCEMENT.equals(type) || MAINTENANCE_NOTICE.equals(type);
+                SYSTEM_ANNOUNCEMENT.equals(type) || MAINTENANCE_NOTICE.equals(type) || BOOKING_COMPLETED.equals(type);
     }
 
     public String getNotificationCategory(String type) {
@@ -227,6 +232,9 @@ public class NotificationMapper {
             return CATEGORY_VEHICLE;
         } else if (SYSTEM_ANNOUNCEMENT.equals(type) || MAINTENANCE_NOTICE.equals(type)) {
             return CATEGORY_SYSTEM;
+        }
+        else if (BOOKING_COMPLETED.equals(type)) {
+            return CATEGORY_BOOKING;
         }
         return "UNKNOWN";
     }

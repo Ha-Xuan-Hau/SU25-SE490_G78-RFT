@@ -358,4 +358,11 @@ public class NotificationServiceImpl implements NotificationService {
                 .receiver(receiver)
                 .build();
     }
+    @Override
+    @Transactional
+    public void notifyBookingCompleted(String userId, String bookingId) {
+        String message = NotificationMapper.BOOKING_COMPLETED_MSG;
+        String redirectUrl = "/bookings/" + bookingId;
+        createNotificationForUser(userId, NotificationMapper.BOOKING_COMPLETED, message, redirectUrl);
+    }
 }
