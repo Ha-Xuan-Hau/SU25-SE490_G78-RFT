@@ -34,10 +34,7 @@ import type { Vehicle } from "@/types/vehicle";
 import RegisterVehicleForm from "../../../components/RegisterVehicleForm";
 import EditSingleVehicleInGroupModal from "../../../components/EditSingleVehicleInGroupModal";
 import GroupEditVehicleModal from "../../../components/GroupEditVehicleModal";
-import {
-  updateSingleMotorbikeInGroup,
-  updateVehicle,
-} from "@/apis/vehicle.api";
+import { updateSingleMotorbikeInGroup, updateCar } from "@/apis/vehicle.api";
 
 export default function UserRegisterVehicle() {
   const { Title, Text } = Typography;
@@ -350,7 +347,7 @@ export default function UserRegisterVehicle() {
                               // Gọi update cho từng xe trong nhóm
                               await Promise.all(
                                 groupEditModal.group.vehicle.map((v) =>
-                                  updateVehicle({
+                                  updateCar({
                                     vehicleId: v.id,
                                     body: { ...v, ...values },
                                     accessToken,

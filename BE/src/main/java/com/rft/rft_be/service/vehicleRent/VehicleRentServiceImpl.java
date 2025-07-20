@@ -291,6 +291,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (request.getDescription() != null) existingVehicle.setDescription(request.getDescription());
         if (request.getNumberVehicle() != null) existingVehicle.setNumberVehicle(request.getNumberVehicle());
         if (request.getCostPerDay() != null) existingVehicle.setCostPerDay(request.getCostPerDay());
+        if (request.getMaxKmPerDay() != null) extraFeeRule.setMaxKmPerDay(request.getMaxKmPerDay());
         if (request.getFeePerExtraKm() != null) extraFeeRule.setFeePerExtraKm(request.getFeePerExtraKm());
         if (request.getAllowedHourLate() != null) extraFeeRule.setAllowedHourLate(request.getAllowedHourLate());
         if (request.getFeePerExtraHour() != null) extraFeeRule.setFeePerExtraHour(request.getFeePerExtraHour());

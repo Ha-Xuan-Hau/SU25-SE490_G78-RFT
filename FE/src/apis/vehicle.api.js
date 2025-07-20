@@ -46,7 +46,7 @@ export async function getVehicleById(vehicleId) {
     }
 }
 
-export async function createVehicle({ body, accessToken }) {
+export async function createCar({ body, accessToken }) {
     const { data } = await apiClient.request({
         method: "POST",
         url: `/vehicle-rent/register`,
@@ -172,7 +172,7 @@ export async function getAvailableThumbList({ thumb, providerId, from, to }) {
 }
 
 
-export async function updateVehicle({ vehicleId, body, accessToken }) {
+export async function updateCar({ vehicleId, body, accessToken }) {
     const { data } = await apiClient.request({
         method: "PUT",
         url: `/vehicle-rent/${vehicleId}`,
