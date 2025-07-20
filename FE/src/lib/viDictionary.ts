@@ -19,7 +19,15 @@ export const viDictionary: Record<string, string> = {
   Seat: "Ghế ngồi",
   Fuel: "Nhiên liệu",
   Transmission: "Hộp số",
+
+  CANCELLED: "Đã hủy",
   UNPAID: "Chưa thanh toán",
+  PENDING: "Đang chờ",
+  CONFIRMED: "Đã xác nhận",
+  DELIVERED: "Đã giao",
+  RECEIVED_BY_CUSTOMER: "Đã nhận bởi khách hàng",
+  RETURNED: "Đã trả",
+  COMPLETED: "Đã hoàn thành",
 };
 
 export function translateENtoVI(text: string): string {
