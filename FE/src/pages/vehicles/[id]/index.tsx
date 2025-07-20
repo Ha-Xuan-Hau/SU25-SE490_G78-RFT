@@ -14,6 +14,7 @@ import {
   getVehicleById,
   getBookedSlotById,
   getAvailableThumbQuantity,
+  getAvailableThumbList,
 } from "@/apis/vehicle.api";
 
 // Components
@@ -100,6 +101,23 @@ export default function VehicleDetail() {
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
   const [showMultiBooking, setShowMultiBooking] = useState(false);
+  const [isMultiModalOpen, setIsMultiModalOpen] = useState(false);
+  // State cho chọn nhiều xe
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
+
+  // Hàm xử lý đặt nhiều xe
+  const handleMultiBook = () => {
+    // Chuyển sang trang booking, truyền danh sách id xe và thông tin thời gian, quantity
+    setIsMultiModalOpen(false);
+    // Tạo query param cho danh sách id xe
+    const vehicleIdsParam = selectedVehicleIds.join(",");
+    const bookingUrl = `/booking?vehicleId=${encodeURIComponent(
+      vehicleIdsParam
+    )}&pickupTime=${encodeURIComponent(
+      pickupDateTime
+    )}&returnTime=${encodeURIComponent(returnDateTime)}`;
+    window.location.href = bookingUrl;
+  };
 
   // --- Dates handling ---
   const updateDates = (value: RangeValue) => {
@@ -132,22 +150,6 @@ export default function VehicleDetail() {
     queryFn: () => getVehicleById(id as string),
     enabled: !!id,
   });
-
-  // Update totalPrice when selectedQuantity changes
-  useEffect(() => {
-    // Nếu có rentalCalculation và costPerDay
-    if (rentalCalculation && vehicle?.costPerDay) {
-      // Tính giá cho nhiều xe
-      const price = calculateRentalPrice(
-        rentalCalculation,
-        hourlyRate,
-        vehicle.costPerDay
-      );
-      setTotalPrice(price * selectedQuantity);
-    } else if (vehicle?.costPerDay) {
-      setTotalPrice(vehicle.costPerDay * selectedQuantity);
-    }
-  }, [selectedQuantity, rentalCalculation, vehicle?.costPerDay, hourlyRate]);
 
   useEffect(() => {
     if (id) {
@@ -295,34 +297,22 @@ export default function VehicleDetail() {
   const closeTime = vehicle?.closeTime || "00:00";
 
   const disabledRangeTime = useMemo(() => {
-    // Convert all bookedTimeSlots to Dayjs for all vehicle types
-    const slots = bookedTimeSlots.map((slot) => ({
-      ...slot,
-      startDate: dayjs(parseBackendTime(slot.startDate)),
-      endDate: dayjs(parseBackendTime(slot.endDate)),
-    }));
-    if (!vehicle?.vehicleType) return undefined;
-    // Block for all vehicle types, not just CAR
+    if (!vehicle?.vehicleType)
+      return createDisabledTimeFunction("CAR", [], openTime, closeTime);
     return createDisabledTimeFunction(
       vehicle.vehicleType.toUpperCase() as VehicleType,
-      slots,
+      bookedTimeSlots,
       openTime,
       closeTime
     );
   }, [vehicle?.vehicleType, bookedTimeSlots, openTime, closeTime]);
 
   const disabledDateFunction = useMemo(() => {
-    // Convert all bookedTimeSlots to Dayjs for all vehicle types
-    const slots = bookedTimeSlots.map((slot) => ({
-      ...slot,
-      startDate: dayjs(parseBackendTime(slot.startDate)),
-      endDate: dayjs(parseBackendTime(slot.endDate)),
-    }));
     return (current: Dayjs): boolean => {
       if (!current || !vehicle?.vehicleType) return false;
+
       const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-      // Block for all vehicle types
-      return isDateDisabled(current, vehicleType, slots);
+      return isDateDisabled(current, vehicleType, bookedTimeSlots);
     };
   }, [vehicle?.vehicleType, bookedTimeSlots]);
 
@@ -462,13 +452,11 @@ export default function VehicleDetail() {
         console.log("Navigating to booking page with ID:", vehicle?.id);
 
         // Using Next.js router with pathname as string to avoid potential encoding issues
-        const bookingUrl = `/booking/${
+        const bookingUrl = `/booking/?vehicleId=${
           vehicle?.id
-        }?pickupTime=${encodeURIComponent(
+        }&pickupTime=${encodeURIComponent(
           pickupDateTime || ""
-        )}&returnTime=${encodeURIComponent(
-          returnDateTime || ""
-        )}&quantity=${selectedQuantity}`;
+        )}&returnTime=${encodeURIComponent(returnDateTime || "")}`;
         console.log("Booking URL:", bookingUrl);
 
         // Use window.location for a hard navigation if router isn't working
@@ -487,15 +475,13 @@ export default function VehicleDetail() {
       setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
       setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));
 
-      // Chỉ gọi getAvailableThumbQuantity nếu không phải ô tô
-      if (
-        vehicle?.vehicleType === "MOTORBIKE" ||
-        vehicle?.vehicleType === "BICYCLE"
-      ) {
+      // CHỈ gọi API lấy quantity cho xe máy và xe đạp, KHÔNG cho ô tô
+      if (vehicle?.vehicleType && vehicle.vehicleType.toUpperCase() !== "CAR") {
         const thumb = vehicle?.thumb;
         const providerId = vehicle?.userId;
         const from = startDate.format("YYYY-MM-DDTHH:mm:ss");
         const to = endDate.format("YYYY-MM-DDTHH:mm:ss");
+
         try {
           const quantity = await getAvailableThumbQuantity({
             thumb,
@@ -513,9 +499,8 @@ export default function VehicleDetail() {
           setAvailableVehicles([]);
         }
       } else {
-        // Ô tô: luôn chỉ cho thuê 1 xe
+        // Nếu là ô tô, reset về 1 xe và không cho phép đặt nhiều
         setAvailableQuantity(1);
-        setSelectedQuantity(1);
         setShowMultiBooking(false);
         setAvailableVehicles([]);
       }
@@ -553,6 +538,9 @@ export default function VehicleDetail() {
       setReturnDateTime("");
       setBufferConflictMessage("");
       setValidationMessage("");
+      setAvailableQuantity(1);
+      setShowMultiBooking(false);
+      setAvailableVehicles([]);
     }
 
     // Update Recoil state
@@ -972,13 +960,11 @@ export default function VehicleDetail() {
                   )}
                 </div>
               </div>
-              {/* Luôn hiển thị số lượng xe khả dụng và nút đặt nhiều xe nếu availableQuantity > 1 */}
-              {availableQuantity > 1 && (
-                <div className="mt-4 border-t border-b py-4 border-gray-200 dark:border-gray-700">
-                  {/* Dòng số lượng xe khả dụng và nút Đặt nhiều xe */}
-                  <div className="flex items-center justify-between gap-2 mb-4">
-                    {" "}
-                    {/* Added mb-4 for spacing */}
+              {/* CHỈ hiển thị cho xe máy và xe đạp, KHÔNG cho ô tô */}
+              {availableQuantity > 1 &&
+                vehicle?.vehicleType &&
+                vehicle.vehicleType.toUpperCase() !== "CAR" && (
+                  <div className="mt-4 flex items-center justify-between border-t border-b py-4 border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-700 dark:text-gray-200">
                         Số lượng xe khả dụng:
@@ -987,47 +973,42 @@ export default function VehicleDetail() {
                         {availableQuantity}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Dòng số lượng muốn thuê với bộ chọn */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-base text-gray-700 dark:text-gray-200">
-                      Số lượng muốn thuê:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={selectedQuantity <= 1}
-                        onClick={() => {
-                          setSelectedQuantity((prev) => {
-                            const newQty = prev - 1;
-                            return newQty < 1 ? 1 : newQty;
+                    <button
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
+                      onClick={async () => {
+                        setShowMultiBooking(true);
+                        // Gọi API lấy danh sách xe khả dụng
+                        try {
+                          const thumb = vehicle?.thumb;
+                          const providerId = vehicle?.userId;
+                          const from = pickupDateTime
+                            ? dayjs(pickupDateTime, "YYYY-MM-DD HH:mm").format(
+                                "YYYY-MM-DDTHH:mm:ss"
+                              )
+                            : "";
+                          const to = returnDateTime
+                            ? dayjs(returnDateTime, "YYYY-MM-DD HH:mm").format(
+                                "YYYY-MM-DDTHH:mm:ss"
+                              )
+                            : "";
+                          const vehicles = await getAvailableThumbList({
+                            thumb,
+                            providerId,
+                            from,
+                            to,
                           });
-                        }}
-                      >
-                        -
-                      </button>
-                      <span className="px-3 text-lg font-bold text-gray-800 dark:text-gray-100">
-                        {selectedQuantity}
-                      </span>
-                      <button
-                        className="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={selectedQuantity >= availableQuantity}
-                        onClick={() => {
-                          setSelectedQuantity((prev) => {
-                            const newQty = prev + 1;
-                            return newQty > availableQuantity
-                              ? availableQuantity
-                              : newQty;
-                          });
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
+                          setAvailableVehicles(vehicles);
+                          setIsMultiModalOpen(true);
+                        } catch (err) {
+                          setAvailableVehicles([]);
+                          setIsMultiModalOpen(true);
+                        }
+                      }}
+                    >
+                      Xem thêm
+                    </button>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Price details */}
               <div className="mt-6">
@@ -1250,6 +1231,168 @@ export default function VehicleDetail() {
             Cập nhật thông tin
           </AntButton>
         </Link>
+      </Modal>
+      {/* Sửa lại Modal để có thông báo rõ ràng hơn */}
+      <Modal
+        title="Chọn xe khả dụng"
+        open={isMultiModalOpen}
+        onCancel={() => setIsMultiModalOpen(false)}
+        footer={null}
+        width={700}
+        className="vehicle-select-modal"
+      >
+        <div className="flex flex-col gap-4">
+          {/* Thêm thông báo về loại xe được hỗ trợ */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+            <div className="flex items-center gap-2">
+              <Icon
+                icon="mdi:information"
+                className="text-blue-600"
+                width={20}
+                height={20}
+              />
+              <span className="text-blue-800 text-sm font-medium">
+                Tính năng đặt nhiều xe chỉ áp dụng cho xe máy và xe đạp
+              </span>
+            </div>
+          </div>
+
+          <div className="text-sm text-gray-600 mb-2">
+            Có {availableQuantity} xe{" "}
+            {translateENtoVI(vehicle?.vehicleType || "")} khả dụng trong thời
+            gian đã chọn. Vui lòng chọn xe bạn muốn thuê:
+          </div>
+
+          {availableVehicles.length > 0 ? (
+            <>
+              <div className="max-h-96 overflow-y-auto space-y-3">
+                {availableVehicles.map((vehicleItem, index) => (
+                  <div
+                    key={vehicleItem.id}
+                    className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
+                      selectedVehicleIds.includes(vehicleItem.id)
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    onClick={() => {
+                      const isSelected = selectedVehicleIds.includes(
+                        vehicleItem.id
+                      );
+                      if (isSelected) {
+                        setSelectedVehicleIds((prev) =>
+                          prev.filter((id) => id !== vehicleItem.id)
+                        );
+                      } else {
+                        setSelectedVehicleIds((prev) => [
+                          ...prev,
+                          vehicleItem.id,
+                        ]);
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedVehicleIds.includes(vehicleItem.id)}
+                      onChange={() => {}} // Handled by parent div click
+                      className="w-5 h-5 accent-blue-500"
+                    />
+
+                    {/* Hình ảnh xe */}
+                    <div className="relative w-20 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                      {vehicleItem.vehicleImages &&
+                      vehicleItem.vehicleImages.length > 0 ? (
+                        <Image
+                          src={vehicleItem.vehicleImages[0].imageUrl}
+                          alt={vehicleItem.thumb}
+                          layout="fill"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          <Icon
+                            icon={
+                              vehicle?.vehicleType === "MOTORBIKE"
+                                ? "mdi:motorbike"
+                                : vehicle?.vehicleType === "BICYCLE"
+                                ? "mdi:bicycle"
+                                : "mdi:car"
+                            }
+                            className="text-gray-400"
+                            width={24}
+                            height={24}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Thông tin xe */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-base text-gray-800 truncate">
+                        {vehicleItem.thumb} - {vehicleItem.modelName} (
+                        {vehicleItem.yearManufacture})
+                      </h4>
+                      <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                        <span>Biển số: {vehicleItem.licensePlate}</span>
+                        <span className="text-blue-600 font-medium">
+                          {vehicleItem.costPerDay?.toLocaleString("vi-VN")}
+                          ₫/ngày
+                        </span>
+                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                          {translateENtoVI(vehicleItem.vehicleType)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Thông tin tổng hợp */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-base font-medium text-gray-700">
+                    Đã chọn: {selectedVehicleIds.length} xe{" "}
+                    {translateENtoVI(vehicle?.vehicleType || "")}
+                  </span>
+                  <span className="text-lg font-bold text-blue-600">
+                    Tổng:{" "}
+                    {availableVehicles
+                      .filter((v) => selectedVehicleIds.includes(v.id))
+                      .reduce((sum, v) => sum + (v.costPerDay || 0), 0)
+                      .toLocaleString("vi-VN")}
+                    ₫/ngày
+                  </span>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                    onClick={() => setIsMultiModalOpen(false)}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    onClick={handleMultiBook}
+                    disabled={selectedVehicleIds.length === 0}
+                  >
+                    Đặt {selectedVehicleIds.length} xe
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <Icon
+                icon="mdi:car-off"
+                className="mx-auto mb-4 text-gray-400"
+                width={48}
+                height={48}
+              />
+              <p>Không có xe khả dụng trong khoảng thời gian này.</p>
+            </div>
+          )}
+        </div>
       </Modal>
     </section>
   );

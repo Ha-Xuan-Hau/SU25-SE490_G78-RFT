@@ -1,6 +1,7 @@
 package com.rft.rft_be.dto.vehicle.vehicleRent;
 
 
+import com.rft.rft_be.dto.vehicle.VehicleImageDTO;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +9,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
+
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,10 +18,11 @@ import java.math.BigDecimal;
 public class VehicleRentUpdateDTO {
     private String brandId;
     private String modelId;
+    private String penaltyId;
     private String licensePlate;
     private String vehicleType;
     private String vehicleFeatures;
-    private String vehicleImages;
+    private List<VehicleImageDTO> vehicleImages;
     private String haveDriver;
     private String insuranceStatus;
     private String shipToAddress;

@@ -1,9 +1,7 @@
 package com.rft.rft_be.mapper;
 
 import com.rft.rft_be.dto.admin.UsedCouponDTO;
-import com.rft.rft_be.entity.Coupon;
 import com.rft.rft_be.entity.UsedCoupon;
-import com.rft.rft_be.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
