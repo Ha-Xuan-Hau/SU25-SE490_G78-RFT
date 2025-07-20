@@ -369,7 +369,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             isMultipleVehicles: isMultipleVehicles,
             vehicleQuantity: quantity,
             status: isActive ? "AVAILABLE" : "UNAVAILABLE",
-            vehicleImages: values.images,
+            vehicleImages: JSON.stringify(values.images) || "[]",
             numberSeat: Number(values.numberSeat),
             penaltyId: values.rentalRule,
           };
