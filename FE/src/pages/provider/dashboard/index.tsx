@@ -26,4 +26,4 @@ export default function ProviderDashboard() {
   );
 }
 
-ProviderDashboard.Layout = ProviderLayout;
+ProviderDashboard.layout = ProviderLayout;

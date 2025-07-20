@@ -1,20 +1,21 @@
+// Cập nhật ảnh và biển số cho 1 xe máy trong nhóm
+export async function updateSingleMotorbikeInGroup({ vehicleId, images, licensePlate, accessToken }) {
+    const { data } = await apiClient.request({
+        method: "PUT",
+        url: `/vehicles/update-single-motorbike/${vehicleId}`,
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+        },
+        data: {
+            images,
+            licensePlate,
+        },
+    });
+    return data;
+}
 import { apiClient } from './client';
 
-// export async function getVehicles(params) {
-//     try {
-//         const response = await apiClient.request({
-//             method: 'GET',
-//             url: '/vehicles',
-//             params: params || {},
-//         });
-
-//         const data = response.data;
-//         return Array.isArray(data) ? data : data.content || data.items || data.data || [];
-//     } catch (error) {
-//         console.error("Error fetching vehicles:", error);
-//         throw error;
-//     }
-// }
 
 export async function getVehicles() {
     try {
@@ -128,6 +129,48 @@ export async function getBookedSlotById(vehicleId) {
         }
     }
 }
+
+export async function getAvailableThumbQuantity({ thumb, providerId, from, to }) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/vehicles/available-thumb-quantity",
+            data: {
+                thumb,
+                providerId,
+                from,
+                to,
+            },
+        });
+        // data: { quantity: number }
+        return data.quantity || 0;
+    } catch (error) {
+        console.error("Error fetching available thumb quantity:", error);
+        throw error;
+    }
+}
+
+export async function getAvailableThumbList({ thumb, providerId, from, to }) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/vehicles/available-thumb-list",
+            data: {
+                thumb,
+                providerId,
+                from,
+                to,
+            },
+        });
+        // data: { vehicles: [...], quantity: number }
+        // DTO
+        return Array.isArray(data.vehicles) ? data.vehicles : data.content || data.items || data.data || [];
+    } catch (error) {
+        console.error("Error fetching available thumb list:", error);
+        throw error;
+    }
+}
+
 
 export async function updateVehicle({ vehicleId, body, accessToken }) {
     const { data } = await apiClient.request({

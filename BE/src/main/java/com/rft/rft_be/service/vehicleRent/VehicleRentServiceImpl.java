@@ -342,6 +342,54 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
+    @Override
+    public PageResponseDTO<VehicleThumbGroupDTO> getProviderCarGrouped(int page, int size, String sortBy, String sortDir) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+
+        List<Vehicle> carListAll = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
+
+        // Sắp xếp nếu cần
+//        if (sortBy != null && !sortBy.isEmpty()) {
+//            carListAll.sort((v1, v2) -> {
+//                try {
+//                    Object field1 = Vehicle.class.getDeclaredField(sortBy).get(v1);
+//                    Object field2 = Vehicle.class.getDeclaredField(sortBy).get(v2);
+//                    if (field1 instanceof Comparable && field2 instanceof Comparable) {
+//                        int cmp = ((Comparable) field1).compareTo(field2);
+//                        return "desc".equalsIgnoreCase(sortDir) ? -cmp : cmp;
+//                    }
+//                } catch (Exception ignored) {}
+//                return 0;
+//            });
+//        }
+
+        int totalElements = carListAll.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+
+        List<VehicleThumbGroupDTO> pagedContent = carListAll.subList(fromIndex, toIndex)
+                .stream()
+                .map(vehicle -> VehicleThumbGroupDTO.builder()
+                        .thumb(vehicle.getThumb())
+                        .vehicle(List.of(vehicleMapper.vehicleToVehicleDetail(vehicle)))
+                        .vehicleNumber(1)
+                        .build())
+                .collect(Collectors.toList());
+
+        return PageResponseDTO.<VehicleThumbGroupDTO>builder()
+                .content(pagedContent)
+                .currentPage(page)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
+                .size(size)
+                .hasNext(page < totalPages - 1)
+                .hasPrevious(page > 0)
+                .first(page == 0)
+                .last(page == totalPages - 1 || totalPages == 0)
+                .build();
+    }
 
     @Override
     public PageResponseDTO<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb(int page, int size, String sortBy, String sortDir) {
