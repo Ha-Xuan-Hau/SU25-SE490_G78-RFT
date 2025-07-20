@@ -1,3 +1,4 @@
+// components/VehicleRentalCard.tsx
 "use client";
 
 import type React from "react";
@@ -6,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import moment from "moment";
 import { formatCurrency } from "@/lib/format-currency";
+import { BookingDetail } from "@/types/booking"; // Import BookingDetail
 
 // Ant Design components
 import { Button, Card, Tag, Modal } from "antd";
@@ -15,6 +17,7 @@ import RatingModal from "./RatingModal";
 import PaymentModal from "./PaymentModal";
 import CancelBookingModal from "./CancelBookingModal";
 import ReturnVehicleModal from "./ReturnVehicleModal";
+import VehicleSelectionModal from "./VehicleSelectionModal";
 
 // Import booking APIs
 import { updateBookingStatus, cancelBooking } from "@/apis/booking.api";
@@ -26,6 +29,9 @@ interface ApiResponse {
   error?: string;
   data?: unknown;
 }
+
+// Sử dụng Vehicle type từ BookingDetail thay vì tự định nghĩa
+type Vehicle = BookingDetail["vehicles"][0];
 
 // Định nghĩa interface cho props
 interface BookingInfo {
@@ -47,13 +53,16 @@ interface BookingInfo {
   contract?: {
     status: string;
   };
+  // Sử dụng Vehicle từ BookingDetail
+  vehicles?: Vehicle[];
 }
 
 interface VehicleRentalCardProps {
   info: BookingInfo;
   accessToken?: string;
-  onOpenRating?: () => void;
+  onOpenRating?: (vehicleId?: string) => void;
   isRated?: boolean;
+  currentRatingMap?: Record<string, any>;
 }
 
 // Helper function to get status badge styling and text
@@ -106,6 +115,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   accessToken,
   onOpenRating,
   isRated,
+  currentRatingMap = {},
 }) => {
   const [open, setOpen] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
@@ -115,6 +125,9 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   const [returnModalVisible, setReturnModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmReceiveModal, setConfirmReceiveModal] = useState(false);
+
+  // States for vehicle selection modal
+  const [vehicleSelectionModal, setVehicleSelectionModal] = useState(false);
 
   const showModal = (bookingId: string, vehicleId: string) => {
     setBookingId(bookingId);
@@ -227,6 +240,24 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
     setReturnModalVisible(false);
   };
 
+  // Handle rating button click
+  const handleRatingClick = () => {
+    // Nếu có vehicles từ booking detail và có nhiều hơn 1 xe
+    if (info.vehicles && info.vehicles.length > 1) {
+      setVehicleSelectionModal(true);
+    } else {
+      // Trường hợp 1 xe hoặc không có vehicles data, dùng logic cũ
+      const vehicleId = info.vehicles?.[0]?.id || info.vehicleId._id; // Sử dụng id
+      onOpenRating?.(vehicleId);
+    }
+  };
+
+  // Handle vehicle selection for rating
+  const handleSelectVehicleForRating = (vehicle: Vehicle) => {
+    setVehicleSelectionModal(false);
+    onOpenRating?.(vehicle.id); // Sử dụng id
+  };
+
   // Check functions
   const isUnpaid = () => {
     const contractStatus = info?.contract?.status;
@@ -280,6 +311,37 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
     );
   };
 
+  // Check if can rate
+  const canRate = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+    const completedStatuses = [
+      "COMPLETED",
+      "Đã tất toán",
+      "RETURNED",
+      "Đã trả xe",
+    ];
+
+    return (
+      completedStatuses.includes(contractStatus || "") ||
+      completedStatuses.includes(bookingStatus || "")
+    );
+  };
+
+  // Check if any vehicle is rated (for display purpose)
+  const hasAnyRating = () => {
+    if (!info.vehicles || info.vehicles.length === 0) {
+      // Fallback to booking-level rating
+      const ratingKey = `${info._id}_${info.vehicleId._id}`;
+      return currentRatingMap[ratingKey];
+    }
+
+    return info.vehicles.some((vehicle) => {
+      const ratingKey = `${info._id}_${vehicle.id}`;
+      return currentRatingMap[ratingKey];
+    });
+  };
+
   // Calculate rental duration
   const startDate = moment(info?.timeBookingStart);
   const endDate = moment(info?.timeBookingEnd);
@@ -331,6 +393,11 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-1">
                   {info?.vehicleId?.vehicleThumb || "Tên xe"}
+                  {info.vehicles && info.vehicles.length > 1 && (
+                    <span className="text-sm text-gray-500 ml-2">
+                      (+{info.vehicles.length - 1} xe khác)
+                    </span>
+                  )}
                 </h3>
                 <p className="text-gray-600">
                   Biển số: {info?.vehicleId?.vehicleLicensePlate}
@@ -420,13 +487,13 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
               )}
 
               {/* Nút đánh giá */}
-              {info?.contract?.status === "Đã tất toán" && onOpenRating && (
+              {canRate() && onOpenRating && (
                 <Button
                   type="default"
-                  onClick={onOpenRating}
+                  onClick={handleRatingClick}
                   className="border-yellow-400 text-yellow-600 hover:bg-yellow-50"
                 >
-                  {isRated ? "Đánh giá lại" : "Đánh giá"}
+                  {hasAnyRating() ? "Đánh giá lại" : "Đánh giá"}
                 </Button>
               )}
 
@@ -438,6 +505,18 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           </div>
         </div>
       </Card>
+
+      {/* Vehicle Selection Modal */}
+      {info.vehicles && (
+        <VehicleSelectionModal
+          open={vehicleSelectionModal}
+          onCancel={() => setVehicleSelectionModal(false)}
+          vehicles={info.vehicles} // Use info.vehicles instead
+          onSelectVehicle={handleSelectVehicleForRating}
+          currentRatingMap={currentRatingMap}
+          bookingId={info._id} // Use info._id for bookingId
+        />
+      )}
 
       {/* Modal xác nhận nhận xe */}
       <Modal
