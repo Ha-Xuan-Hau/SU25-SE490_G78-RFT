@@ -63,7 +63,7 @@ public class SecurityConfig {
                                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/vehicles/**").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/vehicles/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/coupons/apply").authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/bookedTimeSlot/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/wallet/staff/**").hasAnyRole("STAFF", "ADMIN")
                                 .requestMatchers(HttpMethod.GET, "/api/reports/type/**").hasAnyRole("STAFF", "ADMIN")
