@@ -584,10 +584,8 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         //boolean isBicycle = "BICYCLE".equalsIgnoreCase(type);
 
         // Tìm các xe cùng thumb và user
-        Vehicle.VehicleType vehicleType = parseVehicleType(request.getVehicleType());
-        // Tìm các xe cùng thumb, user và cùng loại xe
         List<Vehicle> sameThumbVehicles = vehicleRepository.findByUserId(userId).stream()
-                .filter(v -> request.getThumb() != null && request.getThumb().equals(v.getThumb()) && v.getVehicleType() == vehicleType)
+                .filter(v -> request.getThumb() != null && request.getThumb().equals(v.getThumb()))
                 .collect(Collectors.toList());
 
         List<VehicleGetDTO> createdVehicles = new ArrayList<>();
