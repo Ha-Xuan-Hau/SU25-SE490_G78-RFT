@@ -3,12 +3,17 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import { VehicleRentalCard } from "@/components/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { getUserBookings } from "@/apis/booking.api";
+import { getUserBookings, getBookingDetail } from "@/apis/booking.api";
 import { getRatingByBookingAndUser, upUserRating } from "@/apis/booking.api";
+import { BookingDetail } from "@/types/booking";
 
 import { showError, showSuccess } from "@/utils/toast.utils";
 import { Empty, Spin } from "antd";
 import RatingModal from "@/components/RatingModal";
+import VehicleSelectionModal from "@/components/VehicleSelectionModal";
+
+// Vehicle type từ BookingDetail
+type Vehicle = BookingDetail["vehicles"][0];
 
 // Backend booking interface (based on the API response format)
 interface BackendBooking {
@@ -19,12 +24,12 @@ interface BackendBooking {
   vehicleImage: string;
   vehicleLicensePlate: string;
   vehicleType: string;
-  timeBookingStart: number[]; // [year, month, day, hour, minute]
-  timeBookingEnd: number[]; // [year, month, day, hour, minute]
+  timeBookingStart: number[];
+  timeBookingEnd: number[];
   phoneNumber: string;
   address: string;
   codeTransaction: string;
-  timeTransaction: number[]; // [year, month, day, hour, minute, second]
+  timeTransaction: number[];
   totalCost: number;
   status: string;
   createdAt: number[];
@@ -34,7 +39,7 @@ interface BackendBooking {
 
 // Frontend booking interface (transformed for UI display)
 interface Booking {
-  _id: string;
+  _id: string; // Giữ _id cho booking vì API trả về id
   status: string;
   vehicleId: {
     _id: string;
@@ -52,27 +57,27 @@ interface Booking {
   contract?: {
     status: string;
   };
+  vehicles?: Vehicle[];
 }
 
 // Transform backend booking to frontend format
 const transformBooking = (backendBooking: BackendBooking): Booking => {
-  // Convert array time format to ISO string
   const convertArrayToISO = (timeArray: number[]): string => {
     const [year, month, day, hour = 0, minute = 0, second = 0] = timeArray;
     return new Date(year, month - 1, day, hour, minute, second).toISOString();
   };
 
   return {
-    _id: backendBooking.id,
+    _id: backendBooking.id, // API trả về id, chuyển thành _id
     status: statusMapping[backendBooking.status] || backendBooking.status,
     vehicleId: {
       _id: backendBooking.vehicleId,
       model: {
-        name: backendBooking.vehicleId, // Dùng id làm tên xe
+        name: backendBooking.vehicleId,
       },
-      yearManufacture: new Date().getFullYear(), // Default to current year since we don't có năm sản xuất
+      yearManufacture: new Date().getFullYear(),
       vehicleThumb: backendBooking.vehicleThumb,
-      vehicleImage: backendBooking.vehicleImage || "/images/demo1.png", // Thêm dòng này
+      vehicleImage: backendBooking.vehicleImage || "/images/demo1.png",
       vehicleLicensePlate:
         backendBooking.vehicleLicensePlate || "Không xác định",
     },
@@ -87,12 +92,11 @@ const transformBooking = (backendBooking: BackendBooking): Booking => {
 
 // Status mapping from backend to UI
 const statusMapping: { [key: string]: string } = {
-  // Main booking statuses
   UNPAID: "Chờ thanh toán",
   PENDING: "Chờ xử lý",
-  CONFIRMED: "Đã xác nhận", // Changed from "Đã duyệt" to "Đã xác nhận"
+  CONFIRMED: "Đã xác nhận",
   DELIVERING: "Đang giao xe",
-  DELIVERED: "Đang giao xe", // Add DELIVERED mapping
+  DELIVERED: "Đang giao xe",
   RECEIVED_BY_CUSTOMER: "Đang thực hiện",
   RETURNED: "Đã trả xe",
   COMPLETED: "Đã tất toán",
@@ -102,21 +106,17 @@ const statusMapping: { [key: string]: string } = {
 
 // Get display status from booking data
 const getDisplayStatus = (booking: Booking): string => {
-  // Priority: contract status > booking status
   const contractStatus = booking.contract?.status;
   const bookingStatus = booking.status;
 
-  // Map contract status first
   if (contractStatus && statusMapping[contractStatus]) {
     return statusMapping[contractStatus];
   }
 
-  // Fall back to booking status
   if (bookingStatus && statusMapping[bookingStatus]) {
     return statusMapping[bookingStatus];
   }
 
-  // Return original status if no mapping found
   return contractStatus || bookingStatus || "Không xác định";
 };
 
@@ -130,12 +130,22 @@ export default function BookingHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
 
+  // Rating modal states
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(
+    null
+  );
   const [userId, setUserId] = useState<string | null>(null);
   const [currentRatingMap, setCurrentRatingMap] = useState<Record<string, any>>(
     {}
   );
+
+  // Vehicle selection modal states
+  const [vehicleSelectionModal, setVehicleSelectionModal] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState<
+    Record<string, Vehicle[]>
+  >({});
 
   // Get userId from JWT token
   const getUserIdFromToken = useCallback(() => {
@@ -160,73 +170,184 @@ export default function BookingHistoryPage() {
     setUserId(getUserIdFromToken());
   }, [accessToken, getUserIdFromToken]);
 
-  const handleOpenRating = async (booking: Booking) => {
-    setSelectedBooking(booking);
-    if (userId) {
+  // Fetch booking details for vehicles data
+  const fetchBookingDetails = useCallback(async (bookingIds: string[]) => {
+    const detailsPromises = bookingIds.map(async (bookingId) => {
       try {
-        const rating = await getRatingByBookingAndUser(booking._id, userId);
+        const detail = (await getBookingDetail(bookingId)) as BookingDetail;
+        return { bookingId, vehicles: detail.vehicles || [] };
+      } catch (error) {
+        console.error(`Error fetching booking detail for ${bookingId}:`, error);
+        return { bookingId, vehicles: [] };
+      }
+    });
+
+    const results = await Promise.all(detailsPromises);
+    const detailsMap: Record<string, Vehicle[]> = {};
+    results.forEach(({ bookingId, vehicles }) => {
+      detailsMap[bookingId] = vehicles;
+    });
+
+    setBookingDetails(detailsMap);
+  }, []);
+
+  // Handle opening rating modal
+  const handleOpenRating = async (booking: Booking, vehicleId?: string) => {
+    console.log("handleOpenRating called with:", {
+      bookingId: booking._id,
+      vehicleId,
+    });
+    setSelectedBooking(booking);
+
+    // If no vehicleId provided, check if there are multiple vehicles
+    if (!vehicleId) {
+      const vehicles = bookingDetails[booking._id] || [];
+      if (vehicles.length > 1) {
+        setVehicleSelectionModal(true);
+        return;
+      } else {
+        // Single vehicle case
+        vehicleId = vehicles[0]?.id || booking.vehicleId._id;
+      }
+    }
+
+    console.log("Selected vehicleId:", vehicleId);
+    setSelectedVehicleId(vehicleId);
+
+    // Fetch ratings for the booking and find the specific vehicle rating
+    if (vehicleId && userId) {
+      try {
+        // API returns array of ratings for the booking
+        const ratingsResponse = await getRatingByBookingAndUser(
+          booking._id,
+          userId
+        );
+        console.log("Fetched ratings response:", ratingsResponse);
+
+        // Handle both array and single object responses
+        const ratings = Array.isArray(ratingsResponse)
+          ? ratingsResponse
+          : [ratingsResponse];
+
+        // Find rating for specific vehicle
+        const vehicleRating = ratings.find(
+          (rating: any) => rating.vehicleId === vehicleId
+        );
+
+        console.log("Found vehicle rating:", vehicleRating);
+
+        // Store all ratings from this booking in the map
+        ratings.forEach((rating: any) => {
+          const ratingKey = `${booking._id}_${rating.vehicleId}`;
+          setCurrentRatingMap((prev) => ({
+            ...prev,
+            [ratingKey]: rating,
+          }));
+        });
+      } catch (error) {
+        console.log("No ratings found for booking:", booking._id);
+        // Set null for this specific vehicle
+        const ratingKey = `${booking._id}_${vehicleId}`;
         setCurrentRatingMap((prev) => ({
           ...prev,
-          [booking._id]: rating,
-        }));
-      } catch {
-        setCurrentRatingMap((prev) => ({
-          ...prev,
-          [booking._id]: null,
+          [ratingKey]: null,
         }));
       }
     }
+
     setRatingModalOpen(true);
   };
 
   const handleCloseRating = () => {
     setRatingModalOpen(false);
     setSelectedBooking(null);
+    setSelectedVehicleId(null);
   };
 
   const handleSubmitRating = async (star: number, comment: string) => {
-    if (!selectedBooking || !userId) return;
-    await upUserRating({
-      bookingId: selectedBooking._id,
-      vehicleId: selectedBooking.vehicleId._id,
-      userId,
-      star,
-      comment,
-    });
-    showSuccess(
-      currentRatingMap[selectedBooking._id]
-        ? "Cập nhật đánh giá thành công"
-        : "Đánh giá thành công"
-    );
-    setCurrentRatingMap((prev) => ({
-      ...prev,
-      [selectedBooking._id]: { star, comment },
-    }));
-    handleCloseRating();
+    if (!selectedBooking || !userId || !selectedVehicleId) return;
+
+    try {
+      await upUserRating({
+        bookingId: selectedBooking._id,
+        vehicleId: selectedVehicleId,
+        userId,
+        star,
+        comment,
+      });
+
+      const ratingKey = `${selectedBooking._id}_${selectedVehicleId}`;
+      const isExistingRating = currentRatingMap[ratingKey];
+
+      showSuccess(
+        isExistingRating
+          ? "Cập nhật đánh giá thành công"
+          : "Đánh giá thành công"
+      );
+
+      // Update rating map with consistent key
+      setCurrentRatingMap((prev) => ({
+        ...prev,
+        [ratingKey]: { star, comment },
+      }));
+
+      handleCloseRating();
+    } catch (error) {
+      showError("Có lỗi xảy ra khi gửi đánh giá");
+    }
   };
 
+  // Handle vehicle selection for rating
+  const handleSelectVehicleForRating = (vehicle: Vehicle) => {
+    setVehicleSelectionModal(false);
+    handleOpenRating(selectedBooking!, vehicle.id); // Sử dụng id
+  };
+
+  // Fetch ratings for all vehicles in all bookings
   useEffect(() => {
-    // Sau khi fetch bookingHistory xong:
-    const fetchRatings = async () => {
-      if (!userId) return;
-      const map: Record<string, any> = {};
-      await Promise.all(
-        bookingHistory.map(async (booking) => {
-          try {
-            const rating = await getRatingByBookingAndUser(booking._id, userId);
-            if (rating) map[booking._id] = rating;
-          } catch {
-            // Không có rating thì bỏ qua
-          }
-        })
-      );
-      setCurrentRatingMap(map);
+    const fetchAllRatings = async () => {
+      if (!userId || !bookingHistory.length) return;
+
+      const ratingPromises: Promise<void>[] = [];
+
+      bookingHistory.forEach((booking) => {
+        // Fetch ratings for each booking (returns array of ratings)
+        ratingPromises.push(
+          getRatingByBookingAndUser(booking._id, userId)
+            .then((ratingsResponse) => {
+              // Handle both array and single object responses
+              const ratings = Array.isArray(ratingsResponse)
+                ? ratingsResponse
+                : [ratingsResponse];
+
+              console.log(`Ratings for booking ${booking._id}:`, ratings);
+
+              // Store each rating in the map with vehicleId as key
+              ratings.forEach((rating: any) => {
+                if (rating && rating.vehicleId) {
+                  const ratingKey = `${booking._id}_${rating.vehicleId}`;
+                  setCurrentRatingMap((prev) => ({
+                    ...prev,
+                    [ratingKey]: rating,
+                  }));
+                }
+              });
+            })
+            .catch((error) => {
+              console.log(
+                `No ratings found for booking ${booking._id}:`,
+                error
+              );
+              // Don't set anything in the map for failed requests
+            })
+        );
+      });
+
+      await Promise.all(ratingPromises);
     };
 
-    if (bookingHistory.length && userId) {
-      fetchRatings();
-    }
-  }, [bookingHistory, userId]);
+    fetchAllRatings();
+  }, [bookingHistory, bookingDetails, userId]);
 
   // Fetch booking data from API
   const fetchBookingHistory = useCallback(async () => {
@@ -238,10 +359,13 @@ export default function BookingHistoryPage() {
       setError(null);
       const data = await getUserBookings(userId);
 
-      // Transform backend data to frontend format
       const backendBookings = (data as BackendBooking[]) || [];
       const transformedBookings = backendBookings.map(transformBooking);
       setBookingHistory(transformedBookings);
+
+      // Fetch booking details for vehicles data
+      const bookingIds = transformedBookings.map((booking) => booking._id);
+      await fetchBookingDetails(bookingIds);
     } catch (err) {
       console.error("Error fetching booking history:", err);
       const errorMessage =
@@ -251,7 +375,7 @@ export default function BookingHistoryPage() {
     } finally {
       setInitialLoading(false);
     }
-  }, [getUserIdFromToken]);
+  }, [getUserIdFromToken, fetchBookingDetails]);
 
   // Load data when token is available
   useEffect(() => {
@@ -259,6 +383,23 @@ export default function BookingHistoryPage() {
       fetchBookingHistory();
     }
   }, [accessToken, fetchBookingHistory]);
+
+  // Check if booking has any rating
+  const hasAnyRating = (booking: Booking) => {
+    const vehicles = bookingDetails[booking._id] || [];
+
+    if (vehicles.length > 0) {
+      // Check if any vehicle in this booking has a rating
+      return vehicles.some((vehicle) => {
+        const ratingKey = `${booking._id}_${vehicle.id}`;
+        return currentRatingMap[ratingKey];
+      });
+    }
+
+    // Fallback for bookings without vehicle details
+    const ratingKey = `${booking._id}_${booking.vehicleId._id}`;
+    return !!currentRatingMap[ratingKey];
+  };
 
   // Lọc danh sách dựa trên tab đang chọn
   const filteredBookings = bookingHistory.filter((booking: Booking) => {
@@ -268,14 +409,13 @@ export default function BookingHistoryPage() {
 
     switch (activeTab) {
       case "processing":
-        // Include both PENDING and CONFIRMED statuses in Processing tab
         return (
           displayStatus === "Chờ xử lý" ||
           displayStatus === "Đã xác nhận" ||
           bookingStatus === "CONFIRMED"
         );
       case "payment":
-        return displayStatus === "Chờ thanh toán"; // UNPAID, WAITING_PAYMENT status
+        return displayStatus === "Chờ thanh toán";
       case "transporting":
         return (
           displayStatus === "Đang giao xe" ||
@@ -283,11 +423,11 @@ export default function BookingHistoryPage() {
           bookingStatus === "DELIVERED" ||
           contractStatus === "DELIVERING" ||
           contractStatus === "DELIVERED"
-        ); // DELIVERING, DELIVERED status
+        );
       case "active":
-        return displayStatus === "Đang thực hiện"; // ACTIVE, IN_PROGRESS status
+        return displayStatus === "Đang thực hiện";
       case "completed":
-        return displayStatus === "Đã tất toán"; // COMPLETED, SETTLEMENT_COMPLETED status
+        return displayStatus === "Đã tất toán";
       case "returned":
         return (
           displayStatus === "Đã trả xe" ||
@@ -295,17 +435,16 @@ export default function BookingHistoryPage() {
           contractStatus === "RETURNED"
         );
       case "canceled":
-        return displayStatus === "Đã hủy"; // CANCELLED status
+        return displayStatus === "Đã hủy";
       default:
-        return true; // Tab "Tất cả" - show all bookings
+        return true;
     }
   });
 
   const visibleBookings = filteredBookings.slice(0, visibleCount);
-
   const hasMore = visibleCount < filteredBookings.length;
 
-  // Đếm số lượng cho từng loại
+  // Đếm số lượng cho từng loại (code giữ nguyên...)
   const waitingCount = bookingHistory.filter(
     (b: Booking) =>
       getDisplayStatus(b) === "Chờ xử lý" ||
@@ -350,9 +489,8 @@ export default function BookingHistoryPage() {
 
     setLoading(true);
 
-    // Giả lập việc tải dữ liệu (có thể thay bằng API call thực tế)
     setTimeout(() => {
-      setVisibleCount((prev) => prev + 5); // Load thêm 5 đơn hàng mỗi lần
+      setVisibleCount((prev) => prev + 5);
       setLoading(false);
     }, 800);
   }, [loading, hasMore]);
@@ -360,12 +498,11 @@ export default function BookingHistoryPage() {
   // Xử lý tab change
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
-    setVisibleCount(5); // Reset số đơn hàng hiển thị khi chuyển tab
+    setVisibleCount(5);
   }, []);
 
-  // Thiết lập Intersection Observer để phát hiện khi người dùng cuộn đến cuối danh sách
+  // Thiết lập Intersection Observer
   useEffect(() => {
-    // Nếu không có loader ref hoặc không còn đơn hàng để load, không cần theo dõi scroll
     if (!loaderRef.current || !hasMore) return;
 
     const observer = new IntersectionObserver(
@@ -646,19 +783,30 @@ export default function BookingHistoryPage() {
             ) : visibleBookings.length > 0 ? (
               <>
                 <div className="grid gap-4">
-                  {visibleBookings.map((booking: Booking, index: number) => (
-                    <div
-                      key={`${booking._id}-${index}`}
-                      className="border-b border-gray-100 pb-4 last:border-0"
-                    >
-                      <VehicleRentalCard
-                        info={booking}
-                        accessToken={accessToken}
-                        onOpenRating={() => handleOpenRating(booking)}
-                        isRated={!!currentRatingMap[booking._id]}
-                      />
-                    </div>
-                  ))}
+                  {visibleBookings.map((booking: Booking, index: number) => {
+                    // Attach vehicles data to booking
+                    const bookingWithVehicles = {
+                      ...booking,
+                      vehicles: bookingDetails[booking._id] || [],
+                    };
+
+                    return (
+                      <div
+                        key={`${booking._id}-${index}`}
+                        className="border-b border-gray-100 pb-4 last:border-0"
+                      >
+                        <VehicleRentalCard
+                          info={bookingWithVehicles}
+                          accessToken={accessToken}
+                          onOpenRating={(vehicleId) =>
+                            handleOpenRating(booking, vehicleId)
+                          }
+                          isRated={hasAnyRating(booking)}
+                          currentRatingMap={currentRatingMap}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Element này sẽ được sử dụng để phát hiện khi scroll đến cuối */}
@@ -689,7 +837,7 @@ export default function BookingHistoryPage() {
                                 : activeTab === "processing"
                                 ? "Chờ xử lý"
                                 : activeTab === "transporting"
-                                ? "Đã nhận được xe"
+                                ? "Đang giao xe"
                                 : activeTab === "active"
                                 ? "Đang thuê"
                                 : activeTab === "returned"
@@ -718,17 +866,49 @@ export default function BookingHistoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Vehicle Selection Modal */}
+      <VehicleSelectionModal
+        open={vehicleSelectionModal}
+        onCancel={() => setVehicleSelectionModal(false)}
+        vehicles={
+          selectedBooking ? bookingDetails[selectedBooking._id] || [] : []
+        }
+        onSelectVehicle={handleSelectVehicleForRating}
+        currentRatingMap={currentRatingMap}
+        bookingId={selectedBooking?._id || ""} // Add this line
+      />
+
+      {/* Rating Modal */}
       <RatingModal
         open={ratingModalOpen}
         handleCancel={handleCloseRating}
         bookingId={selectedBooking?._id || ""}
-        vehicleId={selectedBooking?.vehicleId._id || ""}
-        initialStar={
-          selectedBooking && currentRatingMap[selectedBooking._id]?.star
-        }
-        initialComment={
-          selectedBooking && currentRatingMap[selectedBooking._id]?.comment
-        }
+        vehicleId={selectedVehicleId || selectedBooking?.vehicleId._id || ""}
+        initialStar={(() => {
+          if (!selectedVehicleId || !selectedBooking) return undefined;
+          const ratingKey = `${selectedBooking._id}_${selectedVehicleId}`;
+          const rating = currentRatingMap[ratingKey];
+          console.log("RatingModal initialStar:", {
+            selectedVehicleId,
+            ratingKey,
+            rating,
+            star: rating?.star,
+          });
+          return rating?.star;
+        })()}
+        initialComment={(() => {
+          if (!selectedVehicleId || !selectedBooking) return undefined;
+          const ratingKey = `${selectedBooking._id}_${selectedVehicleId}`;
+          const rating = currentRatingMap[ratingKey];
+          console.log("RatingModal initialComment:", {
+            selectedVehicleId,
+            ratingKey,
+            rating,
+            comment: rating?.comment,
+          });
+          return rating?.comment;
+        })()}
         onSubmit={handleSubmitRating}
       />
     </div>
