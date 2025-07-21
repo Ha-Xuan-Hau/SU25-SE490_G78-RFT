@@ -56,8 +56,6 @@ public class CouponServiceImpl implements CouponService {
                 .orElseThrow(() -> new RuntimeException("Không thấy mã giảm giá!!"));
         coupon.setStatus(Coupon.CouponStatus.VALID);
         couponRepository.save(coupon);
-
-        usedCouponRepository.deleteByCouponId(id);
     }
 
     @Override
