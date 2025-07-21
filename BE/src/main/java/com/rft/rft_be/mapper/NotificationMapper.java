@@ -30,7 +30,8 @@ public class NotificationMapper {
     public static final String PROVIDER_RECEIVED_BOOKING = "PROVIDER_RECEIVED_BOOKING";
     public static final String SYSTEM_ANNOUNCEMENT = "SYSTEM_ANNOUNCEMENT";
     public static final String MAINTENANCE_NOTICE = "MAINTENANCE_NOTICE";
-
+    public static final String VEHICLE_APPROVED = "VEHICLE_APPROVED";
+    public static final String VEHICLE_REJECTED = "VEHICLE_REJECTED";
 
     // Message templates
     public static final String ORDER_PLACED_MSG = "Đơn hàng của bạn cho xe %s đã được đặt thành công";
@@ -47,6 +48,8 @@ public class NotificationMapper {
     public static final String PROVIDER_RECEIVED_BOOKING_MSG = "Bạn có booking mới cho xe %s";
     public static final String BOOKING_COMPLETED = "BOOKING_COMPLETED";
     public static final String BOOKING_COMPLETED_MSG = "Đơn hàng của bạn đã được hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ!";
+    public static final String VEHICLE_APPROVED_MSG = "Xe \"%s\" của bạn đã được duyệt.";
+    public static final String VEHICLE_REJECTED_MSG = "Xe \"%s\" không được duyệt. Lý do: %s";
 
     // Notification categories for grouping
     public static final String CATEGORY_BOOKING = "BOOKING";
@@ -153,6 +156,9 @@ public class NotificationMapper {
                 return Notification.type.BOOKING;
             case BOOKING_COMPLETED:
                 return Notification.type.BOOKING;
+            case VEHICLE_APPROVED:
+            case VEHICLE_REJECTED:
+                return Notification.type.SYSTEM;
 
             // System notifications
             case SYSTEM_ANNOUNCEMENT:
@@ -209,6 +215,23 @@ public class NotificationMapper {
         return String.format(PROVIDER_RECEIVED_BOOKING_MSG, vehicleName);
     }
 
+    public String formatVehicleApprovedMessage(String vehicleName) {
+        return String.format(VEHICLE_APPROVED_MSG, vehicleName);
+    }
+
+    public String formatVehicleRejectedMessage(String vehicleName, String reason) {
+        return String.format(VEHICLE_REJECTED_MSG, vehicleName, reason);
+    }
+
+    public NotificationCreateDTO toNotificationCreateDTO(String receiverId, String type, String message, String redirectUrl) {
+        return NotificationCreateDTO.builder()
+                .receiverId(receiverId)
+                .type(type)
+                .message(message)
+                .redirectUrl(redirectUrl)
+                .build();
+    }
+
     // Utility methods for notification type validation
     public boolean isValidNotificationType(String type) {
         return ORDER_PLACED.equals(type) || ORDER_APPROVED.equals(type) ||
@@ -217,6 +240,7 @@ public class NotificationMapper {
                 WITHDRAWAL_APPROVED.equals(type) || VEHICLE_HANDOVER.equals(type) ||
                 VEHICLE_PICKUP_CONFIRMED.equals(type) || VEHICLE_RETURN_CONFIRMED.equals(type) ||
                 USER_RETURN_VEHICLE.equals(type) || PROVIDER_RECEIVED_BOOKING.equals(type) ||
+                VEHICLE_APPROVED.equals(type) || VEHICLE_REJECTED.equals(type) ||
                 SYSTEM_ANNOUNCEMENT.equals(type) || MAINTENANCE_NOTICE.equals(type) || BOOKING_COMPLETED.equals(type);
     }
 
@@ -235,6 +259,9 @@ public class NotificationMapper {
         }
         else if (BOOKING_COMPLETED.equals(type)) {
             return CATEGORY_BOOKING;
+        }
+        else if (VEHICLE_APPROVED.equals(type) || VEHICLE_REJECTED.equals(type)) {
+            return CATEGORY_VEHICLE;
         }
         return "UNKNOWN";
     }

@@ -185,4 +185,7 @@ public interface NotificationService {
      * Công dụng: Thông báo cho tất cả user biết hệ thống sẽ bảo trì
      */
     void createMaintenanceNotice(String message, String scheduledTime);
+
+    void notifyVehicleApproved(String userId, String vehicleName); // thông báo tới provider sau khi admin duyệt xe của họ
+    void notifyVehicleRejected(String userId, String vehicleName, String reason); // thông báo tới provider sau khi admin từ chối xe của họ kèm lí do
 }
