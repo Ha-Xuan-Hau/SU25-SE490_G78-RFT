@@ -498,7 +498,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
               )}
 
               {/* Nút chi tiết */}
-              <Link href={`/profile/booking-detail/${info?._id}`} passHref>
+              <Link href={`/booking-detail/${info?._id}`} passHref>
                 <Button type="default">Chi tiết</Button>
               </Link>
             </div>
