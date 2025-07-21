@@ -63,7 +63,7 @@ public class RatingServiceImpl implements RatingService {
             ReportRequest report = new ReportRequest();
             report.setTargetId(dto.getVehicleId()); // hoặc booking.getUser().getId() nếu muốn report user
             report.setReason("Từ ngữ không phù hợp trong đánh giá: " + dto.getComment());
-            report.setType("SERIOUS_ERROR"); // hoặc định nghĩa type riêng nếu cần
+            report.setType("USER_ERROR"); // hoặc định nghĩa type riêng nếu cần
             reportService.report(booking.getUser(), report);
 
             throw new RuntimeException("Bình luận chứa ngôn từ không phù hợp, không thể đăng đánh giá.");
