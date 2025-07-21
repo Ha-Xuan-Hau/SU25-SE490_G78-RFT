@@ -93,7 +93,7 @@ CREATE TABLE `vehicles` (
   `description` text,
   `number_vehicle` int DEFAULT 1,
   `cost_per_day` decimal(10,2) DEFAULT NULL,
-  `status` enum('AVAILABLE','UNAVAILABLE') DEFAULT 'AVAILABLE',
+  `status` enum('PENDING','AVAILABLE','UNAVAILABLE', 'SUSPENDED') DEFAULT 'PENDING',
   `thumb` text,
   `total_ratings` int DEFAULT '0',
   `likes` int DEFAULT '0',

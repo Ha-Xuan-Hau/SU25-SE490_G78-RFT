@@ -135,6 +135,9 @@ public class Vehicle {
     }
     public enum Status {
         PENDING ,AVAILABLE, UNAVAILABLE, SUSPENDED
-
+        // PENDING trạng thái xe chưa được duyệt
+        // AVAILABLE trạng thái xe đang hoạt động
+        // UNAVAILABLE trạng thái xe đã bị xóa
+        // SUSPENDED trạng thái xe đang tạm khóa bởi chủ xe
     }
 }

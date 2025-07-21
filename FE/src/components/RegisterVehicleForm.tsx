@@ -21,7 +21,10 @@ import {
 import { useUserState } from "../recoils/user.state";
 import useLocalStorage from "../hooks/useLocalStorage";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createVehicle, updateVehicle } from "../apis/vehicle.api";
+import { createCar, updateCar } from "../apis/vehicle.api";
+// TODO: Import APIs cho motorbike và bicycle
+// import { createMotorbike, updateMotorbike } from "../apis/motorbike.api";
+// import { createBicycle, updateBicycle } from "../apis/bicycle.api";
 import { getUserVehicleById } from "../apis/user-vehicles.api";
 import { getPenaltiesByUserId } from "../apis/provider.api";
 import { showError, showSuccess } from "../utils/toast.utils";
@@ -60,8 +63,16 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
   });
 
   const [extraRule, setExtraRule] = useState<ExtraRule>({});
-  const apiCreateVehicle = useMutation({ mutationFn: createVehicle });
-  const apiUpdateCar = useMutation({ mutationFn: updateVehicle });
+
+  // API mutations cho từng loại xe
+  const apiCreateVehicle = useMutation({ mutationFn: createCar });
+  const apiUpdateCar = useMutation({ mutationFn: updateCar });
+  // TODO: Thêm mutations cho motorbike và bicycle
+  // const apiCreateMotorbike = useMutation({ mutationFn: createMotorbike });
+  // const apiUpdateMotorbike = useMutation({ mutationFn: updateMotorbike });
+  // const apiCreateBicycle = useMutation({ mutationFn: createBicycle });
+  // const apiUpdateBicycle = useMutation({ mutationFn: updateBicycle });
+
   const [isActive, setIsActive] = useState<boolean>(true);
   const brandOptions = useMemo(
     () =>
@@ -345,36 +356,149 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
       onFinish={async (values) => {
         setSubmitting(true);
         try {
-          const formattedFeatures =
-            values.vehicleFeatures?.map((name: string) => ({ name })) || [];
-          let licensePlateArr: string[] = [];
+          // Xử lý biển số xe theo loại xe
+          let licensePlateData: string | string[] = "";
           let quantity = 1;
-          if (isMultipleVehicles && vehicleType === VehicleType.MOTORBIKE) {
-            licensePlateArr = licensePlates.filter(
-              (lp) => lp && lp.trim() !== ""
-            );
-            quantity = values.vehicleQuantity || licensePlateArr.length;
-          } else {
-            if (values.licensePlate) {
-              licensePlateArr = [values.licensePlate];
-            }
+
+          if (vehicleType === VehicleType.CAR) {
+            // Ô tô: chỉ gửi 1 string
+            licensePlateData = values.licensePlate || "";
             quantity = 1;
+          } else if (vehicleType === VehicleType.MOTORBIKE) {
+            if (isMultipleVehicles) {
+              // Xe máy nhiều chiếc: gửi array
+              const validLicensePlates = licensePlates.filter(
+                (lp) => lp && lp.trim() !== ""
+              );
+              licensePlateData = validLicensePlates;
+              quantity = values.vehicleQuantity || validLicensePlates.length;
+            } else {
+              // Xe máy 1 chiếc: gửi string
+              licensePlateData = values.licensePlate || "";
+              quantity = 1;
+            }
+          } else if (vehicleType === VehicleType.BICYCLE) {
+            // Xe đạp: không có biển số
+            licensePlateData = ""; // Xe đạp không có biển số
+            quantity = isMultipleVehicles ? values.vehicleQuantity || 1 : 1;
           }
-          const submitData = {
-            ...values,
-            vehicleFeatures: values.vehicleFeatures.join(","),
-            vehicleType,
+
+          // Xử lý vehicleImages - chuyển từ array URL thành array object
+          const formattedImages =
+            values.images?.map((url: string) => ({
+              imageUrl: url,
+            })) || [];
+
+          // Base submit data cho tất cả loại xe
+          const baseSubmitData = {
+            penaltyId: values.rentalRule,
+            licensePlate: licensePlateData,
+            vehicleType: vehicleType, // "Car", "Motorbike", "Bicycle"
+            vehicleFeatures: values.vehicleFeatures?.join(", ") || "",
+            vehicleImages: formattedImages,
+            haveDriver: "NO", // Xe máy và xe đạp luôn là "NO"
+            insuranceStatus: values.insuranceStatus || "NO",
+            shipToAddress: values.shipToAddress || "NO",
+            yearManufacture: values.yearOfManufacture,
+            transmission: values.transmission,
+            fuelType: values.fuelType,
+            description: values.description,
+            numberVehicle: quantity,
+            costPerDay: values.costPerDay,
+            status: isActive ? "AVAILABLE" : "UNAVAILABLE",
+            thumb: values.thumb,
             userId: user?.id || user?.result?.id,
-            licensePlate: licensePlateArr,
             isMultipleVehicles: isMultipleVehicles,
             vehicleQuantity: quantity,
-            status: isActive ? "AVAILABLE" : "UNAVAILABLE",
-            vehicleImages: JSON.stringify(values.images) || "[]",
-            numberSeat: Number(values.numberSeat),
-            penaltyId: values.rentalRule,
           };
-          delete submitData.yearOfManufacture;
-          delete submitData.images;
+
+          let submitData;
+
+          if (vehicleType === VehicleType.CAR) {
+            // Ô tô: có đầy đủ các field
+            submitData = {
+              ...baseSubmitData,
+              brandId: values.brandId,
+              modelId: values.modelId,
+              numberSeat: Number(values.numberSeat),
+              haveDriver: values.haveDriver || "NO",
+
+              // Extra fees cho ô tô
+              maxKmPerDay: extraRule.maxKmPerDay,
+              feePerExtraKm: extraRule.feePerExtraKm,
+              allowedHourLate: extraRule.allowedHourLate,
+              feePerExtraHour: extraRule.feePerExtraHour,
+              cleaningFee: extraRule.cleaningFee,
+              smellRemovalFee: extraRule.smellRemovalFee,
+
+              // Phí sạc pin cho xe điện
+              batteryChargeFeePerPercent:
+                values.fuelType === "ELECTRIC"
+                  ? extraRule.batteryChargeFeePerPercent
+                  : null,
+              apply_batteryChargeFee:
+                values.fuelType === "ELECTRIC"
+                  ? extraRule.apply_batteryChargeFee
+                  : null,
+
+              // Phí tài xế
+              driverFeePerDay:
+                values.haveDriver === "YES" ? extraRule.driverFeePerDay : null,
+              driverFeePerHour:
+                values.haveDriver === "YES" ? extraRule.driverFeePerHour : null,
+              hasDriverOption: values.haveDriver === "YES",
+              hasHourlyRental:
+                values.haveDriver === "YES" ? extraRule.hasHourlyRental : false,
+            };
+          } else if (vehicleType === VehicleType.MOTORBIKE) {
+            // Xe máy: gửi tất cả field nhưng set null cho những field không dùng
+            submitData = {
+              ...baseSubmitData,
+              brandId: values.brandId,
+              modelId: null, // Xe máy không có modelId
+              numberSeat: 4, // Giá trị mặc định cho xe máy
+
+              // Tất cả extra fees đều gửi nhưng với giá trị từ ví dụ
+              // maxKmPerDay: 200,
+              // feePerExtraKm: 5000,
+              // allowedHourLate: 2,
+              // feePerExtraHour: 100000,
+              // cleaningFee: 50000,
+              // smellRemovalFee: 30000,
+              // batteryChargeFeePerPercent: null,
+              // driverFeePerDay: null,
+              // hasDriverOption: false,
+              // driverFeePerHour: null,
+              // hasHourlyRental: false,
+            };
+          } else if (vehicleType === VehicleType.BICYCLE) {
+            // Xe đạp: gửi tất cả field nhưng set null cho những field không dùng
+            submitData = {
+              ...baseSubmitData,
+              brandId: null, // Xe đạp không có brandId
+              modelId: null, // Xe đạp không có modelId
+              numberSeat: 4, // Giá trị mặc định
+
+              // Override một số field cho xe đạp
+              transmission: "AUTOMATIC",
+              fuelType: "GASOLINE",
+
+              // Tất cả extra fees đều gửi nhưng với giá trị từ ví dụ
+              // maxKmPerDay: 200,
+              // feePerExtraKm: 5000,
+              // allowedHourLate: 2,
+              // feePerExtraHour: 100000,
+              // cleaningFee: 50000,
+              // smellRemovalFee: 30000,
+              // batteryChargeFeePerPercent: null,
+              // driverFeePerDay: null,
+              // hasDriverOption: false,
+              // driverFeePerHour: null,
+              // hasHourlyRental: false,
+            };
+          }
+
+          // Validation
           const selectedRule = rentalRuleOptions.find(
             (opt) => opt.value === values.rentalRule
           );
@@ -388,24 +512,121 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             setSubmitting(false);
             return;
           }
+
+          // Validation cho biển số trùng lặp (chỉ khi là xe máy nhiều chiếc)
+          if (
+            vehicleType === VehicleType.MOTORBIKE &&
+            isMultipleVehicles &&
+            Array.isArray(licensePlateData)
+          ) {
+            const trimmedPlates = licensePlateData
+              .map((lp) => lp.trim())
+              .filter((lp) => lp !== "");
+            const uniquePlates = new Set(trimmedPlates);
+
+            if (uniquePlates.size !== trimmedPlates.length) {
+              showError("Các biển số xe phải khác nhau!");
+              setSubmitting(false);
+              return;
+            }
+
+            if (trimmedPlates.length !== licensePlateData.length) {
+              showError("Vui lòng nhập đầy đủ biển số cho tất cả xe!");
+              setSubmitting(false);
+              return;
+            }
+          }
+
+          // Validation cho phí tài xế bắt buộc khi có lái xe (chỉ ô tô)
+          if (vehicleType === VehicleType.CAR && values.haveDriver === "YES") {
+            if (!extraRule.driverFeePerDay || extraRule.driverFeePerDay <= 0) {
+              showError("Vui lòng nhập phí tài xế/ngày!");
+              setSubmitting(false);
+              return;
+            }
+
+            if (extraRule.hasHourlyRental === undefined) {
+              showError("Vui lòng chọn có cho thuê theo giờ không!");
+              setSubmitting(false);
+              return;
+            }
+
+            // Chỉ validate phí tài xế/giờ khi hasHourlyRental là true
+            if (extraRule.hasHourlyRental === true) {
+              if (
+                !extraRule.driverFeePerHour ||
+                extraRule.driverFeePerHour <= 0
+              ) {
+                showError("Vui lòng nhập phí tài xế/giờ!");
+                setSubmitting(false);
+                return;
+              }
+            }
+          }
+
+          console.log("Submit data:", submitData); // Debug log
+
+          // Gửi API theo loại xe
           if (isInsert) {
-            await apiCreateVehicle.mutateAsync({
-              body: submitData,
-              accessToken,
-            });
+            if (vehicleType === VehicleType.CAR) {
+              await apiCreateVehicle.mutateAsync({
+                body: submitData,
+                accessToken,
+              });
+            } else if (vehicleType === VehicleType.MOTORBIKE) {
+              // TODO: Thay thế bằng API motorbike thực tế
+              await apiCreateVehicle.mutateAsync({
+                body: submitData,
+                accessToken,
+              });
+              // await apiCreateMotorbike.mutateAsync({
+              //   body: submitData,
+              //   accessToken,
+              // });
+            } else if (vehicleType === VehicleType.BICYCLE) {
+              // TODO: Thay thế bằng API bicycle thực tế
+              await apiCreateVehicle.mutateAsync({
+                body: submitData,
+                accessToken,
+              });
+              // await apiCreateBicycle.mutateAsync({
+              //   body: submitData,
+              //   accessToken,
+              // });
+            }
+
             showSuccess(
               isMultipleVehicles
                 ? "Đăng ký nhiều xe thành công, vui lòng chờ duyệt"
                 : "Đăng ký xe thành công, vui lòng chờ duyệt"
             );
           } else {
-            await apiUpdateCar.mutateAsync({
-              vehicleId,
-              body: submitData,
-              accessToken,
-            });
+            // Update logic tương tự
+            if (vehicleType === VehicleType.CAR) {
+              await apiUpdateCar.mutateAsync({
+                vehicleId,
+                body: submitData,
+                accessToken,
+              });
+            } else if (vehicleType === VehicleType.MOTORBIKE) {
+              // TODO: Thay thế bằng API motorbike thực tế
+              await apiUpdateCar.mutateAsync({
+                vehicleId,
+                body: submitData,
+                accessToken,
+              });
+            } else if (vehicleType === VehicleType.BICYCLE) {
+              // TODO: Thay thế bằng API bicycle thực tế
+              await apiUpdateCar.mutateAsync({
+                vehicleId,
+                body: submitData,
+                accessToken,
+              });
+            }
+
             showSuccess("Cập nhật thông tin xe thành công");
           }
+
           onOk?.();
           form.resetFields();
         } catch (error) {
@@ -416,6 +637,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         }
       }}
     >
+      {/* Giữ nguyên phần JSX form */}
       <Tabs
         activeKey={vehicleType}
         onChange={
@@ -486,7 +708,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           </Card>
         </div>
 
-        {/* Phụ phí cho ô tô */}
+        {/* Phụ phí chỉ hiển thị cho ô tô */}
         {vehicleType === VehicleType.CAR && (
           <div className="md:w-md mb-4">
             <Card title="Phụ phí có thể phát sinh">
@@ -613,7 +835,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                   </Form.Item>
                 </>
               )}
-              {/* Only show driverFeePerHour/hasHourlyRental if haveDriver is YES */}
+              {/* Only show driver fields if haveDriver is YES */}
               {form.getFieldValue("haveDriver") === "YES" && (
                 <>
                   <Form.Item
@@ -633,23 +855,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                       }
                     />
                   </Form.Item>
-                  <Form.Item
-                    label="Phí tài xế/giờ (VNĐ)"
-                    className="md:col-span-1"
-                    required
-                  >
-                    <InputNumber
-                      className="w-full"
-                      min={0}
-                      value={extraRule.driverFeePerHour}
-                      onChange={(v) =>
-                        setExtraRule((prev) => ({
-                          ...prev,
-                          driverFeePerHour: v ?? undefined,
-                        }))
-                      }
-                    />
-                  </Form.Item>
+
                   <Form.Item
                     label="Cho thuê theo giờ?"
                     className="md:col-span-1"
@@ -661,6 +867,10 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                         setExtraRule((prev) => ({
                           ...prev,
                           hasHourlyRental: v,
+                          // Reset phí tài xế/giờ khi thay đổi hasHourlyRental
+                          driverFeePerHour: v
+                            ? prev.driverFeePerHour
+                            : undefined,
                         }))
                       }
                       options={[
@@ -669,6 +879,27 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                       ]}
                     />
                   </Form.Item>
+
+                  {/* Chỉ hiện phí tài xế/giờ khi hasHourlyRental là true */}
+                  {extraRule.hasHourlyRental === true && (
+                    <Form.Item
+                      label="Phí tài xế/giờ (VNĐ)"
+                      className="md:col-span-1"
+                      required
+                    >
+                      <InputNumber
+                        className="w-full"
+                        min={0}
+                        value={extraRule.driverFeePerHour}
+                        onChange={(v) =>
+                          setExtraRule((prev) => ({
+                            ...prev,
+                            driverFeePerHour: v ?? undefined,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  )}
                 </>
               )}
             </Card>
