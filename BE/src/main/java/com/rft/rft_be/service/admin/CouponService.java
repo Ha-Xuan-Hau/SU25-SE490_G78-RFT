@@ -4,6 +4,7 @@ import com.rft.rft_be.dto.admin.CouponDTO;
 import com.rft.rft_be.dto.coupon.CouponCreateDTO;
 import com.rft.rft_be.dto.coupon.CouponUseDTO;
 import com.rft.rft_be.entity.Coupon;
+import com.rft.rft_be.entity.User;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -11,7 +12,7 @@ import java.util.List;
 public interface CouponService {
     void assignCouponToUser(String userId, String couponId);
     void restoreCouponToValid(String id);
-    void markCouponAsUsed(String userId, String couponId);
+    void markCouponAsUsed(User user, Coupon coupon);
 
     List<CouponDTO> getAllCoupons();
     CouponDTO getCouponById(String id);
