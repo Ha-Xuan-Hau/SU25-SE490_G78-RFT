@@ -13,7 +13,9 @@ import java.util.stream.Collectors;
 
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.entity.*;
+import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
+import com.rft.rft_be.service.Notification.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -59,6 +61,8 @@ public class BookingServiceImpl implements BookingService {
     CouponRepository couponRepository;
     FinalContractService finalContractService;
     BookingDetailRepository bookingDetailRepository;
+    NotificationService notificationService;
+    NotificationMapper notificationMapper;
 
     @Override
     @Transactional
@@ -176,6 +180,13 @@ public class BookingServiceImpl implements BookingService {
         booking.setBookingDetails(details);
 
         bookingCleanupTask.scheduleCleanup(booking.getId());
+
+        String vehicleNames = vehicles.stream()
+                .map(Vehicle::getThumb)
+                .collect(Collectors.joining(", "));
+        notificationService.notifyOrderPlaced(userId, booking.getId(), vehicleNames);
+        notificationService.notifyProviderReceivedBooking(providerId, booking.getId(), vehicleNames);
+
 
         BookingResponseDTO response = bookingResponseMapper.toResponseDTO(booking);
         response.setDiscountAmount(totalDiscount);
@@ -378,6 +389,8 @@ public class BookingServiceImpl implements BookingService {
         }
         booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
+        notificationService.notifyOrderApproved(booking.getUser().getId(), booking.getId());
+
 
         Contract contract = new Contract();
         contract.setUser(booking.getBookingDetails().get(0).getVehicle().getUser());
@@ -423,6 +436,13 @@ public class BookingServiceImpl implements BookingService {
 
         booking.setStatus(Booking.Status.DELIVERED);
         bookingRepository.save(booking);
+        Vehicle vehicle = booking.getBookingDetails().get(0).getVehicle();
+        notificationService.notifyVehicleHandover(
+                booking.getUser().getId(),     // người thuê
+                booking.getId(),
+                vehicle.getThumb(),             // tên xe
+                booking.getAddress()           // địa điểm giao xe
+        );
     }
 
     @Override
@@ -440,6 +460,12 @@ public class BookingServiceImpl implements BookingService {
         // Update booking status
         booking.setStatus(Booking.Status.RECEIVED_BY_CUSTOMER);
         bookingRepository.save(booking);
+        String providerId = booking.getBookingDetails().get(0).getVehicle().getUser().getId();
+        String renterName = booking.getUser().getFullName();
+
+        notificationService.notifyVehiclePickupConfirmed(
+                providerId, booking.getId(), renterName
+        );
 
         // Update contract status to RENTING when customer receives the vehicle
         List<Contract> contracts = contractRepository.findByBookingId(bookingId);
@@ -463,6 +489,9 @@ public class BookingServiceImpl implements BookingService {
         }
         booking.setStatus(Booking.Status.RETURNED);
         bookingRepository.save(booking);
+        String providerId = booking.getBookingDetails().get(0).getVehicle().getUser().getId();
+        notificationService.notifyVehicleReturnConfirmed(providerId, booking.getId()
+        );
     }
 
     @Override
@@ -509,6 +538,7 @@ public class BookingServiceImpl implements BookingService {
                 log.error("Failed to create final contract for booking {}: {}", bookingId, e.getMessage());
             }
         }
+        notificationService.notifyBookingCompleted(booking.getUser().getId(), booking.getId());
     }
 
     @Override
@@ -645,6 +675,15 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
+        if (isRenter) {
+            notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, cancelRequest.getReason());
+            notificationService.notifyOrderCanceled(providerId, bookingId, "Đơn hàng đã bị hủy bởi khách hàng.");
+        } else if (isProvider) {
+            notificationService.notifyOrderCanceled(providerId, bookingId, cancelRequest.getReason());
+            notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, "Đơn hàng đã bị hủy bởi chủ xe.");
+        }
+
+
         return CancelBookingResponseDTO.builder()
                 .bookingId(bookingId)
                 .status(booking.getStatus().toString())
@@ -722,6 +761,8 @@ public class BookingServiceImpl implements BookingService {
         // Cập nhật booking
         booking.setStatus(Booking.Status.PENDING);
         bookingRepository.save(booking);
+        notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
+
 
         Contract contract = Contract.builder()
                 .booking(booking)

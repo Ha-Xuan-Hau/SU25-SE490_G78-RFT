@@ -16,7 +16,7 @@ public class VehicleRentCreateDTO {
     private String brandId;
     private String modelId;
     private String penaltyId;
-    private String licensePlate;
+    private List<String> licensePlate;
 
     @NotBlank(message = "Vehicle type is required")
     private String vehicleType;

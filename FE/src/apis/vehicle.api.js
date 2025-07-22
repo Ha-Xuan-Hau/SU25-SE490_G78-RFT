@@ -46,10 +46,10 @@ export async function getVehicleById(vehicleId) {
     }
 }
 
-export async function createVehicle({ body, accessToken }) {
+export async function createCar({ body, accessToken }) {
     const { data } = await apiClient.request({
         method: "POST",
-        url: `/vehicles`,
+        url: `/vehicle-rent/register`,
         headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
@@ -172,10 +172,10 @@ export async function getAvailableThumbList({ thumb, providerId, from, to }) {
 }
 
 
-export async function updateVehicle({ vehicleId, body, accessToken }) {
+export async function updateCar({ vehicleId, body, accessToken }) {
     const { data } = await apiClient.request({
         method: "PUT",
-        url: `/vehicles/${vehicleId}`,
+        url: `/vehicle-rent/${vehicleId}`,
         headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",

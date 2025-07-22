@@ -22,7 +22,7 @@ export function UserWebLayout({ children }: UserWebLayoutProps) {
       role === "STAFF" &&
       !(pathname.includes("STAFF") || pathname.includes("_error"))
     ) {
-      push("/staff/dashboard");
+      push("/admin/dashboard");
     }
 
     if (

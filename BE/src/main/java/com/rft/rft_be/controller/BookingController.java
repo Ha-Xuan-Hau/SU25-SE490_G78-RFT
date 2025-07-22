@@ -77,18 +77,8 @@ public class BookingController {
     }
 
     @PostMapping("/{bookingId}/complete")
-    public ResponseEntity<?> completeBooking(
-            @PathVariable String bookingId,
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody CompleteBookingRequestDTO completeRequest
-    ) {
-        bookingService.completeBooking(
-                bookingId,
-                extractToken(authHeader),
-                completeRequest.getTimeFinish(),
-                completeRequest.getCostSettlement(),
-                completeRequest.getNote()
-        );
+    public ResponseEntity<?> completeBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader, @RequestBody CompleteBookingRequestDTO completeRequest) {
+        bookingService.completeBooking(bookingId, extractToken(authHeader), completeRequest.getTimeFinish(), completeRequest.getCostSettlement(), completeRequest.getNote());
         return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Hoàn tất đơn thành công");
     }
 

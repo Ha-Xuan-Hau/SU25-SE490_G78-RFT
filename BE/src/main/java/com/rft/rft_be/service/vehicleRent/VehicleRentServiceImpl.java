@@ -107,10 +107,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                     .orElseThrow(() -> new RuntimeException("Vehicle must have a valid model. Not found: " + request.getModelId()));
 
             // Validate license plate for CAR
-            if (request.getLicensePlate() == null || request.getLicensePlate().trim().isEmpty()) {
+            if (request.getLicensePlate() == null || request.getLicensePlate().isEmpty()) {
                 throw new RuntimeException("Vehicle must have a license plate");
             }
-            licensePlate = request.getLicensePlate().trim();
+            // Không gán licensePlate = request.getLicensePlate(); vì kiểu List<String>
 
         } else if (vehicleType == Vehicle.VehicleType.MOTORBIKE) {
             // Motorbike: require brand and license plate only
@@ -118,10 +118,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                     .orElseThrow(() -> new RuntimeException("Vehicle must have a valid brand. Not found: " + request.getBrandId()));
 
             // Validate license plate for MOTORBIKE
-            if (request.getLicensePlate() == null || request.getLicensePlate().trim().isEmpty()) {
+            if (request.getLicensePlate() == null || request.getLicensePlate().isEmpty()) {
                 throw new RuntimeException("Vehicle must have a license plate");
             }
-            licensePlate = request.getLicensePlate().trim();
+            // Không gán licensePlate = request.getLicensePlate(); vì kiểu List<String>
 
         } else if (vehicleType == Vehicle.VehicleType.BICYCLE) {
             // Bicycle: không cần brand, model, và license plate
@@ -224,7 +224,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         ExtraFeeRule extraFeeRule = extraFeeRuleRepository.findByVehicleId(vehicleId);
 
         // Update fields (only update non-null values from DTO)
-        if (request.getLicensePlate() != null && !request.getLicensePlate().trim().isEmpty()) {
+        if (request.getLicensePlate() != null && !request.getLicensePlate().isEmpty()) {
             // Check if new license plate already exists (excluding current record)
             if (existingVehicle.getLicensePlate() != null &&
                     !existingVehicle.getLicensePlate().equals(request.getLicensePlate())) {
@@ -291,6 +291,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (request.getDescription() != null) existingVehicle.setDescription(request.getDescription());
         if (request.getNumberVehicle() != null) existingVehicle.setNumberVehicle(request.getNumberVehicle());
         if (request.getCostPerDay() != null) existingVehicle.setCostPerDay(request.getCostPerDay());
+        if (request.getMaxKmPerDay() != null) extraFeeRule.setMaxKmPerDay(request.getMaxKmPerDay());
         if (request.getFeePerExtraKm() != null) extraFeeRule.setFeePerExtraKm(request.getFeePerExtraKm());
         if (request.getAllowedHourLate() != null) extraFeeRule.setAllowedHourLate(request.getAllowedHourLate());
         if (request.getFeePerExtraHour() != null) extraFeeRule.setFeePerExtraHour(request.getFeePerExtraHour());
@@ -563,119 +564,172 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     }
 
     @Override
-    public VehicleGetDTO createOrUpdateVehicleWithNumberVehicle(VehicleRentCreateDTO request) {
+    public List<VehicleGetDTO> createMotorbie_Bicycle(VehicleRentCreateDTO request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
+
+        // Lấy danh sách biển số và số lượng xe
+        List<String> licensePlates = request.getLicensePlate();
+        int numberVehicle = request.getNumberVehicle() != null ? request.getNumberVehicle() : 1;
+
+        // Kiểm tra số lượng biển số hợp lệ
+        boolean isBicycle = "BICYCLE".equalsIgnoreCase(request.getVehicleType());
+        if (!isBicycle && (licensePlates == null || licensePlates.size() != numberVehicle)) {
+            log.error("[VehicleRent] Số lượng biển số không hợp lệ. Số lượng biển số: {}, số lượng xe: {}", licensePlates != null ? licensePlates.size() : 0, numberVehicle);
+            throw new RuntimeException("Số lượng biển số xe phải bằng số lượng xe");
+        }
+
+        // Chỉ cho phép motorbike và bicycle
+        String type = request.getVehicleType();
+        boolean isMotorbike = "MOTORBIKE".equalsIgnoreCase(type);
+        //boolean isBicycle = "BICYCLE".equalsIgnoreCase(type);
 
         // Tìm các xe cùng thumb và user
         List<Vehicle> sameThumbVehicles = vehicleRepository.findByUserId(userId).stream()
                 .filter(v -> request.getThumb() != null && request.getThumb().equals(v.getThumb()))
                 .collect(Collectors.toList());
 
-        Vehicle vehicleToCopy = sameThumbVehicles.isEmpty() ? null : sameThumbVehicles.get(0);
-        Vehicle savedVehicle;
-        if (vehicleToCopy != null) {
-            // Đã có xe cùng thumb và user: tăng number_vehicle cho tất cả xe cùng nhóm
-            sameThumbVehicles.forEach(v -> v.setNumberVehicle((v.getNumberVehicle() == null ? 1 : v.getNumberVehicle()) + 1));
-            vehicleRepository.saveAll(sameThumbVehicles);
+        List<VehicleGetDTO> createdVehicles = new ArrayList<>();
 
-            // Tạo mới 1 xe với các trường riêng biệt, các trường chung lấy từ vehicleToCopy
-            Vehicle newVehicle = Vehicle.builder()
-                    .user(vehicleToCopy.getUser())
-                    .brand(vehicleToCopy.getBrand())
-                    .model(vehicleToCopy.getModel())
-                    .penalty(vehicleToCopy.getPenalty())
-                    .vehicleType(vehicleToCopy.getVehicleType())
-                    .vehicleFeatures(vehicleToCopy.getVehicleFeatures())
-                    .insuranceStatus(vehicleToCopy.getInsuranceStatus())
-                    .shipToAddress(vehicleToCopy.getShipToAddress())
-                    .numberSeat(vehicleToCopy.getNumberSeat())
-                    .yearManufacture(vehicleToCopy.getYearManufacture())
-                    .transmission(vehicleToCopy.getTransmission())
-                    .fuelType(vehicleToCopy.getFuelType())
-                    .description(vehicleToCopy.getDescription())
-                    .costPerDay(vehicleToCopy.getCostPerDay())
-                    .status(Vehicle.Status.AVAILABLE)
-                    .thumb(vehicleToCopy.getThumb())
-                    .numberVehicle(vehicleToCopy.getNumberVehicle())
-                    .likes(0)
-                    .totalRatings(0)
-                    // Các trường riêng biệt lấy từ request
-                    .licensePlate(request.getLicensePlate())
-//                    .vehicleImages(request.getVehicleImages())
-                    .build();
-            if (request.getVehicleImages() != null) {
-                ObjectMapper mapper = new ObjectMapper();
-                try {
-                    String imagesJson = mapper.writeValueAsString(
-                            request.getVehicleImages()
-                                    .stream()
-                                    .map(VehicleImageDTO::getImageUrl)
-                                    .collect(Collectors.toList())
-                    );
-                    newVehicle.setVehicleImages(imagesJson);
-                } catch (Exception e) {
+        if (!sameThumbVehicles.isEmpty()) {
+            log.info("[VehicleRent] Đã tìm thấy {} xe cùng thumb cho user {}. Tiến hành tăng số lượng và tạo xe mới.", sameThumbVehicles.size(), userId);
+            // Nếu đã có xe cùng thumb: tăng số lượng cho tất cả xe cùng nhóm
+            for (Vehicle v : sameThumbVehicles) {
+                int oldNumber = v.getNumberVehicle() != null ? v.getNumberVehicle() : 1;
+                v.setNumberVehicle(oldNumber + numberVehicle);
+            }
+            vehicleRepository.saveAll(sameThumbVehicles);
+            log.info("[VehicleRent] Đã cập nhật số lượng xe cho tất cả xe cùng thumb.");
+
+            // Tạo mới từng xe với biển số mới (nếu chưa tồn tại)
+            Vehicle vehicleToCopy = sameThumbVehicles.get(0);
+            int loopCount = isBicycle ? numberVehicle : licensePlates.size();
+            for (int i = 0; i < loopCount; i++) {
+                String plate = isBicycle ? null : licensePlates.get(i);
+                if (vehicleRepository.existsByLicensePlateAndUserId(plate, userId) && !isBicycle) {
+                    log.error("[VehicleRent] Biển số xe đã tồn tại: {}", plate);
+                    throw new RuntimeException("Biển số xe đã tồn tại: " + plate);
+                }
+                log.info("[VehicleRent] Tạo mới xe với biển số: {} cho user: {}", plate, userId);
+                Vehicle.VehicleBuilder builder = Vehicle.builder()
+                        .user(vehicleToCopy.getUser())
+                        .penalty(vehicleToCopy.getPenalty())
+                        .vehicleType(vehicleToCopy.getVehicleType())
+                        .vehicleFeatures(vehicleToCopy.getVehicleFeatures())
+                        .insuranceStatus(vehicleToCopy.getInsuranceStatus())
+                        .shipToAddress(vehicleToCopy.getShipToAddress())
+                        .numberSeat(vehicleToCopy.getNumberSeat())
+                        .yearManufacture(vehicleToCopy.getYearManufacture())
+                        .transmission(vehicleToCopy.getTransmission())
+                        .fuelType(vehicleToCopy.getFuelType())
+                        .description(vehicleToCopy.getDescription())
+                        .costPerDay(vehicleToCopy.getCostPerDay())
+                        .status(Vehicle.Status.PENDING)
+                        .thumb(vehicleToCopy.getThumb())
+                        .numberVehicle(vehicleToCopy.getNumberVehicle())
+                        .likes(0)
+                        .totalRatings(0);
+                if (isMotorbike) {
+                    builder.brand(vehicleToCopy.getBrand());
+                    // Không set model
+                }
+                // Nếu không phải bicycle thì set licensePlate
+                if (!isBicycle) {
+                    builder.licensePlate(plate);
+                }
+                // Bicycle: không set brand, model, licensePlate
+                Vehicle newVehicle = builder.build();
+                if (request.getVehicleImages() != null) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    try {
+                        String imagesJson = mapper.writeValueAsString(
+                                request.getVehicleImages()
+                                        .stream()
+                                        .map(VehicleImageDTO::getImageUrl)
+                                        .collect(Collectors.toList())
+                        );
+                        newVehicle.setVehicleImages(imagesJson);
+                    } catch (Exception e) {
+                        newVehicle.setVehicleImages("[]");
+                    }
+                } else {
                     newVehicle.setVehicleImages("[]");
                 }
-            } else {
-                newVehicle.setVehicleImages("[]");
+                setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
+                Vehicle savedVehicle = vehicleRepository.save(newVehicle);
+                log.info("[VehicleRent] Đã lưu xe mới với biển số: {} thành công.", plate);
+                createdVehicles.add(vehicleMapper.vehicleGet(savedVehicle));
             }
-            setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
-            savedVehicle = vehicleRepository.save(newVehicle);
+            // Trả về xe vừa tạo cuối cùng
+            log.info("[VehicleRent] Hoàn thành tạo/cập nhật {} xe với thumb: {} cho user: {} (trùng thumb)", createdVehicles.size(), request.getThumb(), userId);
+            return createdVehicles;
+
         } else {
-            // Chưa có xe cùng thumb và user: tạo mới như bình thường
+            log.info("[VehicleRent] Không tìm thấy xe cùng thumb cho user {}. Tiến hành tạo mới {} xe.", userId, numberVehicle);
+            // Nếu chưa có xe cùng thumb: tạo mới numberVehicle xe, mỗi xe 1 biển số
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
             Vehicle.VehicleType vehicleType = parseVehicleType(request.getVehicleType());
-            Vehicle newVehicle = Vehicle.builder()
-                    .user(user)
-                    .brand(request.getBrandId() != null ? brandRepository.findById(request.getBrandId()).orElse(null) : null)
-                    .model(request.getModelId() != null ? modelRepository.findById(request.getModelId()).orElse(null) : null)
-                    .penalty(request.getPenaltyId() != null ? penaltyRepository.findById(request.getPenaltyId()).orElse(null) : null)
-                    .vehicleType(vehicleType)
-                    .vehicleFeatures(request.getVehicleFeatures())
-                    .insuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()))
-                    .shipToAddress(parseShipToAddress(request.getShipToAddress()))
-                    .numberSeat(request.getNumberSeat())
-                    .yearManufacture(request.getYearManufacture())
-                    .transmission(parseTransmission(request.getTransmission()))
-                    .fuelType(parseFuelType(request.getFuelType()))
-                    .description(request.getDescription())
-                    .costPerDay(request.getCostPerDay())
-                    .status(Vehicle.Status.AVAILABLE)
-                    .thumb(request.getThumb())
-                    .numberVehicle(1)
-                    .likes(0)
-                    .totalRatings(0)
-                    .licensePlate(request.getLicensePlate())
-//                    .vehicleImages(request.getVehicleImages())
-                    .build();
-            if (request.getVehicleImages() != null) {
-                ObjectMapper mapper = new ObjectMapper();
-                try {
-                    String imagesJson = mapper.writeValueAsString(
-                            request.getVehicleImages()
-                                    .stream()
-                                    .map(VehicleImageDTO::getImageUrl)
-                                    .collect(Collectors.toList())
-                    );
-                    newVehicle.setVehicleImages(imagesJson);
-                } catch (Exception e) {
+            int loopCount = isBicycle ? numberVehicle : licensePlates.size();
+            for (int i = 0; i < loopCount; i++) {
+                String plate = isBicycle ? null : licensePlates.get(i);
+                if (vehicleRepository.existsByLicensePlateAndUserId(plate, userId) && !isBicycle) {
+                    log.error("[VehicleRent] Biển số xe đã tồn tại: {}", plate);
+                    throw new RuntimeException("Biển số xe đã tồn tại: " + plate);
+                }
+                log.info("[VehicleRent] Tạo mới xe với biển số: {} cho user: {}", plate, userId);
+                Vehicle.VehicleBuilder builder = Vehicle.builder()
+                        .user(user)
+                        .penalty(request.getPenaltyId() != null ? penaltyRepository.findById(request.getPenaltyId()).orElse(null) : null)
+                        .vehicleType(vehicleType)
+                        .vehicleFeatures(request.getVehicleFeatures())
+                        .insuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()))
+                        .shipToAddress(parseShipToAddress(request.getShipToAddress()))
+                        .numberSeat(request.getNumberSeat())
+                        .yearManufacture(request.getYearManufacture())
+                        .transmission(parseTransmission(request.getTransmission()))
+                        .fuelType(parseFuelType(request.getFuelType()))
+                        .description(request.getDescription())
+                        .costPerDay(request.getCostPerDay())
+                        .status(Vehicle.Status.AVAILABLE)
+                        .thumb(request.getThumb())
+                        .numberVehicle(numberVehicle)
+                        .likes(0)
+                        .totalRatings(0);
+                if (isMotorbike) {
+                    builder.brand(request.getBrandId() != null ? brandRepository.findById(request.getBrandId()).orElse(null) : null);
+                    // Không set model
+                }
+                // Nếu không phải bicycle thì set licensePlate
+                if (!isBicycle) {
+                    builder.licensePlate(plate);
+                }
+                // Bicycle: không set brand, model, licensePlate
+                Vehicle newVehicle = builder.build();
+                if (request.getVehicleImages() != null) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    try {
+                        String imagesJson = mapper.writeValueAsString(
+                                request.getVehicleImages()
+                                        .stream()
+                                        .map(VehicleImageDTO::getImageUrl)
+                                        .collect(Collectors.toList())
+                        );
+                        newVehicle.setVehicleImages(imagesJson);
+                    } catch (Exception e) {
+                        newVehicle.setVehicleImages("[]");
+                    }
+                } else {
                     newVehicle.setVehicleImages("[]");
                 }
-            } else {
-                newVehicle.setVehicleImages("[]");
+                setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
+                Vehicle savedVehicle = vehicleRepository.save(newVehicle);
+                log.info("Đã lưu xe mới với biển số: {} thành công.", plate);
+                createdVehicles.add(vehicleMapper.vehicleGet(savedVehicle));
             }
-            setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
-            savedVehicle = vehicleRepository.save(newVehicle);
+            log.info("[VehicleRent] Hoàn thành tạo mới {} xe với thumb: {} cho user: {} (khác thumb)", createdVehicles.size(), request.getThumb(), userId);
+            return createdVehicles;
         }
-        // Check trùng biển số cho user này
-        if (request.getLicensePlate() != null && vehicleRepository.existsByLicensePlateAndUserId(request.getLicensePlate(), userId)) {
-            throw new RuntimeException("Biển số xe đã tồn tại");
-        }
-        Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(savedVehicle.getId())
-                .orElse(savedVehicle);
-        return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
     @Override
