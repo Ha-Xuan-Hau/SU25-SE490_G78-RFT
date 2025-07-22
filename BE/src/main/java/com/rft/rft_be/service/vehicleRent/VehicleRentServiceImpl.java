@@ -624,7 +624,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                         .fuelType(vehicleToCopy.getFuelType())
                         .description(vehicleToCopy.getDescription())
                         .costPerDay(vehicleToCopy.getCostPerDay())
-                        .status(Vehicle.Status.AVAILABLE)
+                        .status(Vehicle.Status.PENDING)
                         .thumb(vehicleToCopy.getThumb())
                         .numberVehicle(vehicleToCopy.getNumberVehicle())
                         .likes(0)

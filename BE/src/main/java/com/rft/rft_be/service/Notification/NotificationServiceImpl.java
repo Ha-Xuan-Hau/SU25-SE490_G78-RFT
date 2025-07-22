@@ -358,4 +358,27 @@ public class NotificationServiceImpl implements NotificationService {
                 .receiver(receiver)
                 .build();
     }
+    @Override
+    @Transactional
+    public void notifyBookingCompleted(String userId, String bookingId) {
+        String message = NotificationMapper.BOOKING_COMPLETED_MSG;
+        String redirectUrl = "/bookings/" + bookingId;
+        createNotificationForUser(userId, NotificationMapper.BOOKING_COMPLETED, message, redirectUrl);
+    }
+
+    @Override
+    @Transactional
+    public void notifyVehicleApproved(String userId, String vehicleName) {
+        String message = notificationMapper.formatVehicleApprovedMessage(vehicleName);
+        String redirectUrl = "/vehicles/manage";
+        createNotificationForUser(userId, NotificationMapper.VEHICLE_APPROVED, message, redirectUrl);
+    }
+
+    @Override
+    @Transactional
+    public void notifyVehicleRejected(String userId, String vehicleName, String reason) {
+        String message = notificationMapper.formatVehicleRejectedMessage(vehicleName, reason);
+        String redirectUrl = "/vehicles/manage";
+        createNotificationForUser(userId, NotificationMapper.VEHICLE_REJECTED, message, redirectUrl);
+    }
 }

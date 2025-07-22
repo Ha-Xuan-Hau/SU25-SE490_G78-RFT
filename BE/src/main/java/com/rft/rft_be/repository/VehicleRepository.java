@@ -141,4 +141,14 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
     );
     List<Vehicle> findByThumbAndUserIdAndStatus(String thumb, String userId, Vehicle.Status status);
 
+    @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.vehicleType = :vehicleType AND v.status = :status")
+    long countByVehicleTypeAndStatus(@Param("vehicleType") Vehicle.VehicleType vehicleType, @Param("status") Vehicle.Status status);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.vehicleType = :vehicleType AND v.status = :status")
+    Page<Vehicle> findByVehicleTypeAndStatus(@Param("vehicleType") Vehicle.VehicleType vehicleType,
+                                             @Param("status") Vehicle.Status status,
+                                             Pageable pageable);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.status = :status")
+    Page<Vehicle> findByStatus(@Param("status") Vehicle.Status status, Pageable pageable);
 }
