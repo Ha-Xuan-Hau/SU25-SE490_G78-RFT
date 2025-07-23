@@ -312,13 +312,18 @@ public class VehicleController {
     @PostMapping("/search-basic")
     public ResponseEntity<?> basicSearch(@RequestBody BasicSearchDTO request) {
         try {
-            LocalDateTime pickupTime = request.getPickupDateTime() != null ? LocalDateTime.parse(request.getPickupDateTime()) : null;
-            LocalDateTime returnTime = request.getReturnDateTime() != null ? LocalDateTime.parse(request.getReturnDateTime()) : null;
+            LocalDateTime pickupTime = parseDateTimeSafe(request.getPickupDateTime());
+            LocalDateTime returnTime = parseDateTimeSafe(request.getReturnDateTime());
 
             if (pickupTime != null && returnTime != null && pickupTime.isAfter(returnTime)) {
-                return ResponseEntity.badRequest().body("pickupTime must be before returnTime");
+                return ResponseEntity.badRequest().body("pickupDateTime must be before returnDateTime");
             }
-            Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+
+            Pageable pageable = PageRequest.of(
+                    Math.max(request.getPage(), 0),
+                    Math.max(request.getSize(), 1)
+            );
+
             Page<VehicleSearchResultDTO> results = vehicleService.basicSearch(
                     request.getAddress(),
                     request.getVehicleType(),
@@ -335,10 +340,22 @@ public class VehicleController {
             response.put("size", results.getSize());
 
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid datetime format: " + e.getMessage());
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Search failed: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    // Hàm parse an toàn
+    private LocalDateTime parseDateTimeSafe(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return LocalDateTime.parse(raw);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(raw);
         }
     }
 
