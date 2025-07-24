@@ -5,6 +5,7 @@ import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.service.vehicle.VehicleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@Slf4j
 @RequestMapping("/api/vehicles")
 @RequiredArgsConstructor
 public class VehicleController {
@@ -356,5 +358,32 @@ public class VehicleController {
 
         return ResponseEntity.ok(vehicleService.getListAndQuantityOfAvailableVehiclesByThumb(
                 req.getThumb(), req.getProviderId(), req.getFrom(), req.getTo()));
+    }
+    @GetMapping("/users/{userId}/available/{vehicleType}")
+    public ResponseEntity<?> getUserAvailableVehiclesByType(
+            @PathVariable String userId,
+            @PathVariable String vehicleType) {
+        try {
+            List<VehicleGetDTO> vehicles = vehicleService.getUserAvailableVehiclesByType(userId, vehicleType);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("vehicleType", vehicleType.toUpperCase());
+            response.put("status", "AVAILABLE");
+            response.put("vehicles", vehicles);
+            response.put("count", vehicles.size());
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Lỗi khi tìm kiếm xe có sẵn cho người dùng: {} với loại: {}", userId, vehicleType, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            log.error("Lỗi khi tìm kiếm xe có sẵn cho người dùng: {} với loại: {}", userId, vehicleType, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy lại xe có sẵn: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
     }
 }
