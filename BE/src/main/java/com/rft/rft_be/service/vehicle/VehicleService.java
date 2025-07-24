@@ -36,4 +36,8 @@ public interface VehicleService {
     List<VehicleGetDTO> createVehicleBulk(CreateVehicleDTO createVehicleDTO);
     AvailableVehicleQuantityOnlyDTO getQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to);
     AvailableVehicleListWithQuantityDTO getListAndQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to);
+
+    // đầu vào: userId & vehicle type
+    List<VehicleGetDTO> getUserAvailableVehiclesByType(String userId, String vehicleType);
+
 }

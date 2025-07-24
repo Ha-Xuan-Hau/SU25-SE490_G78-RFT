@@ -815,4 +815,41 @@ public class VehicleServiceImpl implements VehicleService {
                 .data(data)
                 .build();
     }
+    @Override
+    public List<VehicleGetDTO> getUserAvailableVehiclesByType(String userId, String vehicleType) {
+        try {
+            log.info("Nhận xe có sẵn cho người dùng: {} với loại: {}", userId, vehicleType);
+
+            // Validate user exists
+            if (!userRepository.existsById(userId)) {
+                throw new RuntimeException("Không tìm thấy người dùng có ID: " + userId);
+            }
+
+            // Validate vehicle type
+            Vehicle.VehicleType type;
+            try {
+                type = Vehicle.VehicleType.valueOf(vehicleType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Loại xe không hợp lệ:" + vehicleType + ". Các giá trị hợp lệ là: CAR, MOTORBIKE, BICYCLE");
+            }
+
+            // Get available vehicles by user and type
+            List<Vehicle> vehicles = vehicleRepository.findByUserIdAndVehicleTypeAndStatusWithPenalty(
+                    userId, type, Vehicle.Status.AVAILABLE);
+
+            // Convert to DTOs
+            List<VehicleGetDTO> vehicleDTOs = vehicles.stream()
+                    .map(vehicleMapper::vehicleGet)
+                    .collect(Collectors.toList());
+
+            log.info("Đã truy xuất thành công {} xe {} có sẵn cho người dùng: {}",
+                    vehicleDTOs.size(), vehicleType, userId);
+
+            return vehicleDTOs;
+
+        } catch (Exception e) {
+            log.error("Lỗi khi tìm kiếm xe có sẵn cho người dùng: {} với loại: {}", userId, vehicleType, e);
+            throw new RuntimeException("Không thể nhận được xe có sẵn: " + e.getMessage());
+        }
+    }
 }
