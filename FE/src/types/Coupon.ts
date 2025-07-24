@@ -3,4 +3,8 @@ export interface coupon {
   name: string;
   discount: number;
   description: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
 }

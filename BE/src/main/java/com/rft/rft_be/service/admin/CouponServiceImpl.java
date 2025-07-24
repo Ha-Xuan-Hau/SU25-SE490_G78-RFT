@@ -13,7 +13,6 @@ import com.rft.rft_be.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,20 +31,23 @@ public class CouponServiceImpl implements CouponService {
     UsedCouponRepository usedCouponRepository;
     CouponMapper couponMapper;
     UserRepository userRepository;
+
     @Override
     public void assignCouponToUser(String userId, String couponId) {
-        UsedCoupon usedCoupon = new UsedCoupon();
-        usedCoupon.setId(UUID.randomUUID().toString());
+        if (!usedCouponRepository.existsByUserIdAndCouponId(userId, couponId)) {
+            UsedCoupon usedCoupon = new UsedCoupon();
+            usedCoupon.setId(UUID.randomUUID().toString());
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!!"));
-        usedCoupon.setUser(user);
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!!"));
+            usedCoupon.setUser(user);
 
-        Coupon coupon = couponRepository.findById(couponId)
-                .orElseThrow(() -> new RuntimeException("Không thấy mã giảm giá!!"));
-        usedCoupon.setCoupon(coupon);
+            Coupon coupon = couponRepository.findById(couponId)
+                    .orElseThrow(() -> new RuntimeException("Không thấy mã giảm giá!!"));
+            usedCoupon.setCoupon(coupon);
 
-        usedCouponRepository.save(usedCoupon);
+            usedCouponRepository.save(usedCoupon);
+        }
     }
 
     @Override
@@ -106,61 +108,56 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
-    public void markCouponAsUsed(String userId, String couponId) {
-        if (!usedCouponRepository.existsByUserIdAndCouponId(userId, couponId)) {
-            UsedCoupon used = new UsedCoupon();
-            used.setId(UUID.randomUUID().toString());
+    public void markCouponAsUsed(User user, Coupon coupon) {
+        if (usedCouponRepository.existsByUserIdAndCouponId(user.getId(), coupon.getId())) return;
 
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!!"));
-            used.setUser(user);
+        UsedCoupon used = new UsedCoupon();
+        used.setUser(user);
+        used.setCoupon(coupon);
 
-            Coupon coupon = couponRepository.findById(couponId)
-                    .orElseThrow(() -> new RuntimeException("Không thấy mã giảm giá!!"));
-            used.setCoupon(coupon);
-
-            usedCouponRepository.save(used);
-        }
+        usedCouponRepository.save(used);
     }
+
     @Override
     @Transactional
     public CouponUseDTO applyCoupon(String userId, String couponCode) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!!"));
 
         Coupon coupon = couponRepository.findByName(couponCode)
                 .orElseThrow(() -> new RuntimeException("Không thấy mã giảm giá!!"));
 
-        if (coupon.isExpired()) throw new RuntimeException("Mã giảm giá đã hết hạn");
+        if (coupon.isExpired()) {
+            throw new RuntimeException("Mã giảm giá đã hết hạn");
+        }
 
-        if (usedCouponRepository.existsByUserIdAndCouponId(userId, coupon.getId()))
+        if (usedCouponRepository.existsByUserIdAndCouponId(user.getId(), coupon.getId())) {
             throw new RuntimeException("Bạn đã sử dụng mã giảm giá này rồi");
-
-        return new CouponUseDTO(coupon.getId(), coupon.getName(), coupon.getDiscount(), coupon.getDescription());
+        }
+        markCouponAsUsed(user, coupon);
+        return new CouponUseDTO(
+                coupon.getId(),
+                coupon.getName(),
+                coupon.getDiscount(),
+                coupon.getDescription()
+        );
     }
+
     @Override
     @Transactional
     public void checkAndExpireCoupons() {
         couponRepository.expireOutdatedCoupons();
         usedCouponRepository.deleteExpiredCouponUsage();
     }
+
     @Override
     @Transactional
     public void assignCouponToActiveUsers(String couponId) {
-        List<String> userIds = userRepository.findAllActiveUserIds();
         for (String userId : userRepository.findAllActiveUserIds()) {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!!: " + userId));
-
-            Coupon coupon = couponRepository.findById(couponId)
-                    .orElseThrow(() -> new RuntimeException("Không thấy mã giảm giá!!: " + couponId));
-
-            UsedCoupon uc = new UsedCoupon();
-            uc.setId(UUID.randomUUID().toString());
-            uc.setUser(user);
-            uc.setCoupon(coupon);
-
-            usedCouponRepository.save(uc);
+            assignCouponToUser(userId, couponId);
         }
     }
+
     @Override
     @Transactional
     public CouponDTO createCoupon(CouponCreateDTO dto) {
@@ -176,5 +173,5 @@ public class CouponServiceImpl implements CouponService {
         Coupon saved = couponRepository.saveAndFlush(coupon);
         return couponMapper.toDTO(saved);
     }
-
 }
+
