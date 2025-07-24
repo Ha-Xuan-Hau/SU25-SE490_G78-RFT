@@ -14,13 +14,15 @@ import { Avatar, Dropdown } from "antd";
 import {
   UserOutlined,
   LogoutOutlined,
-  SettingOutlined,
   DashboardOutlined,
   TeamOutlined,
   CarOutlined,
   FileTextOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
+import NotificationBell from "@/components/NotificationBell";
+import NotificationDropdown from "@/components/NotificationDropdown";
+import SystemNotificationModal from "@/components/SystemNotificationModal";
 
 const HeaderComponent: React.FC = () => {
   const [navbarOpen, setNavbarOpen] = useState(false);
@@ -48,20 +50,6 @@ const HeaderComponent: React.FC = () => {
         return "/provider/dashboard";
       default:
         return "/profile";
-    }
-  };
-
-  // Hàm lấy label hiển thị dựa trên role
-  const getProfileLabelByRole = (userRole: string) => {
-    switch (userRole) {
-      case "ADMIN":
-        return "Quản trị hệ thống";
-      case "STAFF":
-        return "Bảng điều khiển";
-      case "PROVIDER":
-        return "Quản lý cho thuê";
-      default:
-        return "Thông tin cá nhân";
     }
   };
 
@@ -316,7 +304,12 @@ const HeaderComponent: React.FC = () => {
                 </button>
               </>
             ) : (
-              <div className="flex items-center gap-2 shrink-0 ml-4">
+              <div className="flex items-center gap-4">
+                {/* Notification Bell - chỉ hiện khi đăng nhập */}
+                <div className="relative">
+                  <NotificationBell />
+                  <NotificationDropdown />
+                </div>
                 <Dropdown
                   menu={{ items: getDropdownItems() }}
                   placement="bottomRight"
@@ -347,11 +340,11 @@ const HeaderComponent: React.FC = () => {
                       <span className="font-medium text-sm text-gray-900">
                         {user?.fullName || user?.email}
                       </span>
-                      {user?.role && (
+                      {/* {user?.role && (
                         <span className="text-xs text-gray-500">
                           {getProfileLabelByRole(user.role)}
                         </span>
-                      )}
+                      )} */}
                     </div>
                     {user?.role && getRoleBadge(user.role)}
                     <Icon
@@ -480,14 +473,14 @@ const HeaderComponent: React.FC = () => {
                       <div className="font-medium text-gray-900">
                         {user?.fullName || user?.email}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      {/* <div className="text-sm text-gray-500">
                         {getProfileLabelByRole(user?.role || "USER")}
-                      </div>
+                      </div> */}
                     </div>
                     {user?.role && getRoleBadge(user.role)}
                   </div>
 
-                  <button
+                  {/* <button
                     onClick={() => {
                       setNavbarOpen(false);
                       router.push(getNavigationByRole(user?.role || "USER"));
@@ -496,22 +489,7 @@ const HeaderComponent: React.FC = () => {
                   >
                     <DashboardOutlined className="mr-2" />
                     {getProfileLabelByRole(user?.role || "USER")}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setNavbarOpen(false);
-                      if (user?.role === "ADMIN" || user?.role === "STAFF") {
-                        router.push("/admin/admin-profile");
-                      } else {
-                        router.push("/profile/settings");
-                      }
-                    }}
-                    className="text-base font-medium text-dark hover:text-primary text-left flex items-center transition-colors"
-                  >
-                    <SettingOutlined className="mr-2" />
-                    Cài đặt cá nhân
-                  </button>
+                  </button> */}
 
                   <button
                     onClick={() => {
@@ -545,3 +523,4 @@ const HeaderComponent: React.FC = () => {
 };
 
 export default HeaderComponent;
+<SystemNotificationModal />;

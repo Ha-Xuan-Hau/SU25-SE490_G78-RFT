@@ -1,8 +1,9 @@
 export enum VehicleType {
-  CAR = "Car",
-  MOTORBIKE = "Motorbike",
-  BICYCLE = "Bicycle",
+  CAR = "CAR",
+  MOTORBIKE = "MOTORBIKE",
+  BICYCLE = "BICYCLE",
 }
+
 export interface Vehicle {
   id: string;
   userId: string;
@@ -67,7 +68,9 @@ export interface VehicleFilters {
   ward?: string;
   pickupDateTime?: string;
   returnDateTime?: string;
-  feature?: string[];
+  features?: string[];
+  page?: number;
+  size?: number;
 }
 
 export interface Comment {
