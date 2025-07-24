@@ -426,7 +426,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         {/* Action Buttons */}
         <div className="space-y-3">
           <button
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+            className="w-full bg-primary hover:bg-secondary text-white py-2.5 px-4 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
             onClick={handleBasicSearch}
             disabled={isSearching}
           >
@@ -444,7 +444,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           </button>
 
           <button
-            className="w-full border border-blue-600 text-blue-600 hover:bg-blue-50 py-2.5 px-4 rounded-lg text-sm font-medium flex items-center justify-center transition-colors"
+            className="w-full border border-primary text-primary hover:bg-blue-50 py-2.5 px-4 rounded-lg text-sm font-medium flex items-center justify-center transition-colors"
             onClick={() => setShowAdvancedSearch(true)}
           >
             <Settings className="w-4 h-4 mr-2" />

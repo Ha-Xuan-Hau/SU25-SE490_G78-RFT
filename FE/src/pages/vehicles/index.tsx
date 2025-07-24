@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import VehicleFilter from "./_components/VehicleFilter";
 import VehicleListing from "./_components/VehicleList";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle";
-import { Filter, X } from "lucide-react";
+import { Filter, X } from "lucide-react"; // Thêm import cho Filter và X
 
 interface PaginationInfo {
   totalElements: number;
@@ -50,7 +50,7 @@ const ListVehiclePage = () => {
     });
 
   // Mobile filter state
-  const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [showMobileFilter, setShowMobileFilter] = useState(false); // Đảm bảo biến này được định nghĩa
 
   const handleSearchResults = (
     searchResults: Vehicle[],
@@ -77,7 +77,7 @@ const ListVehiclePage = () => {
     }
 
     // Đóng mobile filter sau khi search
-    setShowMobileFilter(false);
+    setShowMobileFilter(false); // Đảm bảo biến này được sử dụng đúng
   };
 
   const handlePageChange = async (page: number) => {
@@ -131,18 +131,36 @@ const ListVehiclePage = () => {
   };
 
   useEffect(() => {
-    setVehicles([]);
-    setPaginationInfo({
-      totalElements: 0,
-      totalPages: 0,
-      currentPage: 0,
-      size: 12,
-    });
-    setCurrentPage(1);
-    setAdvancedSearchState({
-      isAdvancedSearch: false,
-      searchParams: {},
-    });
+    const loadVehicles = async () => {
+      setIsLoadingVehicles(true);
+      setErrorVehicles(null);
+
+      try {
+        const { basicSearchVehicles } = await import("@/apis/vehicle.api");
+
+        const result = await basicSearchVehicles({
+          page: 0,
+          size: 12,
+        });
+
+        setVehicles(result.content || []);
+        setPaginationInfo({
+          totalElements: result.totalElements || 0,
+          totalPages: result.totalPages || 1,
+          currentPage: result.number || 0,
+          size: result.size || 12,
+        });
+      } catch (err) {
+        console.error("Initial load error:", err);
+        setErrorVehicles(
+          (err as Error).message || "Không thể tải danh sách xe ban đầu."
+        );
+      } finally {
+        setIsLoadingVehicles(false);
+      }
+    };
+
+    loadVehicles();
   }, []);
 
   return (

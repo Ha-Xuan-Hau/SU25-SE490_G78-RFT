@@ -125,11 +125,11 @@ const VehicleListing: React.FC<VehicleListingProps> = ({
               onChange={onPageChange}
               showSizeChanger={false}
               showQuickJumper={false} // Tắt quick jumper trên mobile
-              showTotal={(total, range) => (
-                <span className="text-xs lg:text-sm">
-                  {`${range[0]}-${range[1]} của ${total} xe`}
-                </span>
-              )}
+              // showTotal={(total, range) => (
+              //   <span className="text-xs lg:text-sm">
+              //     {`${range[0]}-${range[1]} của ${total} xe`}
+              //   </span>
+              // )}
               size="small" // Sử dụng size nhỏ cho mobile
               responsive={true}
               className="text-center"

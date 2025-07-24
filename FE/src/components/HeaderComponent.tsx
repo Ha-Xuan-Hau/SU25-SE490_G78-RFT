@@ -247,7 +247,33 @@ const HeaderComponent: React.FC = () => {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-10 mt-1">
             {/* Hiển thị menu navigation chỉ cho USER và chưa đăng nhập */}
-            {(!isAuthenticated || user?.role === "USER") && (
+            {(!isAuthenticated || user?.role === "PROVIDER") && (
+              <>
+                <Link
+                  href="/about-us"
+                  className={`text-base font-medium ${
+                    pathname === "/about-us"
+                      ? "text-primary font-semibold"
+                      : "text-dark"
+                  } hover:text-primary transition-colors`}
+                >
+                  Về RFT
+                </Link>
+
+                <Link
+                  href="/vehicles"
+                  className={`text-base font-medium ${
+                    pathname === "/vehicles"
+                      ? "text-primary font-semibold"
+                      : "text-dark"
+                  } hover:text-primary transition-colors`}
+                >
+                  Danh sách xe
+                </Link>
+              </>
+            )}
+
+            {isAuthenticated && user?.role === "USER" && (
               <>
                 <Link
                   href="/about-us"
@@ -271,20 +297,32 @@ const HeaderComponent: React.FC = () => {
                   Danh sách xe
                 </Link>
 
-                {isAuthenticated && user?.role === "USER" && (
-                  <Link
-                    href="/become-provider"
-                    className={`text-base font-medium ${
-                      pathname === "/become-provider"
-                        ? "text-primary font-semibold"
-                        : "text-dark"
-                    } hover:text-primary transition-colors`}
-                  >
-                    Trở thành chủ xe
-                  </Link>
-                )}
+                <Link
+                  href="/become-provider"
+                  className={`text-base font-medium ${
+                    pathname === "/become-provider"
+                      ? "text-primary font-semibold"
+                      : "text-dark"
+                  } hover:text-primary transition-colors`}
+                >
+                  Trở thành chủ xe
+                </Link>
               </>
             )}
+
+            {isAuthenticated &&
+              (user?.role === "STAFF" || user?.role === "ADMIN") && (
+                <Link
+                  href="/about-us"
+                  className={`text-base font-medium ${
+                    pathname === "/about-us"
+                      ? "text-primary font-semibold"
+                      : "text-dark"
+                  } hover:text-primary transition-colors`}
+                >
+                  Về RFT
+                </Link>
+              )}
 
             {/* Auth Section */}
             {!isAuthenticated ? (

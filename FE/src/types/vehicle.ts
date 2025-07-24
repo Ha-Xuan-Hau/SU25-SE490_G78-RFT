@@ -81,3 +81,28 @@ export interface Comment {
   star: number;
   timestamp?: string;
 }
+
+interface VehicleRentUpdateDTO {
+  brandId: string;
+  penaltyId: string;
+  licensePlate: string;
+  vehicleType: string;
+  vehicleFeatures: string; // Chuỗi thay vì mảng
+  vehicleImages: VehicleImageDTO[];
+  haveDriver: string;
+  insuranceStatus: string;
+  shipToAddress: string;
+  numberSeat: number;
+  yearManufacture: number;
+  transmission: string;
+  fuelType: string;
+  description: string;
+  numberVehicle: number;
+  costPerDay: number;
+  status: string;
+  thumb: string;
+}
+
+interface VehicleImageDTO {
+  imageUrl: string;
+}

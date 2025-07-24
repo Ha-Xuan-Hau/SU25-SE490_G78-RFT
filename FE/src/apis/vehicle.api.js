@@ -1,19 +1,4 @@
-// Cập nhật ảnh và biển số cho 1 xe máy trong nhóm
-export async function updateSingleMotorbikeInGroup({ vehicleId, images, licensePlate, accessToken }) {
-    const { data } = await apiClient.request({
-        method: "PUT",
-        url: `/vehicles/update-single-motorbike/${vehicleId}`,
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-        },
-        data: {
-            images,
-            licensePlate,
-        },
-    });
-    return data;
-}
+
 import { apiClient } from './client';
 
 
@@ -59,6 +44,21 @@ export async function createCar({ body, accessToken }) {
 
     return data;
 }
+
+export async function createWithQuantity({ body, accessToken }) {
+    const { data } = await apiClient.request({
+        method: "POST",
+        url: `/vehicle-rent/create-motorbike-bicycle`,
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+        },
+        data: body,
+    });
+
+    return data;
+}
+
 
 /**
  * Basic Search API - Tìm kiếm cơ bản
@@ -334,3 +334,35 @@ export const updateCarStatus = async ({ accessToken, vehicleId, status }) => {
 
     return data;
 };
+
+
+// Cập nhật ảnh và biển số cho 1 xe máy trong nhóm
+export async function updateSingleMotorbikeInGroup({ vehicleId, images, licensePlate, accessToken }) {
+    const { data } = await apiClient.request({
+        method: "PUT",
+        url: `/vehicle-rent/${vehicleId}/update-specific`,
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+        },
+        data: {
+            vehicleImages: images,
+            licensePlate,
+        },
+    });
+    return data;
+}
+
+export async function updateCommon({ vehicleId, body, accessToken }) {
+    const { data } = await apiClient.request({
+        method: "PUT",
+        url: `/vehicle-rent/${vehicleId}/update-common`,
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+        },
+        data: body,
+    });
+
+    return data;
+}

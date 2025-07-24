@@ -199,7 +199,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void notifyOrderApproved(String userId, String bookingId) {
-        String redirectUrl = "/booking-detail/" + bookingId;
+    //    String redirectUrl = "/booking-detail/" + bookingId;
+        String redirectUrl = "/booking-history";
         createNotificationForUser(userId, NotificationMapper.ORDER_APPROVED, NotificationMapper.ORDER_APPROVED_MSG, redirectUrl);
     }
 
@@ -272,7 +273,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyProviderReceivedBooking(String providerId, String bookingId, String vehicleName) {
         String message = notificationMapper.formatProviderReceivedBookingMessage(vehicleName);
-        String redirectUrl = "/provider/manage-accepted-bookings";
+        String redirectUrl = "/provider/manage-bookings";
         createNotificationForUser(providerId, NotificationMapper.PROVIDER_RECEIVED_BOOKING, message, redirectUrl);
     }
 
