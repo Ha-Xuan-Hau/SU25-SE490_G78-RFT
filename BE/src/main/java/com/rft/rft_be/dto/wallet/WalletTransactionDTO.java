@@ -16,5 +16,4 @@ public class WalletTransactionDTO {
     private String status;
     private String userId;
     LocalDateTime createdAt;
-
 }

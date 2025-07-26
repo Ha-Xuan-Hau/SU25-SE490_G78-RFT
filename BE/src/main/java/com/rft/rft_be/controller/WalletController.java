@@ -91,7 +91,7 @@ public class WalletController {
     }
 
     @GetMapping("/staff/withdrawals")
-    @PreAuthorize("hasAuthority('STAFF')")
+    @PreAuthorize("hasAuthority('STAFF, ADMIN')")
     public ResponseEntity<List<WalletTransactionDTO>> getAllWithdrawals(@RequestParam String status) {
         return ResponseEntity.ok(walletService.getAllWithdrawals(status));
     }

@@ -97,7 +97,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         // Validate brand and model based on vehicle type
         Brand brand = null;
         Model model = null;
-        String licensePlate = null; // Khởi tạo là null
+
+        List<String> licensePlates = request.getLicensePlate();
+
+        String licensePlate = licensePlates.get(0); // Khởi tạo là null
 
         if (vehicleType == Vehicle.VehicleType.CAR) {
             // Car: require brand, model and license plate
@@ -746,7 +749,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         for (Vehicle v : sameThumbVehicles) {
             // Cập nhật các trường chung (trừ id, vehicle_images, license_plate, total_ratings)
             if (request.getBrandId() != null) v.setBrand(brandRepository.findById(request.getBrandId()).orElse(null));
-            if (request.getModelId() != null) v.setModel(modelRepository.findById(request.getModelId()).orElse(null));
+            //if (request.getModelId() != null) v.setModel(modelRepository.findById(request.getModelId()).orElse(null));
             // Bỏ cập nhật penalty và likes vì DTO không có trường này
             if (request.getVehicleType() != null) v.setVehicleType(parseVehicleType(request.getVehicleType()));
             if (request.getVehicleFeatures() != null) v.setVehicleFeatures(request.getVehicleFeatures());

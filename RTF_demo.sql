@@ -560,6 +560,6 @@ INSERT INTO `notifications` (`id`, `type`, `message`, `is_read`, `is_deleted`, `
 ('notif_004', 'REPORT', 'Báo cáo của bạn về user_004 đã được gửi đi.', FALSE, FALSE, 'user_003', '2025-07-07 02:41:00', '2025-07-07 02:41:00');
 
 -- Insert sample user reports
-INSERT INTO `user_report` (`id`, `reporter_id`, `reported_user_id`, `type`, `reason`, `created_at`) VALUES
+INSERT INTO `user_report` (`id`, `reporter_id`, `reported_id`, `type`, `reason`, `created_at`) VALUES
 ('report_001', 'user_003', 'user_004', 'SPAM', 'Người dùng gửi tin nhắn quảng cáo không liên quan.', '2025-07-07 02:41:00'),
 ('report_002', 'user_003', 'user_002', 'INAPPROPRIATE', 'Xe của người dùng không đúng như mô tả.', '2025-07-07 02:42:00');

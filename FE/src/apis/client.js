@@ -6,18 +6,6 @@ export const apiClient = axios.create({
     timeout: 10000,
 });
 
-// apiClient.interceptors.request.use(function (config) {
-//   const token = localStorage.getItem("access_token");
-
-//   if (!token) {
-//     return config;
-//   }
-
-//   config.headers.Authorization = `Bearer ${token}`;
-
-//   return config;
-// });
-
 apiClient.interceptors.request.use(function (config) {
     try {
         // List of public endpoints that don't need authorization
@@ -30,7 +18,7 @@ apiClient.interceptors.request.use(function (config) {
 
         // Check if the current request URL matches any public endpoint
         const isPublicEndpoint = publicEndpoints.some(endpoint =>
-            config.url === endpoint || config.url.startsWith(`${endpoint}/`)
+            config.url === endpoint || config.url?.startsWith(`${endpoint}/`)
         );
 
         // Skip adding authorization header for public endpoints
@@ -65,10 +53,11 @@ export const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
             refetchOnWindowFocus: false,
-            refetchOnmount: false,
+            refetchOnMount: false,
             refetchOnReconnect: false,
             retry: 1,
             staleTime: 0,
+            gcTime: 300000, // Thay thế cacheTime bằng gcTime trong v5
         },
     },
 });

@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Modal, Form, Input, InputNumber, Button, Select, Card } from "antd";
 import type { Vehicle } from "@/types/vehicle";
+import motorbikeBrands from "../data/motorbike-brand.json";
 
 type VehicleWithExtra = Vehicle & {
   insuranceStatus?: string;
@@ -36,6 +37,11 @@ const insuranceOptions = [
 const deliveryOptions = [
   { value: "YES", label: "Có" },
   { value: "NO", label: "Không" },
+];
+
+const transmissionOptions = [
+  { value: "MANUAL", label: "Số sàn" },
+  { value: "AUTOMATIC", label: "Số tự động" },
 ];
 // rentalRuleOptions sẽ lấy từ API
 
@@ -81,8 +87,10 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
               rule.penaltyType === "FIXED"
                 ? `Phạt ${rule.penaltyValue?.toLocaleString(
                     "vi-VN"
-                  )} VNĐ nếu hủy trong vòng ${rule.minCancelHour} giờ`
-                : `Phạt ${rule.penaltyValue}% nếu hủy trong vòng ${rule.minCancelHour} giờ`,
+                  )} VNĐ nếu hủy quá ${
+                    rule.minCancelHour
+                  } giờ sau khi đơn được chấp nhận`
+                : `Phạt ${rule.penaltyValue}% nếu hủy quá ${rule.minCancelHour} giờ sau khi đơn được chấp nhận`,
             penaltyType: rule.penaltyType,
             penaltyValue: rule.penaltyValue,
           })
@@ -109,17 +117,21 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
       } else if (typeof v.rentalRule === "string") {
         penaltyId = v.rentalRule;
       }
+      const brandId = motorbikeBrands.find(
+        (brand) => brand.label === vehicle.brandName
+      )?.value;
       form.setFieldsValue({
         thumb: v.thumb,
         fuelType: v.fuelType,
         vehicleFeatures: v.vehicleFeatures?.map((f) => f.name) || [],
         brandName: v.brandName,
+        brandId: brandId,
         transmission: v.transmission,
         yearManufacture: v.yearManufacture,
         costPerDay: v.costPerDay,
         insuranceStatus: v.insuranceStatus ?? "NO",
         shipToAddress: v.shipToAddress || "NO",
-        rentalRule: penaltyId,
+        penaltyId: penaltyId,
         description: v.description,
       });
     } else {
@@ -191,20 +203,26 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
             </Form.Item>
             <Form.Item
               label="Hãng xe"
-              name="brandName"
-              rules={[{ required: true, message: "Vui lòng nhập hãng xe" }]}
+              name="brandId" // Đây là tên trường mà bạn sẽ gửi lên
+              rules={[{ required: true, message: "Vui lòng chọn hãng xe" }]}
             >
-              <Input placeholder={vehicle?.brandName || "Nhập hãng xe"} />
+              <Select
+                placeholder="Chọn hãng xe"
+                showSearch
+                options={motorbikeBrands} // Dữ liệu JSON đã được định nghĩa
+              />
             </Form.Item>
+
             <Form.Item
               label="Truyền động"
               name="transmission"
               rules={[
-                { required: true, message: "Vui lòng nhập loại truyền động" },
+                { required: true, message: "Vui lòng chọn loại truyền động" },
               ]}
             >
-              <Input
-                placeholder={vehicle?.transmission || "Nhập loại truyền động"}
+              <Select
+                options={transmissionOptions}
+                placeholder="Chọn loại truyền động"
               />
             </Form.Item>
             <Form.Item
@@ -266,7 +284,7 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
             </Form.Item>
             <Form.Item
               label="Quy định thuê xe"
-              name="rentalRule"
+              name="penaltyId"
               className="md:col-span-2"
               rules={[
                 { required: true, message: "Vui lòng chọn quy định thuê xe" },

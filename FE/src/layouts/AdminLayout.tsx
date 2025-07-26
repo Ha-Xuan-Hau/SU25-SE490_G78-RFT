@@ -131,12 +131,16 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:file-document-edit",
           label: "Tất toán hợp đồng",
         },
-        {
-          key: "transactions",
-          path: "/admin/manage-transactions",
-          icon: "mdi:credit-card-outline",
-          label: "Giao dịch thanh toán",
-        },
+        ...(isAdmin
+          ? [
+              {
+                key: "transactions",
+                path: "/admin/manage-transactions",
+                icon: "mdi:credit-card-outline",
+                label: "Giao dịch thanh toán",
+              },
+            ]
+          : []),
       ],
     },
     {

@@ -1,8 +1,6 @@
 "use client";
-import React from "react";
 // import Chart from "react-apexcharts";
-import { ApexOptions } from "apexcharts";
-import ChartTab from "@/components/ui/chartTab";
+import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
 
 // Dynamically import the ReactApexChart component
@@ -20,7 +18,7 @@ export default function StatisticsChart() {
     colors: ["#465FFF", "#9CB9FF"], // Define line colors
     chart: {
       fontFamily: "Outfit, sans-serif",
-      height: 310,
+      height: 250,
       type: "line", // Set the chart type to 'line'
       toolbar: {
         show: false, // Hide chart toolbar
@@ -138,7 +136,7 @@ export default function StatisticsChart() {
             options={options}
             series={series}
             type="area"
-            height={310}
+            height={190}
           />
         </div>
       </div>

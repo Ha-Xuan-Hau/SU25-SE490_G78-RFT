@@ -127,7 +127,7 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
       <HeaderComponent />
 
       <section className="flex-1 w-full">
-        <div className="flex min-h-screen w-full relative">
+        <div className="flex h-screen w-full relative">
           {/* Mobile sidebar toggle button */}
           <button
             onClick={toggleSidebar}

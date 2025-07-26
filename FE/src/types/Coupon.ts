@@ -6,5 +6,12 @@ export interface coupon {
   status: string;
   createdAt: string;
   updatedAt: string;
-  expiresAt: string;
+  timeExpired: string;
+}
+
+export interface couponRequest {
+  name: string;
+  discount: number;
+  description: string;
+  timeExpired: string;
 }

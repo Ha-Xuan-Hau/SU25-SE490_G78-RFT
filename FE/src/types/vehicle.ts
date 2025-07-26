@@ -1,8 +1,9 @@
 export enum VehicleType {
-  CAR = "Car",
-  MOTORBIKE = "Motorbike",
-  BICYCLE = "Bicycle",
+  CAR = "CAR",
+  MOTORBIKE = "MOTORBIKE",
+  BICYCLE = "BICYCLE",
 }
+
 export interface Vehicle {
   id: string;
   userId: string;
@@ -67,7 +68,9 @@ export interface VehicleFilters {
   ward?: string;
   pickupDateTime?: string;
   returnDateTime?: string;
-  feature?: string[];
+  features?: string[];
+  page?: number;
+  size?: number;
 }
 
 export interface Comment {
@@ -77,4 +80,29 @@ export interface Comment {
   comment: string;
   star: number;
   timestamp?: string;
+}
+
+interface VehicleRentUpdateDTO {
+  brandId: string;
+  penaltyId: string;
+  licensePlate: string;
+  vehicleType: string;
+  vehicleFeatures: string; // Chuỗi thay vì mảng
+  vehicleImages: VehicleImageDTO[];
+  haveDriver: string;
+  insuranceStatus: string;
+  shipToAddress: string;
+  numberSeat: number;
+  yearManufacture: number;
+  transmission: string;
+  fuelType: string;
+  description: string;
+  numberVehicle: number;
+  costPerDay: number;
+  status: string;
+  thumb: string;
+}
+
+interface VehicleImageDTO {
+  imageUrl: string;
 }
