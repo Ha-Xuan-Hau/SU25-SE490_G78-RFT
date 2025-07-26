@@ -28,6 +28,8 @@ export const viDictionary: Record<string, string> = {
   RECEIVED_BY_CUSTOMER: "Đã nhận bởi khách hàng",
   RETURNED: "Đã trả",
   COMPLETED: "Đã hoàn thành",
+  VALID: "Còn hiệu lực",
+  INVALID: "Không còn hiệu lực",
 };
 
 export function translateENtoVI(text: string): string {

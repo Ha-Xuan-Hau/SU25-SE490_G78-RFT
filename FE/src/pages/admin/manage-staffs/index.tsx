@@ -1,188 +1,171 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Typography,
-  Spin,
   Avatar,
   Table,
   Tabs,
   Button,
   Modal,
   Tag,
-  Space,
   Input,
   Select,
+  Form,
+  InputNumber,
 } from "antd";
-import {
-  EyeOutlined,
-  SearchOutlined,
-  UserOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
+import { EyeOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
+import {
+  getUsers,
+  updateUserStatus,
+  getUserDetail,
+  searchUsersByName,
+  searchUsersByEmail,
+} from "@/apis/admin.api";
 import type { ColumnsType } from "antd/es/table";
 
 const { Title } = Typography;
 const { Search } = Input;
 const { Option } = Select;
 
-interface Staff {
+interface User {
   id: string;
   fullName: string;
   email: string;
   phone: string;
   address: string;
-  dateOfBirth: string;
-  gender: string;
+  dateOfBirth: number[];
   role: "ADMIN" | "STAFF";
   status: "ACTIVE" | "INACTIVE";
-  avatar?: string;
-  createdAt: string;
-  lastLogin?: string;
-  department: string;
-  position: string;
-  salary?: number;
-  hireDate: string;
+  profilePicture: string; // Avatar
+  createdAt: number[]; // Ngày tạo
+  updatedAt: number[]; // Ngày sửa đổi
+  // totalBookings: number; // Tổng số booking
+  // completedBookings: number; // Số booking đã hoàn thành
+  // cancelledBookings: number; // Số booking đã hủy
+  // averageRating: number; // Đánh giá trung bình
+  // totalRatings: number; // Tổng số đánh giá
+  // walletBalance: number; // Số dư ví
+  // bankName: string; // Ngân hàng
+  // cardNumber: string; // Số thẻ
+  // cardHolderName: string; // Tên trên thẻ
 }
 
-// Mockup data cho nhân viên
-const mockStaffs: Staff[] = [
-  {
-    id: "1",
-    fullName: "Nguyễn Quản Trị",
-    email: "admin@rft.com",
-    phone: "0901234567",
-    address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
-    dateOfBirth: "1985-03-15",
-    gender: "Nam",
-    role: "ADMIN",
-    status: "ACTIVE",
-    createdAt: "2023-01-15",
-    lastLogin: "2024-12-21",
-    department: "Quản lý",
-    position: "Quản trị viên hệ thống",
-    salary: 25000000,
-    hireDate: "2023-01-15",
-  },
-  {
-    id: "2",
-    fullName: "Trần Thị Mai",
-    email: "mai.tran@rft.com",
-    phone: "0912345678",
-    address: "456 Lê Lợi, Quận 3, TP.HCM",
-    dateOfBirth: "1990-08-22",
-    gender: "Nữ",
-    role: "STAFF",
-    status: "ACTIVE",
-    createdAt: "2023-03-10",
-    lastLogin: "2024-12-20",
-    department: "Vận hành",
-    position: "Nhân viên vận hành",
-    salary: 15000000,
-    hireDate: "2023-03-10",
-  },
-  {
-    id: "3",
-    fullName: "Lê Văn Hùng",
-    email: "hung.le@rft.com",
-    phone: "0923456789",
-    address: "789 Võ Văn Tần, Quận 10, TP.HCM",
-    dateOfBirth: "1992-12-03",
-    gender: "Nam",
-    role: "STAFF",
-    status: "ACTIVE",
-    createdAt: "2023-05-20",
-    lastLogin: "2024-12-19",
-    department: "Kỹ thuật",
-    position: "Nhân viên kỹ thuật",
-    salary: 18000000,
-    hireDate: "2023-05-20",
-  },
-  {
-    id: "4",
-    fullName: "Phạm Thị Lan",
-    email: "lan.pham@rft.com",
-    phone: "0934567890",
-    address: "321 Điện Biên Phủ, Quận Bình Thạnh, TP.HCM",
-    dateOfBirth: "1988-07-18",
-    gender: "Nữ",
-    role: "STAFF",
-    status: "INACTIVE",
-    createdAt: "2023-07-15",
-    lastLogin: "2024-11-30",
-    department: "Chăm sóc khách hàng",
-    position: "Nhân viên CSKH",
-    salary: 12000000,
-    hireDate: "2023-07-15",
-  },
-  {
-    id: "5",
-    fullName: "Võ Minh Tuấn",
-    email: "tuan.vo@rft.com",
-    phone: "0945678901",
-    address: "654 Cách Mạng Tháng 8, Quận Tân Bình, TP.HCM",
-    dateOfBirth: "1995-03-25",
-    gender: "Nam",
-    role: "STAFF",
-    status: "ACTIVE",
-    createdAt: "2024-01-10",
-    lastLogin: "2024-12-21",
-    department: "Tài chính",
-    position: "Nhân viên tài chính",
-    salary: 16000000,
-    hireDate: "2024-01-10",
-  },
-];
-
-export default function ManageStaffsPage() {
+export default function ManageStaffPage() {
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("ALL");
-  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [activeTab, setActiveTab] = useState("ADMIN");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false); // Modal xác nhận
   const [searchText, setSearchText] = useState("");
-  const [staffs, setStaffs] = useState<Staff[]>(mockStaffs);
+  const [searchType, setSearchType] = useState("name"); // Trạng thái cho loại tìm kiếm
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentPage, setCurrentPage] = useState(0); // Trạng thái cho trang hiện tại
+  const [form] = Form.useForm(); // Khởi tạo form
 
-  // Filter staffs based on active tab and search text
-  const filteredStaffs = staffs.filter((staff) => {
-    const matchesTab =
-      activeTab === "ALL" ||
-      (activeTab === "ADMIN" && staff.role === "ADMIN") ||
-      (activeTab === "STAFF" && staff.role === "STAFF");
-
-    const matchesSearch =
-      staff.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-      staff.email.toLowerCase().includes(searchText.toLowerCase()) ||
-      staff.phone.includes(searchText) ||
-      staff.department.toLowerCase().includes(searchText.toLowerCase()) ||
-      staff.position.toLowerCase().includes(searchText.toLowerCase());
-
-    return matchesTab && matchesSearch;
-  });
-
-  const handleViewDetails = (staff: Staff) => {
-    setSelectedStaff(staff);
-    setIsModalVisible(true);
+  const fetchUsers = async (page = 0, search = "") => {
+    setLoading(true);
+    try {
+      const response = await getUsers({ page, size: 10, name: search }); // Gọi API với tham số cần thiết
+      setUsers(response.users);
+      setCurrentPage(response.currentPage); // Cập nhật trang hiện tại
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleToggleStaffStatus = () => {
-    if (!selectedStaff) return;
+  useEffect(() => {
+    fetchUsers(currentPage, searchText); // Gọi hàm fetch với tham số tìm kiếm
+  }, [currentPage, searchText]); // Gọi lại khi currentPage hoặc searchText thay đổi
 
-    const newStatus = selectedStaff.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+  const handleSearch = async (value: string) => {
+    setSearchText(value);
+    setCurrentPage(0); // Reset về trang đầu khi tìm kiếm
 
-    // Update staff status in the list
-    setStaffs((prevStaffs) =>
-      prevStaffs.map((staff) =>
-        staff.id === selectedStaff.id ? { ...staff, status: newStatus } : staff
-      )
-    );
+    // Nếu không có giá trị tìm kiếm, gọi lại fetchUsers
+    if (value.trim() === "") {
+      fetchUsers(0, ""); // Lấy lại danh sách người dùng
+      return;
+    }
 
-    // Update selected staff
-    setSelectedStaff({ ...selectedStaff, status: newStatus });
+    // Gọi API tìm kiếm theo loại đã chọn
+    try {
+      let response;
+      if (searchType === "name") {
+        response = await searchUsersByName(value, currentPage, 10);
+      } else if (searchType === "email") {
+        response = await searchUsersByEmail(value, currentPage, 10);
+      }
 
-    // Close modal
-    setIsModalVisible(false);
+      setUsers(response.users); // Cập nhật danh sách người dùng
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const matchesTab =
+      // activeTab === "ALL" ||
+      (activeTab === "ADMIN" && user.role === "ADMIN") ||
+      (activeTab === "STAFF" && user.role === "STAFF");
+
+    return matchesTab; // Chỉ cần kiểm tra tab
+  });
+
+  const handleViewDetails = async (user: User) => {
+    setSelectedUser(user);
+    setIsModalVisible(true);
+
+    // Gọi API để lấy thông tin chi tiết người dùng
+    try {
+      const userDetail = await getUserDetail(user.id);
+      setSelectedUser(userDetail); // Cập nhật thông tin người dùng chi tiết
+      form.setFieldsValue({
+        // Thiết lập giá trị cho form
+        cardName: userDetail.cardName,
+        bankName: userDetail.bankName,
+        cardHolderName: userDetail.cardHolderName,
+        walletBalance: userDetail.walletBalance,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleToggleUserStatus = () => {
+    if (!selectedUser) return;
+
+    // Hiển thị modal xác nhận
+    setIsConfirmModalVisible(true);
+  };
+
+  const confirmToggleUserStatus = async () => {
+    if (!selectedUser) return;
+
+    const newStatus = selectedUser.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+    try {
+      await updateUserStatus(selectedUser.id, newStatus);
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === selectedUser.id ? { ...user, status: newStatus } : user
+        )
+      );
+      setSelectedUser({ ...selectedUser, status: newStatus });
+    } catch (error) {
+      console.error(error);
+    }
+
+    // Đóng modal xác nhận
+    setIsConfirmModalVisible(false);
+    setIsModalVisible(false); // Đóng modal chi tiết người dùng
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page - 1); // Cập nhật currentPage khi chuyển trang
   };
 
   const getRoleColor = (role: string) => {
@@ -190,7 +173,7 @@ export default function ManageStaffsPage() {
   };
 
   const getRoleText = (role: string) => {
-    return role === "ADMIN" ? "Quản trị viên" : "Nhân viên";
+    return role === "STAFF" ? "Nhân viên" : "Quản trị viên";
   };
 
   const getStatusColor = (status: string) => {
@@ -201,50 +184,55 @@ export default function ManageStaffsPage() {
     return status === "ACTIVE" ? "Hoạt động" : "Ngưng hoạt động";
   };
 
-  const getDepartmentColor = (department: string) => {
-    const colors: { [key: string]: string } = {
-      "Quản lý": "purple",
-      "Vận hành": "blue",
-      "Kỹ thuật": "green",
-      "Chăm sóc khách hàng": "orange",
-      "Tài chính": "cyan",
-    };
-    return colors[department] || "default";
+  const formatDOB = (dateArray: number[] | undefined | null): string => {
+    if (!dateArray || !Array.isArray(dateArray) || dateArray.length < 3)
+      return "N/A";
+    const [year, month, day] = dateArray;
+    return `${day.toString().padStart(2, "0")}/${month
+      .toString()
+      .padStart(2, "0")}/${year}`;
   };
 
-  const formatSalary = (salary?: number) => {
-    if (!salary) return "Chưa cập nhật";
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(salary);
+  const formatTimestamp = (
+    timestamp: number | string | number[] | undefined | null
+  ): string => {
+    if (!timestamp) return "";
+
+    if (Array.isArray(timestamp) && timestamp.length >= 5) {
+      const [year, month, day, hour, minute] = timestamp;
+      return `${day.toString().padStart(2, "0")}/${month
+        .toString()
+        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    if (typeof timestamp === "number" || typeof timestamp === "string") {
+      const date = new Date(
+        typeof timestamp === "number" ? timestamp * 1000 : timestamp
+      );
+      return `${date.getDate().toString().padStart(2, "0")}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${date.getFullYear()} ${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    return "";
   };
 
-  const columns: ColumnsType<Staff> = [
+  const columns: ColumnsType<User> = [
     {
       title: "STT",
       key: "index",
       width: 60,
-      render: (_, __, index) => index + 1,
+      render: (_, __, index) => index + 1 + currentPage * 10, // Cập nhật chỉ số STT dựa theo trang hiện tại
       align: "center",
     },
-    {
-      title: "Avatar",
-      dataIndex: "avatar",
-      key: "avatar",
-      width: 80,
-      render: (avatar, record) => (
-        <Avatar
-          src={avatar}
-          icon={<UserOutlined />}
-          size={40}
-          style={{
-            backgroundColor: record.role === "ADMIN" ? "#ff4d4f" : "#1890ff",
-          }}
-        />
-      ),
-      align: "center",
-    },
+
     {
       title: "Họ và tên",
       dataIndex: "fullName",
@@ -268,11 +256,6 @@ export default function ManageStaffsPage() {
       render: (role) => (
         <Tag color={getRoleColor(role)}>{getRoleText(role)}</Tag>
       ),
-      filters: [
-        { text: "Quản trị viên", value: "ADMIN" },
-        { text: "Nhân viên", value: "STAFF" },
-      ],
-      onFilter: (value, record) => record.role === value,
     },
     {
       title: "Trạng thái",
@@ -286,6 +269,7 @@ export default function ManageStaffsPage() {
         { text: "Ngưng hoạt động", value: "INACTIVE" },
       ],
       onFilter: (value, record) => record.status === value,
+      align: "center",
     },
     {
       title: "Thao tác",
@@ -306,81 +290,56 @@ export default function ManageStaffsPage() {
   ];
 
   const tabItems = [
-    {
-      key: "ALL",
-      label: `Tất cả (${staffs.length})`,
-    },
+    // {
+    //   key: "ALL",
+    //   label: `Tất cả (${users.length})`,
+    // },
     {
       key: "ADMIN",
       label: `Quản trị viên (${
-        staffs.filter((s) => s.role === "ADMIN").length
+        users.filter((u) => u.role === "ADMIN").length
       })`,
     },
     {
       key: "STAFF",
-      label: `Nhân viên (${staffs.filter((s) => s.role === "STAFF").length})`,
+      label: `Nhân viên (${users.filter((u) => u.role === "STAFF").length})`,
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Title level={2} className="!mb-2">
-            Quản lý nhân viên
-          </Title>
-          <p className="text-gray-600">
-            Quản lý thông tin nhân viên và quản trị viên trong hệ thống
-          </p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          onClick={() => setIsAddModalVisible(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          Thêm nhân viên
-        </Button>
+      <div>
+        <Title level={2} className="!mb-2">
+          Quản lý nhân viên
+        </Title>
+        <p className="text-gray-600">
+          Quản lý thông tin nhân viên trong hệ thống
+        </p>
       </div>
 
-      {/* Search and Filter Section */}
       <div className="bg-white p-6 rounded-xl shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1 max-w-md">
+          <div className="flex-1 max-w-md flex items-center">
+            <Select
+              defaultValue="name"
+              onChange={(value) => setSearchType(value)} // Thay đổi loại tìm kiếm
+              style={{ width: 120, marginRight: 10 }}
+            >
+              <Option value="name">Tên</Option>
+              <Option value="email">Email</Option>
+            </Select>
             <Search
-              placeholder="Tìm kiếm theo tên, email, phòng ban, chức vụ..."
+              placeholder="Tìm kiếm theo tên, email"
               allowClear
               enterButton={<SearchOutlined />}
               size="large"
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
             />
-          </div>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span>
-              Admin:{" "}
-              <span className="font-semibold text-red-600">
-                {staffs.filter((s) => s.role === "ADMIN").length}
-              </span>
-            </span>
-            <span>
-              Staff:{" "}
-              <span className="font-semibold text-blue-600">
-                {staffs.filter((s) => s.role === "STAFF").length}
-              </span>
-            </span>
-            <span>
-              Tổng:{" "}
-              <span className="font-semibold text-green-600">
-                {filteredStaffs.length}
-              </span>
-            </span>
           </div>
         </div>
       </div>
 
-      {/* Tabs and Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <Tabs
           activeKey={activeTab}
@@ -392,46 +351,44 @@ export default function ManageStaffsPage() {
         <div className="px-6 pb-6">
           <Table
             columns={columns}
-            dataSource={filteredStaffs}
+            dataSource={filteredUsers}
             rowKey="id"
             loading={loading}
             pagination={{
+              current: currentPage + 1, // Hiển thị trang hiện tại
               pageSize: 10,
               showSizeChanger: true,
               showQuickJumper: true,
+              total: users.length, // Tổng số người dùng
+              onChange: handlePageChange, // Gọi hàm khi chuyển trang
               showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} nhân viên`,
+                `${range[0]}-${range[1]} của ${total} người dùng`,
             }}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 800 }}
             className="border-0"
           />
         </div>
       </div>
 
-      {/* Staff Details Modal */}
       <Modal
         title={
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
             <Avatar
-              src={selectedStaff?.avatar}
+              src={selectedUser?.profilePicture} // Hiển thị avatar từ response
               icon={<UserOutlined />}
               size={40}
-              style={{
-                backgroundColor:
-                  selectedStaff?.role === "ADMIN" ? "#ff4d4f" : "#1890ff",
-              }}
             />
             <div>
-              <div className="font-semibold text-lg">Chi tiết nhân viên</div>
+              <div className="font-semibold text-lg">Chi tiết người dùng</div>
               <div className="text-sm text-gray-500">
-                {selectedStaff?.fullName}
+                {selectedUser?.fullName}
               </div>
             </div>
           </div>
         }
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
-        width={800}
+        width={700}
         className="top-8"
         footer={[
           <Button
@@ -441,187 +398,139 @@ export default function ManageStaffsPage() {
           >
             Đóng
           </Button>,
-          <Button
-            key="toggle"
-            type="primary"
-            size="large"
-            danger={selectedStaff?.status === "ACTIVE"}
-            onClick={handleToggleStaffStatus}
-          >
-            {selectedStaff?.status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}
-          </Button>,
+          selectedUser?.role === "STAFF" && (
+            <Button
+              key="toggle"
+              type="primary"
+              size="large"
+              onClick={handleToggleUserStatus}
+            >
+              {selectedUser?.status === "ACTIVE"
+                ? "Ẩn người dùng"
+                : "Kích hoạt người dùng"}
+            </Button>
+          ),
         ]}
       >
-        {selectedStaff && (
+        {selectedUser && (
           <div className="pt-4 space-y-6">
-            {/* Thông tin cá nhân */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Thông tin cá nhân
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Họ và tên
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {selectedStaff.fullName}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {selectedStaff.email}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Số điện thoại
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {selectedStaff.phone}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ngày sinh
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {new Date(selectedStaff.dateOfBirth).toLocaleDateString(
-                      "vi-VN"
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Giới tính
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {selectedStaff.gender}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Trạng thái
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <Tag
-                      color={getStatusColor(selectedStaff.status)}
-                      className="text-sm"
-                    >
-                      {getStatusText(selectedStaff.status)}
-                    </Tag>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4">
+            {/* Mục 1: Thông tin cá nhân */}
+            {/* <div className="border-b pb-4 mb-4"> */}
+            <Title level={4}>Thông tin cá nhân</Title>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ
+                  Họ và tên
                 </label>
                 <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                  {selectedStaff.address}
+                  {selectedUser.fullName}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {selectedUser.email}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số điện thoại
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {selectedUser.phone}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày sinh
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {formatDOB(selectedUser.dateOfBirth)}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vai trò
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <Tag
+                    color={getRoleColor(selectedUser.role)}
+                    className="text-sm"
+                  >
+                    {getRoleText(selectedUser.role)}
+                  </Tag>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trạng thái
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <Tag
+                    color={getStatusColor(selectedUser.status)}
+                    className="text-sm"
+                  >
+                    {getStatusText(selectedUser.status)}
+                  </Tag>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày tạo
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {formatTimestamp(selectedUser.createdAt)}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày sửa đổi cuối
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {formatTimestamp(selectedUser.updatedAt)}
                 </div>
               </div>
             </div>
-
-            {/* Thông tin công việc */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Thông tin công việc
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vai trò
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <Tag
-                      color={getRoleColor(selectedStaff.role)}
-                      className="text-sm"
-                    >
-                      {getRoleText(selectedStaff.role)}
-                    </Tag>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Chức vụ
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {selectedStaff.position}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mức lương
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 font-semibold">
-                    {formatSalary(selectedStaff.salary)}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ngày vào làm
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {new Date(selectedStaff.hireDate).toLocaleDateString(
-                      "vi-VN"
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lần đăng nhập cuối
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {selectedStaff.lastLogin
-                      ? new Date(selectedStaff.lastLogin).toLocaleString(
-                          "vi-VN"
-                        )
-                      : "Chưa đăng nhập"}
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* </div> */}
           </div>
         )}
       </Modal>
 
-      {/* Add Staff Modal - Placeholder */}
+      {/* Modal xác nhận chuyển trạng thái nhân viên   */}
       <Modal
-        title="Thêm nhân viên mới"
-        open={isAddModalVisible}
-        onCancel={() => setIsAddModalVisible(false)}
-        width={600}
+        title="Xác nhận thay đổi trạng thái nhân viên"
+        open={isConfirmModalVisible}
+        onCancel={() => setIsConfirmModalVisible(false)}
         footer={[
-          <Button key="cancel" onClick={() => setIsAddModalVisible(false)}>
+          <Button key="cancel" onClick={() => setIsConfirmModalVisible(false)}>
             Hủy
           </Button>,
-          <Button key="submit" type="primary">
-            Thêm nhân viên
+          <Button
+            key="confirm"
+            type="primary"
+            onClick={confirmToggleUserStatus}
+          >
+            Xác nhận
           </Button>,
         ]}
       >
-        <div className="py-4">
-          <p className="text-gray-500 text-center">
-            Form thêm nhân viên sẽ được triển khai ở đây...
-          </p>
-        </div>
+        <p>
+          Bạn có chắc chắn muốn{" "}
+          {selectedUser?.status === "ACTIVE" ? "ẩn" : "kích hoạt"} người dùng{" "}
+          <strong>{selectedUser?.fullName}</strong>?
+        </p>
       </Modal>
     </div>
   );
 }
 
-ManageStaffsPage.Layout = AdminLayout;
+ManageStaffPage.Layout = AdminLayout;

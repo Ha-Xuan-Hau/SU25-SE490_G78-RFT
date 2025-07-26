@@ -95,7 +95,7 @@ const HeaderComponent: React.FC = () => {
           key: "manage-users",
           label: (
             <div
-              onClick={() => router.push("/admin/manage-customers")}
+              onClick={() => router.push("/admin/manage-users")}
               className="flex items-center py-1"
             >
               <TeamOutlined className="mr-2 text-green-600" />
