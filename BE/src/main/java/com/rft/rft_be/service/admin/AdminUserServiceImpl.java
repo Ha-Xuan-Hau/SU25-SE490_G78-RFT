@@ -218,7 +218,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         Long totalBookings = bookingRepository.countByUserId(user.getId());
         Long totalVehicles = vehicleRepository.countByUserId(user.getId());
         Double walletBalance = walletRepository.findBalanceByUserId(user.getId());
-        
+
         // Get wallet transaction statistics
         var transactions = walletTransactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
         long totalTransactions = transactions.size();
@@ -251,11 +251,11 @@ public class AdminUserServiceImpl implements AdminUserService {
                 vehicleNames.add(vehicle.getThumb());
             }
         }
-        
+
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         String openTimeStr = user.getOpenTime() != null ? user.getOpenTime().format(timeFormatter) : null;
         String closeTimeStr = user.getCloseTime() != null ? user.getCloseTime().format(timeFormatter) : null;
-        
+
         return AdminUserListDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
