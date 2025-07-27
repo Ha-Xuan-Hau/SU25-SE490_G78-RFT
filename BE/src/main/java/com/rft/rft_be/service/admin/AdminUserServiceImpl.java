@@ -7,6 +7,8 @@ import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.RatingRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.repository.WalletRepository;
+import com.rft.rft_be.repository.WalletTransactionRepository;
+import com.rft.rft_be.entity.WalletTransaction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
+import com.rft.rft_be.repository.DriverLicensRepository;
+import com.rft.rft_be.repository.VehicleRepository;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +34,9 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final BookingRepository bookingRepository;
     private final RatingRepository ratingRepository;
     private final WalletRepository walletRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
+    private final DriverLicensRepository driverLicenseRepository;
+    private final VehicleRepository vehicleRepository;
 
     @Override
     public AdminUserListResponseDTO getUsers(AdminUserSearchDTO searchDTO) {
@@ -38,8 +48,13 @@ public class AdminUserServiceImpl implements AdminUserService {
                 searchDTO.getRole(),
                 pageable
         );
-
+        
         return buildUserListResponse(userPage);
+    }
+    @Override
+    public AdminUserListResponseDTO getCustomers(AdminUserSearchDTO searchDTO) {
+        searchDTO.setRole(User.Role.USER);
+        return getUsers(searchDTO);
     }
 
     @Override
@@ -52,18 +67,63 @@ public class AdminUserServiceImpl implements AdminUserService {
     public AdminUserDetailDTO getUserDetail(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
+        
         // Get booking statistics
         Long totalBookings = bookingRepository.countByUserId(userId);
         Long completedBookings = bookingRepository.countByUserIdAndStatus(userId, Booking.Status.COMPLETED);
         Long cancelledBookings = bookingRepository.countByUserIdAndStatus(userId, Booking.Status.CANCELLED);
-
+        
         // Get rating statistics
         Double averageRating = ratingRepository.findAverageRatingByUserId(userId);
         Long totalRatings = ratingRepository.countByUserId(userId);
-
+        
         // Get wallet balance
         Double walletBalance = walletRepository.findBalanceByUserId(userId);
+
+        // Get wallet entity for banking information
+        var wallet = walletRepository.findByUserId(userId);
+        String cardNumber = null;
+        String bankName = null;
+        String cardHolderName = null;
+        if (wallet.isPresent()) {
+            var walletEntity = wallet.get();
+            cardNumber = walletEntity.getBankAccountNumber();
+            bankName = walletEntity.getBankAccountType();
+            cardHolderName = walletEntity.getBankAccountName();
+        }
+
+        // Get wallet transaction statistics
+        var transactions = walletTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        long totalTransactions = transactions.size();
+        BigDecimal totalSpent = BigDecimal.ZERO;
+        BigDecimal totalEarned = BigDecimal.ZERO;
+        for (WalletTransaction tx : transactions) {
+            if (tx.getAmount() != null && tx.getStatus() == WalletTransaction.Status.APPROVED) {
+                if (tx.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+                    totalSpent = totalSpent.add(tx.getAmount().abs());
+                } else {
+                    totalEarned = totalEarned.add(tx.getAmount());
+                }
+            }
+        }
+
+        // Get valid licenses
+        var validLicenses = driverLicenseRepository.findValidByUserId(userId);
+        List<String> licenseNumbers = new ArrayList<>();
+        for (var license : validLicenses) {
+            if (license.getLicenseNumber() != null) {
+                licenseNumbers.add(license.getLicenseNumber());
+            }
+        }
+
+        // Get registered vehicles
+        var userVehicles = vehicleRepository.findByUserId(userId);
+        List<String> vehicleNames = new ArrayList<>();
+        for (var vehicle : userVehicles) {
+            if (vehicle.getThumb() != null) {
+                vehicleNames.add(vehicle.getThumb());
+            }
+        }
 
         return AdminUserDetailDTO.builder()
                 .id(user.getId())
@@ -80,6 +140,14 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .walletBalance(walletBalance != null ? walletBalance : 0.0)
+                .totalTransactions(totalTransactions)
+                .totalSpent(totalSpent.doubleValue())
+                .totalEarned(totalEarned.doubleValue())
+                .cardNumber(cardNumber)
+                .bankName(bankName)
+                .cardHolderName(cardHolderName)
+                .validLicenses(licenseNumbers)
+                .registeredVehicles(vehicleNames)
                 .totalBookings(totalBookings)
                 .completedBookings(completedBookings)
                 .cancelledBookings(cancelledBookings)
@@ -92,10 +160,10 @@ public class AdminUserServiceImpl implements AdminUserService {
     public AdminUserDetailDTO updateUserStatus(String userId, AdminUserStatusUpdateDTO statusDTO) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
+        
         user.setStatus(statusDTO.getStatus());
         User updatedUser = userRepository.save(user);
-
+        
         return getUserDetail(updatedUser.getId());
     }
 
@@ -122,7 +190,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private Pageable createPageable(AdminUserSearchDTO searchDTO) {
         Sort sort = Sort.by(
-                searchDTO.getSortDirection().equalsIgnoreCase("ASC") ?
+                searchDTO.getSortDirection().equalsIgnoreCase("ASC") ? 
                 Sort.Direction.ASC : Sort.Direction.DESC,
                 searchDTO.getSortBy()
         );
@@ -148,8 +216,45 @@ public class AdminUserServiceImpl implements AdminUserService {
     private AdminUserListDTO convertToAdminUserListDTO(User user) {
         // Get basic statistics
         Long totalBookings = bookingRepository.countByUserId(user.getId());
-        Long totalVehicles = 0L; // TODO: Add vehicle repository method
+        Long totalVehicles = vehicleRepository.countByUserId(user.getId());
         Double walletBalance = walletRepository.findBalanceByUserId(user.getId());
+
+        // Get wallet transaction statistics
+        var transactions = walletTransactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        long totalTransactions = transactions.size();
+        BigDecimal totalSpent = BigDecimal.ZERO;
+        BigDecimal totalEarned = BigDecimal.ZERO;
+        for (WalletTransaction tx : transactions) {
+            if (tx.getAmount() != null && tx.getStatus() == WalletTransaction.Status.APPROVED) {
+                if (tx.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+                    totalSpent = totalSpent.add(tx.getAmount().abs());
+                } else {
+                    totalEarned = totalEarned.add(tx.getAmount());
+                }
+            }
+        }
+
+        // Get valid licenses
+        var validLicenses = driverLicenseRepository.findValidByUserId(user.getId());
+        List<String> licenseNumbers = new ArrayList<>();
+        for (var license : validLicenses) {
+            if (license.getLicenseNumber() != null) {
+                licenseNumbers.add(license.getLicenseNumber());
+            }
+        }
+
+        // Get registered vehicles
+        var userVehicles = vehicleRepository.findByUserId(user.getId());
+        List<String> vehicleNames = new ArrayList<>();
+        for (var vehicle : userVehicles) {
+            if (vehicle.getThumb() != null) {
+                vehicleNames.add(vehicle.getThumb());
+            }
+        }
+
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        String openTimeStr = user.getOpenTime() != null ? user.getOpenTime().format(timeFormatter) : null;
+        String closeTimeStr = user.getCloseTime() != null ? user.getCloseTime().format(timeFormatter) : null;
 
         return AdminUserListDTO.builder()
                 .id(user.getId())
@@ -164,7 +269,13 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .totalBookings(totalBookings)
                 .totalVehicles(totalVehicles)
                 .walletBalance(walletBalance != null ? walletBalance : 0.0)
+                .totalTransactions(totalTransactions)
+                .totalSpent(totalSpent.doubleValue())
+                .totalEarned(totalEarned.doubleValue())
+                .validLicenses(licenseNumbers)
+                .registeredVehicles(vehicleNames)
+                .openTime(openTimeStr)
+                .closeTime(closeTimeStr)
                 .build();
     }
-
-}
+} 

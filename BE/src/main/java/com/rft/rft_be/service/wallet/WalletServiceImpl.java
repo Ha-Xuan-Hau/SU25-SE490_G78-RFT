@@ -166,7 +166,6 @@ public class WalletServiceImpl implements  WalletService {
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Trạng thái khôn khả dụng: " + status);
         }
-
         txRepository.save(tx);
     }
 

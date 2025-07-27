@@ -21,5 +21,4 @@ public class WalletTransactionDTO {
     private String userId;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     LocalDateTime createdAt;
-
 }

@@ -182,7 +182,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyOrderPlaced(String userId, String bookingId, String vehicleName) {
         String message = notificationMapper.formatOrderPlacedMessage(vehicleName);
-        String redirectUrl = "/bookings/" + bookingId;
+        String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.ORDER_PLACED, message, redirectUrl);
     }
 
@@ -190,14 +190,17 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyPaymentCompleted(String userId, String bookingId, Double amount) {
         String message = notificationMapper.formatPaymentCompletedMessage(amount);
-        String redirectUrl = "/bookings/" + bookingId + "/payment";
+//        String redirectUrl = "/bookings/" + bookingId + "/payment";
+        String redirectUrl = "/booking-detail/" + bookingId;
+
         createNotificationForUser(userId, NotificationMapper.PAYMENT_COMPLETED, message, redirectUrl);
     }
 
     @Override
     @Transactional
     public void notifyOrderApproved(String userId, String bookingId) {
-        String redirectUrl = "/bookings/" + bookingId;
+    //    String redirectUrl = "/booking-detail/" + bookingId;
+        String redirectUrl = "/booking-history";
         createNotificationForUser(userId, NotificationMapper.ORDER_APPROVED, NotificationMapper.ORDER_APPROVED_MSG, redirectUrl);
     }
 
@@ -205,7 +208,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyOrderRejected(String userId, String bookingId, String reason) {
         String message = notificationMapper.formatOrderRejectedMessage(reason);
-        String redirectUrl = "/bookings/" + bookingId;
+        String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.ORDER_REJECTED, message, redirectUrl);
     }
 
@@ -213,7 +216,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyOrderCanceled(String userId, String bookingId, String reason) {
         String message = notificationMapper.formatOrderCanceledMessage(reason);
-        String redirectUrl = "/bookings/" + bookingId;
+        String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.ORDER_CANCELED, message, redirectUrl);
     }
 
@@ -221,7 +224,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyVehicleHandover(String userId, String bookingId, String vehicleName, String location) {
         String message = notificationMapper.formatVehicleHandoverMessage(vehicleName, location);
-        String redirectUrl = "/bookings/" + bookingId + "/handover";
+//        String redirectUrl = "/bookings/" + bookingId + "/handover";
+        String redirectUrl = "/booking-history";
         createNotificationForUser(userId, NotificationMapper.VEHICLE_HANDOVER, message, redirectUrl);
     }
 
@@ -229,14 +233,15 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyVehiclePickupConfirmed(String ownerId, String bookingId, String renterName) {
         String message = notificationMapper.formatVehiclePickupConfirmedMessage(renterName);
-        String redirectUrl = "/bookings/" + bookingId;
+    //    String redirectUrl = "/bookings/" + bookingId;
+        String redirectUrl = "/provider/manage-accepted-bookings";
         createNotificationForUser(ownerId, NotificationMapper.VEHICLE_PICKUP_CONFIRMED, message, redirectUrl);
     }
 
     @Override
     @Transactional
     public void notifyVehicleReturnConfirmed(String userId, String bookingId) {
-        String redirectUrl = "/bookings/" + bookingId;
+        String redirectUrl = "/booking-history";
         createNotificationForUser(userId, NotificationMapper.VEHICLE_RETURN_CONFIRMED, NotificationMapper.VEHICLE_RETURN_CONFIRMED_MSG, redirectUrl);
     }
 
@@ -244,7 +249,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyUserReturnVehicle(String ownerId, String bookingId, String renterName) {
         String message = notificationMapper.formatUserReturnVehicleMessage(renterName);
-        String redirectUrl = "/bookings/" + bookingId + "/return";
+        String redirectUrl = "/provider/manage-accepted-bookings";
         createNotificationForUser(ownerId, NotificationMapper.USER_RETURN_VEHICLE, message, redirectUrl);
     }
 
@@ -268,7 +273,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyProviderReceivedBooking(String providerId, String bookingId, String vehicleName) {
         String message = notificationMapper.formatProviderReceivedBookingMessage(vehicleName);
-        String redirectUrl = "/provider/bookings/" + bookingId;
+        String redirectUrl = "/provider/manage-bookings";
         createNotificationForUser(providerId, NotificationMapper.PROVIDER_RECEIVED_BOOKING, message, redirectUrl);
     }
 
@@ -362,7 +367,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyBookingCompleted(String userId, String bookingId) {
         String message = NotificationMapper.BOOKING_COMPLETED_MSG;
-        String redirectUrl = "/bookings/" + bookingId;
+        String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.BOOKING_COMPLETED, message, redirectUrl);
     }
 
@@ -370,7 +375,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyVehicleApproved(String userId, String vehicleName) {
         String message = notificationMapper.formatVehicleApprovedMessage(vehicleName);
-        String redirectUrl = "/vehicles/manage";
+        String redirectUrl = "/provider/manage-vehicles";
         createNotificationForUser(userId, NotificationMapper.VEHICLE_APPROVED, message, redirectUrl);
     }
 
@@ -378,7 +383,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyVehicleRejected(String userId, String vehicleName, String reason) {
         String message = notificationMapper.formatVehicleRejectedMessage(vehicleName, reason);
-        String redirectUrl = "/vehicles/manage";
+        String redirectUrl = "/provider/manage-vehicles";
         createNotificationForUser(userId, NotificationMapper.VEHICLE_REJECTED, message, redirectUrl);
     }
 }

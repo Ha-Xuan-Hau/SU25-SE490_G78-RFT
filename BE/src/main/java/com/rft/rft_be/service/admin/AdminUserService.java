@@ -11,7 +11,9 @@ public interface AdminUserService {
      * Công dụng: Admin xem danh sách users để quản lý, có thể filter theo tên, email, trạng thái
      */
     AdminUserListResponseDTO getUsers(AdminUserSearchDTO searchDTO);
-    
+
+
+    AdminUserListResponseDTO getCustomers(AdminUserSearchDTO searchDTO);
     /**
      * Lấy danh sách chỉ providers (chủ xe) với filter và pagination
      * Input: AdminUserSearchDTO (name, email, status, page, size)
