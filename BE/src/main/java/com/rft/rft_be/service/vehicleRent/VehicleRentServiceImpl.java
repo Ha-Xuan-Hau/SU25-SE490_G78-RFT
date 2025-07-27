@@ -691,7 +691,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                         .fuelType(parseFuelType(request.getFuelType()))
                         .description(request.getDescription())
                         .costPerDay(request.getCostPerDay())
-                        .status(Vehicle.Status.AVAILABLE)
+                        .status(Vehicle.Status.PENDING)
                         .thumb(request.getThumb())
                         .numberVehicle(numberVehicle)
                         .likes(0)
