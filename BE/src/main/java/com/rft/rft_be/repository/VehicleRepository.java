@@ -9,12 +9,12 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 
 import org.springframework.stereotype.Repository;
-
 
 
 @Repository
@@ -104,21 +104,21 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
     @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId AND v.vehicleType = :vehicleType AND v.status = :status")
     List<Vehicle> findByUserIdAndVehicleTypeAndStatus(@Param("userId") String userId, @Param("vehicleType") Vehicle.VehicleType vehicleType, @Param("status") Vehicle.Status status);
 
-   @Query("""
-    SELECT v FROM Vehicle v
-    JOIN Rating r ON v.id = r.vehicle.id
-    WHERE (:vehicleTypes IS NULL OR v.vehicleType IN :vehicleTypes)
-      AND (:addresses IS NULL OR v.user.address IN :addresses)
-      AND (:haveDriver IS NULL OR v.haveDriver = :haveDriver)
-      AND (:shipToAddress IS NULL OR v.shipToAddress = :shipToAddress)
-      AND (:brandId IS NULL OR v.brand.id = :brandId)
-      AND (:modelId IS NULL OR v.model.id = :modelId)
-      AND (:numberSeat IS NULL OR v.numberSeat = :numberSeat)
-      AND (:costFrom IS NULL OR v.costPerDay >= :costFrom)
-      AND (:costTo IS NULL OR v.costPerDay <= :costTo)
-    GROUP BY v.id
-    HAVING AVG(r.star) = 5
-""")
+    @Query("""
+                SELECT v FROM Vehicle v
+                JOIN Rating r ON v.id = r.vehicle.id
+                WHERE (:vehicleTypes IS NULL OR v.vehicleType IN :vehicleTypes)
+                  AND (:addresses IS NULL OR v.user.address IN :addresses)
+                  AND (:haveDriver IS NULL OR v.haveDriver = :haveDriver)
+                  AND (:shipToAddress IS NULL OR v.shipToAddress = :shipToAddress)
+                  AND (:brandId IS NULL OR v.brand.id = :brandId)
+                  AND (:modelId IS NULL OR v.model.id = :modelId)
+                  AND (:numberSeat IS NULL OR v.numberSeat = :numberSeat)
+                  AND (:costFrom IS NULL OR v.costPerDay >= :costFrom)
+                  AND (:costTo IS NULL OR v.costPerDay <= :costTo)
+                GROUP BY v.id
+                HAVING AVG(r.star) = 5
+            """)
     Page<Vehicle> findVehiclesWithAverageRatingFive(
             @Param("vehicleTypes") List<String> vehicleTypes,
             @Param("addresses") List<String> addresses,
@@ -132,18 +132,21 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
             Pageable pageable
     );
 
-    @Query("SELECT v FROM Vehicle v " +
-            "JOIN FETCH v.user u " +
-            "WHERE LOWER(u.address) LIKE LOWER(CONCAT('%', :address, '%')) " +
-            "AND (:type IS NULL OR v.vehicleType = :type) " +
-            "AND v.id NOT IN :busyVehicleIds " +
-            "AND v.status = 'AVAILABLE'")
+    @Query("""
+            SELECT v FROM Vehicle v
+            JOIN FETCH v.user u
+            WHERE (:address IS NULL OR LOWER(u.address) LIKE LOWER(CONCAT('%', :address, '%')))
+            AND (:type IS NULL OR v.vehicleType = :type)
+            AND (COALESCE(:busyVehicleIds, NULL) IS NULL OR v.id NOT IN :busyVehicleIds)
+            AND v.status = 'AVAILABLE'
+            """)
     Page<Vehicle> findBasicSearch(
             @Param("address") String address,
             @Param("type") Vehicle.VehicleType type,
             @Param("busyVehicleIds") List<String> busyVehicleIds,
             Pageable pageable
     );
+
     List<Vehicle> findByThumbAndUserIdAndStatus(String thumb, String userId, Vehicle.Status status);
 
     @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.vehicleType = :vehicleType AND v.status = :status")
