@@ -27,4 +27,8 @@ public class FinalContractDTO {
     private String providerName;
     private String providerEmail;
     private String providerPhone;
+
+    private String providerBankAccountNumber;
+    private String providerBankAccountName;
+    private String providerBankAccountType;
 }

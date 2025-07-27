@@ -8,6 +8,8 @@ import com.rft.rft_be.mapper.ContractMapper;
 import com.rft.rft_be.repository.FinalContractRepository;
 import com.rft.rft_be.repository.ContractRepository;
 import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.dto.wallet.WalletDTO;
+import com.rft.rft_be.service.wallet.WalletService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class FinalContractServiceImpl implements FinalContractService {
     private final ContractMapper finalContractMapper;
     private final ContractRepository contractRepository;
     private final UserRepository userRepository;
+    private final WalletService walletService;
 
     @Override
     public List<FinalContractDTO> getAllFinalContracts() {
@@ -33,7 +36,7 @@ public class FinalContractServiceImpl implements FinalContractService {
             log.info("Getting all final contracts");
             List<FinalContract> finalContracts = finalContractRepository.findAll();
             return finalContracts.stream()
-                    .map(finalContractMapper::finalContract)
+                    .map(fc -> enrichWithProviderBank(finalContractMapper.finalContract(fc), fc))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error getting all final contracts", e);
@@ -47,7 +50,7 @@ public class FinalContractServiceImpl implements FinalContractService {
             log.info("Getting final contract by id: {}", id);
             FinalContract finalContract = finalContractRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Final contract not found with id: " + id));
-            return finalContractMapper.finalContract(finalContract);
+            return enrichWithProviderBank(finalContractMapper.finalContract(finalContract), finalContract);
         } catch (Exception e) {
             log.error("Error getting final contract by id: {}", id, e);
             throw new RuntimeException("Failed to get final contract: " + e.getMessage());
@@ -60,7 +63,7 @@ public class FinalContractServiceImpl implements FinalContractService {
             log.info("Getting final contracts by contract id: {}", contractId);
             List<FinalContract> finalContracts = finalContractRepository.findByContractId(contractId);
             return finalContracts.stream()
-                    .map(finalContractMapper::finalContract)
+                    .map(fc -> enrichWithProviderBank(finalContractMapper.finalContract(fc), fc))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error getting final contracts by contract id: {}", contractId, e);
@@ -74,7 +77,7 @@ public class FinalContractServiceImpl implements FinalContractService {
             log.info("Getting final contracts by user id: {}", userId);
             List<FinalContract> finalContracts = finalContractRepository.findByUserId(userId);
             return finalContracts.stream()
-                    .map(finalContractMapper::finalContract)
+                    .map(fc -> enrichWithProviderBank(finalContractMapper.finalContract(fc), fc))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error getting final contracts by user id: {}", userId, e);
@@ -88,7 +91,7 @@ public class FinalContractServiceImpl implements FinalContractService {
             log.info("Getting final contracts by user id: {} and contract id: {}", userId, contractId);
             List<FinalContract> finalContracts = finalContractRepository.findByUserIdAndContractId(userId, contractId);
             return finalContracts.stream()
-                    .map(finalContractMapper::finalContract)
+                    .map(fc -> enrichWithProviderBank(finalContractMapper.finalContract(fc), fc))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error getting final contracts by user id: {} and contract id: {}", userId, contractId, e);
@@ -196,6 +199,14 @@ public class FinalContractServiceImpl implements FinalContractService {
                 existingFinalContract.setNote(finalContractDTO.getNote());
             }
 
+            // Update user if userId is provided
+            if (finalContractDTO.getUserId() != null) {
+                existingFinalContract.setUser(
+                    userRepository.findById(finalContractDTO.getUserId())
+                        .orElseThrow(() -> new RuntimeException("User not found with id: " + finalContractDTO.getUserId()))
+                );
+            }
+
             // Update timestamp
             existingFinalContract.setUpdatedAt(LocalDateTime.now());
 
@@ -255,5 +266,39 @@ public class FinalContractServiceImpl implements FinalContractService {
             log.error("Error counting final contracts for contract: {}", contractId, e);
             throw new RuntimeException("Failed to count final contracts by contract: " + e.getMessage());
         }
+    }
+
+    @Override
+    public List<FinalContractDTO> getAllFinalContractsWithUser() {
+        List<FinalContract> contracts = finalContractRepository.findAll();
+        return contracts.stream()
+                .filter(fc -> fc.getUser() != null)
+                .map(fc -> enrichWithProviderBank(finalContractMapper.finalContract(fc), fc))
+                .collect(Collectors.toList());
+    }
+
+    // Helper method
+    private FinalContractDTO enrichWithProviderBank(FinalContractDTO dto, FinalContract fc) {
+        try {
+            // Lấy providerId từ vehicle đầu tiên của contract
+            String providerId = null;
+            if (fc.getContract() != null && fc.getContract().getBooking() != null &&
+                fc.getContract().getBooking().getBookingDetails() != null &&
+                !fc.getContract().getBooking().getBookingDetails().isEmpty()) {
+                providerId = fc.getContract().getBooking().getBookingDetails().get(0).getVehicle().getUser().getId();
+            }
+            if (providerId != null) {
+                WalletDTO wallet = walletService.getWalletByUserId(providerId);
+                dto.setProviderBankAccountNumber(wallet.getBankAccountNumber());
+                dto.setProviderBankAccountName(wallet.getBankAccountName());
+                dto.setProviderBankAccountType(wallet.getBankAccountType());
+            }
+        } catch (Exception e) {
+            // Nếu không lấy được thì để null
+            dto.setProviderBankAccountNumber(null);
+            dto.setProviderBankAccountName(null);
+            dto.setProviderBankAccountType(null);
+        }
+        return dto;
     }
 }
