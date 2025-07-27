@@ -1,10 +1,9 @@
 package com.rft.rft_be.service.Contract;
 
-import com.rft.rft_be.dto.contract.FinalContractDTO;
+import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
 import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
 import com.rft.rft_be.entity.FinalContract;
 import com.rft.rft_be.entity.Contract;
-import com.rft.rft_be.entity.User;
 import com.rft.rft_be.mapper.ContractMapper;
 import com.rft.rft_be.repository.FinalContractRepository;
 import com.rft.rft_be.repository.ContractRepository;
