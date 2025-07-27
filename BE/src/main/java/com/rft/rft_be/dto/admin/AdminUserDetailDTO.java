@@ -32,6 +32,11 @@ public class AdminUserDetailDTO {
     private Double totalSpent;
     private Double totalEarned;
     
+    // Banking information
+    private String cardNumber;
+    private String bankName;
+    private String cardHolderName;
+    
     // Profile related data
     private List<String> validLicenses;
     private List<String> registeredVehicles;
