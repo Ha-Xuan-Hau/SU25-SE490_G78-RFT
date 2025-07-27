@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -40,6 +41,13 @@ public class AdminVehicleApprovalController {
     @PutMapping("/{vehicleId}/status")
     public ResponseEntity<?> updateVehicleStatus(@PathVariable String vehicleId, @RequestBody @Valid AdminUpdateVehicleStatusDTO request) {
         adminVehicleApprovalService.updateVehicleStatus(vehicleId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    // 4. Duyệt hoặc Từ chối nhiều xe cùng lúc
+    @PutMapping("/status/batch")
+    public ResponseEntity<?> updateVehicleStatuses(@RequestBody @Valid List<AdminUpdateVehicleStatusDTO> requests) {
+        adminVehicleApprovalService.updateMultipleVehicleStatuses(requests);
         return ResponseEntity.ok().build();
     }
 }
