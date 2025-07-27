@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -106,6 +107,14 @@ public class AdminVehicleApprovalServiceImpl implements AdminVehicleApprovalServ
                     String.format("Xe \"%s\" không được duyệt. Lý do: %s", vehicleName, request.getRejectReason()),
                    "/vehicles/manage")
             );
+        }
+    }
+
+
+    @Override
+    public void updateMultipleVehicleStatuses(List<AdminUpdateVehicleStatusDTO> requests) {
+        for (AdminUpdateVehicleStatusDTO request : requests) {
+            updateVehicleStatus(request.getVehicleId(), request);
         }
     }
 }
