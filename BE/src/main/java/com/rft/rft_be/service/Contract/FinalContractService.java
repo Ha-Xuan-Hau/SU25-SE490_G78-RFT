@@ -1,7 +1,7 @@
 package com.rft.rft_be.service.Contract;
 
 
-import com.rft.rft_be.dto.contract.FinalContractDTO;
+import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
 import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

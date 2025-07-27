@@ -1,4 +1,4 @@
-package com.rft.rft_be.dto.contract;
+package com.rft.rft_be.dto.finalcontract;
 
 
 import lombok.*;
@@ -21,4 +21,10 @@ public class FinalContractDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String contractStatus;
+    
+    // Provider information
+    private String providerId;
+    private String providerName;
+    private String providerEmail;
+    private String providerPhone;
 }
