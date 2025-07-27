@@ -274,8 +274,8 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .totalEarned(totalEarned.doubleValue())
                 .validLicenses(licenseNumbers)
                 .registeredVehicles(vehicleNames)
-                .openTime(openTimeStr)
-                .closeTime(closeTimeStr)
+                .openTime(user.getOpenTime())
+                .closeTime(user.getCloseTime())
                 .build();
     }
 } 
