@@ -38,7 +38,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 searchDTO.getRole(),
                 pageable
         );
-        
+
         return buildUserListResponse(userPage);
     }
 
@@ -52,19 +52,19 @@ public class AdminUserServiceImpl implements AdminUserService {
     public AdminUserDetailDTO getUserDetail(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         // Get booking statistics
         Long totalBookings = bookingRepository.countByUserId(userId);
         Long completedBookings = bookingRepository.countByUserIdAndStatus(userId, Booking.Status.COMPLETED);
         Long cancelledBookings = bookingRepository.countByUserIdAndStatus(userId, Booking.Status.CANCELLED);
-        
+
         // Get rating statistics
         Double averageRating = ratingRepository.findAverageRatingByUserId(userId);
         Long totalRatings = ratingRepository.countByUserId(userId);
-        
+
         // Get wallet balance
         Double walletBalance = walletRepository.findBalanceByUserId(userId);
-        
+
         return AdminUserDetailDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -92,10 +92,10 @@ public class AdminUserServiceImpl implements AdminUserService {
     public AdminUserDetailDTO updateUserStatus(String userId, AdminUserStatusUpdateDTO statusDTO) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         user.setStatus(statusDTO.getStatus());
         User updatedUser = userRepository.save(user);
-        
+
         return getUserDetail(updatedUser.getId());
     }
 
@@ -122,7 +122,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private Pageable createPageable(AdminUserSearchDTO searchDTO) {
         Sort sort = Sort.by(
-                searchDTO.getSortDirection().equalsIgnoreCase("ASC") ? 
+                searchDTO.getSortDirection().equalsIgnoreCase("ASC") ?
                 Sort.Direction.ASC : Sort.Direction.DESC,
                 searchDTO.getSortBy()
         );
@@ -150,7 +150,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         Long totalBookings = bookingRepository.countByUserId(user.getId());
         Long totalVehicles = 0L; // TODO: Add vehicle repository method
         Double walletBalance = walletRepository.findBalanceByUserId(user.getId());
-        
+
         return AdminUserListDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -166,4 +166,5 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .walletBalance(walletBalance != null ? walletBalance : 0.0)
                 .build();
     }
-} 
+
+}
