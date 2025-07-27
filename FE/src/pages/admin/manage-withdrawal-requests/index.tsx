@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Table,
@@ -9,12 +7,9 @@ import {
   Tag,
   Input,
   Form,
-  Select,
-  Space,
   message,
   Avatar,
   Descriptions,
-  Divider,
 } from "antd";
 import {
   EyeOutlined,
@@ -23,217 +18,91 @@ import {
   UserOutlined,
   MailOutlined,
   BankOutlined,
-  DollarOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
+import { getAllWithdrawals, updateWithdrawalStatus } from "@/apis/wallet.api";
 import type { ColumnsType } from "antd/es/table";
+import { translateENtoVI } from "@/lib/viDictionary";
 import dayjs from "dayjs";
 import { showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 const { Search } = Input;
-const { Option } = Select;
 
 export interface WithdrawalRequest {
   id: string;
-  walletId: string;
   amount: number;
   userId: string;
-  userName: string;
-  userGmail: string;
-  status: "PENDING" | "PROCESSING" | "APPROVED" | "REJECTED" | "CANCELLED";
+  fullName: string;
+  email: string;
+  status: "PENDING";
   createdAt: string;
-  updatedAt: string;
+  cardNumber: string;
+  bankName: string;
+  cardHolderName: string;
 }
-
-export interface BankCard {
-  id: string;
-  bankAccountNumber: string;
-  bankAccountName: string;
-  bankAccountType: string;
-  balance?: number;
-}
-
-// Mockup data cho yêu cầu rút tiền
-const mockWithdrawals: WithdrawalRequest[] = [
-  {
-    id: "WD001",
-    walletId: "wallet001",
-    amount: 500000,
-    userId: "user001",
-    userName: "Nguyễn Văn An",
-    userGmail: "nguyenvanan@gmail.com",
-    status: "PENDING",
-    createdAt: "2024-12-20T08:30:00Z",
-    updatedAt: "2024-12-20T08:30:00Z",
-  },
-  {
-    id: "WD002",
-    walletId: "wallet002",
-    amount: 1000000,
-    userId: "user002",
-    userName: "Trần Thị Bình",
-    userGmail: "tranthibinh@gmail.com",
-    status: "PROCESSING",
-    createdAt: "2024-12-19T10:15:00Z",
-    updatedAt: "2024-12-20T09:00:00Z",
-  },
-  {
-    id: "WD003",
-    walletId: "wallet003",
-    amount: 750000,
-    userId: "user003",
-    userName: "Lê Minh Cường",
-    userGmail: "leminhcuong@gmail.com",
-    status: "APPROVED",
-    createdAt: "2024-12-18T14:20:00Z",
-    updatedAt: "2024-12-19T11:30:00Z",
-  },
-  {
-    id: "WD004",
-    walletId: "wallet004",
-    amount: 300000,
-    userId: "user004",
-    userName: "Phạm Thu Hà",
-    userGmail: "phamthuha@gmail.com",
-    status: "REJECTED",
-    createdAt: "2024-12-17T16:45:00Z",
-    updatedAt: "2024-12-18T08:20:00Z",
-  },
-  {
-    id: "WD005",
-    walletId: "wallet005",
-    amount: 2000000,
-    userId: "user005",
-    userName: "Hoàng Đức Minh",
-    userGmail: "hoangducminh@gmail.com",
-    status: "CANCELLED",
-    createdAt: "2024-12-16T11:00:00Z",
-    updatedAt: "2024-12-17T14:15:00Z",
-  },
-  {
-    id: "WD006",
-    walletId: "wallet006",
-    amount: 850000,
-    userId: "user006",
-    userName: "Võ Thị Lan",
-    userGmail: "vothilan@gmail.com",
-    status: "APPROVED",
-    createdAt: "2024-12-15T13:30:00Z",
-    updatedAt: "2024-12-16T10:45:00Z",
-  },
-];
-
-// Mockup data cho thẻ ngân hàng (giả lập theo userId)
-const mockBankCards: { [userId: string]: BankCard } = {
-  user001: {
-    id: "bank001",
-    bankAccountNumber: "1234567890123",
-    bankAccountName: "NGUYEN VAN AN",
-    bankAccountType: "Vietcombank",
-    balance: 5000000,
-  },
-  user002: {
-    id: "bank002",
-    bankAccountNumber: "2345678901234",
-    bankAccountName: "TRAN THI BINH",
-    bankAccountType: "Techcombank",
-    balance: 3500000,
-  },
-  user003: {
-    id: "bank003",
-    bankAccountNumber: "3456789012345",
-    bankAccountName: "LE MINH CUONG",
-    bankAccountType: "BIDV",
-    balance: 2800000,
-  },
-  user004: {
-    id: "bank004",
-    bankAccountNumber: "4567890123456",
-    bankAccountName: "PHAM THU HA",
-    bankAccountType: "Agribank",
-    balance: 1200000,
-  },
-  user005: {
-    id: "bank005",
-    bankAccountNumber: "5678901234567",
-    bankAccountName: "HOANG DUC MINH",
-    bankAccountType: "MB Bank",
-    balance: 4200000,
-  },
-  user006: {
-    id: "bank006",
-    bankAccountNumber: "6789012345678",
-    bankAccountName: "VO THI LAN",
-    bankAccountType: "VPBank",
-    balance: 3100000,
-  },
-};
 
 export default function WithdrawalRequestsPage() {
   const [loading, setLoading] = useState(false);
-  const [withdrawals, setWithdrawals] =
-    useState<WithdrawalRequest[]>(mockWithdrawals);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [searchText, setSearchText] = useState("");
   const [selectedWithdrawal, setSelectedWithdrawal] =
     useState<WithdrawalRequest | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
+  const [confirmAction, setConfirmAction] = useState<
+    "APPROVE" | "REJECT" | null
+  >(null);
 
-  // Filter withdrawals based on search text
-  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
-    const searchLower = searchText.toLowerCase();
-    return (
-      withdrawal.userName.toLowerCase().includes(searchLower) ||
-      withdrawal.userGmail.toLowerCase().includes(searchLower) ||
-      withdrawal.id.toLowerCase().includes(searchLower) ||
-      withdrawal.walletId.toLowerCase().includes(searchLower)
-    );
-  });
+  useEffect(() => {
+    loadWithdrawals();
+  }, []);
+
+  const loadWithdrawals = async (status?: string) => {
+    setLoading(true);
+    try {
+      const data = await getAllWithdrawals(status || "PENDING");
+      setWithdrawals(data);
+    } catch (error) {
+      message.error("Không thể tải yêu cầu rút tiền.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleViewDetails = (withdrawal: WithdrawalRequest) => {
     setSelectedWithdrawal(withdrawal);
     setIsModalVisible(true);
-
-    // Set form values
-    form.setFieldsValue({
-      status: withdrawal.status,
-    });
+    form.setFieldsValue({ status: withdrawal.status });
   };
 
-  const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (selectedWithdrawal) {
-        // Update existing withdrawal
-        const updatedWithdrawal: WithdrawalRequest = {
-          ...selectedWithdrawal,
-          status: values.status,
-          updatedAt: new Date().toISOString(),
-        };
-
-        setWithdrawals((prev) =>
-          prev.map((withdrawal) =>
-            withdrawal.id === selectedWithdrawal.id
-              ? updatedWithdrawal
-              : withdrawal
-          )
-        );
-
-        showSuccess("Cập nhật trạng thái yêu cầu rút tiền thành công!");
-      }
-
-      setIsModalVisible(false);
-    } catch (error) {
-      showError("Có lỗi xảy ra, vui lòng thử lại!");
-      console.error("Validation failed:", error);
+  const handleApproveRequest = () => {
+    if (selectedWithdrawal) {
+      setConfirmAction("APPROVE");
     }
   };
 
-  const handleCancel = () => {
-    setIsModalVisible(false);
-    form.resetFields();
+  const handleRejectRequest = () => {
+    if (selectedWithdrawal) {
+      setConfirmAction("REJECT");
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!selectedWithdrawal || !confirmAction) return;
+    try {
+      const status = confirmAction === "APPROVE" ? "APPROVED" : "REJECTED";
+      await updateWithdrawalStatus(selectedWithdrawal.id, status);
+      showSuccess(
+        `Yêu cầu đã được ${confirmAction === "APPROVE" ? "duyệt" : "từ chối"}!`
+      );
+      loadWithdrawals();
+      setIsModalVisible(false);
+    } catch (error) {
+      showError("Có lỗi xảy ra, vui lòng thử lại!");
+    } finally {
+      setConfirmAction(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -253,23 +122,6 @@ export default function WithdrawalRequestsPage() {
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "Chờ xử lý";
-      case "PROCESSING":
-        return "Đang xử lý";
-      case "APPROVED":
-        return "Đã duyệt";
-      case "REJECTED":
-        return "Từ chối";
-      case "CANCELLED":
-        return "Đã hủy";
-      default:
-        return status;
-    }
-  };
-
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -277,24 +129,43 @@ export default function WithdrawalRequestsPage() {
     }).format(amount);
   };
 
-  const getBankInfo = (userId: string): BankCard | null => {
-    return mockBankCards[userId] || null;
+  const formatTimestamp = (
+    timestamp: number | string | number[] | undefined | null
+  ): string => {
+    if (!timestamp) return "";
+
+    if (Array.isArray(timestamp) && timestamp.length >= 5) {
+      const [year, month, day, hour, minute] = timestamp;
+      return `${day.toString().padStart(2, "0")}/${month
+        .toString()
+        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    if (typeof timestamp === "number" || typeof timestamp === "string") {
+      const date = new Date(
+        typeof timestamp === "number" ? timestamp * 1000 : timestamp
+      );
+      return `${date.getDate().toString().padStart(2, "0")}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${date.getFullYear()} ${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    return "";
   };
 
   const columns: ColumnsType<WithdrawalRequest> = [
-    {
-      title: "STT",
-      key: "index",
-      width: 60,
-      render: (_, __, index) => index + 1,
-      align: "center",
-    },
     {
       title: "Mã yêu cầu",
       dataIndex: "id",
       key: "id",
       render: (id) => <span className="font-mono font-semibold">{id}</span>,
-      sorter: (a, b) => a.id.localeCompare(b.id),
     },
     {
       title: "Người dùng",
@@ -303,42 +174,32 @@ export default function WithdrawalRequestsPage() {
         <div className="flex items-center gap-3">
           <Avatar icon={<UserOutlined />} />
           <div>
-            <div className="font-medium">{record.userName}</div>
+            <div className="font-medium">{record.fullName}</div>
             <div className="text-xs text-gray-500 flex items-center gap-1">
               <MailOutlined className="text-xs" />
-              {record.userGmail}
+              {record.email}
             </div>
           </div>
         </div>
       ),
-      sorter: (a, b) => a.userName.localeCompare(b.userName),
     },
     {
       title: "Số tiền",
       dataIndex: "amount",
       key: "amount",
       render: (amount) => (
-        <span className="font-semibold">{formatAmount(amount)}</span>
+        <span className="font-semibold">{amount.toLocaleString()} VNĐ</span>
       ),
-      sorter: (a, b) => a.amount - b.amount,
-      align: "right",
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (status) => (
-        <Tag color={getStatusColor(status)}>{getStatusText(status)}</Tag>
+        <Tag color={status === "PENDING" ? "warning" : "default"}>
+          {translateENtoVI(status)}
+        </Tag>
       ),
-      filters: [
-        { text: "Chờ xử lý", value: "PENDING" },
-        { text: "Đang xử lý", value: "PROCESSING" },
-        { text: "Đã duyệt", value: "APPROVED" },
-        { text: "Từ chối", value: "REJECTED" },
-        { text: "Đã hủy", value: "CANCELLED" },
-      ],
-      onFilter: (value, record) => record.status === value,
-      align: "center",
     },
     {
       title: "Ngày tạo",
@@ -349,12 +210,10 @@ export default function WithdrawalRequestsPage() {
           {dayjs(createdAt).format("DD/MM/YYYY HH:mm")}
         </span>
       ),
-      sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
     },
     {
       title: "Thao tác",
       key: "action",
-      width: 120,
       render: (_, record) => (
         <Button
           type="primary"
@@ -365,21 +224,8 @@ export default function WithdrawalRequestsPage() {
           Chi tiết
         </Button>
       ),
-      align: "center",
     },
   ];
-
-  const getStatusCounts = () => {
-    return {
-      pending: withdrawals.filter((w) => w.status === "PENDING").length,
-      processing: withdrawals.filter((w) => w.status === "PROCESSING").length,
-      approved: withdrawals.filter((w) => w.status === "APPROVED").length,
-      rejected: withdrawals.filter((w) => w.status === "REJECTED").length,
-      cancelled: withdrawals.filter((w) => w.status === "CANCELLED").length,
-    };
-  };
-
-  const statusCounts = getStatusCounts();
 
   return (
     <div className="space-y-6">
@@ -392,7 +238,6 @@ export default function WithdrawalRequestsPage() {
         </p>
       </div>
 
-      {/* Search Section */}
       <div className="bg-white p-6 rounded-xl shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex-1 max-w-md">
@@ -405,55 +250,32 @@ export default function WithdrawalRequestsPage() {
               onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-            <span>
-              Chờ xử lý:{" "}
-              <span className="font-semibold">{statusCounts.pending}</span>
-            </span>
-            <span>
-              Đang xử lý:{" "}
-              <span className="font-semibold">{statusCounts.processing}</span>
-            </span>
-            <span>
-              Đã duyệt:{" "}
-              <span className="font-semibold">{statusCounts.approved}</span>
-            </span>
-            <span>
-              Từ chối:{" "}
-              <span className="font-semibold">{statusCounts.rejected}</span>
-            </span>
-            <span>
-              Tổng:{" "}
-              <span className="font-semibold">
-                {filteredWithdrawals.length}
-              </span>
-            </span>
-          </div>
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6">
-          <Table
-            columns={columns}
-            dataSource={filteredWithdrawals}
-            rowKey="id"
-            loading={loading}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} yêu cầu rút tiền`,
-            }}
-            scroll={{ x: 1200 }}
-            className="border-0"
-          />
-        </div>
+        <Table
+          columns={columns}
+          dataSource={withdrawals.filter(
+            (withdrawal) =>
+              withdrawal.fullName
+                .toLowerCase()
+                .includes(searchText.toLowerCase()) ||
+              withdrawal.email
+                .toLowerCase()
+                .includes(searchText.toLowerCase()) ||
+              withdrawal.id.toLowerCase().includes(searchText.toLowerCase())
+          )}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+          }}
+        />
       </div>
 
-      {/* Withdrawal Details Modal */}
       <Modal
         title={
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
@@ -465,23 +287,30 @@ export default function WithdrawalRequestsPage() {
               {selectedWithdrawal && (
                 <div className="text-sm text-gray-500">
                   Mã: {selectedWithdrawal.id} -{" "}
-                  {formatAmount(selectedWithdrawal.amount)}
+                  {selectedWithdrawal.amount.toLocaleString()} VNĐ
                 </div>
               )}
             </div>
           </div>
         }
         open={isModalVisible}
-        onCancel={handleCancel}
+        onCancel={() => setIsModalVisible(false)}
         width={900}
         className="top-8"
         footer={[
-          <Button key="cancel" onClick={handleCancel}>
+          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
             Đóng
           </Button>,
-          <Button key="save" type="primary" onClick={handleSave}>
-            Cập nhật trạng thái
-          </Button>,
+          selectedWithdrawal?.status === "PENDING" && (
+            <Button key="reject" danger onClick={handleRejectRequest}>
+              Từ chối
+            </Button>
+          ),
+          selectedWithdrawal?.status === "PENDING" && (
+            <Button key="approve" type="primary" onClick={handleApproveRequest}>
+              Duyệt
+            </Button>
+          ),
         ]}
       >
         {selectedWithdrawal && (
@@ -497,11 +326,6 @@ export default function WithdrawalRequestsPage() {
                     {selectedWithdrawal.id}
                   </span>
                 </Descriptions.Item>
-                <Descriptions.Item label="Mã ví" span={1}>
-                  <span className="font-mono">
-                    {selectedWithdrawal.walletId}
-                  </span>
-                </Descriptions.Item>
                 <Descriptions.Item label="Số tiền rút" span={1}>
                   <span className="font-semibold text-lg">
                     {formatAmount(selectedWithdrawal.amount)}
@@ -512,18 +336,11 @@ export default function WithdrawalRequestsPage() {
                     color={getStatusColor(selectedWithdrawal.status)}
                     className="text-sm"
                   >
-                    {getStatusText(selectedWithdrawal.status)}
+                    {translateENtoVI(selectedWithdrawal.status)}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="Ngày tạo" span={1}>
-                  {dayjs(selectedWithdrawal.createdAt).format(
-                    "DD/MM/YYYY HH:mm:ss"
-                  )}
-                </Descriptions.Item>
-                <Descriptions.Item label="Cập nhật lần cuối" span={1}>
-                  {dayjs(selectedWithdrawal.updatedAt).format(
-                    "DD/MM/YYYY HH:mm:ss"
-                  )}
+                  {formatTimestamp(selectedWithdrawal.createdAt)}
                 </Descriptions.Item>
               </Descriptions>
             </div>
@@ -538,21 +355,21 @@ export default function WithdrawalRequestsPage() {
                   <div className="flex items-center gap-2">
                     <UserOutlined />
                     <span className="font-semibold">
-                      {selectedWithdrawal.userName}
+                      {selectedWithdrawal.fullName}
                     </span>
                   </div>
                 </Descriptions.Item>
                 <Descriptions.Item label="Email" span={1}>
                   <div className="flex items-center gap-2">
                     <MailOutlined />
-                    <span>{selectedWithdrawal.userGmail}</span>
+                    <span>{selectedWithdrawal.email}</span>
                   </div>
                 </Descriptions.Item>
               </Descriptions>
             </div>
 
             {/* Thông tin ngân hàng */}
-            {getBankInfo(selectedWithdrawal.userId) && (
+            {selectedWithdrawal.userId && (
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                   Thông tin tài khoản ngân hàng
@@ -562,67 +379,55 @@ export default function WithdrawalRequestsPage() {
                     <div className="flex items-center gap-2">
                       <BankOutlined />
                       <span className="font-semibold">
-                        {
-                          getBankInfo(selectedWithdrawal.userId)
-                            ?.bankAccountType
-                        }
+                        {selectedWithdrawal.bankName}
                       </span>
                     </div>
                   </Descriptions.Item>
                   <Descriptions.Item label="Số tài khoản" span={1}>
                     <span className="font-mono font-semibold">
-                      {
-                        getBankInfo(selectedWithdrawal.userId)
-                          ?.bankAccountNumber
-                      }
+                      {selectedWithdrawal.cardNumber}
                     </span>
                   </Descriptions.Item>
                   <Descriptions.Item label="Tên chủ tài khoản" span={2}>
                     <span className="font-semibold">
-                      {getBankInfo(selectedWithdrawal.userId)?.bankAccountName}
+                      {selectedWithdrawal.cardHolderName}
                     </span>
                   </Descriptions.Item>
                 </Descriptions>
               </div>
             )}
-
-            <Divider />
-
-            {/* Form cập nhật trạng thái */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Cập nhật trạng thái
-              </h3>
-              <Form form={form} layout="vertical">
-                <Form.Item
-                  name="status"
-                  label="Trạng thái mới"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn trạng thái!" },
-                  ]}
-                >
-                  <Select placeholder="Chọn trạng thái" size="large">
-                    <Option value="PENDING">
-                      <Tag color="warning">Chờ xử lý</Tag>
-                    </Option>
-                    <Option value="PROCESSING">
-                      <Tag color="processing">Đang xử lý</Tag>
-                    </Option>
-                    <Option value="APPROVED">
-                      <Tag color="success">Đã duyệt</Tag>
-                    </Option>
-                    <Option value="REJECTED">
-                      <Tag color="error">Từ chối</Tag>
-                    </Option>
-                    <Option value="CANCELLED">
-                      <Tag color="default">Đã hủy</Tag>
-                    </Option>
-                  </Select>
-                </Form.Item>
-              </Form>
-            </div>
           </div>
         )}
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal
+        title={
+          confirmAction === "APPROVE"
+            ? "Xác nhận duyệt yêu cầu"
+            : "Xác nhận từ chối yêu cầu"
+        }
+        open={!!confirmAction}
+        onCancel={() => setConfirmAction(null)}
+        footer={[
+          <Button key="cancel" onClick={() => setConfirmAction(null)}>
+            Hủy
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            danger={confirmAction === "REJECT"}
+            onClick={handleConfirmAction}
+          >
+            Xác nhận
+          </Button>,
+        ]}
+      >
+        <div className="text-base">
+          {confirmAction === "APPROVE"
+            ? "Bạn có chắc chắn muốn duyệt yêu cầu rút tiền này?"
+            : "Bạn có chắc chắn muốn từ chối yêu cầu rút tiền này?"}
+        </div>
       </Modal>
     </div>
   );

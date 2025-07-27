@@ -177,11 +177,11 @@ export const useNotifications = () => {
       queryClient.invalidateQueries({
         queryKey: ["notifications"],
       });
-      toast.success("Đã đánh dấu tất cả thông báo là đã đọc");
+      // toast.success("Đã đánh dấu tất cả thông báo là đã đọc");
     },
     onError: (error) => {
       console.error("Error marking all as read:", error);
-      toast.error("Có lỗi xảy ra khi đánh dấu thông báo");
+      // toast.error("Có lỗi xảy ra khi đánh dấu thông báo");
     },
   });
 
