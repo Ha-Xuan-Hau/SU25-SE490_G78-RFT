@@ -103,6 +103,9 @@ public class Vehicle {
     @Column(name = "total_ratings")
     private Integer totalRatings;
 
+    @OneToOne(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private ExtraFeeRule extraFeeRule;
+
     @ColumnDefault("0")
     @Column(name = "likes")
     private Integer likes;
