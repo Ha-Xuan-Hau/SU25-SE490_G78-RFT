@@ -1,11 +1,7 @@
 "use client";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import { Settings } from "lucide-react";
-
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function OrderIncomeCard() {
