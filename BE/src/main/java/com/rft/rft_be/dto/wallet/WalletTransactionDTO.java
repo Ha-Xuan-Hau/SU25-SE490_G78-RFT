@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class WalletTransactionDTO {
     private String id;
+    private String fullName;
+    private String email;
     private String cardNumber;
     private String bankName;
     private String cardHolderName;
