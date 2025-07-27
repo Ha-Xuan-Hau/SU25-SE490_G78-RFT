@@ -230,6 +230,19 @@ public class FinalContractController {
         }
     }
 
+    @GetMapping("/have-userid")
+    public ResponseEntity<?> getAllFinalContractsWithUser() {
+        try {
+            List<FinalContractDTO> contracts = finalContractService.getAllFinalContractsWithUser();
+            return ResponseEntity.ok(contracts);
+        } catch (Exception e) {
+            log.error("Error getting all final contracts with user", e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to retrieve final contracts with user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
     // Health check endpoint
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {

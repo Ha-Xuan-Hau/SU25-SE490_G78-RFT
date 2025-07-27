@@ -20,4 +20,5 @@ public interface FinalContractService {
     void deleteFinalContract(String id);
     long countFinalContractsByUserId(String userId);
     long countFinalContractsByContractId(String contractId);
+    List<FinalContractDTO> getAllFinalContractsWithUser();
 }

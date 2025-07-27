@@ -56,6 +56,9 @@ public interface ContractMapper {
     @Mapping(target = "providerName", expression = "java(getProviderNameFromFinalContract(finalContract))")
     @Mapping(target = "providerEmail", expression = "java(getProviderEmailFromFinalContract(finalContract))")
     @Mapping(target = "providerPhone", expression = "java(getProviderPhoneFromFinalContract(finalContract))")
+    @Mapping(target = "providerBankAccountNumber", expression = "java(getProviderBankAccountNumberFromFinalContract(finalContract))")
+    @Mapping(target = "providerBankAccountName", expression = "java(getProviderBankAccountNameFromFinalContract(finalContract))")
+    @Mapping(target = "providerBankAccountType", expression = "java(getProviderBankAccountTypeFromFinalContract(finalContract))")
     FinalContractDTO finalContract(FinalContract finalContract);
 
     // ------------------ Helpers ------------------
@@ -163,5 +166,30 @@ public interface ContractMapper {
     default String getVehicleDescription(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getDescription() : null;
+    }
+
+    // --- Bank info helpers ---
+    default String getProviderBankAccountNumberFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        if (v != null && v.getUser() != null && v.getUser().getId() != null) {
+            // You need to inject WalletRepository/WalletService here in real code
+            // For now, return null or implement in service layer
+            return null;
+        }
+        return null;
+    }
+    default String getProviderBankAccountNameFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        if (v != null && v.getUser() != null && v.getUser().getId() != null) {
+            return null;
+        }
+        return null;
+    }
+    default String getProviderBankAccountTypeFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        if (v != null && v.getUser() != null && v.getUser().getId() != null) {
+            return null;
+        }
+        return null;
     }
 }

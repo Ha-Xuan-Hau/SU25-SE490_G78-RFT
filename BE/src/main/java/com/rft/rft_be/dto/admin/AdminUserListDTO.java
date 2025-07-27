@@ -24,8 +24,8 @@ public class AdminUserListDTO {
     private Long totalBookings;
     private Long totalVehicles;
     private Double walletBalance;
-    private String openTime;
-    private String closeTime;
+    private LocalDateTime openTime;
+    private LocalDateTime closeTime;
     
     // Wallet and transaction data
     private Long totalTransactions;
