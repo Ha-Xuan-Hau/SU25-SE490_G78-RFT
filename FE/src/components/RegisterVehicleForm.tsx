@@ -21,10 +21,7 @@ import {
 import { useUserState } from "../recoils/user.state";
 import useLocalStorage from "../hooks/useLocalStorage";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createCar, updateCar } from "../apis/vehicle.api";
-// TODO: Import APIs cho motorbike và bicycle
-// import { createMotorbike, updateMotorbike } from "../apis/motorbike.api";
-// import { createBicycle, updateBicycle } from "../apis/bicycle.api";
+import { createCar, updateCar, createWithQuantity } from "../apis/vehicle.api";
 import { getUserVehicleById } from "../apis/user-vehicles.api";
 import { getPenaltiesByUserId } from "../apis/provider.api";
 import { showError, showSuccess } from "../utils/toast.utils";
@@ -67,11 +64,10 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
   // API mutations cho từng loại xe
   const apiCreateVehicle = useMutation({ mutationFn: createCar });
   const apiUpdateCar = useMutation({ mutationFn: updateCar });
-  // TODO: Thêm mutations cho motorbike và bicycle
-  // const apiCreateMotorbike = useMutation({ mutationFn: createMotorbike });
-  // const apiUpdateMotorbike = useMutation({ mutationFn: updateMotorbike });
-  // const apiCreateBicycle = useMutation({ mutationFn: createBicycle });
-  // const apiUpdateBicycle = useMutation({ mutationFn: updateBicycle });
+  const apiCreateMotorbike = useMutation({ mutationFn: createWithQuantity });
+  const apiUpdateMotorbike = useMutation({ mutationFn: updateCar });
+  const apiCreateBicycle = useMutation({ mutationFn: createWithQuantity });
+  const apiUpdateBicycle = useMutation({ mutationFn: updateCar });
 
   const [isActive, setIsActive] = useState<boolean>(true);
   const brandOptions = useMemo(
@@ -357,12 +353,12 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         setSubmitting(true);
         try {
           // Xử lý biển số xe theo loại xe
-          let licensePlateData: string | string[] = "";
+          let licensePlateData: string[] = []; // Đảm bảo licensePlateData luôn là một mảng
           let quantity = 1;
 
           if (vehicleType === VehicleType.CAR) {
-            // Ô tô: chỉ gửi 1 string
-            licensePlateData = values.licensePlate || "";
+            // Ô tô: chỉ gửi 1 biển số trong mảng
+            licensePlateData = [values.licensePlate || ""]; // Đóng gói thành mảng
             quantity = 1;
           } else if (vehicleType === VehicleType.MOTORBIKE) {
             if (isMultipleVehicles) {
@@ -370,16 +366,16 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               const validLicensePlates = licensePlates.filter(
                 (lp) => lp && lp.trim() !== ""
               );
-              licensePlateData = validLicensePlates;
-              quantity = values.vehicleQuantity || validLicensePlates.length;
+              licensePlateData = validLicensePlates; // Giữ nguyên mảng
+              quantity = validLicensePlates.length; // Số lượng biển số
             } else {
-              // Xe máy 1 chiếc: gửi string
-              licensePlateData = values.licensePlate || "";
+              // Xe máy 1 chiếc: gửi mảng với một biển số
+              licensePlateData = [values.licensePlate || ""]; // Đóng gói thành mảng
               quantity = 1;
             }
           } else if (vehicleType === VehicleType.BICYCLE) {
             // Xe đạp: không có biển số
-            licensePlateData = ""; // Xe đạp không có biển số
+            licensePlateData = []; // Xe đạp không có biển số
             quantity = isMultipleVehicles ? values.vehicleQuantity || 1 : 1;
           }
 
@@ -405,11 +401,10 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             description: values.description,
             numberVehicle: quantity,
             costPerDay: values.costPerDay,
-            status: isActive ? "AVAILABLE" : "UNAVAILABLE",
+            status: "PENDING", // Mặc định là PENDING
             thumb: values.thumb,
             userId: user?.id || user?.result?.id,
             isMultipleVehicles: isMultipleVehicles,
-            vehicleQuantity: quantity,
           };
 
           let submitData;
@@ -456,7 +451,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               ...baseSubmitData,
               brandId: values.brandId,
               modelId: null, // Xe máy không có modelId
-              numberSeat: 4, // Giá trị mặc định cho xe máy
+              numberSeat: 2, // Giá trị mặc định cho xe máy
 
               // Tất cả extra fees đều gửi nhưng với giá trị từ ví dụ
               // maxKmPerDay: 200,
@@ -477,11 +472,11 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               ...baseSubmitData,
               brandId: null, // Xe đạp không có brandId
               modelId: null, // Xe đạp không có modelId
-              numberSeat: 4, // Giá trị mặc định
+              numberSeat: 2, // Giá trị mặc định
 
               // Override một số field cho xe đạp
-              transmission: "AUTOMATIC",
-              fuelType: "GASOLINE",
+              // transmission: "AUTOMATIC",
+              // fuelType: "GASOLINE",
 
               // Tất cả extra fees đều gửi nhưng với giá trị từ ví dụ
               // maxKmPerDay: 200,
@@ -574,25 +569,16 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                 accessToken,
               });
             } else if (vehicleType === VehicleType.MOTORBIKE) {
-              // TODO: Thay thế bằng API motorbike thực tế
-              await apiCreateVehicle.mutateAsync({
+              await apiCreateMotorbike.mutateAsync({
                 body: submitData,
                 accessToken,
               });
-              // await apiCreateMotorbike.mutateAsync({
-              //   body: submitData,
-              //   accessToken,
-              // });
             } else if (vehicleType === VehicleType.BICYCLE) {
               // TODO: Thay thế bằng API bicycle thực tế
-              await apiCreateVehicle.mutateAsync({
+              await apiCreateBicycle.mutateAsync({
                 body: submitData,
                 accessToken,
               });
-              // await apiCreateBicycle.mutateAsync({
-              //   body: submitData,
-              //   accessToken,
-              // });
             }
 
             showSuccess(
@@ -1191,7 +1177,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                             { value: "AUTOMATIC", label: "Số tự động" },
                           ]
                         : [
-                            { value: "MANUAL", label: "Số côn tay" },
+                            { value: "MANUAL", label: "Xe côn tay" },
                             { value: "AUTOMATIC", label: "Xe ga" },
                           ]
                     }

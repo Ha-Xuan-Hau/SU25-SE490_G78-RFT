@@ -34,7 +34,12 @@ import type { Vehicle } from "@/types/vehicle";
 import RegisterVehicleForm from "../../../components/RegisterVehicleForm";
 import EditSingleVehicleInGroupModal from "../../../components/EditSingleVehicleInGroupModal";
 import GroupEditVehicleModal from "../../../components/GroupEditVehicleModal";
-import { updateSingleMotorbikeInGroup, updateCar } from "@/apis/vehicle.api";
+import {
+  updateSingleMotorbikeInGroup,
+  updateCar,
+  updateCommon,
+} from "@/apis/vehicle.api";
+import { showApiError, showApiSuccess } from "@/utils/toast.utils";
 
 export default function UserRegisterVehicle() {
   const { Title, Text } = Typography;
@@ -344,22 +349,52 @@ export default function UserRegisterVehicle() {
                             if (!groupEditModal.group) return;
                             setGroupEditLoading(true);
                             try {
-                              // Gọi update cho từng xe trong nhóm
-                              await Promise.all(
-                                groupEditModal.group.vehicle.map((v) =>
-                                  updateCar({
-                                    vehicleId: v.id,
-                                    body: { ...v, ...values },
-                                    accessToken,
-                                  })
-                                )
-                              );
+                              const currentVehicle = groupEditModal.vehicle; // Xe hiện tại được chỉnh sửa
+                              if (!currentVehicle) {
+                                showApiError("Không tìm thấy xe để cập nhật");
+                                setGroupEditLoading(false);
+                                return;
+                              }
+
+                              // Chuyển đổi vehicleFeatures thành chuỗi
+                              const updatedVehicleData = {
+                                ...currentVehicle,
+                                ...values,
+                                vehicleFeatures: (
+                                  values.vehicleFeatures as string[]
+                                ).join(", "), // Chuyển đổi mảng thành chuỗi
+                              };
+
+                              // Gọi API để cập nhật cho xe hiện tại
+                              await updateCommon({
+                                vehicleId: currentVehicle.id,
+                                body: updatedVehicleData,
+                                accessToken,
+                              });
+
                               setGroupEditModal({
                                 open: false,
                                 vehicle: null,
                                 group: null,
                               });
-                              fetchGroupVehicles(activeType);
+
+                              // Cập nhật lại nhóm xe sau khi cập nhật
+                              // const updatedGroupVehicles =
+                              //   groupEditModal.group.vehicle.map((v) =>
+                              //     v.id === currentVehicle.id
+                              //       ? updatedVehicleData
+                              //       : v
+                              //   );
+
+                              // setGroupDetail({
+                              //   ...groupEditModal.group,
+                              //   vehicle: updatedGroupVehicles,
+                              // });
+                              fetchGroupVehicles(activeType); // Cập nhật lại danh sách nhóm xe
+                              showApiSuccess("Cập nhật nhóm xe thành công");
+                            } catch (error) {
+                              console.error("Cập nhật xe thất bại:", error);
+                              showApiError("Cập nhật xe thất bại");
                             } finally {
                               setGroupEditLoading(false);
                             }
@@ -532,32 +567,39 @@ export default function UserRegisterVehicle() {
             setEditSingleLoading(true);
             try {
               if (!editSingleModal.vehicle) return;
+
+              // Chuyển đổi images thành định dạng mà backend yêu cầu
+              const formattedImages = images.map((url: string) => ({
+                imageUrl: url,
+              }));
+
               await updateSingleMotorbikeInGroup({
                 vehicleId: editSingleModal.vehicle.id,
-                images,
+                images: formattedImages, // Sử dụng định dạng mới
                 licensePlate,
                 accessToken,
               });
               setEditSingleModal({ open: false, vehicle: null });
+
               // Cập nhật lại groupDetail
               if (groupDetail) {
                 const updatedVehicles = groupDetail.vehicle.map((v) =>
                   v.id === editSingleModal.vehicle!.id
                     ? {
                         ...v,
-                        vehicleImages: images.map((url: string) => ({
-                          imageUrl: url,
-                        })),
+                        vehicleImages: formattedImages, // Cập nhật images
                         licensePlate,
                       }
                     : v
                 );
                 setGroupDetail({ ...groupDetail, vehicle: updatedVehicles });
+                showApiSuccess("Cập nhật xe thành công");
               }
+
               // Cập nhật lại danh sách nhóm xe
               fetchGroupVehicles(activeType);
             } catch {
-              // Có thể showError ở đây nếu muốn
+              showApiError("Cập nhật xe thất bại");
             } finally {
               setEditSingleLoading(false);
             }

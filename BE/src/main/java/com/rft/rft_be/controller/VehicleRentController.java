@@ -157,13 +157,13 @@ public class VehicleRentController {
         }
     }
     @PostMapping("/create-motorbike-bicycle")
-    public ResponseEntity<ApiResponseDTO<List<VehicleGetDTO>>> createOrUpdateVehicleWithNumber(@Valid @RequestBody VehicleRentCreateDTO request) {
+    public ResponseEntity<ApiResponseDTO<List<VehicleGetDTO>>> createMotorbie_Bicycle(@Valid @RequestBody VehicleRentCreateDTO request) {
         try {
             List<VehicleGetDTO> vehicle = vehicleRentService.createMotorbie_Bicycle(request);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponseDTO.success("Tạo0 xe thành công", vehicle));
+                    .body(ApiResponseDTO.success("Tạo xe thành công", vehicle));
         } catch (Exception e) {
-            log.error("Lỗi khi tạo0 xe: {}", e.getMessage(), e);
+            log.error("Lỗi khi tạo xe: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponseDTO.error("Không thể tạo xe: " + e.getMessage()));
         }

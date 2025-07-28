@@ -1,6 +1,7 @@
 package com.rft.rft_be.controller;
 import com.rft.rft_be.dto.wallet.*;
 import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.wallet.WalletService;
 import jakarta.validation.Valid;
@@ -91,8 +92,7 @@ public class WalletController {
     }
 
     @GetMapping("/staff/withdrawals")
-    @PreAuthorize("hasAuthority('STAFF')")
-    public ResponseEntity<List<WalletTransactionDTO>> getAllWithdrawals(@RequestParam String status) {
+    public ResponseEntity<List<WalletTransactionDTO>> getAllWithdrawals(@RequestParam WalletTransaction.Status status) {
         return ResponseEntity.ok(walletService.getAllWithdrawals(status));
     }
 
