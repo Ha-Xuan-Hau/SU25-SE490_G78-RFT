@@ -75,7 +75,7 @@ public class WalletServiceImpl implements  WalletService {
 
     @Override
     public List<WalletTransactionDTO> getWithdrawalsByUser(String userId) {
-        return walletMapper.toTransactionDTOs(txRepository.findByUserIdOrderByCreatedAtDesc(userId));
+        return walletMapper.toTransactionDTOs(txRepository.findByWallet_User_IdOrderByCreatedAtDesc(userId));
     }
     private WalletDTO toDTO(Wallet wallet) {
         return new WalletDTO(
@@ -88,19 +88,26 @@ public class WalletServiceImpl implements  WalletService {
         );
     }
     @Override
-    public WalletTransactionDTO createWithdrawal(CreateWithdrawalRequestDTO dto) {
-        Wallet wallet = walletRepository.findByUserId(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
-        if (wallet.getBalance().compareTo(dto.getAmount()) < 0) {
-            throw new RuntimeException("Số dư không đủ");
+    @Transactional
+    public WalletTransactionDTO createWithdrawal(CreateWithdrawalRequestDTO request) {
+        Wallet wallet = walletRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví với id: " + request.getUserId()));
+
+        // Kiểm tra số dư
+        if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new IllegalArgumentException("Số dư không đủ để rút tiền");
         }
-        WalletTransaction tx = new WalletTransaction();
-        tx.setAmount(dto.getAmount());
-        tx.setStatus(WalletTransaction.Status.PENDING);
-        tx.setWallet(wallet);
-        tx.setUser(wallet.getUser());
-        tx.setCreatedAt(LocalDateTime.now());
-        return walletMapper.toTransactionDTO(txRepository.save(tx));
+
+        // Tạo giao dịch rút tiền
+        WalletTransaction tx = WalletTransaction.builder()
+                .wallet(wallet)
+                .amount(request.getAmount())
+                .status(WalletTransaction.Status.PENDING)
+                .user(wallet.getUser())
+                .build();
+
+        txRepository.save(tx);
+        return walletMapper.toTransactionDTO(tx);
     }
 
     @Override
@@ -131,8 +138,8 @@ public class WalletServiceImpl implements  WalletService {
         WalletTransaction tx = txRepository.findById(transactionId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
 
-        // ✅ Kiểm tra quyền sở hữu
-        if (!tx.getUser().getId().equals(userId)) {
+        // ✅ Kiểm tra người tạo đơn chính là chủ sở hữu ví
+        if (!tx.getWallet().getUser().getId().equals(userId)) {
             throw new AccessDeniedException("Bạn không có quyền hủy giao dịch này");
         }
 

@@ -16,7 +16,8 @@ public interface WalletMapper {
     @Mapping(source = "user.id", target = "userId")
     WalletDTO toDTO(Wallet wallet);
 
-    @Mapping(source = "user.id", target = "userId")
+    @Mapping(target = "walletId", source = "wallet.id")
+    @Mapping(target = "staffId", source = "user.id")
     @Mapping(target = "fullName", source = "user.fullName")
     @Mapping(target = "email", source = "user.email")
     @Mapping(target = "cardNumber", source = "wallet.bankAccountNumber")

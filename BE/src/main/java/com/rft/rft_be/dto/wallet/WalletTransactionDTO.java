@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class WalletTransactionDTO {
     private String id;
+    private String walletId;
     private String fullName;
     private String email;
     private String cardNumber;
@@ -20,7 +21,7 @@ public class WalletTransactionDTO {
     private String cardHolderName;
     private BigDecimal amount;
     private String status;
-    private String userId;
+    private String staffId;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     LocalDateTime createdAt;
 }
