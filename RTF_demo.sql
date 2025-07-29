@@ -548,9 +548,9 @@ INSERT INTO `booked_time_slots` (`id`, `vehicle_id`, `time_from`, `time_to`, `cr
 
 -- Insert wallet transactions
 INSERT INTO `wallet_transactions` (`id`, `wallet_id`, `amount`, `status`, `user_id`, `created_at`, `updated_at`) VALUES
-('trans_001', 'wallet_001', 1600000.00, 'APPROVED', 'user_001', '2025-07-07 02:44:00', '2025-07-07 02:44:00'),
-('trans_002', 'wallet_002', 400000.00, 'PENDING', 'user_002', '2025-07-07 02:45:00', '2025-07-07 02:45:00'),
-('trans_003', 'wallet_003', -1600000.00, 'APPROVED', 'user_003', '2025-07-07 02:46:00', '2025-07-07 02:46:00');
+('trans_001', 'wallet_001', 1600000.00, 'APPROVED', 'user_005', '2025-07-07 02:44:00', '2025-07-07 02:44:00'),
+('trans_002', 'wallet_002', 400000.00, 'PENDING', 'user_005', '2025-07-07 02:45:00', '2025-07-07 02:45:00'),
+('trans_003', 'wallet_003', -1600000.00, 'APPROVED', 'user_005', '2025-07-07 02:46:00', '2025-07-07 02:46:00');
 
 -- Insert sample notifications
 INSERT INTO `notifications` (`id`, `type`, `message`, `is_read`, `is_deleted`, `receiver_id`, `created_at`, `updated_at`) VALUES
