@@ -188,7 +188,7 @@ export default function WithdrawalRequestsPage() {
       dataIndex: "amount",
       key: "amount",
       render: (amount) => (
-        <span className="font-semibold">{amount.toLocaleString()} VNĐ</span>
+        <span className="font-semibold">{formatAmount(amount)}</span>
       ),
     },
     {
@@ -196,7 +196,7 @@ export default function WithdrawalRequestsPage() {
       dataIndex: "status",
       key: "status",
       render: (status) => (
-        <Tag color={status === "PENDING" ? "warning" : "default"}>
+        <Tag color={getStatusColor(status)} className="text-sm">
           {translateENtoVI(status)}
         </Tag>
       ),
@@ -253,7 +253,7 @@ export default function WithdrawalRequestsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
         <Table
           columns={columns}
           dataSource={withdrawals.filter(
@@ -287,7 +287,7 @@ export default function WithdrawalRequestsPage() {
               {selectedWithdrawal && (
                 <div className="text-sm text-gray-500">
                   Mã: {selectedWithdrawal.id} -{" "}
-                  {selectedWithdrawal.amount.toLocaleString()} VNĐ
+                  {formatAmount(selectedWithdrawal.amount)}
                 </div>
               )}
             </div>
@@ -301,11 +301,6 @@ export default function WithdrawalRequestsPage() {
           <Button key="cancel" onClick={() => setIsModalVisible(false)}>
             Đóng
           </Button>,
-          // selectedWithdrawal?.status === "PENDING" && (
-          //   <Button key="reject" danger onClick={handleRejectRequest}>
-          //     Từ chối
-          //   </Button>
-          // ),
           selectedWithdrawal?.status === "PENDING" && (
             <Button key="approve" type="primary" onClick={handleApproveRequest}>
               Duyệt
@@ -320,7 +315,7 @@ export default function WithdrawalRequestsPage() {
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Thông tin yêu cầu
               </h3>
-              <Descriptions bordered column={2} size="middle">
+              <Descriptions bordered column={1} size="middle">
                 <Descriptions.Item label="Mã yêu cầu" span={1}>
                   <span className="font-mono font-semibold">
                     {selectedWithdrawal.id}
@@ -350,7 +345,7 @@ export default function WithdrawalRequestsPage() {
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Thông tin người dùng
               </h3>
-              <Descriptions bordered column={2} size="middle">
+              <Descriptions bordered column={1} size="middle">
                 <Descriptions.Item label="Họ và tên" span={1}>
                   <div className="flex items-center gap-2">
                     <UserOutlined />
@@ -374,7 +369,7 @@ export default function WithdrawalRequestsPage() {
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                   Thông tin tài khoản ngân hàng
                 </h3>
-                <Descriptions bordered column={2} size="middle">
+                <Descriptions bordered column={1} size="middle">
                   <Descriptions.Item label="Tên ngân hàng" span={1}>
                     <div className="flex items-center gap-2">
                       <BankOutlined />

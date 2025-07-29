@@ -22,6 +22,8 @@ import {
   CheckCircleOutlined,
   DollarOutlined,
   CalendarOutlined,
+  BankOutlined,
+  PhoneOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
@@ -38,32 +40,37 @@ const { confirm } = Modal;
 export interface FinalContract {
   id: string;
   contractId: string;
-  providerId: string | null; // ID của người thuê xe
+  providerId: string | null;
   providerName: string | null;
   providerEmail: string | null;
-  image: string | null; // Ảnh hợp đồng hoặc xe
-  timeFinish: string; // Thời gian kết thúc thuê xe
-  costSettlement: number; // Chi phí tất toán
-  note: string; // Ghi chú
-  contractStatus: string; // Trạng thái hợp đồng (FINISHED or CANCELLED)
+  providerPhone: string | null;
+  providerBankAccountNumber: string | null;
+  providerBankAccountName: string | null;
+  providerBankAccountType: string | null;
+  image: string | null;
+  timeFinish: string;
+  costSettlement: number;
+  note: string;
+  contractStatus: string;
   createdAt: string;
-  userId?: string; // ID của admin/staff đã duyệt
-  userNameName?: string; // Tên người duyệt
-  updatedAt?: string; // Thời gian duyệt
+  userId?: string;
+  userName?: string;
+  updatedAt?: string;
 }
 
 export default function FinalContractsPage() {
   const [loading, setLoading] = useState(true);
   const [contracts, setContracts] = useState<FinalContract[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [filteredContracts, setFilteredContracts] = useState<FinalContract[]>(
+    []
+  );
   const [selectedContract, setSelectedContract] =
     useState<FinalContract | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // Get current user info
   const [userProfile] = useLocalStorage("user_profile", "");
   const currentUserId = userProfile?.id || "current_user";
-  const currentUserName = userProfile?.fullName || "Current User";
   const isAdmin = userProfile?.role === "ADMIN";
 
   useEffect(() => {
@@ -74,12 +81,29 @@ export default function FinalContractsPage() {
     setLoading(true);
     try {
       const data = await getAllFinalContracts();
-      setContracts(data); // Set contracts from API response
+      setContracts(data);
+      setFilteredContracts(data);
     } catch (error) {
       message.error("Không thể tải hợp đồng. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    const filtered = contracts.filter((contract) => {
+      return (
+        (contract.providerName &&
+          contract.providerName.toLowerCase().includes(value.toLowerCase())) ||
+        (contract.providerEmail &&
+          contract.providerEmail.toLowerCase().includes(value.toLowerCase())) ||
+        contract.contractId.toLowerCase().includes(value.toLowerCase()) ||
+        (contract.note &&
+          contract.note.toLowerCase().includes(value.toLowerCase()))
+      );
+    });
+    setFilteredContracts(filtered);
   };
 
   const handleViewDetails = (contract: FinalContract) => {
@@ -114,23 +138,12 @@ export default function FinalContractsPage() {
       onOk: async () => {
         try {
           const approvalData = {
-            userId: currentUserId, // ID của admin/staff duyệt
-            userNameName: currentUserName, // Tên người duyệt
+            userId: currentUserId,
           };
           await approveFinalContract(selectedContract.id, approvalData);
 
-          // Update contract state with the approved information
-          const updatedContract: FinalContract = {
-            ...selectedContract,
-            userId: currentUserId,
-            userNameName: currentUserName,
-          };
-
-          setContracts((prev) =>
-            prev.map((contract) =>
-              contract.id === selectedContract.id ? updatedContract : contract
-            )
-          );
+          // Reload the page after approval
+          window.location.reload(); // This will refresh the page and fetch updated contracts
 
           showSuccess("Duyệt tất toán hợp đồng thành công!");
           setIsModalVisible(false);
@@ -184,7 +197,7 @@ export default function FinalContractsPage() {
   };
 
   const isApproved = (contract: FinalContract) => {
-    return !!contract.userId; // Check if the contract has been approved
+    return !!contract.userId;
   };
 
   const columns: ColumnsType<FinalContract> = [
@@ -261,9 +274,9 @@ export default function FinalContractsPage() {
       title: "Người duyệt",
       key: "approver",
       render: (_, record) =>
-        record.userNameName ? (
+        record.userName ? (
           <div className="text-sm">
-            <div className="font-medium">{record.userNameName}</div>
+            <div className="font-medium">{record.userName}</div>
             <div className="text-gray-500">
               {formatTimestamp(record.updatedAt)}
             </div>
@@ -315,7 +328,7 @@ export default function FinalContractsPage() {
               enterButton={<SearchOutlined />}
               size="large"
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
         </div>
@@ -325,7 +338,7 @@ export default function FinalContractsPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <Table
           columns={columns}
-          dataSource={contracts}
+          dataSource={filteredContracts}
           rowKey="id"
           loading={loading}
           pagination={{
@@ -354,7 +367,7 @@ export default function FinalContractsPage() {
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Thông tin hợp đồng
               </h3>
-              <Descriptions bordered column={2} size="middle">
+              <Descriptions bordered column={1} size="middle">
                 <Descriptions.Item label="Mã tất toán" span={1}>
                   <span className="font-mono font-semibold">
                     {selectedContract.id}
@@ -401,7 +414,7 @@ export default function FinalContractsPage() {
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Thông tin chủ xe
               </h3>
-              <Descriptions bordered column={2} size="middle">
+              <Descriptions bordered column={1} size="middle">
                 <Descriptions.Item label="Họ và tên" span={1}>
                   <div className="flex items-center gap-2">
                     <UserOutlined />
@@ -414,6 +427,36 @@ export default function FinalContractsPage() {
                   <div className="flex items-center gap-2">
                     <MailOutlined />
                     <span>{selectedContract.providerEmail}</span>
+                  </div>
+                </Descriptions.Item>
+                <Descriptions.Item label="Số điện thoại" span={1}>
+                  <div className="flex items-center gap-2">
+                    <PhoneOutlined />
+                    <span className="font-semibold">
+                      {selectedContract.providerPhone}
+                    </span>
+                  </div>
+                </Descriptions.Item>
+                <Descriptions.Item label="Ngân hàng thụ hưởng" span={1}>
+                  <div className="flex items-center gap-2">
+                    <BankOutlined />
+                    <span className="font-semibold">
+                      {selectedContract.providerBankAccountType}
+                    </span>
+                  </div>
+                </Descriptions.Item>
+                <Descriptions.Item label="Tên chủ thẻ" span={1}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">
+                      {selectedContract.providerBankAccountName}
+                    </span>
+                  </div>
+                </Descriptions.Item>
+                <Descriptions.Item label="Số tài khoản" span={1}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">
+                      {selectedContract.providerBankAccountNumber}
+                    </span>
                   </div>
                 </Descriptions.Item>
               </Descriptions>
@@ -458,10 +501,10 @@ export default function FinalContractsPage() {
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                   Thông tin duyệt
                 </h3>
-                <Descriptions bordered column={2} size="middle">
+                <Descriptions bordered column={1} size="middle">
                   <Descriptions.Item label="Người duyệt" span={1}>
                     <span className="font-semibold">
-                      {selectedContract.userNameName}
+                      {selectedContract.userName}
                     </span>
                   </Descriptions.Item>
                   <Descriptions.Item label="Thời gian duyệt" span={1}>

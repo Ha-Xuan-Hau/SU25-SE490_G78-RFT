@@ -13,16 +13,22 @@ import {
   Typography,
   Avatar,
 } from "antd";
-import { SearchOutlined, EyeOutlined, UserOutlined } from "@ant-design/icons";
-import { motion } from "framer-motion";
 import type { ColumnsType } from "antd/es/table";
+import { SearchOutlined, EyeOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  getPendingVehicles,
+  getPendingStats,
+  getVehicleDetail,
+  updateVehicleStatus,
+  updateMultipleVehicleStatuses,
+} from "@/apis/admin.api"; // Ensure this path is correct
 import AdminLayout from "@/layouts/AdminLayout";
+import { showApiError, showApiSuccess } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
 const { Search } = Input;
 
-// Types based on API response
 interface VehicleFeature {
   name: string;
 }
@@ -83,151 +89,18 @@ interface Vehicle {
   totalRatings: number;
   rating?: number;
   address: string;
-  userComments?: any;
   openTime: string;
   closeTime: string;
   penalty: Penalty;
   extraFeeRule?: ExtraFeeRule;
 }
 
-// Mock data dựa trên API response
-const mockCarData: Vehicle[] = [
-  {
-    id: "vehicle_005",
-    licensePlate: "51A-12349",
-    vehicleType: "CAR",
-    userId: "user_001",
-    userName: "Nguyễn Văn An",
-    userEmail: "nguyenvanan@gmail.com",
-    userProfilePicture:
-      "https://res.cloudinary.com/dcakldjvc/image/upload/v1752737886/uwtsvefnelh2l1uec4pt.jpg",
-    vehicleFeatures: [
-      { name: "GPS" },
-      { name: "Bluetooth" },
-      { name: "Air Conditioning" },
-      { name: "Electric Charging" },
-    ],
-    vehicleImages: [
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-    ],
-    haveDriver: "NO",
-    insuranceStatus: "YES",
-    shipToAddress: "YES",
-    description: "Hyundai Elantra 2021, xe sedan thiết kế hiện đại",
-    costPerDay: 700000,
-    status: "AVAILABLE",
-    thumb: "Hyundai Elantra 2021",
-    numberSeat: 5,
-    yearManufacture: 2021,
-    transmission: "AUTOMATIC",
-    fuelType: "GASOLINE",
-    numberVehicle: 1,
-    brandName: "Hyundai",
-    modelName: "4 chỗ (Sedan)",
-    totalRatings: 10,
-    address: "123 Đường Lê Lợi, Quận 1, TP.HCM",
-    openTime: "00:00:00",
-    closeTime: "00:00:00",
-    penalty: {
-      id: "penalty_001",
-      penaltyType: "PERCENT",
-      penaltyValue: 10,
-      minCancelHour: 24,
-      description: "Phạt 10% nếu hủy trong vòng 24 giờ",
-    },
-    extraFeeRule: {
-      maxKmPerDay: 300,
-      feePerExtraKm: 4500,
-      allowedHourLate: 2,
-      feePerExtraHour: 45000,
-      cleaningFee: 90000,
-      smellRemovalFee: 130000,
-      driverFeePerDay: 280000,
-      hasDriverOption: true,
-      driverFeePerHour: 90000,
-      hasHourlyRental: true,
-    },
-  },
-];
-
-const mockMotorbikeGroups: Vehicle[] = [
-  {
-    id: "vehicle_001",
-    licensePlate: "51B1-12356",
-    vehicleType: "MOTORBIKE",
-    userId: "user_001",
-    userName: "Nguyễn Văn An",
-    userEmail: "nguyenvanan@gmail.com",
-    userProfilePicture:
-      "https://res.cloudinary.com/dcakldjvc/image/upload/v1752737886/uwtsvefnelh2l1uec4pt.jpg",
-    vehicleFeatures: [{ name: "Phanh ABS" }],
-    vehicleImages: [
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-125-658066d817df4.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-      {
-        imageUrl:
-          "https://hips.hearstapps.com/hmg-prod/images/2024-subaru-brz-ts-123-658066d75b1c1.jpg?crop=1xw:1xh;center,top&resize=980:*",
-      },
-    ],
-    haveDriver: "NO",
-    insuranceStatus: "YES",
-    shipToAddress: "YES",
-    description: "Yamaha Jupiter 2020, xe ga tiết kiệm nhiên liệu",
-    costPerDay: 170000,
-    status: "AVAILABLE",
-    thumb: "Yamaha Jupiter 2020",
-    yearManufacture: 2020,
-    transmission: "AUTOMATIC",
-    fuelType: "GASOLINE",
-    numberVehicle: 1,
-    brandName: "Yamaha",
-    totalRatings: 8,
-    address: "456 Đường Nguyễn Huệ, Quận 3, TP.HCM",
-    openTime: "07:00:00",
-    closeTime: "22:00:00",
-    penalty: {
-      id: "penalty_002",
-      penaltyType: "FIXED",
-      penaltyValue: 50000,
-      minCancelHour: 12,
-      description:
-        "Phí hủy cố định 50.000 ₫ nếu hủy quá 12 giờ sau khi đơn đặt xe được chấp nhận",
-    },
-  },
-];
-
 export default function VehiclePendingPage() {
   const [activeTab, setActiveTab] = useState("CAR");
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Modal states
+  const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
   const [vehicleDetailModal, setVehicleDetailModal] = useState<{
     open: boolean;
     vehicle: Vehicle | null;
@@ -235,46 +108,151 @@ export default function VehiclePendingPage() {
     open: false,
     vehicle: null,
   });
+  const [pendingStats, setPendingStats] = useState({
+    car: 0,
+    motorbike: 0,
+    bicycle: 0,
+  });
+  const [confirmAction, setConfirmAction] = useState<
+    "APPROVE_ONE" | "APPROVE_BATCH" | "REJECT_ONE" | "REJECT_BATCH" | null
+  >(null); // Cập nhật loại xác nhận
+  const [rejectReason, setRejectReason] = useState("");
 
-  // Get current data and stats
-  const getCurrentData = () => {
-    switch (activeTab) {
-      case "CAR":
-        return mockCarData;
-      case "MOTORBIKE":
-        return mockMotorbikeGroups;
-      case "BICYCLE":
-        return mockMotorbikeGroups; // Use same structure for bicycle
-      default:
-        return [];
+  useEffect(() => {
+    loadPendingStats();
+    loadPendingVehicles();
+  }, [activeTab]); // Load vehicles when the active tab changes
+
+  // Fetch Pending Vehicles
+  const loadPendingVehicles = async () => {
+    setLoading(true);
+    try {
+      const response = await getPendingVehicles({ type: activeTab });
+      setVehicles(response.content); // Adjust based on the API response structure
+    } catch (error) {
+      console.error("Error fetching vehicles:", error);
+      showApiError("Có lỗi xảy ra khi lấy danh sách xe chờ duyệt."); // Show error message
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getAllVehicles = () => {
-    const cars = mockCarData;
-    const motorbikes = mockMotorbikeGroups;
-    return [...cars, ...motorbikes];
+  // Fetch Pending Stats
+  const loadPendingStats = async () => {
+    try {
+      const response = await getPendingStats();
+      setPendingStats(response); // Assuming response structure is { motorbike: 3, bicycle: 0, car: 1 }
+    } catch (error) {
+      console.error("Error fetching pending stats:", error);
+      showApiError("Có lỗi xảy ra khi lấy thống kê xe chờ duyệt."); // Show error message
+    }
   };
 
-  const filteredData = getCurrentData().filter((item: any) => {
-    if (activeTab === "CAR") {
-      const vehicle = item as Vehicle;
-      const matchesSearch =
-        vehicle.thumb.toLowerCase().includes(searchText.toLowerCase()) ||
-        vehicle.userName.toLowerCase().includes(searchText.toLowerCase()) ||
-        (vehicle.licensePlate &&
-          vehicle.licensePlate
-            .toLowerCase()
-            .includes(searchText.toLowerCase()));
-
-      const matchesStatus =
-        statusFilter === "all" || vehicle.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
+  // Fetch Vehicle Details
+  const fetchVehicleDetails = async (vehicleId: string) => {
+    try {
+      const response = await getVehicleDetail(vehicleId);
+      return response;
+    } catch (error) {
+      console.error("Error fetching vehicle details:", error);
+      showApiError("Có lỗi xảy ra khi lấy thông tin xe."); // Show error message
     }
+  };
+
+  const handleViewDetails = async (vehicle: Vehicle) => {
+    const vehicleDetails = await fetchVehicleDetails(vehicle.id);
+    setVehicleDetailModal({ open: true, vehicle: vehicleDetails });
+  };
+
+  // Update Vehicle Status
+  const updateVehicleStatusAPI = async (
+    vehicleId: string,
+    status: string,
+    rejectReason?: string
+  ) => {
+    try {
+      await updateVehicleStatus(vehicleId, status, rejectReason);
+      loadPendingStats(); // Reload stats after updating
+      loadPendingVehicles(); // Reload vehicles after updating
+      showApiSuccess("Cập nhật trạng thái xe thành công."); // Show success message
+    } catch (error) {
+      console.error("Error updating vehicle status:", error);
+      showApiError("Có lỗi xảy ra khi cập nhật trạng thái xe."); // Show error message
+    }
+  };
+
+  const handleApprove = async (vehicleId: string) => {
+    await updateVehicleStatusAPI(vehicleId, "AVAILABLE"); // Duyệt xe
+  };
+
+  const handleReject = async (vehicleId: string) => {
+    await updateVehicleStatusAPI(vehicleId, "UNAVAILABLE", rejectReason); // Từ chối xe
+    setRejectReason(""); // Clear reason after rejection
+  };
+
+  const filteredData = vehicles.filter((item) => {
+    const matchesSearch =
+      item.thumb.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.userName.toLowerCase().includes(searchText.toLowerCase()) ||
+      (item.licensePlate &&
+        item.licensePlate.toLowerCase().includes(searchText.toLowerCase()));
+    return matchesSearch;
   });
 
-  // Columns cho xe ô tô (hiển thị từng xe)
+  // Handle Checkbox Change
+  const handleCheckboxChange = (vehicle: Vehicle) => {
+    if (selectedVehicles.includes(vehicle)) {
+      setSelectedVehicles(selectedVehicles.filter((v) => v.id !== vehicle.id));
+    } else {
+      setSelectedVehicles([...selectedVehicles, vehicle]);
+    }
+  };
+
+  const handleBatchApprove = async () => {
+    try {
+      await updateMultipleVehicleStatuses(
+        selectedVehicles.map((vehicle) => ({
+          vehicleId: vehicle.id,
+          status: "AVAILABLE",
+        }))
+      );
+      loadPendingStats(); // Reload stats after updating
+      showApiSuccess("Duyệt thành công các xe đã chọn."); // Show success message
+      loadPendingVehicles(); // Reload vehicles after updating
+    } catch (error) {
+      showApiError("Có lỗi xảy ra khi duyệt xe."); // Show error message
+      console.error("Error updating multiple vehicle statuses:", error);
+    } finally {
+      setSelectedVehicles([]); // Clear selections after approval
+    }
+  };
+
+  const handleBatchReject = async () => {
+    if (rejectReason) {
+      try {
+        await updateMultipleVehicleStatuses(
+          selectedVehicles.map((vehicle) => ({
+            vehicleId: vehicle.id,
+            status: "UNAVAILABLE",
+            rejectReason,
+          }))
+        );
+        loadPendingStats(); // Reload stats after updating
+        showApiSuccess("Từ chối thành công các xe đã chọn."); // Show success message
+        loadPendingVehicles(); // Reload vehicles after updating
+      } catch (error) {
+        showApiError("Có lỗi xảy ra khi từ chối xe."); // Show error message
+        console.error("Error updating multiple vehicle statuses:", error);
+      } finally {
+        setRejectReason(""); // Clear reason after rejection
+        setSelectedVehicles([]); // Clear selections after rejection
+      }
+    } else {
+      showApiError("Vui lòng nhập lý do từ chối."); // Show error if no reason is provided
+    }
+  };
+
+  // Columns for the vehicle table
   const carColumns: ColumnsType<Vehicle> = [
     {
       title: "STT",
@@ -284,90 +262,15 @@ export default function VehiclePendingPage() {
       align: "center",
     },
     {
-      title: "Hình ảnh",
-      key: "image",
-      width: 100,
+      title: "Chọn",
+      key: "select",
       render: (_, record) => (
-        <Image
-          src={record.vehicleImages?.[0]?.imageUrl || "/placeholder-car.jpg"}
-          alt="Vehicle"
-          width={60}
-          height={45}
-          className="rounded-lg object-cover"
-          fallback="/placeholder-car.jpg"
+        <input
+          type="checkbox"
+          checked={selectedVehicles.includes(record)}
+          onChange={() => handleCheckboxChange(record)}
         />
       ),
-      align: "center",
-    },
-    {
-      title: "Tên xe",
-      key: "vehicleName",
-      render: (_, record) => (
-        <div>
-          <div className="font-medium text-gray-900">{record.thumb}</div>
-          <div className="text-sm text-gray-500">
-            {record.brandName} {record.modelName && `• ${record.modelName}`}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Biển số",
-      dataIndex: "licensePlate",
-      key: "licensePlate",
-      render: (licensePlate) => (
-        <Tag color="blue" className="font-mono">
-          {licensePlate}
-        </Tag>
-      ),
-    },
-    {
-      title: "Chủ xe",
-      key: "owner",
-      render: (_, record) => (
-        <div>
-          <div className="font-medium text-gray-900">{record.userName}</div>
-          <div className="text-sm text-gray-500">{record.userEmail}</div>
-        </div>
-      ),
-    },
-    {
-      title: "Trạng thái",
-      key: "status",
-      render: (_, record) => (
-        <Tag
-          color={record.status === "AVAILABLE" ? "green" : "orange"}
-          className="rounded-full px-3 py-1"
-        >
-          {record.status === "AVAILABLE" ? "Đang hoạt động" : "Không hoạt động"}
-        </Tag>
-      ),
-    },
-    {
-      title: "Thao tác",
-      key: "actions",
-      width: 120,
-      render: (_, record) => (
-        <Button
-          type="primary"
-          icon={<EyeOutlined />}
-          size="small"
-          onClick={() => setVehicleDetailModal({ open: true, vehicle: record })}
-        >
-          Xem chi tiết
-        </Button>
-      ),
-      align: "center",
-    },
-  ];
-
-  // Columns cho xe máy/xe đạp (hiển thị nhóm)
-  const groupColumns: ColumnsType<Vehicle> = [
-    {
-      title: "STT",
-      key: "index",
-      width: 60,
-      render: (_, __, index) => index + 1,
       align: "center",
     },
     {
@@ -423,10 +326,10 @@ export default function VehiclePendingPage() {
       key: "status",
       render: (_, record) => (
         <Tag
-          color={record.status === "AVAILABLE" ? "green" : "orange"}
+          color={record.status === "PENDING" ? "orange" : "red"}
           className="rounded-full px-3 py-1"
         >
-          {record.status === "AVAILABLE" ? "Đang hoạt động" : "Không hoạt động"}
+          {record.status === "PENDING" ? "Chưa duyệt" : "Lỗi"}
         </Tag>
       ),
     },
@@ -439,39 +342,17 @@ export default function VehiclePendingPage() {
           type="primary"
           icon={<EyeOutlined />}
           size="small"
-          onClick={() => setVehicleDetailModal({ open: true, vehicle: record })}
+          onClick={() => handleViewDetails(record)}
         >
           Xem chi tiết
         </Button>
       ),
       align: "center",
-    },
-  ];
-
-  const getCurrentColumns = () => {
-    return activeTab === "CAR" ? carColumns : groupColumns;
-  };
-
-  // Tab items with counts
-  const allVehicles = getAllVehicles();
-  const tabItems = [
-    {
-      key: "CAR",
-      label: `Xe ô tô (${mockCarData.length})`,
-    },
-    {
-      key: "MOTORBIKE",
-      label: `Xe máy (${mockMotorbikeGroups.length})`,
-    },
-    {
-      key: "BICYCLE",
-      label: `Xe đạp (${mockMotorbikeGroups.length})`,
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
         <Title level={2} className="!mb-2">
           Quản lý phương tiện
@@ -481,7 +362,6 @@ export default function VehiclePendingPage() {
         </p>
       </div>
 
-      {/* Search and Filter Section */}
       <div className="bg-white p-6 rounded-xl shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex-1 max-w-md">
@@ -494,34 +374,47 @@ export default function VehiclePendingPage() {
               onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
+          <div className="flex gap-4">
+            <Button
+              type="primary"
+              onClick={() => setConfirmAction("APPROVE_BATCH")}
+              disabled={selectedVehicles.length === 0}
+            >
+              Duyệt hàng loạt
+            </Button>
+            <Button
+              danger
+              onClick={() => setConfirmAction("REJECT_BATCH")}
+              disabled={selectedVehicles.length === 0}
+            >
+              Từ chối hàng loạt
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Tabs and Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
-          items={tabItems}
+          items={[
+            { key: "CAR", label: `Xe ô tô (${pendingStats.car})` },
+            { key: "MOTORBIKE", label: `Xe máy (${pendingStats.motorbike})` },
+            { key: "BICYCLE", label: `Xe đạp (${pendingStats.bicycle})` },
+          ]}
           className="px-6 pt-4"
         />
 
         <div className="px-6 pb-6">
           <Table
-            columns={getCurrentColumns() as any}
-            dataSource={filteredData}
+            columns={carColumns}
+            dataSource={filteredData.filter((v) => v.vehicleType === activeTab)}
             loading={loading}
-            rowKey={(record: any) =>
-              record.id || `${record.thumb}-${record.vehicleNumber}`
-            }
+            rowKey="id"
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
               showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} ${
-                  activeTab === "CAR" ? "xe" : "nhóm xe"
-                }`,
             }}
             scroll={{ x: 800 }}
             className="border-0"
@@ -534,7 +427,88 @@ export default function VehiclePendingPage() {
         open={vehicleDetailModal.open}
         vehicle={vehicleDetailModal.vehicle}
         onClose={() => setVehicleDetailModal({ open: false, vehicle: null })}
+        onApprove={() => setConfirmAction("APPROVE_ONE")} // Mở modal xác nhận duyệt cho một xe
+        onReject={() => setConfirmAction("REJECT_ONE")} // Mở modal xác nhận từ chối cho một xe
       />
+
+      {/* Confirmation Modals */}
+      <Modal
+        title="Xác nhận duyệt xe"
+        open={
+          confirmAction === "APPROVE_ONE" || confirmAction === "APPROVE_BATCH"
+        }
+        onCancel={() => setConfirmAction(null)}
+        footer={[
+          <Button key="cancel" onClick={() => setConfirmAction(null)}>
+            Hủy
+          </Button>,
+          <Button
+            key="approve"
+            type="primary"
+            onClick={() => {
+              if (
+                confirmAction === "APPROVE_ONE" &&
+                vehicleDetailModal.vehicle
+              ) {
+                handleApprove(vehicleDetailModal.vehicle.id);
+                setConfirmAction(null);
+                setVehicleDetailModal({ open: false, vehicle: null }); // Đóng modal chi tiết
+              } else {
+                handleBatchApprove();
+                setConfirmAction(null); // Đóng modal xác nhận
+              }
+            }}
+          >
+            Duyệt
+          </Button>,
+        ]}
+      >
+        <p>
+          Bạn có chắc chắn muốn duyệt{" "}
+          {confirmAction === "APPROVE_ONE" ? "xe này" : "các xe đã chọn"} không?
+        </p>
+      </Modal>
+
+      <Modal
+        title="Từ chối xe"
+        open={
+          confirmAction === "REJECT_ONE" || confirmAction === "REJECT_BATCH"
+        }
+        onCancel={() => setConfirmAction(null)}
+        footer={[
+          <Button key="cancel" onClick={() => setConfirmAction(null)}>
+            Hủy
+          </Button>,
+          <Button
+            key="confirm"
+            type="primary"
+            onClick={() => {
+              if (
+                confirmAction === "REJECT_ONE" &&
+                vehicleDetailModal.vehicle
+              ) {
+                handleReject(vehicleDetailModal.vehicle.id);
+                setConfirmAction(null);
+                setVehicleDetailModal({ open: false, vehicle: null }); // Đóng modal chi tiết
+              } else {
+                handleBatchReject();
+                setConfirmAction(null); // Đóng modal xác nhận
+              }
+            }}
+            disabled={!rejectReason}
+          >
+            Từ chối
+          </Button>,
+        ]}
+      >
+        <p>Nhập lý do từ chối:</p>
+        <Input.TextArea
+          rows={4}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Nhập lý do..."
+        />
+      </Modal>
     </div>
   );
 }
@@ -544,51 +518,24 @@ const VehicleDetailModal: React.FC<{
   open: boolean;
   vehicle: Vehicle | null;
   onClose: () => void;
-}> = ({ open, vehicle, onClose }) => {
-  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
-  const [isRejectModalVisible, setIsRejectModalVisible] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-
+  onApprove: () => void;
+  onReject: () => void;
+}> = ({ open, vehicle, onClose, onApprove, onReject }) => {
   if (!vehicle) return null;
 
-  const handleApprove = () => {
-    // Logic to approve the vehicle (e.g., call API)
-    console.log("Approved vehicle:", vehicle.id);
-    onClose();
-  };
-
-  const handleReject = () => {
-    // Logic to reject the vehicle (e.g., call API with rejectReason)
-    console.log("Rejected vehicle:", vehicle.id, "Reason:", rejectReason);
-    setRejectReason(""); // Clear the reason after rejection
-    onClose();
-  };
-
-  const translateFuelType = (fuelType: string) => {
-    switch (fuelType) {
-      case "GASOLINE":
-        return "Xăng";
-      case "ELECTRIC":
-        return "Điện";
-      case "DIESEL":
-        return "Dầu";
-      case "HYBRID":
-        return "Hybrid";
-      default:
-        return fuelType;
-    }
-  };
-
-  const translateTransmission = (transmission: string) => {
-    switch (transmission) {
-      case "AUTOMATIC":
-        return "Hộp số tự động";
-      case "MANUAL":
-        return "Hộp số sàn";
-      default:
-        return transmission;
-    }
-  };
+  let features: VehicleFeature[] = [];
+  if (
+    typeof vehicle.vehicleFeatures === "string" &&
+    vehicle.vehicleFeatures !== undefined &&
+    vehicle.vehicleFeatures !== null
+  ) {
+    features = (vehicle.vehicleFeatures as string)
+      .split(",")
+      .map((name) => ({ name: name.trim() }))
+      .filter((f) => f.name);
+  } else if (Array.isArray(vehicle.vehicleFeatures)) {
+    features = vehicle.vehicleFeatures;
+  }
 
   return (
     <Modal
@@ -612,21 +559,13 @@ const VehicleDetailModal: React.FC<{
       open={open}
       onCancel={onClose}
       footer={[
-        <Button
-          key="approve"
-          type="primary"
-          onClick={() => setIsConfirmModalVisible(true)}
-        >
-          Duyệt xe
+        <Button key="approve" type="primary" onClick={onApprove}>
+          Duyệt
         </Button>,
-        <Button
-          key="reject"
-          type="default"
-          onClick={() => setIsRejectModalVisible(true)}
-        >
+        <Button key="reject" danger onClick={onReject}>
           Từ chối
         </Button>,
-        <Button key="close" onClick={onClose} className="w-full sm:w-auto">
+        <Button key="close" onClick={onClose}>
           Đóng
         </Button>,
       ]}
@@ -730,7 +669,7 @@ const VehicleDetailModal: React.FC<{
                   Truyền động
                 </label>
                 <div className="p-2 bg-gray-50 rounded text-gray-900 text-sm">
-                  {translateTransmission(vehicle.transmission)}
+                  {vehicle.transmission}
                 </div>
               </div>
 
@@ -739,7 +678,7 @@ const VehicleDetailModal: React.FC<{
                   Nhiên liệu
                 </label>
                 <div className="p-2 bg-gray-50 rounded text-gray-900 text-sm">
-                  {translateFuelType(vehicle.fuelType)}
+                  {vehicle.fuelType}
                 </div>
               </div>
 
@@ -863,7 +802,7 @@ const VehicleDetailModal: React.FC<{
                   Tiện ích xe
                 </label>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {vehicle.vehicleFeatures?.map((feature, index) => (
+                  {features.map((feature, index) => (
                     <Tag key={index} color="blue" className="text-xs mb-1">
                       {feature.name}
                     </Tag>
@@ -1048,52 +987,8 @@ const VehicleDetailModal: React.FC<{
           </div>
         </Card>
       </div>
-
-      {/* Confirm Approval Modal */}
-      <Modal
-        title="Xác nhận duyệt xe"
-        open={isConfirmModalVisible}
-        onCancel={() => setIsConfirmModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setIsConfirmModalVisible(false)}>
-            Hủy
-          </Button>,
-          <Button key="confirm" type="primary" onClick={handleApprove}>
-            Xác nhận
-          </Button>,
-        ]}
-      >
-        <p>Bạn có chắc chắn muốn duyệt xe này không?</p>
-      </Modal>
-
-      {/* Reject Modal */}
-      <Modal
-        title="Từ chối xe"
-        open={isRejectModalVisible}
-        onCancel={() => setIsRejectModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setIsRejectModalVisible(false)}>
-            Hủy
-          </Button>,
-          <Button
-            key="confirm"
-            type="primary"
-            onClick={handleReject}
-            disabled={!rejectReason}
-          >
-            Từ chối
-          </Button>,
-        ]}
-      >
-        <p>Nhập lý do từ chối:</p>
-        <Input.TextArea
-          rows={4}
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="Nhập lý do..."
-        />
-      </Modal>
     </Modal>
   );
 };
+
 VehiclePendingPage.Layout = AdminLayout;
