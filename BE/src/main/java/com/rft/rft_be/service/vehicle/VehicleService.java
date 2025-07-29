@@ -15,7 +15,6 @@ public interface VehicleService {
     //List<CategoryDTO> getAllVehiclesByCategory();
     VehicleDetailDTO getVehicleDetailById(String id);
 
-
     List<VehicleGetDTO> getVehiclesByUserId(String userId);
     List<VehicleGetDTO> getVehiclesByStatus(String status);
     List<VehicleGetDTO> getVehiclesByVehicleType(String vehicleType);

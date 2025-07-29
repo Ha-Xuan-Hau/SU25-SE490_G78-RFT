@@ -69,6 +69,7 @@ public interface VehicleMapper {
     @Mapping(source = "status", target = "status", qualifiedByName = "enumToString")
     @Mapping(source = "user.address", target = "address")
     @Mapping(source = "penalty", target = "penalty")
+    @Mapping(source = "extraFeeRule", target = "extraFeeRule")
     VehicleGetDTO vehicleGet(Vehicle vehicle);
 
     @Mapping(source = "user.id", target = "userId")

@@ -1,6 +1,7 @@
 package com.rft.rft_be.dto.admin;
 
 import com.rft.rft_be.entity.Vehicle;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +13,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminUpdateVehicleStatusDTO {
+
+    @NotBlank
+    private String vehicleId;
+
     @NotNull(message = "Trạng thái không được trống")
     private Vehicle.Status status;
 

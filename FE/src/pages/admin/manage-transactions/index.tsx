@@ -409,7 +409,7 @@ export default function TransactionsPage() {
     <div className="space-y-6">
       <div>
         <Title level={2} className="!mb-2">
-          Giao dịch thanh toán
+          Quản lý giao dịch
         </Title>
         <p className="text-gray-600">
           Xem chi tiết các giao dịch thanh toán trong hệ thống

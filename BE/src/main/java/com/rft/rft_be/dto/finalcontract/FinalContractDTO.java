@@ -1,4 +1,4 @@
-package com.rft.rft_be.dto.contract;
+package com.rft.rft_be.dto.finalcontract;
 
 
 import lombok.*;
@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 public class FinalContractDTO {
     private String id;
     private String contractId;
-    private String userId;
-    private String userName;
+    private String userId;      //cua nhan vien
+    private String userName;    //cua nhan vien
     private String image;
     private LocalDateTime timeFinish;
     private BigDecimal costSettlement;
@@ -21,4 +21,14 @@ public class FinalContractDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String contractStatus;
+    
+    // Provider information
+    private String providerId;
+    private String providerName;
+    private String providerEmail;
+    private String providerPhone;
+
+    private String providerBankAccountNumber;
+    private String providerBankAccountName;
+    private String providerBankAccountType;
 }
