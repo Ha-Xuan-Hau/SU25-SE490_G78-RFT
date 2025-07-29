@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Typography,
   Table,
@@ -25,102 +25,42 @@ import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { showError, showSuccess } from "@/utils/toast.utils";
 import { DriverLicense } from "@/types/driverLicense";
+import {
+  getAllDriverLicenses,
+  getDriverLicenseById,
+  updateDriverLicenseStatus,
+} from "@/apis/driver-licenses.api";
 
 const { Title } = Typography;
 const { Search } = Input;
 const { Option } = Select;
 
-// Mockup data cho bằng lái xe
-const mockLicenses: DriverLicense[] = [
-  {
-    id: "1",
-    userId: "1",
-    email: "nguyenvanan@gmail.com",
-    userName: "Nguyễn Văn An",
-    licenseNumber: "012345678901",
-    class: "B2",
-    status: "VALID",
-    image:
-      "https://via.placeholder.com/400x250/4CAF50/FFFFFF?text=B%E1%BA%B1ng+L%C3%A1i+Xe+B2",
-    createdAt: "2024-01-15T08:30:00Z",
-    updatedAt: "2024-01-15T08:30:00Z",
-  },
-  {
-    id: "2",
-    userId: "2",
-    email: "tranthibinh@gmail.com",
-    userName: "Trần Thị Bình",
-    licenseNumber: "012345678902",
-    class: "A1",
-    status: "VALID",
-    image:
-      "https://via.placeholder.com/400x250/2196F3/FFFFFF?text=B%E1%BA%B1ng+L%C3%A1i+Xe+A1",
-    createdAt: "2024-02-10T09:15:00Z",
-    updatedAt: "2024-02-10T09:15:00Z",
-  },
-  {
-    id: "3",
-    userId: "3",
-    email: "leminhcuong@gmail.com",
-    userName: "Lê Minh Cường",
-    licenseNumber: "012345678903",
-    class: "A2",
-    status: "INVALID",
-    image:
-      "https://via.placeholder.com/400x250/FF9800/FFFFFF?text=B%E1%BA%B1ng+L%C3%A1i+Xe+A2",
-    createdAt: "2024-03-05T14:20:00Z",
-    updatedAt: "2024-03-20T10:45:00Z",
-  },
-  {
-    id: "4",
-    userId: "4",
-    email: "phamthuha@gmail.com",
-    userName: "Phạm Thu Hà",
-    licenseNumber: "012345678904",
-    class: "B1",
-    status: "VALID",
-    image:
-      "https://via.placeholder.com/400x250/9C27B0/FFFFFF?text=B%E1%BA%B1ng+L%C3%A1i+Xe+B1",
-    createdAt: "2024-04-12T16:30:00Z",
-    updatedAt: "2024-04-12T16:30:00Z",
-  },
-  {
-    id: "5",
-    userId: "5",
-    email: "hoangducminh@gmail.com",
-    userName: "Hoàng Đức Minh",
-    licenseNumber: "012345678905",
-    class: "C",
-    status: "VALID",
-    image:
-      "https://via.placeholder.com/400x250/607D8B/FFFFFF?text=B%E1%BA%B1ng+L%C3%A1i+Xe+C",
-    createdAt: "2024-05-18T11:00:00Z",
-    updatedAt: "2024-05-18T11:00:00Z",
-  },
-  {
-    id: "6",
-    userId: "5",
-    email: "vothilan@gmail.com",
-    userName: "Võ Thị Lan",
-    licenseNumber: "012345678906",
-    class: "A1",
-    status: "INVALID",
-    image:
-      "https://via.placeholder.com/400x250/F44336/FFFFFF?text=B%E1%BA%B1ng+L%C3%A1i+Xe+A1",
-    createdAt: "2024-06-22T13:45:00Z",
-    updatedAt: "2024-07-01T09:20:00Z",
-  },
-];
-
 export default function ManageLicensesPage() {
   const [loading, setLoading] = useState(false);
-  const [licenses, setLicenses] = useState<DriverLicense[]>(mockLicenses);
+  const [licenses, setLicenses] = useState<DriverLicense[]>([]);
   const [searchText, setSearchText] = useState("");
   const [selectedLicense, setSelectedLicense] = useState<DriverLicense | null>(
     null
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
+
+  const fetchLicenses = async () => {
+    setLoading(true);
+    try {
+      const response = await getAllDriverLicenses(); // Lấy tất cả giấy phép
+      setLicenses(response); // Cập nhật danh sách giấy phép
+    } catch (error) {
+      console.error(error);
+      showError("Không thể tải danh sách giấy phép lái xe!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLicenses(); // Gọi hàm fetch khi component được mount
+  }, []);
 
   // Filter licenses based on search text
   const filteredLicenses = licenses.filter((license) => {
@@ -129,52 +69,51 @@ export default function ManageLicensesPage() {
       license.userName.toLowerCase().includes(searchLower) ||
       license.email.toLowerCase().includes(searchLower) ||
       license.licenseNumber.includes(searchLower) ||
-      license.class.toLowerCase().includes(searchLower)
+      license.classField.toLowerCase().includes(searchLower)
     );
   });
 
-  const handleViewDetails = (license: DriverLicense) => {
+  const formatTimestamp = (
+    timestamp: number | string | number[] | undefined | null
+  ): string => {
+    if (!timestamp) return "";
+
+    if (Array.isArray(timestamp) && timestamp.length >= 5) {
+      const [year, month, day, hour, minute] = timestamp;
+      return `${day.toString().padStart(2, "0")}/${month
+        .toString()
+        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    if (typeof timestamp === "number" || typeof timestamp === "string") {
+      const date = new Date(
+        typeof timestamp === "number" ? timestamp * 1000 : timestamp
+      );
+      return `${date.getDate().toString().padStart(2, "0")}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${date.getFullYear()} ${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    return "";
+  };
+
+  const handleViewDetails = async (license: DriverLicense) => {
     setSelectedLicense(license);
     setIsModalVisible(true);
 
-    // Set form values
-    form.setFieldsValue({
-      email: license.email,
-      userName: license.userName,
-      licenseNumber: license.licenseNumber,
-      class: license.class,
-      status: license.status,
-      image: license.image,
-      createdAt: dayjs(license.createdAt),
-      updatedAt: dayjs(license.updatedAt),
-    });
-  };
-
-  const handleSave = async () => {
+    // Gọi API để lấy thông tin chi tiết giấy phép lái xe
     try {
-      const values = await form.validateFields();
-
-      if (selectedLicense) {
-        // Update existing license
-        const updatedLicense: DriverLicense = {
-          ...selectedLicense,
-          status: values.status,
-          updatedAt: new Date().toISOString(),
-        };
-
-        setLicenses((prev) =>
-          prev.map((license) =>
-            license.id === selectedLicense.id ? updatedLicense : license
-          )
-        );
-
-        showSuccess("Cập nhật trạng thái bằng lái xe thành công!");
-      }
-
-      setIsModalVisible(false);
+      const licenseDetail = await getDriverLicenseById(license.id);
+      setSelectedLicense(licenseDetail as DriverLicense); // Cập nhật thông tin giấy phép lái xe chi tiết
     } catch (error) {
-      showError("Có lỗi xảy ra, vui lòng thử lại!");
-      console.error("Validation failed:", error);
+      console.error(error);
     }
   };
 
@@ -198,14 +137,14 @@ export default function ManageLicensesPage() {
     switch (status) {
       case "VALID":
         return "Hợp lệ";
-      case "INVALID":
-        return "Không hợp lệ";
+      case "EXPIRED":
+        return "Hết hạn";
       default:
         return status;
     }
   };
 
-  const getClassColor = (licenseClass: string) => {
+  const getClassColor = (classField: string) => {
     const colors: { [key: string]: string } = {
       A1: "blue",
       A2: "cyan",
@@ -215,7 +154,7 @@ export default function ManageLicensesPage() {
       D: "red",
       E: "magenta",
     };
-    return colors[licenseClass] || "default";
+    return colors[classField] || "default";
   };
 
   const columns: ColumnsType<DriverLicense> = [
@@ -231,13 +170,10 @@ export default function ManageLicensesPage() {
       key: "user",
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <Avatar icon={<UserOutlined />} />
+          {/* <Avatar icon={<UserOutlined />} /> */}
           <div>
             <div className="font-medium">{record.userName}</div>
-            <div className="text-xs text-gray-500 flex items-center gap-1">
-              <MailOutlined className="text-xs" />
-              {record.email}
-            </div>
+            <div className="text-xs text-gray-500">{record.email}</div>
           </div>
         </div>
       ),
@@ -248,31 +184,29 @@ export default function ManageLicensesPage() {
       dataIndex: "licenseNumber",
       key: "licenseNumber",
       render: (licenseNumber) => (
-        <span className="font-mono text-blue-600 font-semibold">
-          {licenseNumber}
-        </span>
+        <span className="font-mono  font-semibold">{licenseNumber}</span>
       ),
     },
     {
       title: "Hạng",
-      dataIndex: "class",
-      key: "class",
-      render: (licenseClass) => (
-        <Tag color={getClassColor(licenseClass)} className="font-semibold">
-          {licenseClass}
+      dataIndex: "classField",
+      key: "classField",
+      render: (classField) => (
+        <Tag color={getClassColor(classField)} className="font-semibold">
+          {classField}
         </Tag>
       ),
-      filters: [
-        { text: "A1", value: "A1" },
-        { text: "A2", value: "A2" },
-        { text: "B1", value: "B1" },
-        { text: "B2", value: "B2" },
-        { text: "C", value: "C" },
-        { text: "D", value: "D" },
-        { text: "E", value: "E" },
-      ],
-      onFilter: (value, record) => record.class === value,
-      align: "center",
+      // filters: [
+      //   { text: "A1", value: "A1" },
+      //   { text: "A2", value: "A2" },
+      //   { text: "B1", value: "B1" },
+      //   { text: "B2", value: "B2" },
+      //   { text: "C", value: "C" },
+      //   { text: "D", value: "D" },
+      //   { text: "E", value: "E" },
+      // ],
+      // onFilter: (value, record) => record.classField === value,
+      // align: "center",
     },
     {
       title: "Trạng thái",
@@ -283,7 +217,7 @@ export default function ManageLicensesPage() {
       ),
       filters: [
         { text: "Hợp lệ", value: "VALID" },
-        { text: "Không hợp lệ", value: "INVALID" },
+        { text: "Không hợp lệ", value: "EXPIRED" },
       ],
       onFilter: (value, record) => record.status === value,
       align: "center",
@@ -293,9 +227,7 @@ export default function ManageLicensesPage() {
       dataIndex: "createdAt",
       key: "createdAt",
       render: (createdAt) => (
-        <span className="text-gray-600">
-          {dayjs(createdAt).format("DD/MM/YYYY HH:mm")}
-        </span>
+        <span className="text-gray-600">{formatTimestamp(createdAt)}</span>
       ),
       sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
     },
@@ -316,6 +248,28 @@ export default function ManageLicensesPage() {
       align: "center",
     },
   ];
+
+  async function handleSave() {
+    if (!selectedLicense) return;
+
+    const updatedLicense = {
+      ...selectedLicense,
+      status: selectedLicense.status,
+    }; // Prepare the updated license data
+    setLoading(true);
+
+    try {
+      await updateDriverLicenseStatus(selectedLicense.id, updatedLicense); // Call the update API
+
+      showSuccess("Cập nhật trạng thái thành công!");
+      setIsModalVisible(false);
+      fetchLicenses(); // Refresh the list of licenses
+    } catch (error) {
+      showError("Cập nhật trạng thái thất bại!");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -341,26 +295,6 @@ export default function ManageLicensesPage() {
               onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span>
-              Hợp lệ:{" "}
-              <span className="font-semibold text-green-600">
-                {licenses.filter((l) => l.status === "VALID").length}
-              </span>
-            </span>
-            <span>
-              Không hợp lệ:{" "}
-              <span className="font-semibold text-red-600">
-                {licenses.filter((l) => l.status === "INVALID").length}
-              </span>
-            </span>
-            <span>
-              Tổng:{" "}
-              <span className="font-semibold text-blue-600">
-                {filteredLicenses.length}
-              </span>
-            </span>
-          </div>
         </div>
       </div>
 
@@ -385,7 +319,7 @@ export default function ManageLicensesPage() {
         </div>
       </div>
 
-      {/* License Details Modal */}
+      {/* License Details/Edit Modal */}
       <Modal
         title={
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
@@ -421,7 +355,7 @@ export default function ManageLicensesPage() {
                 Thông tin người dùng
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email
                   </label>
@@ -429,11 +363,11 @@ export default function ManageLicensesPage() {
                     <MailOutlined className="text-blue-500" />
                     <span>{selectedLicense.email}</span>
                   </div>
-                </div>
+                </div> */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Họ và tên
+                    Họ và tên chủ thẻ
                   </label>
                   <div className="p-3 bg-gray-50 rounded-lg text-gray-900 font-semibold">
                     {selectedLicense.userName}
@@ -452,7 +386,7 @@ export default function ManageLicensesPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Số bằng lái
                   </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-blue-600 font-mono font-semibold">
+                  <div className="p-3 bg-gray-50 rounded-lg  font-mono font-semibold">
                     {selectedLicense.licenseNumber}
                   </div>
                 </div>
@@ -463,10 +397,10 @@ export default function ManageLicensesPage() {
                   </label>
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <Tag
-                      color={getClassColor(selectedLicense.class)}
+                      color={getClassColor(selectedLicense.classField)}
                       className="text-sm font-semibold"
                     >
-                      {selectedLicense.class}
+                      {selectedLicense.classField}
                     </Tag>
                   </div>
                 </div>
@@ -495,48 +429,41 @@ export default function ManageLicensesPage() {
             </div>
 
             {/* Trạng thái và thời gian */}
-            <Form form={form} layout="vertical">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Form.Item
-                  name="status"
-                  label="Trạng thái"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn trạng thái!" },
-                  ]}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trạng thái
+                </label>
+                <Select
+                  value={selectedLicense.status}
+                  onChange={(value) =>
+                    setSelectedLicense({ ...selectedLicense, status: value })
+                  }
+                  className="w-full"
                 >
-                  <Select placeholder="Chọn trạng thái">
-                    <Option value="VALID">
-                      <Tag color="success">Hợp lệ</Tag>
-                    </Option>
-                    <Option value="INVALID">
-                      <Tag color="error">Không hợp lệ</Tag>
-                    </Option>
-                  </Select>
-                </Form.Item>
+                  <Select.Option value="VALID">Hợp lệ</Select.Option>
+                  <Select.Option value="EXPIRED">Hết hạn</Select.Option>
+                </Select>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ngày tạo
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {dayjs(selectedLicense.createdAt).format(
-                      "DD/MM/YYYY HH:mm"
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cập nhật lần cuối
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                    {dayjs(selectedLicense.updatedAt).format(
-                      "DD/MM/YYYY HH:mm"
-                    )}
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày tạo
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {formatTimestamp(selectedLicense.createdAt)}
                 </div>
               </div>
-            </Form>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cập nhật lần cuối
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {formatTimestamp(selectedLicense.updatedAt)}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </Modal>

@@ -4,6 +4,7 @@ import com.rft.rft_be.dto.vehicle.VehicleGetDTO;
 import com.rft.rft_be.dto.admin.AdminUpdateVehicleStatusDTO;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -22,4 +23,6 @@ public interface AdminVehicleApprovalService {
     VehicleGetDTO getVehicleDetail(String vehicleId);
 
     void updateVehicleStatus(String vehicleId, AdminUpdateVehicleStatusDTO request);
+
+    void updateMultipleVehicleStatuses(List<AdminUpdateVehicleStatusDTO> requests);
 }

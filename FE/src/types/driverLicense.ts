@@ -4,7 +4,7 @@ export interface DriverLicense {
   email: string;
   userName: string;
   licenseNumber: string;
-  class: string;
+  classField: string;
   status: "VALID" | "INVALID";
   image: string;
   createdAt: string;

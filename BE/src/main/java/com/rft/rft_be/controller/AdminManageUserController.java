@@ -27,7 +27,7 @@ public class AdminManageUserController {
 
     // ==================== USER MANAGEMENT ENDPOINTS ====================
 
-    //Lấy danh sách tất cả users với filter và pagination
+    //Lấy danh sách tất cả users vaf provider với filter và pagination
     @GetMapping
     public ResponseEntity<AdminUserListResponseDTO> getUsers(
             @RequestParam(required = false) String name,
@@ -76,6 +76,32 @@ public class AdminManageUserController {
                 .build();
         
         return ResponseEntity.ok(adminUserService.getProviders(searchDTO));
+    }
+
+
+    //Lấy danh sách chỉ người dùng
+    @GetMapping("/customers")
+    public ResponseEntity<AdminUserListResponseDTO> getCustomers(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) User.Status status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+
+        AdminUserSearchDTO searchDTO = AdminUserSearchDTO.builder()
+                .name(name)
+                .email(email)
+                .status(status)
+                .role(User.Role.USER)
+                .page(page)
+                .size(size)
+                .sortBy(sortBy)
+                .sortDirection(sortDirection)
+                .build();
+
+        return ResponseEntity.ok(adminUserService.getCustomers(searchDTO));
     }
 
     //Lấy thông tin chi tiết 1 user (profile + payment data)

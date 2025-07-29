@@ -9,7 +9,7 @@ import com.rft.rft_be.entity.Contract;
 import com.rft.rft_be.entity.FinalContract;
 import com.rft.rft_be.repository.FinalContractRepository;
 import com.rft.rft_be.service.Contract.FinalContractService;
-import com.rft.rft_be.dto.contract.FinalContractDTO;
+import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
 import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -226,6 +226,19 @@ public class FinalContractController {
             log.error("Error counting final contracts for contract: {}", contractId, e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to count final contracts: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @GetMapping("/have-userid")
+    public ResponseEntity<?> getAllFinalContractsWithUser() {
+        try {
+            List<FinalContractDTO> contracts = finalContractService.getAllFinalContractsWithUser();
+            return ResponseEntity.ok(contracts);
+        } catch (Exception e) {
+            log.error("Error getting all final contracts with user", e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to retrieve final contracts with user: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

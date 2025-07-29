@@ -1,7 +1,7 @@
 package com.rft.rft_be.mapper;
 
 import com.rft.rft_be.dto.contract.ContractDTO;
-import com.rft.rft_be.dto.contract.FinalContractDTO;
+import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
 import com.rft.rft_be.entity.BookingDetail;
 import com.rft.rft_be.entity.Contract;
 import com.rft.rft_be.entity.FinalContract;
@@ -52,6 +52,13 @@ public interface ContractMapper {
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.fullName", target = "userName")
     @Mapping(source = "contract.status", target = "contractStatus", qualifiedByName = "enumToString")
+    @Mapping(target = "providerId", expression = "java(getProviderIdFromFinalContract(finalContract))")
+    @Mapping(target = "providerName", expression = "java(getProviderNameFromFinalContract(finalContract))")
+    @Mapping(target = "providerEmail", expression = "java(getProviderEmailFromFinalContract(finalContract))")
+    @Mapping(target = "providerPhone", expression = "java(getProviderPhoneFromFinalContract(finalContract))")
+    @Mapping(target = "providerBankAccountNumber", expression = "java(getProviderBankAccountNumberFromFinalContract(finalContract))")
+    @Mapping(target = "providerBankAccountName", expression = "java(getProviderBankAccountNameFromFinalContract(finalContract))")
+    @Mapping(target = "providerBankAccountType", expression = "java(getProviderBankAccountTypeFromFinalContract(finalContract))")
     FinalContractDTO finalContract(FinalContract finalContract);
 
     // ------------------ Helpers ------------------
@@ -66,6 +73,11 @@ public interface ContractMapper {
         return (details != null && !details.isEmpty()) ? details.get(0).getVehicle() : null;
     }
 
+    default Vehicle getFirstVehicleFromFinalContract(FinalContract finalContract) {
+        List<BookingDetail> details = finalContract.getContract().getBooking().getBookingDetails();
+        return (details != null && !details.isEmpty()) ? details.get(0).getVehicle() : null;
+    }
+
     default String getProviderId(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return (v != null && v.getUser() != null) ? v.getUser().getId() : null;
@@ -74,6 +86,26 @@ public interface ContractMapper {
     default String getProviderName(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return (v != null && v.getUser() != null) ? v.getUser().getFullName() : null;
+    }
+
+    default String getProviderIdFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        return (v != null && v.getUser() != null) ? v.getUser().getId() : null;
+    }
+
+    default String getProviderNameFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        return (v != null && v.getUser() != null) ? v.getUser().getFullName() : null;
+    }
+
+    default String getProviderEmailFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        return (v != null && v.getUser() != null) ? v.getUser().getEmail() : null;
+    }
+
+    default String getProviderPhoneFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        return (v != null && v.getUser() != null) ? v.getUser().getPhone() : null;
     }
 
     default String getVehicleId(Contract contract) {
@@ -134,5 +166,30 @@ public interface ContractMapper {
     default String getVehicleDescription(Contract contract) {
         Vehicle v = getFirstVehicle(contract);
         return v != null ? v.getDescription() : null;
+    }
+
+    // --- Bank info helpers ---
+    default String getProviderBankAccountNumberFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        if (v != null && v.getUser() != null && v.getUser().getId() != null) {
+            // You need to inject WalletRepository/WalletService here in real code
+            // For now, return null or implement in service layer
+            return null;
+        }
+        return null;
+    }
+    default String getProviderBankAccountNameFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        if (v != null && v.getUser() != null && v.getUser().getId() != null) {
+            return null;
+        }
+        return null;
+    }
+    default String getProviderBankAccountTypeFromFinalContract(FinalContract finalContract) {
+        Vehicle v = getFirstVehicleFromFinalContract(finalContract);
+        if (v != null && v.getUser() != null && v.getUser().getId() != null) {
+            return null;
+        }
+        return null;
     }
 }
