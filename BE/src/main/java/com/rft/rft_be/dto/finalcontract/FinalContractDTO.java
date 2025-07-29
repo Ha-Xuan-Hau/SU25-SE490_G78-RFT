@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 public class FinalContractDTO {
     private String id;
     private String contractId;
-    private String userId;
-    private String userName;
+    private String userId;      //cua nhan vien
+    private String userName;    //cua nhan vien
     private String image;
     private LocalDateTime timeFinish;
     private BigDecimal costSettlement;

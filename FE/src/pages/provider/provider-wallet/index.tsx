@@ -7,7 +7,7 @@ import {
   withdrawFromWallet,
 } from "@/apis/wallet.api";
 import { createTopUpVNPay } from "@/apis/payment.api";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import { showError, showSuccess, showWarning } from "@/utils/toast.utils";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import {
   Button,
@@ -177,6 +177,19 @@ export default function ProviderWalletsPage() {
   // Mở modal rút tiền
   const handleOpenWithdrawModal = (card: bankCard, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Check if the card has the required fields
+    if (
+      !card.bankAccountNumber ||
+      !card.bankAccountName ||
+      !card.bankAccountType
+    ) {
+      showWarning(
+        "Vui lòng cập nhật thông tin thẻ ngân hàng trước khi thực hiện rút tiền."
+      );
+      return; // Prevent opening the modal
+    }
+
     setCurrentCard(card);
     setIsWithdrawModalVisible(true);
     withdrawForm.resetFields();
@@ -405,10 +418,17 @@ export default function ProviderWalletsPage() {
 
           {/* Modal rút tiền */}
           <Modal
-            title="Rút Tiền Từ Tài Khoản"
+            title={
+              <div className="flex items-center gap-2">
+                <DownloadOutlined className="text-red-500" />
+                <span>Rút Tiền Từ Tài Khoản</span>
+              </div>
+            }
             open={isWithdrawModalVisible}
             onCancel={handleCloseWithdrawModal}
             footer={null}
+            width={500}
+            centered
           >
             <Form
               form={withdrawForm}
@@ -417,22 +437,35 @@ export default function ProviderWalletsPage() {
               initialValues={{ amount: null }}
             >
               {currentCard && (
-                <div className="mb-4">
-                  <p className="font-medium">
-                    {currentCard.bankAccountType ?? ""}
-                  </p>
-                  <p>Chủ thẻ: {currentCard.bankAccountName ?? ""}</p>
-                  <p>
-                    Số tài khoản:{" "}
-                    {formatCardNumber(currentCard.bankAccountNumber)}
-                  </p>
-                  <p className="text-green-600">
-                    Số dư hiện tại: {formatCurrency(currentCard.balance)}
-                  </p>
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">
+                    Thông tin tài khoản
+                  </h4>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p>
+                      <span className="font-medium">Loại tài khoản:</span>{" "}
+                      {currentCard.bankAccountType ?? ""}
+                    </p>
+                    <p>
+                      <span className="font-medium">Chủ thẻ:</span>{" "}
+                      {currentCard.bankAccountName ?? ""}
+                    </p>
+                    <p>
+                      <span className="font-medium">Số tài khoản:</span>{" "}
+                      {formatCardNumber(currentCard.bankAccountNumber)}
+                    </p>
+                    <p className="text-green-600 font-medium">
+                      <span className="text-gray-600 font-normal">
+                        Số dư hiện tại:
+                      </span>{" "}
+                      {formatCurrency(currentCard.balance)}
+                    </p>
+                  </div>
                 </div>
               )}
+
               <Form.Item
-                label="Số Tiền"
+                label="Số tiền rút"
                 name="amount"
                 rules={[
                   {
@@ -465,19 +498,23 @@ export default function ProviderWalletsPage() {
                   max={10000000}
                   placeholder="Nhập số tiền cần rút"
                   style={{ width: "100%" }}
+                  size="large"
                   formatter={(value) =>
                     `₫ ${value}`.replace(/\B(?=(?:\d{3})+(?!\d))/g, ".")
                   }
                   parser={numberParser}
                 />
               </Form.Item>
+
               <Form.Item>
                 <Button
                   type="primary"
                   htmlType="submit"
                   danger
+                  size="large"
                   block
                   loading={topUpLoading}
+                  icon={<DownloadOutlined />}
                 >
                   Xác Nhận Rút Tiền
                 </Button>
