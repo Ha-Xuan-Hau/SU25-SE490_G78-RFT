@@ -301,11 +301,11 @@ export default function WithdrawalRequestsPage() {
           <Button key="cancel" onClick={() => setIsModalVisible(false)}>
             Đóng
           </Button>,
-          selectedWithdrawal?.status === "PENDING" && (
-            <Button key="reject" danger onClick={handleRejectRequest}>
-              Từ chối
-            </Button>
-          ),
+          // selectedWithdrawal?.status === "PENDING" && (
+          //   <Button key="reject" danger onClick={handleRejectRequest}>
+          //     Từ chối
+          //   </Button>
+          // ),
           selectedWithdrawal?.status === "PENDING" && (
             <Button key="approve" type="primary" onClick={handleApproveRequest}>
               Duyệt

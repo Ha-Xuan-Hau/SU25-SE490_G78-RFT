@@ -143,7 +143,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                 key: "transactions",
                 path: "/admin/manage-transactions",
                 icon: "mdi:credit-card-outline",
-                label: "Giao dịch thanh toán",
+                label: "Quản lý giao dịch",
               },
             ]
           : []),

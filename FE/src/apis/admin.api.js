@@ -39,3 +39,13 @@ export const getUserDetail = async (userId) => {
     const response = await apiClient.get(`/adminmanageusers/${userId}`);
     return response.data;
 };
+
+export const getAllFinalContracts = async () => {
+    const response = await apiClient.get('/final-contracts');
+    return response.data;
+};
+
+export const approveFinalContract = async (id, approvalData) => {
+    const response = await apiClient.put(`/final-contracts/${id}`, approvalData);
+    return response.data;
+};
