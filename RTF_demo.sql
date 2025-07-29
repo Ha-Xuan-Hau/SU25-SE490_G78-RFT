@@ -24,13 +24,12 @@ CREATE TABLE `users` (
 CREATE TABLE `user_report` (
     `id` varchar(255) NOT NULL,
     `reporter_id` varchar(255) NOT NULL,      -- Người thực hiện report
-    `reported_user_id` varchar(255) NOT NULL, -- Người bị report
+    `reported_id` varchar(255) NOT NULL, -- id(có thể là id người dùng, id xe) bị report
     `type` VARCHAR(50) NOT NULL,        -- Loại report (spam, lừa đảo, ngôn từ kích động,...)
     `reason` TEXT NOT NULL,             -- Mô tả lý do chi tiết
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (reporter_id) REFERENCES users(id),
-    FOREIGN KEY (reported_user_id) REFERENCES users(id)
+    FOREIGN KEY (reporter_id) REFERENCES users(id)
 ) COMMENT = 'Lưu các lần người dùng bị report, phân loại theo type';
 
 CREATE TABLE `user_register_vehicle` (
@@ -94,7 +93,7 @@ CREATE TABLE `vehicles` (
   `description` text,
   `number_vehicle` int DEFAULT 1,
   `cost_per_day` decimal(10,2) DEFAULT NULL,
-  `status` enum('AVAILABLE','UNAVAILABLE') DEFAULT 'AVAILABLE',
+  `status` enum('PENDING','AVAILABLE','UNAVAILABLE', 'SUSPENDED') DEFAULT 'PENDING',
   `thumb` text,
   `total_ratings` int DEFAULT '0',
   `likes` int DEFAULT '0',
@@ -466,7 +465,7 @@ INSERT INTO `extra_fee_rule` (
     `allowed_hour_late`, `fee_per_extra_hour`, `cleaning_fee`, 
     `smell_removal_fee`, `battery_charge_fee_per_percent`, 
     `apply_battery_charge_fee`, `driver_fee_per_day`, 
-    `has_driver_option`, `rental_fee_per_hour`, `has_hourly_rental`
+    `has_driver_option`, `driver_fee_per_hour`, `has_hourly_rental`
 ) VALUES
 -- Phụ phí cho xe ô tô (vehicle_001: Toyota Camry 2020)
 ('efr_001', 'vehicle_001', 300, 5000, 2, 50000, 100000, 150000, 0, FALSE, 300000, TRUE, 100000, TRUE),
@@ -549,9 +548,9 @@ INSERT INTO `booked_time_slots` (`id`, `vehicle_id`, `time_from`, `time_to`, `cr
 
 -- Insert wallet transactions
 INSERT INTO `wallet_transactions` (`id`, `wallet_id`, `amount`, `status`, `user_id`, `created_at`, `updated_at`) VALUES
-('trans_001', 'wallet_001', 1600000.00, 'APPROVED', 'user_001', '2025-07-07 02:44:00', '2025-07-07 02:44:00'),
-('trans_002', 'wallet_002', 400000.00, 'PENDING', 'user_002', '2025-07-07 02:45:00', '2025-07-07 02:45:00'),
-('trans_003', 'wallet_003', -1600000.00, 'APPROVED', 'user_003', '2025-07-07 02:46:00', '2025-07-07 02:46:00');
+('trans_001', 'wallet_001', 1600000.00, 'APPROVED', 'user_005', '2025-07-07 02:44:00', '2025-07-07 02:44:00'),
+('trans_002', 'wallet_002', 400000.00, 'PENDING', 'user_005', '2025-07-07 02:45:00', '2025-07-07 02:45:00'),
+('trans_003', 'wallet_003', -1600000.00, 'APPROVED', 'user_005', '2025-07-07 02:46:00', '2025-07-07 02:46:00');
 
 -- Insert sample notifications
 INSERT INTO `notifications` (`id`, `type`, `message`, `is_read`, `is_deleted`, `receiver_id`, `created_at`, `updated_at`) VALUES
@@ -561,6 +560,6 @@ INSERT INTO `notifications` (`id`, `type`, `message`, `is_read`, `is_deleted`, `
 ('notif_004', 'REPORT', 'Báo cáo của bạn về user_004 đã được gửi đi.', FALSE, FALSE, 'user_003', '2025-07-07 02:41:00', '2025-07-07 02:41:00');
 
 -- Insert sample user reports
-INSERT INTO `user_report` (`id`, `reporter_id`, `reported_user_id`, `type`, `reason`, `created_at`) VALUES
+INSERT INTO `user_report` (`id`, `reporter_id`, `reported_id`, `type`, `reason`, `created_at`) VALUES
 ('report_001', 'user_003', 'user_004', 'SPAM', 'Người dùng gửi tin nhắn quảng cáo không liên quan.', '2025-07-07 02:41:00'),
 ('report_002', 'user_003', 'user_002', 'INAPPROPRIATE', 'Xe của người dùng không đúng như mô tả.', '2025-07-07 02:42:00');

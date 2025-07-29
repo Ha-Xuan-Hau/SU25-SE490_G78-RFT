@@ -427,10 +427,7 @@ export default function ManageContracts() {
           /> */}
           <div>
             <div className="font-semibold"> {record.bookingId}</div>
-            <div className="text-sm text-gray-500">
-              {record.vehicleBrand} {record.vehicleLicensePlate}
-            </div>
-            <div className="text-xs text-gray-400">{record.vehicleThumb}</div>
+            <div className="text-sm text-gray-400">{record.vehicleThumb}</div>
           </div>
         </div>
       ),

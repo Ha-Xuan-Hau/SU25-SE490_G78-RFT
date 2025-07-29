@@ -107,7 +107,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         }
       } else if (paymentMethod === "VNPAY") {
         // Create VNPay payment
-        const response = (await createVNPayPayment(booking._id)) as {
+        const response = (await createVNPayPayment(
+          booking._id,
+          booking.totalCost
+        )) as {
           success: boolean;
           data?: { paymentUrl: string };
           error?: string;

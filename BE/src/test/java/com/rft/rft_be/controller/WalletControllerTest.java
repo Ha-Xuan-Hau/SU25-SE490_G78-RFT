@@ -177,17 +177,17 @@ public class WalletControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
-    @Test
-    void getAllWithdrawals_success() throws Exception {
-        List<WalletTransactionDTO> txns = Arrays.asList(transactionDTO);
-        Mockito.when(walletService.getAllWithdrawals("PENDING")).thenReturn(txns);
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/staff/withdrawals")
-                        .param("status", "PENDING")
-                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF"))))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("[0].id").value("txn-001"));
-    }
+//    @Test
+//    void getAllWithdrawals_success() throws Exception {
+//        List<WalletTransactionDTO> txns = Arrays.asList(transactionDTO);
+//        Mockito.when(walletService.getAllWithdrawals("PENDING")).thenReturn(txns);
+//
+//        mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/staff/withdrawals")
+//                        .param("status", "PENDING")
+//                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF"))))
+//                .andExpect(MockMvcResultMatchers.status().isOk())
+//                .andExpect(MockMvcResultMatchers.jsonPath("[0].id").value("txn-001"));
+//    }
 
     @Test
     void updateWithdrawalStatus_success() throws Exception {

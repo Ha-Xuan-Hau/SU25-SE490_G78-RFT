@@ -103,6 +103,9 @@ public class Vehicle {
     @Column(name = "total_ratings")
     private Integer totalRatings;
 
+    @OneToOne(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private ExtraFeeRule extraFeeRule;
+
     @ColumnDefault("0")
     @Column(name = "likes")
     private Integer likes;
@@ -134,6 +137,10 @@ public class Vehicle {
         GASOLINE, ELECTRIC
     }
     public enum Status {
-        AVAILABLE, UNAVAILABLE
+        PENDING ,AVAILABLE, UNAVAILABLE, SUSPENDED
+        // PENDING trạng thái xe chưa được duyệt
+        // AVAILABLE trạng thái xe đang hoạt động
+        // UNAVAILABLE trạng thái xe đã bị xóa
+        // SUSPENDED trạng thái xe đang tạm khóa bởi chủ xe
     }
 }

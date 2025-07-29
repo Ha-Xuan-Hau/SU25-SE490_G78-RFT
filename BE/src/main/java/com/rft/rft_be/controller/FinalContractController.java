@@ -1,16 +1,27 @@
 package com.rft.rft_be.controller;
 
 
+import com.rft.rft_be.dto.finalcontract.FinalContractNoteUpdateDTO;
+import com.rft.rft_be.dto.finalcontract.FinalContractResponseDTO;
+import com.rft.rft_be.dto.finalcontract.FinalContractSearchDTO;
+import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.entity.Contract;
+import com.rft.rft_be.entity.FinalContract;
+import com.rft.rft_be.repository.FinalContractRepository;
 import com.rft.rft_be.service.Contract.FinalContractService;
-import com.rft.rft_be.dto.contract.FinalContractDTO;
+import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
 import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +34,7 @@ import java.util.Map;
 public class FinalContractController {
 
     private final FinalContractService finalContractService;
+    private final FinalContractRepository finalContractRepository;
 
     @GetMapping
     public ResponseEntity<?> getAllFinalContracts() {
@@ -218,6 +230,19 @@ public class FinalContractController {
         }
     }
 
+    @GetMapping("/have-userid")
+    public ResponseEntity<?> getAllFinalContractsWithUser() {
+        try {
+            List<FinalContractDTO> contracts = finalContractService.getAllFinalContractsWithUser();
+            return ResponseEntity.ok(contracts);
+        } catch (Exception e) {
+            log.error("Error getting all final contracts with user", e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to retrieve final contracts with user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
     // Health check endpoint
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
@@ -241,5 +266,69 @@ public class FinalContractController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+
+    @PostMapping("/search")
+    public ResponseEntity<List<FinalContractResponseDTO>> searchContracts(@RequestBody @Valid FinalContractSearchDTO dto) {
+        List<FinalContract> contracts = finalContractRepository.findAll();
+
+        List<FinalContractResponseDTO> results = contracts.stream()
+                .filter(fc -> {
+                    Booking booking = fc.getContract().getBooking();
+                    boolean matchBooking = dto.getBookingId() == null || (booking != null && dto.getBookingId().equals(booking.getId()));
+                    boolean matchRenterEmail = dto.getRenterEmail() == null || fc.getUser().getEmail().equalsIgnoreCase(dto.getRenterEmail());
+                    boolean matchOwnerEmail = dto.getVehicleOwnerEmail() == null || booking.getBookingDetails().stream()
+                            .anyMatch(bd -> bd.getVehicle().getUser().getEmail().equalsIgnoreCase(dto.getVehicleOwnerEmail()));
+                    return matchBooking && matchRenterEmail && matchOwnerEmail;
+                })
+                .map(fc -> {
+                    Booking booking = fc.getContract().getBooking();
+                    String ownerName = booking.getBookingDetails().get(0).getVehicle().getUser().getFullName();
+                    return FinalContractResponseDTO.builder()
+                            .id(fc.getId())
+                            .bookingId(booking.getId())
+                            .renterName(fc.getUser().getFullName())
+                            .vehicleOwnerName(ownerName)
+                            .costSettlement(fc.getCostSettlement())
+                            .note(fc.getNote())
+                            .createdAt(fc.getCreatedAt())
+                            .updatedAt(fc.getUpdatedAt())
+                            .build();
+                })
+                .sorted((a, b) -> {
+                    Comparator<FinalContractResponseDTO> comparator = "updatedAt".equalsIgnoreCase(dto.getSortBy())
+                            ? Comparator.comparing(FinalContractResponseDTO::getUpdatedAt)
+                            : Comparator.comparing(FinalContractResponseDTO::getCreatedAt);
+                    return "desc".equalsIgnoreCase(dto.getOrder()) ? comparator.reversed().compare(a, b) : comparator.compare(a, b);
+                })
+                .toList();
+
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/FinalContractDetails/{id}")
+    public ResponseEntity<?> getFinalContractDetails(@PathVariable String id) {
+        FinalContract fc = finalContractRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Final contract not found"));
+
+        Contract contract = fc.getContract();
+        Booking booking = contract.getBooking();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("contract", fc);
+        response.put("booking", booking);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/note")
+    public ResponseEntity<?> updateNote(@PathVariable String id, @RequestBody @Valid FinalContractNoteUpdateDTO dto) {
+        FinalContract fc = finalContractRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Final contract not found"));
+
+        fc.setNote(dto.getNote());
+        finalContractRepository.save(fc);
+        return ResponseEntity.ok("Note updated successfully");
+    }
 }
+
 

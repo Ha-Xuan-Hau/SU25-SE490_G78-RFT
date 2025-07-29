@@ -13,7 +13,9 @@ import java.util.stream.Collectors;
 
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.entity.*;
+import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
+import com.rft.rft_be.service.Notification.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -59,6 +61,8 @@ public class BookingServiceImpl implements BookingService {
     CouponRepository couponRepository;
     FinalContractService finalContractService;
     BookingDetailRepository bookingDetailRepository;
+    NotificationService notificationService;
+    NotificationMapper notificationMapper;
 
     @Override
     @Transactional
@@ -177,6 +181,13 @@ public class BookingServiceImpl implements BookingService {
 
         bookingCleanupTask.scheduleCleanup(booking.getId());
 
+        String vehicleNames = vehicles.stream()
+                .map(Vehicle::getThumb)
+                .collect(Collectors.joining(", "));
+        notificationService.notifyOrderPlaced(userId, booking.getId(), vehicleNames);
+        notificationService.notifyProviderReceivedBooking(providerId, booking.getId(), vehicleNames);
+
+
         BookingResponseDTO response = bookingResponseMapper.toResponseDTO(booking);
         response.setDiscountAmount(totalDiscount);
         response.setPriceType(calculation.getPriceType());
@@ -200,15 +211,16 @@ public class BookingServiceImpl implements BookingService {
         boolean is24h = openTime.equals(LocalTime.MIDNIGHT) && closeTime.equals(LocalTime.MIDNIGHT);
 
         if (!is24h) {
-            if (startTime.isBefore(openTime) || !startTime.isBefore(closeTime)) {
+            if (startTime.isBefore(openTime) || startTime.isAfter(closeTime)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Giờ bắt đầu phải trong khoảng %s đến %s", openTime, closeTime.minusMinutes(1)));
+                        String.format("Giờ bắt đầu phải trong khoảng %s đến %s", openTime, closeTime));
             }
-            if (endTime.isAfter(closeTime) || !endTime.isAfter(openTime)) {
+            if (endTime.isBefore(openTime) || endTime.isAfter(closeTime)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Giờ kết thúc phải trong khoảng %s đến %s", openTime.plusMinutes(1), closeTime));
+                        String.format("Giờ kết thúc phải trong khoảng %s đến %s", openTime, closeTime));
             }
         }
+
 
         // Validate phút chỉ được :00 hoặc :30
         if ((startTime.getMinute() != 0 && startTime.getMinute() != 30)
@@ -377,6 +389,18 @@ public class BookingServiceImpl implements BookingService {
         }
         booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
+        notificationService.notifyOrderApproved(booking.getUser().getId(), booking.getId());
+
+
+        Contract contract = new Contract();
+        contract.setUser(booking.getBookingDetails().get(0).getVehicle().getUser());
+        contract.setBooking(booking);
+        contract.setCostSettlement(booking.getTotalCost());
+        contract.setStatus(Contract.Status.PROCESSING);
+        contract.setCreatedAt(LocalDateTime.now());
+        contract.setUpdatedAt(LocalDateTime.now());
+
+        contractRepository.save(contract);
     }
 
     @Override
@@ -412,6 +436,13 @@ public class BookingServiceImpl implements BookingService {
 
         booking.setStatus(Booking.Status.DELIVERED);
         bookingRepository.save(booking);
+        Vehicle vehicle = booking.getBookingDetails().get(0).getVehicle();
+        notificationService.notifyVehicleHandover(
+                booking.getUser().getId(),     // người thuê
+                booking.getId(),
+                vehicle.getThumb(),             // tên xe
+                booking.getAddress()           // địa điểm giao xe
+        );
     }
 
     @Override
@@ -429,6 +460,12 @@ public class BookingServiceImpl implements BookingService {
         // Update booking status
         booking.setStatus(Booking.Status.RECEIVED_BY_CUSTOMER);
         bookingRepository.save(booking);
+        String providerId = booking.getBookingDetails().get(0).getVehicle().getUser().getId();
+        String renterName = booking.getUser().getFullName();
+
+        notificationService.notifyVehiclePickupConfirmed(
+                providerId, booking.getId(), renterName
+        );
 
         // Update contract status to RENTING when customer receives the vehicle
         List<Contract> contracts = contractRepository.findByBookingId(bookingId);
@@ -452,6 +489,9 @@ public class BookingServiceImpl implements BookingService {
         }
         booking.setStatus(Booking.Status.RETURNED);
         bookingRepository.save(booking);
+        String providerId = booking.getBookingDetails().get(0).getVehicle().getUser().getId();
+        notificationService.notifyVehicleReturnConfirmed(providerId, booking.getId()
+        );
     }
 
     @Override
@@ -498,6 +538,7 @@ public class BookingServiceImpl implements BookingService {
                 log.error("Failed to create final contract for booking {}: {}", bookingId, e.getMessage());
             }
         }
+        notificationService.notifyBookingCompleted(booking.getUser().getId(), booking.getId());
     }
 
     @Override
@@ -554,6 +595,45 @@ public class BookingServiceImpl implements BookingService {
             refundAmount = booking.getTotalCost();
         }
 
+        //Return money to wallet
+        // Hoàn tiền về ví người thuê nếu có refundAmount > 0
+
+
+
+        if (refundAmount.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
+            //Lay user dua vao booking
+            Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
+            renterWallet.setBalance(renterWallet.getBalance().add(refundAmount));
+            walletRepository.save(renterWallet);
+
+            // Ghi log giao dịch hoàn tiền
+            WalletTransaction refundTx = WalletTransaction.builder()
+                    .wallet(renterWallet)
+                    .user(booking.getUser())
+                    .amount(refundAmount)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(refundTx);
+        }
+
+        // Chuyển phí phạt về ví chủ xe nếu có
+        if (penalty.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
+            Wallet providerWallet = walletRepository.findByUserId(providerId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+            providerWallet.setBalance(providerWallet.getBalance().add(penalty));
+            walletRepository.save(providerWallet);
+
+            // Ghi log giao dịch nhận phí phạt
+            WalletTransaction penaltyTx = WalletTransaction.builder()
+                    .wallet(providerWallet)
+                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
+                    .amount(penalty)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(penaltyTx);
+        }
+
         // Update booking status
         booking.setStatus(Booking.Status.CANCELLED);
         bookingRepository.save(booking);
@@ -595,6 +675,15 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
+        if (isRenter) {
+            notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, cancelRequest.getReason());
+            notificationService.notifyOrderCanceled(providerId, bookingId, "Đơn hàng đã bị hủy bởi khách hàng.");
+        } else if (isProvider) {
+            notificationService.notifyOrderCanceled(providerId, bookingId, cancelRequest.getReason());
+            notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, "Đơn hàng đã bị hủy bởi chủ xe.");
+        }
+
+
         return CancelBookingResponseDTO.builder()
                 .bookingId(bookingId)
                 .status(booking.getStatus().toString())
@@ -606,6 +695,7 @@ public class BookingServiceImpl implements BookingService {
                 .message("Hủy đơn đặt xe thành công")
                 .build();
     }
+
     private BigDecimal calculatePenalty(Booking booking) {
         if (booking.getPenaltyType() == Booking.PenaltyType.FIXED) {
             return booking.getPenaltyValue() != null ? booking.getPenaltyValue() : BigDecimal.ZERO;
@@ -671,6 +761,8 @@ public class BookingServiceImpl implements BookingService {
         // Cập nhật booking
         booking.setStatus(Booking.Status.PENDING);
         bookingRepository.save(booking);
+        notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
+
 
         Contract contract = Contract.builder()
                 .booking(booking)

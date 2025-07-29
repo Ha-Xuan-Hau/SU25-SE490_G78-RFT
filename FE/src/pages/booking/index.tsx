@@ -14,6 +14,7 @@ import {
   Spin,
   Divider,
   Modal,
+  Checkbox,
 } from "antd";
 import Image from "next/image";
 import dayjs, { Dayjs } from "dayjs";
@@ -31,6 +32,7 @@ import {
   VehicleType,
   ExistingBooking,
   BUFFER_TIME_RULES,
+  parseBackendTime,
 } from "@/utils/booking.utils";
 
 // Import component Coupon
@@ -38,7 +40,12 @@ import Coupon from "@/components/Coupon";
 import { coupon as CouponType } from "@/types/coupon";
 
 // Import API services
-import { getVehicleById, getBookedSlotById } from "@/apis/vehicle.api";
+import {
+  getVehicleById,
+  getBookedSlotById,
+  getAvailableThumbQuantity,
+  getAvailableThumbList,
+} from "@/apis/vehicle.api";
 import {
   createBooking,
   payWithWallet,
@@ -51,6 +58,7 @@ import { Vehicle } from "@/types/vehicle";
 import { User } from "@/types/user";
 
 import { useUserValue } from "@/recoils/user.state";
+import { showError } from "@/utils/toast.utils";
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -108,11 +116,35 @@ interface AvailabilityCheckResponse {
 // Component chính
 const BookingPage: React.FC = () => {
   const router = useRouter();
-  const { id } = router.query;
-
+  // Support both single and multiple vehicle booking via vehicleId param
+  const { vehicleId, id } = router.query;
+  // Parse vehicleIds: can be string or comma-separated list
+  let vehicleIds: string[] = [];
+  if (vehicleId) {
+    if (typeof vehicleId === "string") {
+      vehicleIds = vehicleId
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+    } else if (Array.isArray(vehicleId)) {
+      vehicleIds = vehicleId;
+    }
+  } else if (id) {
+    if (typeof id === "string") {
+      vehicleIds = [id];
+    } else if (Array.isArray(id)) {
+      vehicleIds = id;
+    }
+  }
+  // Quantity is always inferred from vehicleIds.length
+  const [selectedQuantity, setSelectedQuantity] = useState(
+    vehicleIds.length || 1
+  );
   // State
   const [current, setCurrent] = useState<number>(0);
+  // For single booking, use first vehicleId; for multi, use array
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [multiVehicles, setMultiVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [costGetCar, setCostGetCar] = useState<number>(0);
@@ -123,8 +155,9 @@ const BookingPage: React.FC = () => {
   const [bookingData, setBookingData] = useState<BookingResponse | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("VNPAY");
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [availableQuantity, setAvailableQuantity] = useState(1);
 
-  // NEW: Rental calculation states
+  //  Rental calculation states
   const [rentalCalculation, setRentalCalculation] =
     useState<RentalCalculation | null>(null);
   const [hourlyRate, setHourlyRate] = useState<number>(0);
@@ -132,7 +165,7 @@ const BookingPage: React.FC = () => {
     null
   );
 
-  // NEW: Buffer time states
+  //  Buffer time states
   const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>(
     []
   );
@@ -142,6 +175,21 @@ const BookingPage: React.FC = () => {
   const [bufferConflictMessage, setBufferConflictMessage] =
     useState<string>("");
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
+
+  const [isVehicleSelectModalOpen, setIsVehicleSelectModalOpen] =
+    useState(false);
+  const [availableVehicleList, setAvailableVehicleList] = useState<Vehicle[]>(
+    []
+  );
+  const [newSelectedVehicleIds, setNewSelectedVehicleIds] = useState<string[]>(
+    []
+  );
+  const [availableQuantityForReselect, setAvailableQuantityForReselect] =
+    useState(1);
+
+  const [vehicleAvailabilityStatus, setVehicleAvailabilityStatus] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   const user = useUserValue() as User;
 
@@ -153,63 +201,95 @@ const BookingPage: React.FC = () => {
 
   // Tính hourly rate từ daily rate (daily rate / 12 giờ)
   useEffect(() => {
-    if (vehicle?.costPerDay) {
+    if (vehicleIds.length === 1 && vehicle?.costPerDay) {
       setHourlyRate(Math.round(vehicle.costPerDay / 12));
+    } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+      // Use the first vehicle's rate for multi-booking
+      setHourlyRate(Math.round(multiVehicles[0].costPerDay / 12));
     }
-  }, [vehicle?.costPerDay]);
+  }, [vehicle?.costPerDay, multiVehicles, vehicleIds.join(",")]);
 
   // Fetch vehicle data and handle query params
   useEffect(() => {
-    const fetchVehicle = async () => {
-      if (!id) return;
-
+    const fetchVehicleData = async () => {
+      if (!vehicleIds.length) return;
+      setLoading(true);
       try {
-        setLoading(true);
-        const vehicleData = await getVehicleById(id);
-        setVehicle(vehicleData);
-
-        // TODO: Fetch existing bookings for this vehicle
-        const bookings = await getBookedSlotById(id);
-        setExistingBookings(bookings);
+        if (vehicleIds.length === 1) {
+          const vehicleData = await getVehicleById(vehicleIds[0]);
+          setVehicle(vehicleData);
+          const bookings = await getBookedSlotById(vehicleIds[0]);
+          setExistingBookings(bookings);
+        } else {
+          // Multi-vehicle booking
+          const vehicles: Vehicle[] = [];
+          let allBookings: ExistingBooking[] = [];
+          for (const vid of vehicleIds) {
+            const v = await getVehicleById(vid);
+            vehicles.push(v);
+            const bookings = await getBookedSlotById(vid);
+            allBookings = allBookings.concat(bookings);
+          }
+          setMultiVehicles(vehicles);
+          setExistingBookings(allBookings);
+        }
 
         // Check for time parameters in URL
         const { pickupTime, returnTime } = router.query;
-        console.log("URL query params:", { pickupTime, returnTime });
-
         if (pickupTime && returnTime) {
           const startDate = dayjs(pickupTime as string);
           const endDate = dayjs(returnTime as string);
-
           if (startDate.isValid() && endDate.isValid()) {
             setSelectedDates([startDate, endDate]);
-
-            // Tính toán thời gian thuê
             const calculation = calculateRentalDuration(startDate, endDate);
             setRentalCalculation(calculation);
             setTotalDays(
               calculation.isHourlyRate ? 1 : calculation.billingDays
             );
-
-            // Kiểm tra buffer time conflict nếu có vehicle type
-            if (vehicleData?.vehicleType) {
-              const vehicleType =
-                vehicleData.vehicleType.toUpperCase() as VehicleType;
-              const conflictCheck = checkBufferTimeConflict(
-                vehicleType,
-                startDate,
-                endDate,
-                // mockBookings
-                bookings
-              );
-
-              if (conflictCheck.hasConflict) {
-                setBufferConflictMessage(
-                  conflictCheck.message || "Có xung đột thời gian"
+            // Kiểm tra buffer time conflict cho tất cả xe
+            let hasConflict = false;
+            let conflictMsg = "";
+            if (vehicleIds.length === 1) {
+              if (vehicle?.vehicleType) {
+                const vehicleType =
+                  vehicle.vehicleType.toUpperCase() as VehicleType;
+                const conflictCheck = checkBufferTimeConflict(
+                  vehicleType,
+                  startDate,
+                  endDate,
+                  existingBookings
                 );
-              } else {
-                setBufferConflictMessage("");
+                if (conflictCheck.hasConflict) {
+                  hasConflict = true;
+                  conflictMsg =
+                    conflictCheck.message || "Có xung đột thời gian";
+                }
+              }
+            } else {
+              // Multi-vehicle: check all
+              for (let i = 0; i < multiVehicles.length; i++) {
+                const vData = multiVehicles[i];
+                if (vData?.vehicleType) {
+                  const vehicleType =
+                    vData.vehicleType.toUpperCase() as VehicleType;
+                  const conflictCheck = checkBufferTimeConflict(
+                    vehicleType,
+                    startDate,
+                    endDate,
+                    existingBookings.filter(
+                      (b) => String(b.id) === String(vData.id)
+                    )
+                  );
+                  if (conflictCheck.hasConflict) {
+                    hasConflict = true;
+                    conflictMsg =
+                      conflictCheck.message || "Có xung đột thời gian";
+                    break;
+                  }
+                }
               }
             }
+            setBufferConflictMessage(hasConflict ? conflictMsg : "");
           }
         }
       } catch (error) {
@@ -219,11 +299,192 @@ const BookingPage: React.FC = () => {
         setLoading(false);
       }
     };
+    fetchVehicleData();
+  }, [
+    vehicleIds.join(","),
+    router.query,
+    multiVehicles.length,
+    vehicle?.vehicleType,
+  ]);
 
-    if (id) {
-      fetchVehicle();
+  const fetchAvailableVehiclesForModal = async () => {
+    try {
+      if (!selectedDates?.[0] || !selectedDates?.[1]) {
+        message.error("Vui lòng chọn thời gian thuê xe trước");
+        return;
+      }
+
+      // Sử dụng vehicle đầu tiên hoặc từ multiVehicles
+      const referenceVehicle =
+        vehicle || (multiVehicles.length > 0 ? multiVehicles[0] : null);
+
+      if (!referenceVehicle?.thumb || !referenceVehicle?.userId) {
+        message.error("Không thể lấy thông tin xe để tìm xe tương tự");
+        return;
+      }
+
+      // Kiểm tra loại xe - chỉ cho phép xe máy và xe đạp
+      if (referenceVehicle.vehicleType.toUpperCase() === "CAR") {
+        message.error(
+          "Tính năng chọn nhiều xe chỉ áp dụng cho xe máy và xe đạp"
+        );
+        return;
+      }
+
+      const from = selectedDates[0].format("YYYY-MM-DDTHH:mm:ss");
+      const to = selectedDates[1].format("YYYY-MM-DDTHH:mm:ss");
+
+      // Lấy số lượng khả dụng
+      const quantity = await getAvailableThumbQuantity({
+        thumb: referenceVehicle.thumb,
+        providerId: referenceVehicle.userId,
+        from,
+        to,
+      });
+
+      // Lấy danh sách xe khả dụng
+      const vehicles = await getAvailableThumbList({
+        thumb: referenceVehicle.thumb,
+        providerId: referenceVehicle.userId,
+        from,
+        to,
+      });
+
+      setAvailableQuantityForReselect(quantity);
+      setAvailableVehicleList(vehicles);
+
+      // Pre-select current vehicles
+      setNewSelectedVehicleIds(vehicleIds);
+
+      setIsVehicleSelectModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching available vehicles:", error);
+      message.error("Không thể lấy danh sách xe khả dụng");
     }
-  }, [id, router.query]);
+  };
+
+  const checkVehicleAvailabilityFromSlots = (
+    vehicleId: string,
+    startDate: Dayjs,
+    endDate: Dayjs,
+    bookedSlots: ExistingBooking[]
+  ): boolean => {
+    // Lấy booked slots cho xe này
+    const vehicleBookedSlots = bookedSlots.filter(
+      (slot) =>
+        String(slot.id) === String(vehicleId) ||
+        String(slot.id) === String(vehicleId) // Fallback nếu structure khác
+    );
+
+    // Nếu không có booked slots thì xe available
+    if (vehicleBookedSlots.length === 0) return true;
+
+    // Check conflict với từng booked slot
+    for (const slot of vehicleBookedSlots) {
+      const slotStart = parseBackendTime(slot.startDate);
+      const slotEnd = parseBackendTime(slot.endDate);
+
+      // Check overlap: new booking overlaps with existing slot
+      const hasOverlap =
+        startDate.isBefore(slotEnd) && endDate.isAfter(slotStart);
+
+      if (hasOverlap) {
+        return false; // Xe không available
+      }
+    }
+
+    return true; // Xe available
+  };
+
+  // Function để check availability cho tất cả xe hiện tại
+  const checkAllVehiclesAvailability = async () => {
+    if (!selectedDates?.[0] || !selectedDates?.[1]) {
+      setVehicleAvailabilityStatus({});
+      return;
+    }
+
+    const startDate = selectedDates[0];
+    const endDate = selectedDates[1];
+
+    try {
+      // Lấy booked slots cho tất cả xe
+      const allBookedSlotsPromises = vehicleIds.map(async (vehicleId) => {
+        try {
+          const slots = await getBookedSlotById(vehicleId);
+          return { vehicleId, slots };
+        } catch (error) {
+          console.error(
+            `Error fetching booked slots for vehicle ${vehicleId}:`,
+            error
+          );
+          return { vehicleId, slots: [] };
+        }
+      });
+
+      const allBookedSlotsResults = await Promise.all(allBookedSlotsPromises);
+
+      // Gộp tất cả booked slots
+      const allBookedSlots: ExistingBooking[] = [];
+      allBookedSlotsResults.forEach(({ slots }) => {
+        allBookedSlots.push(...slots);
+      });
+
+      // Check availability cho từng xe
+      const statusMap: { [key: string]: boolean } = {};
+      vehicleIds.forEach((vehicleId) => {
+        const isAvailable = checkVehicleAvailabilityFromSlots(
+          vehicleId,
+          startDate,
+          endDate,
+          allBookedSlots
+        );
+        statusMap[vehicleId] = isAvailable;
+      });
+
+      setVehicleAvailabilityStatus(statusMap);
+
+      // Show warning nếu có xe unavailable
+      const unavailableVehicles = Object.entries(statusMap).filter(
+        ([_, isAvailable]) => !isAvailable
+      );
+      if (unavailableVehicles.length > 0) {
+        message.warning(
+          `Có ${unavailableVehicles.length} xe đã được đặt trong khoảng thời gian này. Vui lòng chọn lại xe hoặc thay đổi thời gian.`
+        );
+      }
+    } catch (error) {
+      console.error("Error checking vehicles availability:", error);
+      // Fallback: mark all as available nếu có lỗi
+      const statusMap: { [key: string]: boolean } = {};
+      vehicleIds.forEach((vehicleId) => {
+        statusMap[vehicleId] = true;
+      });
+      setVehicleAvailabilityStatus(statusMap);
+    }
+  };
+
+  // Function để handle việc chọn lại xe
+  const handleVehicleReselect = () => {
+    if (newSelectedVehicleIds.length === 0) {
+      message.error("Vui lòng chọn ít nhất một xe");
+      return;
+    }
+
+    // Tạo URL mới với danh sách xe đã chọn
+    const newVehicleIdsParam = newSelectedVehicleIds.join(",");
+    const newBookingUrl = `/booking?vehicleId=${encodeURIComponent(
+      newVehicleIdsParam
+    )}&pickupTime=${encodeURIComponent(
+      selectedDates?.[0]?.format("YYYY-MM-DD HH:mm") || ""
+    )}&returnTime=${encodeURIComponent(
+      selectedDates?.[1]?.format("YYYY-MM-DD HH:mm") || ""
+    )}`;
+
+    setIsVehicleSelectModalOpen(false);
+
+    // Redirect to new URL
+    window.location.href = newBookingUrl;
+  };
 
   // Reset coupon state when component mounts or when returning to step 0
   useEffect(() => {
@@ -292,9 +553,34 @@ const BookingPage: React.FC = () => {
 
       while (retryCount < maxRetries) {
         try {
-          // Double-check availability ngay trước khi tạo booking
+          // SỬA: Sử dụng vehicleIds từ URL params thay vì logic phức tạp
+          let finalVehicleIds: string[] = [];
+
+          if (vehicleIds.length > 0) {
+            // Đã có vehicleIds từ URL params, sử dụng trực tiếp
+            finalVehicleIds = vehicleIds.filter((id) => id && id.trim() !== ""); // Lọc bỏ null/empty
+          } else {
+            // Fallback: sử dụng id từ query params
+            const singleId =
+              typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+            if (singleId) {
+              finalVehicleIds = [singleId];
+            }
+          }
+
+          // Kiểm tra finalVehicleIds có hợp lệ không
+          if (finalVehicleIds.length === 0) {
+            message.error("Không tìm thấy thông tin xe để đặt");
+            setSubmitting(false);
+            return;
+          }
+
+          console.log("Final vehicle IDs for booking:", finalVehicleIds);
+
+          // Double-check availability cho xe đầu tiên
+          const firstVehicleId = finalVehicleIds[0];
           const lastMinuteCheck = (await checkAvailability(
-            id as string,
+            firstVehicleId,
             startTime,
             endTime
           )) as AvailabilityCheckResponse;
@@ -303,23 +589,27 @@ const BookingPage: React.FC = () => {
             throw new Error("CONFLICT: Xe vừa được đặt bởi người khác");
           }
 
+          // Tạo booking request data
           const bookingRequestData = {
-            vehicleIds: [id],
+            vehicleIds: finalVehicleIds, // Sử dụng finalVehicleIds đã được validate
             timeBookingStart: formatTimeForBackend(selectedDates[0]),
             timeBookingEnd: formatTimeForBackend(selectedDates[1]),
-            fullname: formValues.fullname,
+            fullname: formValues.fullname || user?.fullName || "",
             phoneNumber: formValues.phone,
             address:
               costGetCar === 1
                 ? formValues.address || ""
-                : vehicle?.address || "Nhận tại văn phòng",
+                : vehicle?.address ||
+                  multiVehicles[0]?.address ||
+                  "Nhận tại văn phòng",
             pickupMethod: costGetCar === 0 ? "office" : "delivery",
             couponId: selectedCoupon?.id || null,
 
             // Penalty info từ vehicle
-            penaltyType: vehicle?.penaltyType || "PERCENT",
-            penaltyValue: vehicle?.penaltyValue || 10,
-            minCancelHour: vehicle?.minCancelHour || 24,
+            penaltyType:
+              (vehicle || multiVehicles[0])?.penaltyType || "PERCENT",
+            penaltyValue: (vehicle || multiVehicles[0])?.penaltyValue || 10,
+            minCancelHour: (vehicle || multiVehicles[0])?.minCancelHour || 24,
           };
 
           console.log("Creating booking with data:", bookingRequestData);
@@ -373,25 +663,16 @@ const BookingPage: React.FC = () => {
               continue;
             } else {
               // Final failure after all retries
-              message.destroy(); // Clear any previous messages
-              message.error({
-                content:
-                  "❌ Xe đã được đặt bởi người khác! Vui lòng chọn thời gian khác.",
-                duration: 5,
-                style: { marginTop: "20vh" },
-              });
-
-              // Refresh existing bookings để user thấy slot mới bị chiếm
-              try {
-                const updatedBookings = await getBookedSlotById(id);
-                setExistingBookings(updatedBookings);
-                console.log(
-                  "Updated bookings after conflict:",
-                  updatedBookings
-                );
-              } catch (refreshError) {
-                console.error("Error refreshing bookings:", refreshError);
-              }
+              // message.destroy(); // Clear any previous messages
+              // message.error({
+              //   content:
+              //     "❌ Xe đã được đặt bởi người khác! Vui lòng chọn thời gian khác.",
+              //   duration: 5,
+              //   style: { marginTop: "20vh" },
+              // });
+              showError(
+                "Xe đã được đặt bởi người khác! Vui lòng chọn thời gian khác."
+              );
 
               setCurrent(0); // Back to time selection
               return;
@@ -410,6 +691,7 @@ const BookingPage: React.FC = () => {
       setSubmitting(false);
     }
   };
+
   // Xử lý thanh toán
   const handlePayment = async () => {
     try {
@@ -439,9 +721,10 @@ const BookingPage: React.FC = () => {
           message.error(paymentResponse.error || "Lỗi thanh toán ví");
         }
       } else {
-        // Tạo link thanh toán VNPay
+        // Tạo link thanh toán VNPay, truyền thêm amount
         const paymentResponse = (await createVNPayPayment(
-          bookingData.id
+          bookingData.id,
+          bookingData.totalCost
         )) as PaymentResponse;
 
         if (paymentResponse.success && paymentResponse.data?.paymentUrl) {
@@ -461,7 +744,7 @@ const BookingPage: React.FC = () => {
   };
 
   // NEW: Xử lý thay đổi thời gian
-  const selectTimeSlots: RangePickerProps["onChange"] = (value) => {
+  const selectTimeSlots: RangePickerProps["onChange"] = async (value) => {
     if (value && value[0] && value[1]) {
       const startDate = value[0] as Dayjs;
       const endDate = value[1] as Dayjs;
@@ -476,9 +759,12 @@ const BookingPage: React.FC = () => {
       // Legacy compatibility
       setTotalDays(calculation.isHourlyRate ? 1 : calculation.billingDays);
 
-      // Kiểm tra buffer time conflict
-      if (vehicle?.vehicleType) {
-        const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+      // Kiểm tra buffer time conflict cho xe đầu tiên (reference vehicle)
+      const referenceVehicle =
+        vehicle || (multiVehicles.length > 0 ? multiVehicles[0] : null);
+      if (referenceVehicle?.vehicleType) {
+        const vehicleType =
+          referenceVehicle.vehicleType.toUpperCase() as VehicleType;
         const conflictCheck = checkBufferTimeConflict(
           vehicleType,
           startDate,
@@ -498,7 +784,15 @@ const BookingPage: React.FC = () => {
         }
       }
 
+      // Check availability cho tất cả xe hiện tại
+      await checkAllVehiclesAvailability();
+
       console.log("Rental calculation:", calculation);
+    } else {
+      // Reset khi không có dates
+      setSelectedDates(null);
+      setVehicleAvailabilityStatus({});
+      setBufferConflictMessage("");
     }
   };
 
@@ -514,15 +808,38 @@ const BookingPage: React.FC = () => {
   };
 
   // Tính toán giá tiền theo logic mới
-  const costPerDay = vehicle?.costPerDay || 0;
-  let subtotal = 0;
-
-  if (rentalCalculation && hourlyRate > 0) {
-    subtotal = calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay);
-  } else {
-    subtotal = totalDays * costPerDay;
+  let costPerDay = 0;
+  if (vehicleIds.length === 1 && vehicle?.costPerDay) {
+    costPerDay = vehicle.costPerDay;
+  } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+    // Tổng hợp giá cho nhiều xe (cộng từng xe)
+    costPerDay = multiVehicles.reduce((sum, v) => sum + (v.costPerDay || 0), 0);
   }
-
+  let subtotal = 0;
+  if (rentalCalculation && hourlyRate > 0) {
+    if (vehicleIds.length === 1) {
+      subtotal =
+        calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay) *
+        selectedQuantity;
+    } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+      // Tính tổng giá cho từng xe
+      subtotal = multiVehicles.reduce((sum, v) => {
+        const rate = Math.round((v.costPerDay || 0) / 12);
+        return (
+          sum + calculateRentalPrice(rentalCalculation, rate, v.costPerDay || 0)
+        );
+      }, 0);
+    }
+  } else {
+    if (vehicleIds.length === 1) {
+      subtotal = totalDays * costPerDay * selectedQuantity;
+    } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+      subtotal = multiVehicles.reduce(
+        (sum, v) => sum + totalDays * (v.costPerDay || 0),
+        0
+      );
+    }
+  }
   const deliveryFee = 0; // Miễn phí giao xe
   const discountAmount = (subtotal * amountDiscount) / 100;
   const totalAmount = subtotal + deliveryFee - discountAmount;
@@ -537,6 +854,58 @@ const BookingPage: React.FC = () => {
     }
   }, [user, form]);
 
+  useEffect(() => {
+    const fetchAvailableQuantity = async () => {
+      if (!selectedDates?.[0] || !selectedDates?.[1]) {
+        setAvailableQuantityForReselect(1);
+        return;
+      }
+
+      // Chỉ fetch cho xe máy/xe đạp, không cho ô tô
+      const referenceVehicle =
+        vehicle || (multiVehicles.length > 0 ? multiVehicles[0] : null);
+
+      if (!referenceVehicle?.vehicleType) {
+        setAvailableQuantityForReselect(1);
+        return;
+      }
+
+      // Kiểm tra loại xe - chỉ cho phép xe máy và xe đạp
+      if (referenceVehicle.vehicleType.toUpperCase() === "CAR") {
+        setAvailableQuantityForReselect(1);
+        return;
+      }
+
+      if (referenceVehicle?.thumb && referenceVehicle?.userId) {
+        try {
+          const from = selectedDates[0].format("YYYY-MM-DDTHH:mm:ss");
+          const to = selectedDates[1].format("YYYY-MM-DDTHH:mm:ss");
+
+          const quantity = await getAvailableThumbQuantity({
+            thumb: referenceVehicle.thumb,
+            providerId: referenceVehicle.userId,
+            from,
+            to,
+          });
+
+          setAvailableQuantityForReselect(quantity);
+        } catch (err) {
+          console.error("Error fetching available quantity:", err);
+          setAvailableQuantityForReselect(1);
+        }
+      } else {
+        setAvailableQuantityForReselect(1);
+      }
+    };
+
+    fetchAvailableQuantity();
+  }, [selectedDates, vehicle, multiVehicles]);
+
+  useEffect(() => {
+    // Always sync selectedQuantity with vehicleIds.length
+    setSelectedQuantity(vehicleIds.length || 1);
+  }, [vehicleIds.join(",")]);
+
   // Prepare default date values
   const { pickupTime, returnTime } = router.query;
   const defaultStartDate: Dayjs = pickupTime
@@ -547,30 +916,59 @@ const BookingPage: React.FC = () => {
     : dayjs().add(4, "day").hour(20).minute(0);
 
   // Tạo disabledTime và disabledDate functions sử dụng helper mới
-  const openTime = vehicle?.openTime || "00:00";
-  const closeTime = vehicle?.closeTime || "00:00";
+  // Nếu nhiều xe, lấy open/closeTime của xe đầu tiên
+  const openTime = vehicle?.openTime || (multiVehicles[0]?.openTime ?? "00:00");
+  const closeTime =
+    vehicle?.closeTime || (multiVehicles[0]?.closeTime ?? "00:00");
 
   const disabledRangeTime = useMemo(() => {
-    if (!vehicle?.vehicleType) {
-      return createDisabledTimeFunction("CAR", [], openTime, closeTime);
+    if (vehicleIds.length === 1 && vehicle?.vehicleType) {
+      const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+      return createDisabledTimeFunction(
+        vehicleType,
+        existingBookings,
+        openTime,
+        closeTime
+      );
+    } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+      // Nếu nhiều xe, gộp tất cả bookings lại, lấy loại xe đầu tiên
+      const vehicleType =
+        multiVehicles[0].vehicleType.toUpperCase() as VehicleType;
+      return createDisabledTimeFunction(
+        vehicleType,
+        existingBookings,
+        openTime,
+        closeTime
+      );
     }
-    const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-    return createDisabledTimeFunction(
-      vehicleType,
-      existingBookings,
-      openTime,
-      closeTime
-    );
-  }, [vehicle?.vehicleType, existingBookings, openTime, closeTime]);
+    return createDisabledTimeFunction("CAR", [], openTime, closeTime);
+  }, [
+    vehicle?.vehicleType,
+    multiVehicles,
+    existingBookings,
+    openTime,
+    closeTime,
+    vehicleIds.join(","),
+  ]);
 
   const disabledDateFunction = useMemo(() => {
     return (current: Dayjs): boolean => {
-      if (!current || !vehicle?.vehicleType) return false;
-
-      const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-      return isDateDisabled(current, vehicleType, existingBookings);
+      if (vehicleIds.length === 1 && vehicle?.vehicleType) {
+        const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+        return isDateDisabled(current, vehicleType, existingBookings);
+      } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+        const vehicleType =
+          multiVehicles[0].vehicleType.toUpperCase() as VehicleType;
+        return isDateDisabled(current, vehicleType, existingBookings);
+      }
+      return false;
     };
-  }, [vehicle?.vehicleType, existingBookings]);
+  }, [
+    vehicle?.vehicleType,
+    multiVehicles,
+    existingBookings,
+    vehicleIds.join(","),
+  ]);
 
   // Loading state
   if (loading) {
@@ -582,10 +980,22 @@ const BookingPage: React.FC = () => {
   }
 
   // Error state
-  if (!vehicle) {
+  if (vehicleIds.length === 1 && !vehicle) {
     return (
       <div className="flex flex-col justify-center items-center h-screen">
         <p className="text-xl mb-4 text-red-500">Không thể tải thông tin xe</p>
+        <Link href="/vehicles">
+          <Button type="primary">Quay lại trang tìm kiếm xe</Button>
+        </Link>
+      </div>
+    );
+  }
+  if (vehicleIds.length > 1 && multiVehicles.length === 0) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen">
+        <p className="text-xl mb-4 text-red-500">
+          Không thể tải thông tin các xe
+        </p>
         <Link href="/vehicles">
           <Button type="primary">Quay lại trang tìm kiếm xe</Button>
         </Link>
@@ -610,6 +1020,7 @@ const BookingPage: React.FC = () => {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
+                  {/* Option 1: Nhận tại văn phòng - Luôn hiển thị */}
                   <div
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       costGetCar === 0
@@ -625,14 +1036,22 @@ const BookingPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="text-gray-600 text-base">
-                      {vehicle.address || "Thạch Hòa, Thạch Thất, Hà Nội"}
+                      {vehicle?.address ||
+                        (multiVehicles.length > 0 &&
+                          multiVehicles[0].address) ||
+                        "Thạch Hòa, Thạch Thất, Hà Nội"}
                     </div>
                     <div className="text-green-600 font-semibold text-base mt-1">
                       Miễn phí
                     </div>
                   </div>
 
-                  {vehicle.shipToAddress == "YES" && (
+                  {/* Option 2: Giao xe - Chỉ hiển thị khi có shipToAddress = "YES" */}
+                  {((vehicleIds.length === 1 &&
+                    vehicle?.shipToAddress === "YES") ||
+                    (vehicleIds.length > 1 &&
+                      multiVehicles.length > 0 &&
+                      multiVehicles[0].shipToAddress === "YES")) && (
                     <div
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                         costGetCar === 1
@@ -657,6 +1076,7 @@ const BookingPage: React.FC = () => {
                   )}
                 </div>
 
+                {/* Form nhập địa chỉ giao xe */}
                 {costGetCar === 1 && (
                   <div className="mt-4">
                     <Form form={form} layout="vertical">
@@ -690,42 +1110,15 @@ const BookingPage: React.FC = () => {
                 <div className="flex items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-800">
                     Thông tin xe thuê
+                    {vehicleIds.length > 1 && (
+                      <span className="ml-2 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        {vehicleIds.length} xe
+                      </span>
+                    )}
                   </h3>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="relative w-full sm:w-48 h-32 rounded-lg overflow-hidden">
-                    <Image
-                      src={
-                        vehicle.vehicleImages?.length > 0
-                          ? vehicle.vehicleImages[0].imageUrl
-                          : "/images/demo1.png"
-                      }
-                      alt="Vehicle"
-                      layout="fill"
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-
-                  <div className="flex-1 space-y-2">
-                    <h4 className="font-semibold text-xl text-gray-800">
-                      {vehicle.thumb} - {vehicle.modelName} (
-                      {vehicle.yearManufacture})
-                    </h4>
-                    <div className="flex flex-wrap gap-4 text-base text-gray-600">
-                      <span>{vehicle.transmission}</span>
-                      <span>{vehicle.numberSeat} chỗ</span>
-                      <span>{vehicle.fuelType || "Xăng"}</span>
-                    </div>
-                    <div className="text-2xl font-bold text-red-500">
-                      {vehicle.costPerDay.toLocaleString("vi-VN")}₫/ngày
-                    </div>
-                  </div>
-                </div>
-
-                {/* Chọn thời gian */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="mb-6 pb-4 border-b border-gray-200">
                   <RangePicker
                     showTime={{ format: "HH:mm", minuteStep: 30 }}
                     format="DD-MM-YYYY HH:mm"
@@ -775,8 +1168,371 @@ const BookingPage: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Sửa lại phần hiển thị thông tin số lượng xe khả dụng */}
+                  {selectedDates?.[0] && selectedDates?.[1] && (
+                    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">
+                            Số lượng xe khả dụng:
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-sm font-bold text-blue-600">
+                            {availableQuantityForReselect}
+                          </span>
+                          {/* Hiển thị loại xe */}
+                          {(vehicle || multiVehicles[0]) && (
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                              {translateENtoVI(
+                                (vehicle || multiVehicles[0])?.vehicleType || ""
+                              )}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Chỉ hiển thị nút "Chọn lại xe" cho xe máy/xe đạp */}
+                        {((vehicle &&
+                          vehicle.vehicleType.toUpperCase() !== "CAR") ||
+                          (multiVehicles.length > 0 &&
+                            multiVehicles[0].vehicleType.toUpperCase() !==
+                              "CAR")) &&
+                          availableQuantityForReselect > 1 && (
+                            <button
+                              className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                              onClick={fetchAvailableVehiclesForModal}
+                            >
+                              Chọn lại xe
+                            </button>
+                          )}
+
+                        {/* Thông báo cho ô tô */}
+                        {((vehicle &&
+                          vehicle.vehicleType.toUpperCase() === "CAR") ||
+                          (multiVehicles.length > 0 &&
+                            multiVehicles[0].vehicleType.toUpperCase() ===
+                              "CAR")) && (
+                          <span className="text-xs text-gray-500 italic">
+                            Ô tô chỉ có thể đặt 1 xe
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Danh sách xe - Single vehicle */}
+                {vehicleIds.length === 1 && vehicle && (
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="relative w-full sm:w-48 h-32 rounded-lg overflow-hidden">
+                      <Image
+                        src={
+                          vehicle.vehicleImages?.length > 0
+                            ? vehicle.vehicleImages[0].imageUrl
+                            : "/images/demo1.png"
+                        }
+                        alt="Vehicle"
+                        layout="fill"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+
+                    <div className="flex-1 space-y-2">
+                      <h4 className="font-semibold text-xl text-gray-800">
+                        {vehicle.thumb} - {vehicle.modelName} (
+                        {vehicle.yearManufacture})
+                      </h4>
+                      <div className="flex flex-wrap gap-4 text-base text-gray-600">
+                        <span>{translateENtoVI(vehicle.transmission)}</span>
+                        <span>{translateENtoVI(vehicle.fuelType)}</span>
+                        <span>Biển số: {vehicle.licensePlate}</span>
+                      </div>
+                      <div className="text-xl font-bold text-primary">
+                        {vehicle.costPerDay.toLocaleString("vi-VN")}₫/ngày
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Danh sách xe - Multiple vehicles */}
+                {vehicleIds.length > 1 && multiVehicles.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="text-sm text-gray-600 mb-3">
+                      Danh sách {multiVehicles.length} xe đã chọn:
+                    </div>
+
+                    <div
+                      className="space-y-4 overflow-y-auto pr-2"
+                      style={{
+                        maxHeight: "400px",
+                        scrollbarWidth: "thin",
+                        scrollbarColor: "#cbd5e1 #f1f5f9",
+                      }}
+                    >
+                      {multiVehicles.map((vehicleItem, index) => {
+                        const isAvailable =
+                          vehicleAvailabilityStatus[vehicleItem.id] !== false;
+
+                        return (
+                          <div
+                            key={vehicleItem.id}
+                            className={`flex flex-col sm:flex-row gap-4 p-4 rounded-lg border transition-colors ${
+                              isAvailable
+                                ? "bg-gray-50 border-gray-200 hover:border-gray-300"
+                                : "bg-red-50 border-red-200"
+                            }`}
+                          >
+                            {/* Số thứ tự */}
+                            <div
+                              className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm flex-shrink-0 self-start sm:self-center ${
+                                isAvailable
+                                  ? "bg-blue-100 text-blue-600"
+                                  : "bg-red-100 text-red-600"
+                              }`}
+                            >
+                              {index + 1}
+                            </div>
+
+                            {/* Hình ảnh xe */}
+                            <div className="relative w-full sm:w-32 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                              <Image
+                                src={
+                                  vehicleItem.vehicleImages?.length > 0
+                                    ? vehicleItem.vehicleImages[0].imageUrl
+                                    : "/images/demo1.png"
+                                }
+                                alt={`Vehicle ${index + 1}`}
+                                layout="fill"
+                                className={`object-cover ${
+                                  !isAvailable ? "grayscale opacity-60" : ""
+                                }`}
+                                unoptimized
+                              />
+                              {!isAvailable && (
+                                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                                  <span className="text-white text-xs font-medium bg-red-500 px-2 py-1 rounded">
+                                    Đã được đặt
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Thông tin xe */}
+                            <div className="flex-1 space-y-2 min-w-0">
+                              <h4
+                                className={`font-semibold text-lg truncate ${
+                                  isAvailable
+                                    ? "text-gray-800"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {vehicleItem.thumb} - {vehicleItem.modelName} (
+                                {vehicleItem.yearManufacture})
+                              </h4>
+
+                              <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                                <span className="flex items-center">
+                                  <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                                  {translateENtoVI(vehicleItem.transmission)}
+                                </span>
+                                <span className="flex items-center">
+                                  <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                                  {translateENtoVI(vehicleItem.fuelType)}
+                                </span>
+                                <span className="flex items-center">
+                                  <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                                  Biển số: {vehicleItem.licensePlate}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <div
+                                  className={`text-lg font-bold ${
+                                    isAvailable
+                                      ? "text-primary"
+                                      : "text-gray-400"
+                                  }`}
+                                >
+                                  {vehicleItem.costPerDay.toLocaleString(
+                                    "vi-VN"
+                                  )}
+                                  ₫/ngày
+                                </div>
+
+                                {/* Badge trạng thái */}
+                                <div
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    isAvailable
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-700"
+                                  }`}
+                                >
+                                  {isAvailable ? "Đã chọn" : "Đã được đặt"}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback khi không có xe */}
+                {vehicleIds.length === 0 && (
+                  <div className="flex-1 text-gray-500 text-base text-center py-8">
+                    Không có thông tin xe
+                  </div>
+                )}
               </div>
+
+              {/* Sửa lại Modal để có thông báo rõ ràng hơn */}
+              <Modal
+                title="Chọn xe khả dụng"
+                open={isVehicleSelectModalOpen}
+                onCancel={() => setIsVehicleSelectModalOpen(false)}
+                footer={null}
+                width={700}
+                className="vehicle-select-modal"
+              >
+                <div className="flex flex-col gap-4">
+                  {/* Thông báo về loại xe được hỗ trợ */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-600 text-2xl">ℹ️</span>
+                      <span className="text-blue-800 text-sm font-medium">
+                        Tính năng đặt nhiều xe chỉ áp dụng cho xe máy và xe đạp
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-600 mb-2">
+                    Có {availableQuantityForReselect} xe{" "}
+                    {translateENtoVI(
+                      (vehicle || multiVehicles[0])?.vehicleType || ""
+                    )}{" "}
+                    khả dụng trong thời gian đã chọn. Vui lòng chọn xe bạn muốn
+                    thuê:
+                  </div>
+
+                  {availableVehicleList.length > 0 ? (
+                    <>
+                      <div className="max-h-96 overflow-y-auto space-y-3">
+                        {availableVehicleList.map((vehicleItem, index) => (
+                          <div
+                            key={vehicleItem.id}
+                            className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
+                              newSelectedVehicleIds.includes(vehicleItem.id)
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                            onClick={() => {
+                              const isSelected = newSelectedVehicleIds.includes(
+                                vehicleItem.id
+                              );
+                              if (isSelected) {
+                                setNewSelectedVehicleIds((prev) =>
+                                  prev.filter((id) => id !== vehicleItem.id)
+                                );
+                              } else {
+                                setNewSelectedVehicleIds((prev) => [
+                                  ...prev,
+                                  vehicleItem.id,
+                                ]);
+                              }
+                            }}
+                          >
+                            <Checkbox
+                              checked={newSelectedVehicleIds.includes(
+                                vehicleItem.id
+                              )}
+                              onChange={() => {}} // Handled by parent div click
+                            />
+
+                            {/* Hình ảnh xe */}
+                            <div className="relative w-20 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                              <Image
+                                src={
+                                  vehicleItem.vehicleImages?.length > 0
+                                    ? vehicleItem.vehicleImages[0].imageUrl
+                                    : "/images/demo1.png"
+                                }
+                                alt={vehicleItem.thumb}
+                                layout="fill"
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
+
+                            {/* Thông tin xe */}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-base text-gray-800 truncate">
+                                {vehicleItem.thumb} - {vehicleItem.modelName} (
+                                {vehicleItem.yearManufacture})
+                              </h4>
+                              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                                <span>Biển số: {vehicleItem.licensePlate}</span>
+                                <span className="text-blue-600 font-medium">
+                                  {vehicleItem.costPerDay?.toLocaleString(
+                                    "vi-VN"
+                                  )}
+                                  ₫/ngày
+                                </span>
+                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                                  {translateENtoVI(vehicleItem.vehicleType)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Thông tin tổng hợp */}
+                      <div className="border-t pt-4 mt-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-base font-medium text-gray-700">
+                            Đã chọn: {newSelectedVehicleIds.length} xe{" "}
+                            {translateENtoVI(
+                              (vehicle || multiVehicles[0])?.vehicleType || ""
+                            )}
+                          </span>
+                          <span className="text-lg font-bold text-blue-600">
+                            Tổng:{" "}
+                            {availableVehicleList
+                              .filter((v) =>
+                                newSelectedVehicleIds.includes(v.id)
+                              )
+                              .reduce((sum, v) => sum + (v.costPerDay || 0), 0)
+                              .toLocaleString("vi-VN")}
+                            ₫/ngày
+                          </span>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button
+                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                            onClick={() => setIsVehicleSelectModalOpen(false)}
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            onClick={handleVehicleReselect}
+                            disabled={newSelectedVehicleIds.length === 0}
+                          >
+                            Chọn {newSelectedVehicleIds.length} xe
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      <span className="text-4xl mb-4 block">🚫</span>
+                      <p>Không có xe khả dụng trong khoảng thời gian này.</p>
+                    </div>
+                  )}
+                </div>
+              </Modal>
             </div>
 
             {/* Cột phải: Thông tin người đặt, Voucher và Tóm tắt đơn hàng */}
@@ -887,6 +1643,16 @@ const BookingPage: React.FC = () => {
                 </h3>
 
                 <div className="space-y-3">
+                  {/* Thêm dòng số lượng xe đặt */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">
+                      Số lượng xe đặt
+                    </span>
+                    <span className="font-semibold text-sm">
+                      {vehicleIds.length} xe
+                    </span>
+                  </div>
+
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 text-sm">
                       {rentalCalculation?.isHourlyRate
@@ -958,14 +1724,27 @@ const BookingPage: React.FC = () => {
                   className="mt-6 h-12 bg-red-500 hover:bg-red-600 border-red-500 font-semibold"
                   onClick={handleCreateBooking}
                   loading={submitting}
-                  disabled={!!bufferConflictMessage}
+                  disabled={
+                    !!bufferConflictMessage ||
+                    Object.values(vehicleAvailabilityStatus).some(
+                      (available) => !available
+                    )
+                  }
                 >
-                  Đặt xe ngay
+                  {Object.values(vehicleAvailabilityStatus).some(
+                    (available) => !available
+                  )
+                    ? "Có xe đã được đặt"
+                    : "Đặt xe ngay"}
                 </Button>
 
-                {bufferConflictMessage && (
+                {(bufferConflictMessage ||
+                  Object.values(vehicleAvailabilityStatus).some(
+                    (available) => !available
+                  )) && (
                   <div className="text-sm text-red-500 text-center mt-2">
-                    Vui lòng chọn thời gian khác
+                    {bufferConflictMessage ||
+                      "Vui lòng chọn lại xe hoặc thay đổi thời gian"}
                   </div>
                 )}
               </div>

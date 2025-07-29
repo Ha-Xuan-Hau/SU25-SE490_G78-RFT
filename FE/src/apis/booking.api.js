@@ -1,6 +1,21 @@
 import { apiClient } from './client';
 
 /**
+ * Lấy chi tiết booking theo bookingId
+ * @param {string} bookingId - ID đơn đặt xe
+ * @returns {Promise<Object>} Thông tin chi tiết booking
+ */
+export const getBookingDetail = async (bookingId) => {
+    try {
+        const response = await apiClient.get(`/bookings/${bookingId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching booking detail:', error);
+        throw new Error(`Lỗi lấy chi tiết booking: ${error.response?.data?.message || error.message}`);
+    }
+};
+
+/**
  * Tạo booking mới (chưa thanh toán)
  * @param {Object} bookingData - Dữ liệu đặt xe
  * @returns {Promise<Object>} Response chứa thông tin booking đã tạo
@@ -80,12 +95,12 @@ export const payWithWallet = async (bookingId) => {
  * @param {string} bookingId - ID của booking cần thanh toán
  * @returns {Promise<Object>} Response chứa URL thanh toán VNPay
  */
-export const createVNPayPayment = async (bookingId) => {
+export const createVNPayPayment = async (bookingId, amount) => {
     try {
         console.log('Creating VNPay payment for booking:', bookingId);
 
         const response = await apiClient.post(`/payment/vn-pay`, {
-            bookingId: bookingId
+            bookingId: bookingId, amount: amount
         });
 
         return {

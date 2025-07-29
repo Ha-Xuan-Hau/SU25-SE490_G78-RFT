@@ -5,6 +5,7 @@ import com.rft.rft_be.dto.CategoryDTO;
 import com.rft.rft_be.service.vehicle.VehicleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@Slf4j
 @RequestMapping("/api/vehicles")
 @RequiredArgsConstructor
 public class VehicleController {
@@ -312,13 +314,18 @@ public class VehicleController {
     @PostMapping("/search-basic")
     public ResponseEntity<?> basicSearch(@RequestBody BasicSearchDTO request) {
         try {
-            LocalDateTime pickupTime = request.getPickupDateTime() != null ? LocalDateTime.parse(request.getPickupDateTime()) : null;
-            LocalDateTime returnTime = request.getReturnDateTime() != null ? LocalDateTime.parse(request.getReturnDateTime()) : null;
+            LocalDateTime pickupTime = parseDateTimeSafe(request.getPickupDateTime());
+            LocalDateTime returnTime = parseDateTimeSafe(request.getReturnDateTime());
 
             if (pickupTime != null && returnTime != null && pickupTime.isAfter(returnTime)) {
-                return ResponseEntity.badRequest().body("pickupTime must be before returnTime");
+                return ResponseEntity.badRequest().body("pickupDateTime must be before returnDateTime");
             }
-            Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+
+            Pageable pageable = PageRequest.of(
+                    Math.max(request.getPage(), 0),
+                    Math.max(request.getSize(), 1)
+            );
+
             Page<VehicleSearchResultDTO> results = vehicleService.basicSearch(
                     request.getAddress(),
                     request.getVehicleType(),
@@ -335,6 +342,8 @@ public class VehicleController {
             response.put("size", results.getSize());
 
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid datetime format: " + e.getMessage());
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Search failed: " + e.getMessage());
@@ -342,6 +351,56 @@ public class VehicleController {
         }
     }
 
-    // Sau cần chuyển sang VehicleRentController
+    // Hàm parse an toàn
+    private LocalDateTime parseDateTimeSafe(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return LocalDateTime.parse(raw);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(raw);
+        }
+    }
 
+    @PostMapping("/available-thumb-quantity")
+    public ResponseEntity<AvailableVehicleQuantityOnlyDTO> getAvailableQuantityByThumb(
+            @RequestBody VehicleAvailabilityByThumbRequestDTO req) {
+
+        return ResponseEntity.ok(vehicleService.getQuantityOfAvailableVehiclesByThumb(
+                req.getThumb(), req.getProviderId(), req.getFrom(), req.getTo()));
+    }
+
+    @PostMapping("/available-thumb-list")
+    public ResponseEntity<AvailableVehicleListWithQuantityDTO> getAvailableListByThumb(
+            @RequestBody VehicleAvailabilityByThumbRequestDTO req) {
+
+        return ResponseEntity.ok(vehicleService.getListAndQuantityOfAvailableVehiclesByThumb(
+                req.getThumb(), req.getProviderId(), req.getFrom(), req.getTo()));
+    }
+    @GetMapping("/users/{userId}/available/{vehicleType}")
+    public ResponseEntity<?> getUserAvailableVehiclesByType(
+            @PathVariable String userId,
+            @PathVariable String vehicleType) {
+        try {
+            List<VehicleGetDTO> vehicles = vehicleService.getUserAvailableVehiclesByType(userId, vehicleType);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("vehicleType", vehicleType.toUpperCase());
+            response.put("status", "AVAILABLE");
+            response.put("vehicles", vehicles);
+            response.put("count", vehicles.size());
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Lỗi khi tìm kiếm xe có sẵn cho người dùng: {} với loại: {}", userId, vehicleType, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            log.error("Lỗi khi tìm kiếm xe có sẵn cho người dùng: {} với loại: {}", userId, vehicleType, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy lại xe có sẵn: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
 }

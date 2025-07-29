@@ -145,8 +145,9 @@ public class WalletServiceImpl implements  WalletService {
     }
 
     @Override
-    public List<WalletTransactionDTO> getAllWithdrawals(String status) {
-        return walletMapper.toTransactionDTOs(txRepository.findByStatusOrderByCreatedAtDesc(status));
+    public List<WalletTransactionDTO> getAllWithdrawals(WalletTransaction.Status status) {
+        List<WalletTransaction> list = txRepository.findByStatus(status);
+        return list.stream().map(walletMapper::toTransactionDTO).toList();
     }
 
     @Override
@@ -165,7 +166,6 @@ public class WalletServiceImpl implements  WalletService {
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Trạng thái khôn khả dụng: " + status);
         }
-
         txRepository.save(tx);
     }
 

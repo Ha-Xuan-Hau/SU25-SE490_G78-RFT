@@ -1,29 +1,28 @@
 package com.rft.rft_be.dto.vehicle.vehicleRent;
 
 
+import com.rft.rft_be.dto.vehicle.VehicleImageDTO;
 import jakarta.validation.constraints.*;
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
+
 @Builder
 @Data
 public class VehicleRentCreateDTO {
 
     private String brandId;
-
-
     private String modelId;
-
     private String penaltyId;
-    private String licensePlate;
+    private List<String> licensePlate;
 
     @NotBlank(message = "Vehicle type is required")
     private String vehicleType;
     @NotBlank(message = "Vehicle Features is required")
     private String vehicleFeatures;
-    @NotBlank(message = "Vehicle Image is required")
-    private String vehicleImages;
+    private List<VehicleImageDTO> vehicleImages;
     private String haveDriver="NO";
     private String insuranceStatus = "NO";
     private String shipToAddress = "NO";
@@ -45,4 +44,17 @@ public class VehicleRentCreateDTO {
     private BigDecimal costPerDay;
     private String status;
     private String thumb;
+
+    private Integer maxKmPerDay;
+    private Integer feePerExtraKm;
+    private Integer allowedHourLate;
+    private Integer feePerExtraHour;
+    private Integer cleaningFee;
+    private Integer smellRemovalFee;
+    private Integer batteryChargeFeePerPercent;
+    private Integer driverFeePerDay;
+    private Boolean hasDriverOption;
+    private Integer driverFeePerHour;
+    private Boolean hasHourlyRental;
+
 }

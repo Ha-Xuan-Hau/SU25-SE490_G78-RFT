@@ -7,7 +7,8 @@ import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.Instant;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_report")
@@ -27,10 +28,8 @@ public class UserReport {
     @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "reported_user_id", nullable = false)
-    private User reportedUser;
+    @Column(name = "reported_id", nullable = false)
+    private String reportedId;
 
     @Size(max = 50)
     @NotNull
@@ -44,6 +43,6 @@ public class UserReport {
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
 }

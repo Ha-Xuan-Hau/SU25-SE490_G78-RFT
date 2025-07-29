@@ -30,7 +30,7 @@ public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/**", "/api/penalties/**", "/api/payment/vn-pay-callback",
-            "/api/payment/topUpCallBack"
+            "/api/payment/topUpCallBack","/api/notifications/**"
     };
     @Value("${jwt.signerKey}")
     private String signerKey;
@@ -63,9 +63,13 @@ public class SecurityConfig {
                                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/vehicles/**").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/vehicles/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/coupons/apply").authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/bookedTimeSlot/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/wallet/staff/**").hasAnyRole("STAFF", "ADMIN")
+                                .requestMatchers(HttpMethod.GET, "/api/reports/type/**").hasAnyRole("STAFF", "ADMIN")
+                                .requestMatchers(HttpMethod.GET, "/api/reports/separate-by-target").hasAnyRole("STAFF", "ADMIN")
+                                .requestMatchers(HttpMethod.GET, "/api/reports/search/user").hasAnyRole("STAFF", "ADMIN")
+                                .requestMatchers(HttpMethod.GET, "/api/reports/search/vehicle").hasAnyRole("STAFF", "ADMIN")
 //                                .requestMatchers(HttpMethod.POST, "/api/bookings").authenticated()
 //                                .requestMatchers(HttpMethod.POST, "/api/bookings/**").authenticated()
 //                                .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ADMIN")

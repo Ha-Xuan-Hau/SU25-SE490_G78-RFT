@@ -22,7 +22,7 @@ public interface VehicleService {
     List<VehicleGetDTO> getVehiclesByBrandId(String brandId);
     List<VehicleGetDTO> getVehiclesByModelId(String modelId);
     VehicleGetDTO getVehicleByLicensePlate(String licensePlate);
-//    VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO);
+    //    VehicleGetDTO createVehicle(CreateVehicleDTO createVehicleDTO);
     VehicleGetDTO updateVehicle(String id, VehicleGetDTO vehicleGetDTO);
     void deleteVehicle(String id);
     List<VehicleGetDTO> getVehiclesByHaveDriver(String haveDriver);
@@ -34,4 +34,10 @@ public interface VehicleService {
     void deleteExpiredBookedTimeSlots();
     Page<VehicleSearchResultDTO> basicSearch(String address, String type, LocalDateTime from, LocalDateTime to, Pageable pageable);
     List<VehicleGetDTO> createVehicleBulk(CreateVehicleDTO createVehicleDTO);
+    AvailableVehicleQuantityOnlyDTO getQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to);
+    AvailableVehicleListWithQuantityDTO getListAndQuantityOfAvailableVehiclesByThumb(String thumb, String providerId, LocalDateTime from, LocalDateTime to);
+
+    // đầu vào: userId & vehicle type
+    List<VehicleGetDTO> getUserAvailableVehiclesByType(String userId, String vehicleType);
+
 }

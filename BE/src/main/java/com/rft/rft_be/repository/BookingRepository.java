@@ -99,12 +99,13 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     List<Booking> findByProviderId(@Param("providerId") String providerId);
 
     @Query("""
-        SELECT DISTINCT b FROM Booking b
-        JOIN b.bookingDetails bd
-        JOIN bd.vehicle v
-        JOIN v.user u
-        WHERE u.id = :providerId AND b.status = :status
-    """)
+    SELECT DISTINCT b FROM Booking b
+    JOIN b.bookingDetails bd
+    JOIN bd.vehicle v
+    JOIN v.user u
+    WHERE u.id = :providerId AND b.status = :status
+    ORDER BY COALESCE(b.updatedAt, b.createdAt) DESC
+""")
     List<Booking> findByProviderIdAndStatus(
             @Param("providerId") String providerId,
             @Param("status") Booking.Status status
@@ -127,4 +128,9 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
             @Param("timeBookingEnd") LocalDateTime timeBookingEnd,
             @Param("statusList") List<Booking.Status> statusList
     );
+    
+    // Admin methods
+    Long countByUserId(String userId);
+    
+    Long countByUserIdAndStatus(String userId, Booking.Status status);
 }

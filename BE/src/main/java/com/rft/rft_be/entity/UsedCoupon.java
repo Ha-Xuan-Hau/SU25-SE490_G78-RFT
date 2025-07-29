@@ -27,6 +27,4 @@ public class UsedCoupon {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "coupon_id", nullable = false)
     private Coupon coupon;
-
-
 }
