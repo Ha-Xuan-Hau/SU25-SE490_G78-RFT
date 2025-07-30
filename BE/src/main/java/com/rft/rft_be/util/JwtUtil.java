@@ -1,9 +1,11 @@
 package com.rft.rft_be.util;
 
 import com.nimbusds.jwt.SignedJWT;
+import org.springframework.stereotype.Component;
 
 import java.text.ParseException;
 
+@Component
 public class JwtUtil {
     public String extractUserIdFromToken(String token) {
         try {
