@@ -103,7 +103,11 @@ public class WalletController {
     @PutMapping("/staff/withdrawals/{id}/status")
     public ResponseEntity<Void> updateWithdrawalStatus(@PathVariable String id,
                                                        @RequestParam String status) {
-        walletService.updateWithdrawalStatus(id, status);
+
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String staffId = authentication.getToken().getClaim("userId");
+
+        walletService.updateWithdrawalStatus(id, status, staffId);
         return ResponseEntity.ok().build();
     }
 
