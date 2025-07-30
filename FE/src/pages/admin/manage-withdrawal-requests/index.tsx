@@ -32,7 +32,6 @@ const { Search } = Input;
 export interface WithdrawalRequest {
   id: string;
   amount: number;
-  userId: string;
   fullName: string;
   email: string;
   status: "PENDING";
@@ -40,6 +39,8 @@ export interface WithdrawalRequest {
   cardNumber: string;
   bankName: string;
   cardHolderName: string;
+
+  // userId: string; day la staff id
 }
 
 export default function WithdrawalRequestsPage() {
@@ -364,7 +365,7 @@ export default function WithdrawalRequestsPage() {
             </div>
 
             {/* Thông tin ngân hàng */}
-            {selectedWithdrawal.userId && (
+            {selectedWithdrawal.id && (
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                   Thông tin tài khoản ngân hàng

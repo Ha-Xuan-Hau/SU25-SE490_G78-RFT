@@ -47,7 +47,6 @@ public class WalletController {
     }
 
     @GetMapping("/withdrawals")
-    @PreAuthorize("hasAnyAuthority('USER', 'PROVIDER')")
     public ResponseEntity<List<WalletTransactionDTO>> getWithdrawalsByUser(@RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userIdToken = authentication.getToken().getClaim("userId");
@@ -58,7 +57,6 @@ public class WalletController {
     }
 
     @PostMapping("/withdrawals")
-    @PreAuthorize("hasAnyAuthority('USER', 'PROVIDER')")
     public ResponseEntity<?> createWithdrawal(@Valid @RequestBody CreateWithdrawalRequestDTO dto) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userIdToken = authentication.getToken().getClaim("userId");
@@ -82,7 +80,6 @@ public class WalletController {
     }
 
     @PutMapping("/withdrawals/{id}/cancel")
-    @PreAuthorize("hasAnyAuthority('USER', 'PROVIDER')")
     public ResponseEntity<Void> cancelWithdrawal(@PathVariable String id,
                                                  @RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -91,6 +88,8 @@ public class WalletController {
         return ResponseEntity.ok().build();
     }
 
+
+    //staff activities
     @GetMapping("/staff/withdrawals")
     public ResponseEntity<List<WalletTransactionDTO>> getAllWithdrawals(@RequestParam WalletTransaction.Status status) {
         return ResponseEntity.ok(walletService.getAllWithdrawals(status));
@@ -104,8 +103,17 @@ public class WalletController {
     @PutMapping("/staff/withdrawals/{id}/status")
     public ResponseEntity<Void> updateWithdrawalStatus(@PathVariable String id,
                                                        @RequestParam String status) {
-        walletService.updateWithdrawalStatus(id, status);
+
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String staffId = authentication.getToken().getClaim("userId");
+
+        walletService.updateWithdrawalStatus(id, status, staffId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/staff/withdrawals/approved")
+    public ResponseEntity<List<WalletTransactionDTO>> getApprovedWithdrawal() {
+        return ResponseEntity.ok(walletService.getApprovedWithdrawals());
     }
 }
 

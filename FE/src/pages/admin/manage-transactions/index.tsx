@@ -10,7 +10,6 @@ import {
   Input,
   Avatar,
   Descriptions,
-  Divider,
 } from "antd";
 import {
   EyeOutlined,
@@ -20,7 +19,6 @@ import {
   MailOutlined,
   BankOutlined,
   DollarOutlined,
-  SwapOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
