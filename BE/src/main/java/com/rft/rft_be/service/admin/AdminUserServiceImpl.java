@@ -3,11 +3,7 @@ package com.rft.rft_be.service.admin;
 import com.rft.rft_be.dto.admin.*;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Booking;
-import com.rft.rft_be.repository.BookingRepository;
-import com.rft.rft_be.repository.RatingRepository;
-import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.WalletRepository;
-import com.rft.rft_be.repository.WalletTransactionRepository;
+import com.rft.rft_be.repository.*;
 import com.rft.rft_be.entity.WalletTransaction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,13 +13,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
-import com.rft.rft_be.repository.DriverLicensRepository;
-import com.rft.rft_be.repository.VehicleRepository;
 import java.util.ArrayList;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +33,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final WalletTransactionRepository walletTransactionRepository;
     private final DriverLicensRepository driverLicenseRepository;
     private final VehicleRepository vehicleRepository;
+    private final FinalContractRepository finalContractRepository;
+
 
     @Override
     public AdminUserListResponseDTO getUsers(AdminUserSearchDTO searchDTO) {
@@ -277,5 +275,42 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .openTime(user.getOpenTime())
                 .closeTime(user.getCloseTime())
                 .build();
+    }
+
+    @Override
+    public List<AdminStaffActivityDTO> getStaffActivities(String staffId) {
+        List<AdminStaffActivityDTO> txActivities = walletTransactionRepository.findByUserIdOrderByCreatedAtDesc(staffId).stream()
+                .map(tx -> AdminStaffActivityDTO.builder()
+                        .action("APPROVED_WITHDRAWAL")
+                        .targetId(tx.getId())
+                        .targetType("WALLET_TRANSACTION")
+                        .time(tx.getUpdatedAt() != null ? tx.getUpdatedAt() : tx.getCreatedAt())
+                        .build())
+                .toList();
+
+        List<AdminStaffActivityDTO> contractActivities = finalContractRepository.findByUserIdOrderByCreatedAtDesc(staffId).stream()
+                .map(fc -> AdminStaffActivityDTO.builder()
+                        .action("APPROVED_FINAL_CONTRACT")
+                        .targetId(fc.getId())
+                        .targetType("FINAL_CONTRACT")
+                        .time(fc.getCreatedAt())
+                        .build())
+                .toList();
+
+        return Stream.concat(txActivities.stream(), contractActivities.stream())
+                .sorted(Comparator.comparing(AdminStaffActivityDTO::getTime).reversed())
+                .toList();
+    }
+    @Override
+    public List<AdminStaffActivityGroupDTO> getAllStaffActivities() {
+        List<User> staffList = userRepository.findByRole(User.Role.STAFF);
+
+        return staffList.stream().map(staff ->
+                AdminStaffActivityGroupDTO.builder()
+                        .staffId(staff.getId())
+                        .fullName(staff.getFullName())
+                        .activities(getStaffActivities(staff.getId()))
+                        .build()
+        ).toList();
     }
 } 

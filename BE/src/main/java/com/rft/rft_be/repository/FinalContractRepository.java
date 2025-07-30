@@ -35,4 +35,6 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
 
     @Query("SELECT fc FROM FinalContract fc WHERE fc.user IS NULL AND fc.contract.status = 'FINISHED'")
     List<FinalContract> findUnapprovedFinalContracts();
+
+    List<FinalContract> findByUserIdOrderByCreatedAtDesc(String userId);
 }
