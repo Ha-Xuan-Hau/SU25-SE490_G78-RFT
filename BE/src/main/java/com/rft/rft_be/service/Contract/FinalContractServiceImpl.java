@@ -4,12 +4,13 @@ import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
 import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
 import com.rft.rft_be.entity.FinalContract;
 import com.rft.rft_be.entity.Contract;
+import com.rft.rft_be.entity.Wallet;
+import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.mapper.ContractMapper;
-import com.rft.rft_be.repository.FinalContractRepository;
-import com.rft.rft_be.repository.ContractRepository;
-import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.repository.*;
 import com.rft.rft_be.dto.wallet.WalletDTO;
 import com.rft.rft_be.service.wallet.WalletService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,8 @@ public class FinalContractServiceImpl implements FinalContractService {
     private final ContractRepository contractRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
+    WalletRepository walletRepository;
+    WalletTransactionRepository walletTransactionRepository;
 
     @Override
     public List<FinalContractDTO> getAllFinalContracts() {
@@ -209,6 +212,23 @@ public class FinalContractServiceImpl implements FinalContractService {
 
             // Update timestamp
             existingFinalContract.setUpdatedAt(LocalDateTime.now());
+
+            if (finalContractDTO.getContractStatus() != null && !finalContractDTO.getContractStatus().trim().equals("COMPLETED")) {
+                BigDecimal finalAmount = finalContractDTO.getCostSettlement();
+
+                Wallet providerWallet = walletRepository.findByUserId(finalContractDTO.getProviderId())
+                        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+                providerWallet.setBalance(providerWallet.getBalance().add(finalAmount));
+                walletRepository.save(providerWallet);
+
+                // Ghi log giao dịch nhận phí phạt
+                WalletTransaction penaltyTx = WalletTransaction.builder()
+                        .wallet(providerWallet)
+                        .amount(finalAmount)
+                        .status(WalletTransaction.Status.APPROVED)
+                        .build();
+                walletTransactionRepository.save(penaltyTx);
+            }
 
             // Save and return updated final contract
             FinalContract updatedFinalContract = finalContractRepository.save(existingFinalContract);

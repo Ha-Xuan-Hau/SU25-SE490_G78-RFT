@@ -127,7 +127,7 @@ export default function DriverLicensePage() {
                       >
                         <div className="text-center">
                           <h4 className="font-medium text-gray-900 mb-1 text-xs">
-                            Hạng {license.class}
+                            Hạng {license.classField}
                           </h4>
                           <p className="text-xs text-gray-600 mb-2 font-mono truncate">
                             {license.licenseNumber}
@@ -164,7 +164,7 @@ export default function DriverLicensePage() {
                               Hạng giấy phép
                             </label>
                             <div className="text-base font-semibold text-gray-900 bg-white px-4 py-3 rounded-md border text-center">
-                              {currentLicense.class}
+                              {currentLicense.classField}
                             </div>
                           </div>
                         </div>
@@ -263,7 +263,7 @@ export default function DriverLicensePage() {
                           Hạng giấy phép
                         </label>
                         <div className="text-base font-semibold text-gray-900 bg-white px-4 py-3 rounded-md border text-center">
-                          {currentLicense?.class || "N/A"}
+                          {currentLicense?.classField || "N/A"}
                         </div>
                       </div>
                     </div>

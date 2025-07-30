@@ -155,7 +155,7 @@ export default function UserWalletsPage() {
     setTopUpLoading(true);
     try {
       const paymentData = {
-        amout: Number(values.amount),
+        amount: Number(values.amount),
         bankCode: "", // Nếu không chọn ngân hàng, để rỗng
       };
       const res = (await createTopUpVNPay(paymentData)) as {
