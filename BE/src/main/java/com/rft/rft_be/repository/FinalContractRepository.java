@@ -32,4 +32,7 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
 
     @Query("SELECT COUNT(fc) FROM FinalContract fc WHERE fc.contract.id = :contractId")
     long countByContractId(@Param("contractId") String contractId);
+
+    @Query("SELECT fc FROM FinalContract fc WHERE fc.user IS NULL AND fc.contract.status = 'FINISHED'")
+    List<FinalContract> findUnapprovedFinalContracts();
 }
