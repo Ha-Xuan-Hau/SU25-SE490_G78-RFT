@@ -200,7 +200,6 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
     { value: "GASOLINE", label: "Xăng" },
     { value: "DIESEL", label: "Dầu" },
     { value: "ELECTRIC", label: "Điện" },
-    { value: "HYBRID", label: "Hybrid" },
   ];
 
   useEffect(() => {

@@ -19,7 +19,6 @@ interface GroupEditVehicleModalProps {
 const featureOptions = [
   { label: "GPS", value: "GPS" },
   { label: "Bluetooth", value: "Bluetooth" },
-  { label: "Điều hoà khí", value: "Air Conditioning" },
   { label: "Ghế da", value: "Leather Seats" },
   { label: "Cảm biến đỗ xe", value: "Parking Sensors" },
   { label: "Camera hành trình", value: "Backup Camera" },
