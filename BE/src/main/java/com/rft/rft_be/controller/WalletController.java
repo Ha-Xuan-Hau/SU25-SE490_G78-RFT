@@ -1,10 +1,8 @@
 package com.rft.rft_be.controller;
 import com.rft.rft_be.dto.wallet.*;
 import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Wallet;
 import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.WalletRepository;
 import com.rft.rft_be.service.wallet.WalletService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +26,6 @@ import java.util.Map;
 public class WalletController {
     private final WalletService walletService;
     private final UserRepository userRepository;
-    private final WalletRepository walletRepository;
     @GetMapping("/account")
     public ResponseEntity<WalletDTO> getWallet(@RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -50,7 +47,6 @@ public class WalletController {
     }
 
     @GetMapping("/withdrawals")
-    @PreAuthorize("hasAnyAuthority('USER', 'PROVIDER')")
     public ResponseEntity<List<WalletTransactionDTO>> getWithdrawalsByUser(@RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userIdToken = authentication.getToken().getClaim("userId");
@@ -61,20 +57,12 @@ public class WalletController {
     }
 
     @PostMapping("/withdrawals")
-    @PreAuthorize("hasAnyAuthority('USER', 'PROVIDER')")
     public ResponseEntity<?> createWithdrawal(@Valid @RequestBody CreateWithdrawalRequestDTO dto) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userIdToken = authentication.getToken().getClaim("userId");
-        String staffId = authentication.getToken().getSubject();
-
-        // Lấy ví để kiểm tra người sở hữu
-        Wallet wallet = walletRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
-
-        if (!wallet.getUser().getId().equals(userIdToken)) {
-            throw new AccessDeniedException("Bạn không có quyền tạo giao dịch từ ví này");
+        if(!userIdToken.equals(dto.getUserId())){
+            throw new AccessDeniedException("Bạn không có quyền truy cập tài nguyên này");
         }
-
         try {
             WalletTransactionDTO response = walletService.createWithdrawal(dto);
             return ResponseEntity.ok(response);
@@ -92,7 +80,6 @@ public class WalletController {
     }
 
     @PutMapping("/withdrawals/{id}/cancel")
-    @PreAuthorize("hasAnyAuthority('USER', 'PROVIDER')")
     public ResponseEntity<Void> cancelWithdrawal(@PathVariable String id,
                                                  @RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -101,6 +88,8 @@ public class WalletController {
         return ResponseEntity.ok().build();
     }
 
+
+    //staff activities
     @GetMapping("/staff/withdrawals")
     public ResponseEntity<List<WalletTransactionDTO>> getAllWithdrawals(@RequestParam WalletTransaction.Status status) {
         return ResponseEntity.ok(walletService.getAllWithdrawals(status));
@@ -114,9 +103,17 @@ public class WalletController {
     @PutMapping("/staff/withdrawals/{id}/status")
     public ResponseEntity<Void> updateWithdrawalStatus(@PathVariable String id,
                                                        @RequestParam String status) {
-        walletService.updateWithdrawalStatus(id, status);
+
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String staffId = authentication.getToken().getClaim("userId");
+
+        walletService.updateWithdrawalStatus(id, status, staffId);
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/staff/withdrawals/approved")
+    public ResponseEntity<List<WalletTransactionDTO>> getApprovedWithdrawal() {
+        return ResponseEntity.ok(walletService.getApprovedWithdrawals());
+    }
 }
 

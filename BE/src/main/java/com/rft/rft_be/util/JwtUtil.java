@@ -1,10 +1,15 @@
 package com.rft.rft_be.util;
 
-import com.nimbusds.jwt.SignedJWT;
-
 import java.text.ParseException;
 
+import org.springframework.stereotype.Component;
+
+import com.nimbusds.jwt.SignedJWT;
+
+
+@Component
 public class JwtUtil {
+
     public String extractUserIdFromToken(String token) {
         try {
             return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");

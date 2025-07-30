@@ -47,6 +47,12 @@ export const getAllFinalContracts = async () => {
     return response.data;
 };
 
+// Final Contracts API Endpoints
+export const getAllFinalUnapprovedContracts = async () => {
+    const response = await apiClient.get('/final-contracts/unapproved');
+    return response.data;
+};
+
 export const approveFinalContract = async (id, approvalData) => {
     const response = await apiClient.put(`/final-contracts/${id}`, approvalData);
     return response.data;

@@ -609,7 +609,7 @@ public class BookingServiceImpl implements BookingService {
             // Ghi log giao dịch hoàn tiền
             WalletTransaction refundTx = WalletTransaction.builder()
                     .wallet(renterWallet)
-                    .user(booking.getUser())
+//                    .user(booking.getUser())
                     .amount(refundAmount)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();
@@ -626,7 +626,7 @@ public class BookingServiceImpl implements BookingService {
             // Ghi log giao dịch nhận phí phạt
             WalletTransaction penaltyTx = WalletTransaction.builder()
                     .wallet(providerWallet)
-                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
+//                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
                     .amount(penalty)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();

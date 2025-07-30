@@ -20,11 +20,10 @@ import {
   BankOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
-import { getAllWithdrawals, updateWithdrawalStatus } from "@/apis/wallet.api";
+import { getApprovedWithdrawals } from "@/apis/wallet.api";
 import type { ColumnsType } from "antd/es/table";
 import { translateENtoVI } from "@/lib/viDictionary";
 import dayjs from "dayjs";
-import { showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -34,13 +33,16 @@ export interface WithdrawalRequest {
   amount: number;
   fullName: string;
   email: string;
-  status: "PENDING";
+  status: "APPROVED";
   createdAt: string;
   cardNumber: string;
   bankName: string;
   cardHolderName: string;
 
   // userId: string; day la staff id
+  staffFullName: string;
+  staffEmail: string;
+  updatedAt: string;
 }
 
 export default function WithdrawalRequestsPage() {
@@ -51,9 +53,6 @@ export default function WithdrawalRequestsPage() {
     useState<WithdrawalRequest | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
-  const [confirmAction, setConfirmAction] = useState<
-    "APPROVE" | "REJECT" | null
-  >(null);
 
   useEffect(() => {
     loadWithdrawals();
@@ -62,7 +61,7 @@ export default function WithdrawalRequestsPage() {
   const loadWithdrawals = async (status?: string) => {
     setLoading(true);
     try {
-      const data = await getAllWithdrawals(status || "PENDING");
+      const data = await getApprovedWithdrawals();
       setWithdrawals(data);
     } catch (error) {
       message.error("Không thể tải yêu cầu rút tiền.");
@@ -75,35 +74,6 @@ export default function WithdrawalRequestsPage() {
     setSelectedWithdrawal(withdrawal);
     setIsModalVisible(true);
     form.setFieldsValue({ status: withdrawal.status });
-  };
-
-  const handleApproveRequest = () => {
-    if (selectedWithdrawal) {
-      setConfirmAction("APPROVE");
-    }
-  };
-
-  const handleRejectRequest = () => {
-    if (selectedWithdrawal) {
-      setConfirmAction("REJECT");
-    }
-  };
-
-  const handleConfirmAction = async () => {
-    if (!selectedWithdrawal || !confirmAction) return;
-    try {
-      const status = confirmAction === "APPROVE" ? "APPROVED" : "REJECTED";
-      await updateWithdrawalStatus(selectedWithdrawal.id, status);
-      showSuccess(
-        `Yêu cầu đã được ${confirmAction === "APPROVE" ? "duyệt" : "từ chối"}!`
-      );
-      loadWithdrawals();
-      setIsModalVisible(false);
-    } catch (error) {
-      showError("Có lỗi xảy ra, vui lòng thử lại!");
-    } finally {
-      setConfirmAction(null);
-    }
   };
 
   const getStatusColor = (status: string) => {
@@ -213,6 +183,21 @@ export default function WithdrawalRequestsPage() {
       ),
     },
     {
+      title: "Người duyệt",
+      key: "approver",
+      render: (_, record) =>
+        record.staffFullName ? (
+          <div className="text-sm">
+            <div className="font-medium">{record.staffFullName}</div>
+            <div className="text-gray-500">
+              {formatTimestamp(record.updatedAt)}
+            </div>
+          </div>
+        ) : (
+          <span className="text-gray-400">Chưa duyệt</span>
+        ),
+    },
+    {
       title: "Thao tác",
       key: "action",
       render: (_, record) => (
@@ -302,11 +287,6 @@ export default function WithdrawalRequestsPage() {
           <Button key="cancel" onClick={() => setIsModalVisible(false)}>
             Đóng
           </Button>,
-          selectedWithdrawal?.status === "PENDING" && (
-            <Button key="approve" type="primary" onClick={handleApproveRequest}>
-              Duyệt
-            </Button>
-          ),
         ]}
       >
         {selectedWithdrawal && (
@@ -392,38 +372,30 @@ export default function WithdrawalRequestsPage() {
                 </Descriptions>
               </div>
             )}
+            {selectedWithdrawal.id && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                  Thông tin duyệt
+                </h3>
+                <Descriptions bordered column={1} size="middle">
+                  <Descriptions.Item label="Người duyệt" span={1}>
+                    <span className="font-semibold">
+                      {selectedWithdrawal.staffFullName}
+                    </span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Email người duyệt" span={1}>
+                    <span className="font-semibold">
+                      {selectedWithdrawal.staffEmail}
+                    </span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Thời gian duyệt" span={1}>
+                    {formatTimestamp(selectedWithdrawal.updatedAt)}
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+            )}
           </div>
         )}
-      </Modal>
-
-      {/* Confirmation Modal */}
-      <Modal
-        title={
-          confirmAction === "APPROVE"
-            ? "Xác nhận duyệt yêu cầu"
-            : "Xác nhận từ chối yêu cầu"
-        }
-        open={!!confirmAction}
-        onCancel={() => setConfirmAction(null)}
-        footer={[
-          <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Hủy
-          </Button>,
-          <Button
-            key="ok"
-            type="primary"
-            danger={confirmAction === "REJECT"}
-            onClick={handleConfirmAction}
-          >
-            Xác nhận
-          </Button>,
-        ]}
-      >
-        <div className="text-base">
-          {confirmAction === "APPROVE"
-            ? "Bạn có chắc chắn muốn duyệt yêu cầu rút tiền này?"
-            : "Bạn có chắc chắn muốn từ chối yêu cầu rút tiền này?"}
-        </div>
       </Modal>
     </div>
   );

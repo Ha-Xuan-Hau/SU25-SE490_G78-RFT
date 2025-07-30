@@ -10,6 +10,7 @@ import {
   Input,
   Avatar,
   Descriptions,
+  Tabs,
 } from "antd";
 import {
   EyeOutlined,
@@ -141,6 +142,15 @@ const mockReports: SystemReport[] = [
   },
 ];
 
+interface AggregatedReport {
+  id: string;
+  reportedUserName: string;
+  reportedUserEmail: string;
+  reportCount: number;
+  reports: SystemReport[];
+  types: Set<SystemReport["type"]>;
+}
+
 export default function UserReportsPage() {
   const [loading, setLoading] = useState(false);
   const [reports, setReports] = useState<SystemReport[]>(mockReports);
@@ -149,6 +159,7 @@ export default function UserReportsPage() {
     null
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState("1");
 
   // Filter reports based on search text
   const filteredReports = reports.filter((report) => {
@@ -345,6 +356,135 @@ export default function UserReportsPage() {
 
   const typeCounts = getTypeCounts();
 
+  // Thêm state cho tab đang chọn
+
+  // Phân loại báo cáo theo mức độ
+  const violationReports = reports.filter((r) =>
+    ["SPAM", "INAPPROPRIATE"].includes(r.type)
+  );
+
+  const severeReports = reports.filter((r) =>
+    ["FRAUD", "VIOLENCE"].includes(r.type)
+  );
+
+  const flaggedReports = reports.filter((r) => ["OTHER"].includes(r.type));
+
+  // Hàm gộp báo cáo theo người bị báo cáo
+  const aggregateReports = (reports: SystemReport[]) => {
+    const grouped = reports.reduce((acc, report) => {
+      if (!acc[report.reportedUserId]) {
+        acc[report.reportedUserId] = {
+          id: report.reportedUserId,
+          reportedUserName: report.reportedUserName,
+          reportedUserEmail: report.reportedUserEmail,
+          reportCount: 0,
+          reports: [],
+          types: new Set(),
+        };
+      }
+      acc[report.reportedUserId].reportCount++;
+      acc[report.reportedUserId].reports.push(report);
+      acc[report.reportedUserId].types.add(report.type);
+      return acc;
+    }, {} as Record<string, any>);
+
+    return Object.values(grouped);
+  };
+
+  // Columns cho bảng tổng hợp
+  const aggregatedColumns: ColumnsType<AggregatedReport> = [
+    {
+      title: "Người bị báo cáo",
+      key: "reportedUser",
+      render: (record: AggregatedReport) => (
+        <div className="flex items-center gap-3">
+          <Avatar icon={<UserOutlined />} />
+          <div>
+            <div className="font-medium">{record.reportedUserName}</div>
+            <div className="text-xs text-gray-500">
+              <MailOutlined className="mr-1" />
+              {record.reportedUserEmail}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Loại báo cáo",
+      key: "types",
+      render: (record: AggregatedReport) => (
+        <div>
+          {Array.from(record.types).map((type) => (
+            <Tag color={getTypeColor(type)} key={type}>
+              {getTypeText(type)}
+            </Tag>
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: "Tổng số báo cáo",
+      dataIndex: "reportCount",
+      key: "reportCount",
+      sorter: (a: AggregatedReport, b: AggregatedReport) => a.reportCount - b.reportCount,
+    },
+    {
+      title: "Thao tác",
+      key: "action",
+      render: (record: AggregatedReport) => (
+        <Button
+          type="primary"
+          icon={<EyeOutlined />}
+          onClick={() => handleViewDetails(record.reports[0])}
+        >
+          Chi tiết
+        </Button>
+      ),
+    },
+  ];
+
+  // Thêm hàm để lấy số liệu thống kê theo tab
+  const getActiveTabStats = () => {
+    switch (activeTab) {
+      case "1": // Lỗi vi phạm
+        return [
+          {
+            label: "Spam",
+            count: reports.filter((r) => r.type === "SPAM").length,
+            type: "SPAM",
+          },
+          {
+            label: "Không phù hợp",
+            count: reports.filter((r) => r.type === "INAPPROPRIATE").length,
+            type: "INAPPROPRIATE",
+          },
+        ];
+      case "2": // Lỗi nghiêm trọng
+        return [
+          {
+            label: "Lừa đảo",
+            count: reports.filter((r) => r.type === "FRAUD").length,
+            type: "FRAUD",
+          },
+          {
+            label: "Bạo lực",
+            count: reports.filter((r) => r.type === "VIOLENCE").length,
+            type: "VIOLENCE",
+          },
+        ];
+      case "3": // Lỗi gắn cờ
+        return [
+          {
+            label: "Khác",
+            count: reports.filter((r) => r.type === "OTHER").length,
+            type: "OTHER",
+          },
+        ];
+      default:
+        return [];
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -370,76 +510,86 @@ export default function UserReportsPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-            <span>
-              Spam: <span className="font-semibold">{typeCounts.spam}</span>
-            </span>
-            <span>
-              Không phù hợp:{" "}
-              <span className="font-semibold">{typeCounts.inappropriate}</span>
-            </span>
-            <span>
-              Lừa đảo: <span className="font-semibold">{typeCounts.fraud}</span>
-            </span>
-            <span>
-              Bạo lực:{" "}
-              <span className="font-semibold">{typeCounts.violence}</span>
-            </span>
+            {getActiveTabStats().map((stat) => (
+              <span key={stat.type}>
+                {stat.label}: <span className="font-semibold">{stat.count}</span>
+              </span>
+            ))}
             <span>
               Tổng:{" "}
-              <span className="font-semibold">{filteredReports.length}</span>
+              <span className="font-semibold">
+                {getActiveTabStats().reduce((sum, stat) => sum + stat.count, 0)}
+              </span>
             </span>
           </div>
         </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Spam</div>
-          <div className="text-xl font-semibold">{typeCounts.spam}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Không phù hợp</div>
-          <div className="text-xl font-semibold">
-            {typeCounts.inappropriate}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {getActiveTabStats().map((stat) => (
+          <div key={stat.type} className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="text-sm text-gray-500">{stat.label}</div>
+            <div className="text-xl font-semibold">{stat.count}</div>
           </div>
-        </div>
+        ))}
         <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Lừa đảo</div>
-          <div className="text-xl font-semibold">{typeCounts.fraud}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Bạo lực</div>
-          <div className="text-xl font-semibold">{typeCounts.violence}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Khác</div>
-          <div className="text-xl font-semibold">{typeCounts.other}</div>
+          <div className="text-sm text-gray-500">Tổng số vi phạm</div>
+          <div className="text-xl font-semibold">
+            {getActiveTabStats().reduce((sum, stat) => sum + stat.count, 0)}
+          </div>
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6">
-          <Table
-            columns={columns}
-            dataSource={filteredReports}
-            rowKey="id"
-            loading={loading}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} báo cáo`,
-            }}
-            scroll={{ x: 1400 }}
-            className="border-0"
-          />
-        </div>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          className="px-6 pt-4"
+        >
+          <Tabs.TabPane tab="Lỗi vi phạm" key="1">
+            <Table
+              columns={aggregatedColumns}
+              dataSource={aggregateReports(violationReports)}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: 10,
+                showTotal: (total) => `Tổng ${total} người vi phạm`,
+              }}
+            />
+          </Tabs.TabPane>
+
+          <Tabs.TabPane tab="Lỗi nghiêm trọng" key="2">
+            <Table
+              columns={aggregatedColumns}
+              dataSource={aggregateReports(severeReports)}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: 10,
+                showTotal: (total) => `Tổng ${total} người vi phạm`,
+              }}
+            />
+          </Tabs.TabPane>
+
+          <Tabs.TabPane tab="Lỗi gắn cờ" key="3">
+            <Table
+              columns={aggregatedColumns}
+              dataSource={aggregateReports(flaggedReports)}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: 10,
+                showTotal: (total) => `Tổng ${total} người vi phạm`,
+              }}
+            />
+          </Tabs.TabPane>
+        </Tabs>
       </div>
 
-      {/* Report Details Modal (Read-only) */}
+      {/* Report Details Modal */}
       <Modal
         title={
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
@@ -448,7 +598,7 @@ export default function UserReportsPage() {
               <div className="font-semibold text-lg">Chi tiết báo cáo</div>
               {selectedReport && (
                 <div className="text-sm text-gray-500">
-                  Mã: {selectedReport.id} - {getTypeText(selectedReport.type)}
+                  Người dùng: {selectedReport.reportedUserName}
                 </div>
               )}
             </div>
@@ -466,63 +616,31 @@ export default function UserReportsPage() {
       >
         {selectedReport && (
           <div className="pt-4 space-y-6">
-            {/* Thông tin báo cáo */}
+            {/* Loại báo cáo */}
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Thông tin báo cáo
+                Loại báo cáo
               </h3>
-              <Descriptions bordered column={2} size="middle">
-                <Descriptions.Item label="Mã báo cáo" span={1}>
-                  <span className="font-mono font-semibold">
-                    {selectedReport.id}
-                  </span>
-                </Descriptions.Item>
-                <Descriptions.Item label="Loại báo cáo" span={1}>
-                  <Tag
-                    color={getTypeColor(selectedReport.type)}
-                    icon={getTypeIcon(selectedReport.type)}
-                  >
-                    {getTypeText(selectedReport.type)}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Ngày báo cáo" span={2}>
-                  {dayjs(selectedReport.createdAt).format(
-                    "DD/MM/YYYY HH:mm:ss"
-                  )}
-                </Descriptions.Item>
-              </Descriptions>
-            </div>
-
-            {/* Thông tin người báo cáo */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Người báo cáo
-              </h3>
-              <Descriptions bordered column={2} size="middle">
-                <Descriptions.Item label="Họ và tên" span={1}>
-                  <div className="flex items-center gap-2">
-                    <UserOutlined />
-                    <span className="font-semibold">
-                      {selectedReport.reporterName}
-                    </span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="Email" span={1}>
-                  <div className="flex items-center gap-2">
-                    <MailOutlined />
-                    <span>{selectedReport.reporterEmail}</span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="ID người dùng" span={2}>
-                  <span className="font-mono">{selectedReport.reporterId}</span>
-                </Descriptions.Item>
-              </Descriptions>
+              <div className="flex gap-2">
+                {Array.from(new Set(reports
+                  .filter(r => r.reportedUserId === selectedReport.reportedUserId)
+                  .map(r => r.type)))
+                  .map(type => (
+                    <Tag
+                      key={type}
+                      color={getTypeColor(type)}
+                      icon={getTypeIcon(type)}
+                    >
+                      {getTypeText(type)}
+                    </Tag>
+                  ))}
+              </div>
             </div>
 
             {/* Thông tin người bị báo cáo */}
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Người bị báo cáo
+                Thông tin người bị báo cáo
               </h3>
               <Descriptions bordered column={2} size="middle">
                 <Descriptions.Item label="Họ và tên" span={1}>
@@ -539,24 +657,66 @@ export default function UserReportsPage() {
                     <span>{selectedReport.reportedUserEmail}</span>
                   </div>
                 </Descriptions.Item>
-                <Descriptions.Item label="ID người dùng" span={2}>
-                  <span className="font-mono">
-                    {selectedReport.reportedUserId}
-                  </span>
+                <Descriptions.Item label="Tổng số báo cáo" span={2}>
+                  <span className="font-semibold">
+                    {reports.filter(r => r.reportedUserId === selectedReport.reportedUserId).length}
+                  </span> báo cáo
                 </Descriptions.Item>
               </Descriptions>
             </div>
 
-            {/* Lý do báo cáo */}
+            {/* Danh sách báo cáo */}
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Lý do báo cáo
+                Danh sách báo cáo
               </h3>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-800 whitespace-pre-wrap">
-                  {selectedReport.reason}
-                </p>
-              </div>
+              <Table
+                dataSource={reports.filter(
+                  r => r.reportedUserId === selectedReport.reportedUserId
+                )}
+                columns={[
+                  {
+                    title: "Mã báo cáo",
+                    dataIndex: "id",
+                    key: "id",
+                    render: (id) => (
+                      <span className="font-mono font-semibold">{id}</span>
+                    ),
+                  },
+                  {
+                    title: "Người báo cáo",
+                    key: "reporter",
+                    render: (_, record) => (
+                      <div>
+                        <div className="font-medium">{record.reporterName}</div>
+                        <div className="text-xs text-gray-500">
+                          <MailOutlined className="mr-1" />
+                          {record.reporterEmail}
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Lý do báo cáo",
+                    dataIndex: "reason",
+                    key: "reason",
+                    render: (reason) => (
+                      <div className="max-w-xs whitespace-normal">{reason}</div>
+                    ),
+                  },
+                  {
+                    title: "Ngày báo cáo",
+                    dataIndex: "createdAt",
+                    key: "createdAt",
+                    render: (date) => (
+                      <span>{dayjs(date).format("DD/MM/YYYY HH:mm")}</span>
+                    ),
+                  },
+                ]}
+                pagination={false}
+                scroll={{ y: 300 }}
+                size="small"
+              />
             </div>
           </div>
         )}
