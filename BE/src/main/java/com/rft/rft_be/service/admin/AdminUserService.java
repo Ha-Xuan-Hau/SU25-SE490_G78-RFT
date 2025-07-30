@@ -57,4 +57,8 @@ public interface AdminUserService {
      * Công dụng: Admin lọc users theo trạng thái để quản lý
      */
     AdminUserListResponseDTO searchUsersByStatus(User.Status status, int page, int size);
+
+    List<AdminStaffActivityDTO> getStaffActivities(String staffId);
+
+     List<AdminStaffActivityGroupDTO> getAllStaffActivities();
 } 

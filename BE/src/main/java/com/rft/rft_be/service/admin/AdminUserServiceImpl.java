@@ -277,4 +277,40 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .build();
     }
 
+    @Override
+    public List<AdminStaffActivityDTO> getStaffActivities(String staffId) {
+        List<AdminStaffActivityDTO> txActivities = walletTransactionRepository.findByUserIdOrderByCreatedAtDesc(staffId).stream()
+                .map(tx -> AdminStaffActivityDTO.builder()
+                        .action("APPROVED_WITHDRAWAL")
+                        .targetId(tx.getId())
+                        .targetType("WALLET_TRANSACTION")
+                        .time(tx.getUpdatedAt() != null ? tx.getUpdatedAt() : tx.getCreatedAt())
+                        .build())
+                .toList();
+
+        List<AdminStaffActivityDTO> contractActivities = finalContractRepository.findByUserIdOrderByCreatedAtDesc(staffId).stream()
+                .map(fc -> AdminStaffActivityDTO.builder()
+                        .action("APPROVED_FINAL_CONTRACT")
+                        .targetId(fc.getId())
+                        .targetType("FINAL_CONTRACT")
+                        .time(fc.getCreatedAt())
+                        .build())
+                .toList();
+
+        return Stream.concat(txActivities.stream(), contractActivities.stream())
+                .sorted(Comparator.comparing(AdminStaffActivityDTO::getTime).reversed())
+                .toList();
+    }
+    @Override
+    public List<AdminStaffActivityGroupDTO> getAllStaffActivities() {
+        List<User> staffList = userRepository.findByRole(User.Role.STAFF);
+
+        return staffList.stream().map(staff ->
+                AdminStaffActivityGroupDTO.builder()
+                        .staffId(staff.getId())
+                        .fullName(staff.getFullName())
+                        .activities(getStaffActivities(staff.getId()))
+                        .build()
+        ).toList();
+    }
 } 
