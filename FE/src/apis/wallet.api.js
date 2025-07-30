@@ -57,6 +57,21 @@ export const getAllWithdrawals = async (status) => {
 };
 
 /**
+ * Lấy tất cả yêu cầu rút tiền dựa trên trạng thái
+ * @param {string} status
+ * @returns {Promise<Array>} Danh sách yêu cầu rút tiền
+ */
+export const getApprovedWithdrawals = async () => {
+    try {
+        const response = await apiClient.get(`/wallet/staff/withdrawals/approved`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching withdrawals:', error);
+        throw new Error(`Lỗi lấy yêu cầu rút tiền: ${error.response?.data?.message || error.message}`);
+    }
+};
+
+/**
  * Lấy thông tin chi tiết yêu cầu rút tiền theo ID
  * @param {string} id
  * @returns {Promise<Object>} Thông tin yêu cầu rút tiền
