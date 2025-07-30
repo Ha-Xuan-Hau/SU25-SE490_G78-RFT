@@ -152,6 +152,10 @@ public class WalletServiceImpl implements  WalletService {
         //get approved transaction and userid not null
         List<WalletTransaction> approvedTransactions = txRepository.findByStatusAndUserIdNotNull(WalletTransaction.Status.APPROVED);
 
+        if (approvedTransactions.isEmpty()) {
+            throw new RuntimeException("Không có giao dịch nào đã được phê duyệt.");
+        }
+
         //map to dto
         List<WalletTransactionDTO> transactionDTOs = approvedTransactions.stream()
                 .map(walletMapper::toTransactionDTO)
@@ -183,7 +187,7 @@ public class WalletServiceImpl implements  WalletService {
             dto.setStaffEmail(staff.getEmail());
         }
 
-        return java.util.List.of();
+        return transactionDTOs;
     }
 
     @Override
@@ -239,12 +243,17 @@ public class WalletServiceImpl implements  WalletService {
     }
 
     @Override
-    public void updateWithdrawalStatus(String id, String status) {
+    public void updateWithdrawalStatus(String id ,String status,  String staffId) {
         WalletTransaction tx = txRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
 
         try {
             tx.setStatus(WalletTransaction.Status.valueOf(status.toUpperCase()));
+            User staff = userRepository.findById(staffId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên cho userId: " + staffId));
+
+            tx.setUser(staff);
+            tx.setUpdatedAt(LocalDateTime.now());
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Trạng thái không khả dụng: " + status);
         }

@@ -11,4 +11,5 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
 
     List<WalletTransaction> findByStatusAndUserIdNotNull(WalletTransaction.Status status);
 
+
 }

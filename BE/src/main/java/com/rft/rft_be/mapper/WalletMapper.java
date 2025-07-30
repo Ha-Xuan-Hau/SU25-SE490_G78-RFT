@@ -24,6 +24,7 @@ public interface WalletMapper {
     @Mapping(target = "cardNumber", source = "wallet.bankAccountNumber")
     @Mapping(target = "bankName", source = "wallet.bankAccountType")
     @Mapping(target = "cardHolderName", source = "wallet.bankAccountName")
+    @Mapping(target = "userId", source = "user.id")
     WalletTransactionDTO toTransactionDTO(WalletTransaction tx);
 
     List<WalletTransactionDTO> toTransactionDTOs(List<WalletTransaction> tx);
