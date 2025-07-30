@@ -14,6 +14,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -37,6 +41,15 @@ class DriverLicenseServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private SecurityContext securityContext;
+
+    @Mock
+    private JwtAuthenticationToken jwtAuthenticationToken;
+
+    @Mock
+    private Jwt jwt;
+
     @InjectMocks
     private DriverLicenseServiceImpl driverLicenseService;
 
@@ -45,10 +58,19 @@ class DriverLicenseServiceTest {
     private DriverLicenseDTO testDriverLicenseDTO;
     private CreateDriverLicenseDTO testCreateDriverLicenseDTO;
 
+    private static final String TEST_USER_ID = "user-001";
+
     @BeforeEach
     void setUp() {
+        // Setup SecurityContext mock - using lenient to avoid unnecessary stubbing errors
+        SecurityContextHolder.clearContext();
+        lenient().when(securityContext.getAuthentication()).thenReturn(jwtAuthenticationToken);
+        SecurityContextHolder.setContext(securityContext);
+        lenient().when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
+        lenient().when(jwt.getClaim("userId")).thenReturn(TEST_USER_ID);
+
         testUser = User.builder()
-                .id("user-001")
+                .id(TEST_USER_ID)
                 .fullName("John Doe")
                 .email("john@example.com")
                 .build();
@@ -66,7 +88,7 @@ class DriverLicenseServiceTest {
 
         testDriverLicenseDTO = DriverLicenseDTO.builder()
                 .id("license-001")
-                .userId("user-001")
+                .userId(TEST_USER_ID)
                 .userName("John Doe")
                 .licenseNumber("B2-123456")
                 .classField("B2")
@@ -77,7 +99,6 @@ class DriverLicenseServiceTest {
                 .build();
 
         testCreateDriverLicenseDTO = CreateDriverLicenseDTO.builder()
-                .userId("user-001")
                 .licenseNumber("B2-123456")
                 .classField("B2")
                 .status("VALID")
@@ -154,32 +175,32 @@ class DriverLicenseServiceTest {
     void getDriverLicensesByUserId_Success() {
         // Arrange
         List<DriverLicense> driverLicenses = Arrays.asList(testDriverLicense);
-        when(driverLicenseRepository.findByUserId("user-001")).thenReturn(driverLicenses);
+        when(driverLicenseRepository.findByUserId(TEST_USER_ID)).thenReturn(driverLicenses);
         when(driverLicenseMapper.toDTO(testDriverLicense)).thenReturn(testDriverLicenseDTO);
 
         // Act
-        List<DriverLicenseDTO> result = driverLicenseService.getDriverLicensesByUserId("user-001");
+        List<DriverLicenseDTO> result = driverLicenseService.getDriverLicensesByUserId(TEST_USER_ID);
 
         // Assert
         assertThat(result).isNotNull();
         assertThat(result).hasSize(1);
         assertThat(result.get(0)).isEqualTo(testDriverLicenseDTO);
-        verify(driverLicenseRepository, times(1)).findByUserId("user-001");
+        verify(driverLicenseRepository, times(1)).findByUserId(TEST_USER_ID);
         verify(driverLicenseMapper, times(1)).toDTO(testDriverLicense);
     }
 
     @Test
     void getDriverLicensesByUserId_EmptyList() {
         // Arrange
-        when(driverLicenseRepository.findByUserId("user-001")).thenReturn(Arrays.asList());
+        when(driverLicenseRepository.findByUserId(TEST_USER_ID)).thenReturn(Arrays.asList());
 
         // Act
-        List<DriverLicenseDTO> result = driverLicenseService.getDriverLicensesByUserId("user-001");
+        List<DriverLicenseDTO> result = driverLicenseService.getDriverLicensesByUserId(TEST_USER_ID);
 
         // Assert
         assertThat(result).isNotNull();
         assertThat(result).isEmpty();
-        verify(driverLicenseRepository, times(1)).findByUserId("user-001");
+        verify(driverLicenseRepository, times(1)).findByUserId(TEST_USER_ID);
         verify(driverLicenseMapper, never()).toDTO(any());
     }
 
@@ -217,7 +238,7 @@ class DriverLicenseServiceTest {
                 .build();
         DriverLicenseDTO expiredLicenseDTO = DriverLicenseDTO.builder()
                 .id("license-001")
-                .userId("user-001")
+                .userId(TEST_USER_ID)
                 .userName("John Doe")
                 .licenseNumber("B2-123456")
                 .classField("B2")
@@ -301,7 +322,7 @@ class DriverLicenseServiceTest {
     @Test
     void createDriverLicense_Success() {
         // Arrange
-        when(userRepository.findById("user-001")).thenReturn(Optional.of(testUser));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(driverLicenseRepository.existsByLicenseNumber("B2-123456")).thenReturn(false);
         when(driverLicenseRepository.save(any(DriverLicense.class))).thenReturn(testDriverLicense);
         when(driverLicenseMapper.toDTO(testDriverLicense)).thenReturn(testDriverLicenseDTO);
@@ -312,7 +333,7 @@ class DriverLicenseServiceTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result).isEqualTo(testDriverLicenseDTO);
-        verify(userRepository, times(1)).findById("user-001");
+        verify(userRepository, times(1)).findById(TEST_USER_ID);
         verify(driverLicenseRepository, times(1)).existsByLicenseNumber("B2-123456");
         verify(driverLicenseRepository, times(1)).save(any(DriverLicense.class));
         verify(driverLicenseMapper, times(1)).toDTO(testDriverLicense);
@@ -322,13 +343,12 @@ class DriverLicenseServiceTest {
     void createDriverLicense_WithNullStatus_SetsDefaultValidStatus() {
         // Arrange
         CreateDriverLicenseDTO createDTO = CreateDriverLicenseDTO.builder()
-                .userId("user-001")
                 .licenseNumber("B2-123456")
                 .classField("B2")
                 .status(null)
                 .image("image-url")
                 .build();
-        when(userRepository.findById("user-001")).thenReturn(Optional.of(testUser));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(driverLicenseRepository.existsByLicenseNumber("B2-123456")).thenReturn(false);
         when(driverLicenseRepository.save(any(DriverLicense.class))).thenReturn(testDriverLicense);
         when(driverLicenseMapper.toDTO(testDriverLicense)).thenReturn(testDriverLicenseDTO);
@@ -346,13 +366,12 @@ class DriverLicenseServiceTest {
     void createDriverLicense_WithEmptyStatus_SetsDefaultValidStatus() {
         // Arrange
         CreateDriverLicenseDTO createDTO = CreateDriverLicenseDTO.builder()
-                .userId("user-001")
                 .licenseNumber("B2-123456")
                 .classField("B2")
                 .status("")
                 .image("image-url")
                 .build();
-        when(userRepository.findById("user-001")).thenReturn(Optional.of(testUser));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(driverLicenseRepository.existsByLicenseNumber("B2-123456")).thenReturn(false);
         when(driverLicenseRepository.save(any(DriverLicense.class))).thenReturn(testDriverLicense);
         when(driverLicenseMapper.toDTO(testDriverLicense)).thenReturn(testDriverLicenseDTO);
@@ -367,48 +386,9 @@ class DriverLicenseServiceTest {
     }
 
     @Test
-    void createDriverLicense_NullUserId_ThrowsException() {
-        // Arrange
-        CreateDriverLicenseDTO createDTO = CreateDriverLicenseDTO.builder()
-                .userId(null)
-                .licenseNumber("B2-123456")
-                .classField("B2")
-                .status("VALID")
-                .image("image-url")
-                .build();
-
-        // Act & Assert
-        assertThatThrownBy(() -> driverLicenseService.createDriverLicense(createDTO))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("User ID is required");
-        verify(userRepository, never()).findById(any());
-        verify(driverLicenseRepository, never()).save(any());
-    }
-
-    @Test
-    void createDriverLicense_EmptyUserId_ThrowsException() {
-        // Arrange
-        CreateDriverLicenseDTO createDTO = CreateDriverLicenseDTO.builder()
-                .userId("")
-                .licenseNumber("B2-123456")
-                .classField("B2")
-                .status("VALID")
-                .image("image-url")
-                .build();
-
-        // Act & Assert
-        assertThatThrownBy(() -> driverLicenseService.createDriverLicense(createDTO))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("User ID is required");
-        verify(userRepository, never()).findById(any());
-        verify(driverLicenseRepository, never()).save(any());
-    }
-
-    @Test
     void createDriverLicense_NullLicenseNumber_ThrowsException() {
         // Arrange
         CreateDriverLicenseDTO createDTO = CreateDriverLicenseDTO.builder()
-                .userId("user-001")
                 .licenseNumber(null)
                 .classField("B2")
                 .status("VALID")
@@ -427,7 +407,6 @@ class DriverLicenseServiceTest {
     void createDriverLicense_EmptyLicenseNumber_ThrowsException() {
         // Arrange
         CreateDriverLicenseDTO createDTO = CreateDriverLicenseDTO.builder()
-                .userId("user-001")
                 .licenseNumber("")
                 .classField("B2")
                 .status("VALID")
@@ -459,13 +438,13 @@ class DriverLicenseServiceTest {
     void createDriverLicense_UserNotFound_ThrowsException() {
         // Arrange
         when(driverLicenseRepository.existsByLicenseNumber("B2-123456")).thenReturn(false);
-        when(userRepository.findById("user-001")).thenReturn(Optional.empty());
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> driverLicenseService.createDriverLicense(testCreateDriverLicenseDTO))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessage("User not found with id: user-001");
-        verify(userRepository, times(1)).findById("user-001");
+                .hasMessage("User not found with id: " + TEST_USER_ID);
+        verify(userRepository, times(1)).findById(TEST_USER_ID);
         verify(driverLicenseRepository, never()).save(any());
     }
 
@@ -473,7 +452,6 @@ class DriverLicenseServiceTest {
     void createDriverLicense_InvalidStatus_ThrowsException() {
         // Arrange
         CreateDriverLicenseDTO createDTO = CreateDriverLicenseDTO.builder()
-                .userId("user-001")
                 .licenseNumber("B2-123456")
                 .classField("B2")
                 .status("INVALID_STATUS")
@@ -481,14 +459,14 @@ class DriverLicenseServiceTest {
                 .build();
 
         // Mock user repository to return a user so we can test status validation
-        when(userRepository.findById("user-001")).thenReturn(Optional.of(testUser));
+        when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(driverLicenseRepository.existsByLicenseNumber("B2-123456")).thenReturn(false);
 
         // Act & Assert
         assertThatThrownBy(() -> driverLicenseService.createDriverLicense(createDTO))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Invalid status: INVALID_STATUS. Valid values are: VALID, EXPIRED");
-        verify(userRepository, times(1)).findById("user-001");
+        verify(userRepository, times(1)).findById(TEST_USER_ID);
         verify(driverLicenseRepository, times(1)).existsByLicenseNumber("B2-123456");
         verify(driverLicenseRepository, never()).save(any());
     }
@@ -517,7 +495,7 @@ class DriverLicenseServiceTest {
         
         DriverLicenseDTO updatedLicenseDTO = DriverLicenseDTO.builder()
                 .id("license-001")
-                .userId("user-001")
+                .userId(TEST_USER_ID)
                 .userName("John Doe")
                 .licenseNumber("B2-654321")
                 .classField("B1")
@@ -599,7 +577,7 @@ class DriverLicenseServiceTest {
         
         DriverLicenseDTO updatedLicenseDTO = DriverLicenseDTO.builder()
                 .id("license-001")
-                .userId("user-001")
+                .userId(TEST_USER_ID)
                 .userName("John Doe")
                 .licenseNumber("B2-123456")
                 .classField("B1")
@@ -659,7 +637,7 @@ class DriverLicenseServiceTest {
         
         DriverLicenseDTO updatedLicenseDTO = DriverLicenseDTO.builder()
                 .id("license-001")
-                .userId("user-001")
+                .userId(TEST_USER_ID)
                 .userName("John Doe")
                 .licenseNumber("B2-123456")
                 .classField("B1")

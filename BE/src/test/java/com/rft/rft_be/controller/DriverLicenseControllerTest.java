@@ -12,6 +12,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,9 +25,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -44,14 +46,27 @@ public class DriverLicenseControllerTest {
     private CreateDriverLicenseDTO mockCreateDriverLicenseDTO;
     private List<DriverLicenseDTO> mockDriverLicenseList;
 
+    private static final String TEST_USER_ID = "user-001";
+
     @BeforeEach
     void setUp() {
         objectMapper.registerModule(new JavaTimeModule());
 
+        // Setup SecurityContext mock for JWT authentication
+        SecurityContext securityContext = mock(SecurityContext.class);
+        JwtAuthenticationToken jwtAuthenticationToken = mock(JwtAuthenticationToken.class);
+        Jwt jwt = mock(Jwt.class);
+        
+        when(securityContext.getAuthentication()).thenReturn(jwtAuthenticationToken);
+        when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
+        when(jwt.getClaim("userId")).thenReturn(TEST_USER_ID);
+        
+        SecurityContextHolder.setContext(securityContext);
+
         // Setup mock data
         mockDriverLicense = DriverLicenseDTO.builder()
                 .id("license-001")
-                .userId("user-001")
+                .userId(TEST_USER_ID)
                 .userName("John Doe")
                 .licenseNumber("B2-123456")
                 .classField("B2")
@@ -62,7 +77,6 @@ public class DriverLicenseControllerTest {
                 .build();
 
         mockCreateDriverLicenseDTO = CreateDriverLicenseDTO.builder()
-                .userId("user-001")
                 .licenseNumber("B2-123456")
                 .classField("B2")
                 .status("VALID")
