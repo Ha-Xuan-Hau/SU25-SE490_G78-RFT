@@ -31,6 +31,8 @@ export const viDictionary: Record<string, string> = {
   VALID: "Còn hiệu lực",
   INVALID: "Không còn hiệu lực",
   FINISHED: "Đã hoàn thành",
+
+  APPROVED: "Đã duyệt",
 };
 
 export function translateENtoVI(text: string): string {

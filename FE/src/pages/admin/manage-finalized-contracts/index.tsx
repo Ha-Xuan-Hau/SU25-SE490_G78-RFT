@@ -19,7 +19,6 @@ import {
   FileTextOutlined,
   UserOutlined,
   MailOutlined,
-  CheckCircleOutlined,
   DollarOutlined,
   CalendarOutlined,
   BankOutlined,
@@ -29,16 +28,11 @@ import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { showError, showSuccess } from "@/utils/toast.utils";
 import { translateENtoVI } from "@/lib/viDictionary";
-import {
-  getAllFinalUnapprovedContracts,
-  approveFinalContract,
-} from "@/apis/admin.api";
+import { getAllFinalContracts } from "@/apis/admin.api";
 
 const { Title } = Typography;
 const { Search } = Input;
-const { confirm } = Modal;
 
 export interface FinalContract {
   id: string;
@@ -83,7 +77,7 @@ export default function FinalContractsPage() {
   const fetchContracts = async () => {
     setLoading(true);
     try {
-      const data = await getAllFinalUnapprovedContracts();
+      const data = await getAllFinalContracts();
       setContracts(data);
       setFilteredContracts(data);
     } catch (error) {
@@ -112,52 +106,6 @@ export default function FinalContractsPage() {
   const handleViewDetails = (contract: FinalContract) => {
     setSelectedContract(contract);
     setIsModalVisible(true);
-  };
-
-  const handleApprove = async () => {
-    if (!selectedContract) return;
-
-    confirm({
-      title: "Xác nhận duyệt tất toán",
-      content: (
-        <div>
-          <p>Bạn có chắc chắn muốn duyệt tất toán cho hợp đồng này?</p>
-          <div className="mt-3 p-3 bg-gray-50 rounded">
-            <div>
-              <strong>Mã hợp đồng:</strong> {selectedContract.contractId}
-            </div>
-            <div>
-              <strong>Chủ xe:</strong> {selectedContract.providerName}
-            </div>
-            <div>
-              <strong>Chi phí tất toán:</strong>{" "}
-              {formatAmount(selectedContract.costSettlement)}
-            </div>
-          </div>
-        </div>
-      ),
-      okText: "Xác nhận duyệt",
-      cancelText: "Hủy",
-      onOk: async () => {
-        try {
-          const approvalData = {
-            userId: currentUserId,
-            providerId: selectedContract.providerId,
-            costSettlement: selectedContract.costSettlement,
-            contractStatus: selectedContract.contractStatus,
-          };
-          await approveFinalContract(selectedContract.id, approvalData);
-
-          // Reload the page after approval
-          window.location.reload(); // This will refresh the page and fetch updated contracts
-
-          showSuccess("Duyệt tất toán hợp đồng thành công!");
-          setIsModalVisible(false);
-        } catch (error) {
-          showError("Duyệt hợp đồng thất bại. Vui lòng kiểm tra lại.");
-        }
-      },
-    });
   };
 
   const handleCancel = () => {
@@ -280,16 +228,14 @@ export default function FinalContractsPage() {
       title: "Người duyệt",
       key: "approver",
       render: (_, record) =>
-        record.userName ? (
+        record.contractStatus === "FINISHED" && record.userName ? (
           <div className="text-sm">
             <div className="font-medium">{record.userName}</div>
             <div className="text-gray-500">
               {formatTimestamp(record.updatedAt)}
             </div>
           </div>
-        ) : (
-          <span className="text-gray-400">Chưa duyệt</span>
-        ),
+        ) : null,
     },
     {
       title: "Thao tác",
@@ -519,20 +465,6 @@ export default function FinalContractsPage() {
                 </Descriptions>
               </div>
             )}
-
-            {/* Approve Button */}
-            {selectedContract.contractStatus === "FINISHED" &&
-              !selectedContract.userId && (
-                <div className="flex justify-end mt-4">
-                  <Button
-                    type="primary"
-                    icon={<CheckCircleOutlined />}
-                    onClick={handleApprove}
-                  >
-                    Duyệt tất toán
-                  </Button>
-                </div>
-              )}
           </div>
         )}
       </Modal>
