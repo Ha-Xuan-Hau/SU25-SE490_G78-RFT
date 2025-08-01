@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -130,6 +132,38 @@ public class CouponControllerTest {
         mockMvc.perform(get("/api/coupons/available?userId=user123"))
                 .andExpect(status().isOk());
     }
+    @Test
+    @WithMockUser
+    void testApplyCoupon_success() throws Exception {
+        // Arrange
+        CouponUseDTO mockDTO = new CouponUseDTO();
+        mockDTO.setId("c1");
+        mockDTO.setName("SAVE10");
+        mockDTO.setDiscount(BigDecimal.TEN);
+        mockDTO.setDescription("Desc");
 
+        when(couponService.applyCoupon(eq("user123"), eq("SAVE10"))).thenReturn(mockDTO);
 
+        // Act & Assert
+        mockMvc.perform(get("/api/coupons/apply")
+                        .param("code", "SAVE10")
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", "user123")))) // mock JWT
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("c1"))
+                .andExpect(jsonPath("$.name").value("SAVE10"))
+                .andExpect(jsonPath("$.discount").value(10))
+                .andExpect(jsonPath("$.description").value("Desc"));
+    }
+    @Test
+    @WithMockUser
+    void testApplyCoupon_invalidCode() throws Exception {
+        when(couponService.applyCoupon(eq("user123"), eq("INVALID")))
+                .thenThrow(new RuntimeException("Coupon not found"));
+
+        mockMvc.perform(get("/api/coupons/apply")
+                        .param("code", "INVALID")
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", "user123"))))
+                .andExpect(status().isBadRequest()) // <-- đúng với handler
+                .andExpect(jsonPath("$.message").value("Coupon not found"));
+    }
 }

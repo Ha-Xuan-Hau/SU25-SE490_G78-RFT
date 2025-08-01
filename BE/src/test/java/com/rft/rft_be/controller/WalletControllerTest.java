@@ -207,4 +207,14 @@ public class WalletControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("[0].id").value("txn-001"));
     }
+    @Test
+    void getApprovedWithdrawals_success() throws Exception {
+        List<WalletTransactionDTO> approvedTxns = List.of(transactionDTO);
+        Mockito.when(walletService.getApprovedWithdrawals()).thenReturn(approvedTxns);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/staff/withdrawals/approved")
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF"))))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].id").value("txn-001"));
+    }
 }
