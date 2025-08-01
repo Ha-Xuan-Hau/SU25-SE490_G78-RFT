@@ -33,4 +33,6 @@ export interface BookingDetail {
   status: string;
   createdAt: number[];
   updatedAt: number[];
+  driverFee?: number;
+  returnedAt?: number[];
 }

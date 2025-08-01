@@ -48,4 +48,6 @@ public class BookingResponseDTO {
     String priceType;         // "hourly" hoặc "daily"
     String rentalDuration;    // formatted duration
     BigDecimal discountAmount;
+    BigDecimal driverFee;
+    LocalDateTime returnedAt;
 }
