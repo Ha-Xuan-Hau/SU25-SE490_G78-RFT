@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import VehicleCard from "./Card/Card";
-import { getVehicles } from "@/apis/vehicle.api";
+import VehicleCard from "../Card";
+import { getVehiclesByTypeAndStatus } from "@/apis/vehicle.api";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
-const Vehicle: React.FC = () => {
+const Car: React.FC = () => {
   const {
     data: vehicles,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["vehicles"],
-    queryFn: getVehicles,
+    queryKey: ["vehicles", "CAR", "AVAILABLE"],
+    queryFn: () => getVehiclesByTypeAndStatus("CAR", "AVAILABLE"),
   });
 
   if (isLoading) {
@@ -21,12 +21,12 @@ const Vehicle: React.FC = () => {
     return <div className="text-center py-10">Có lỗi khi tải dữ liệu xe</div>;
 
   return (
-    <section>
+    <section className="pt-16 pb-8">
       <div className="container max-w-8xl mx-auto px-5 2xl:px-0">
         <div className="mb-16 flex flex-col gap-3 ">
           <div className="flex gap-2.5 items-center justify-center"></div>
           <h2 className="text-40 lg:text-52 font-medium text-black dark:text-white text-center tracking-tight leading-11 mb-2">
-            Xe dành cho bạn
+            Ô tô
           </h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -41,4 +41,4 @@ const Vehicle: React.FC = () => {
   );
 };
 
-export default Vehicle;
+export default Car;

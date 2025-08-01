@@ -218,7 +218,7 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn booking với mã giao dịch: " + bookingtxnRef));
 
         // Cập nhật trạng thái booking
-        booking.setStatus(Booking.Status.PENDING);
+        booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
 
         // Lấy provider từ bookingDetails (chỉ lấy từ 1 xe vì cùng 1 chủ)

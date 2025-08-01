@@ -74,6 +74,12 @@ export default function UserRegisterVehicle() {
   const [isLoading, setIsLoading] = useState(false);
   const [accessToken] = useLocalStorage("access_token");
 
+  // modal nội quy
+  const [rulesModal, setRulesModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"create" | "edit" | null>(
+    null
+  );
+
   // Fetch group vehicles by type
   const fetchGroupVehicles = async (type: string) => {
     setIsLoading(true);
@@ -113,8 +119,24 @@ export default function UserRegisterVehicle() {
   };
 
   const handleAddVehicle = () => {
-    setEditVehicleId(null);
-    setRegisterVehicleModal(true);
+    setPendingAction("create");
+    setRulesModal(true);
+  };
+
+  const handleAcceptRules = () => {
+    setRulesModal(false);
+
+    if (pendingAction === "create") {
+      setEditVehicleId(null);
+      setRegisterVehicleModal(true);
+    }
+
+    setPendingAction(null);
+  };
+
+  const handleRejectRules = () => {
+    setRulesModal(false);
+    setPendingAction(null);
   };
 
   const handleEditVehicle = (vehicleId: string) => {
@@ -555,27 +577,48 @@ export default function UserRegisterVehicle() {
           open={editSingleModal.open}
           initialImages={
             editSingleModal.vehicle && editSingleModal.vehicle.vehicleImages
-              ? editSingleModal.vehicle.vehicleImages.map(
-                  (img: { imageUrl: string }) => img.imageUrl
-                )
+              ? (() => {
+                  const allImages = editSingleModal.vehicle.vehicleImages.map(
+                    (img: { imageUrl: string }) => img.imageUrl
+                  );
+                  // Tách 4 ảnh xe đầu tiên
+                  return allImages.slice(0, 4);
+                })()
               : []
+          }
+          initialDocuments={
+            editSingleModal.vehicle && editSingleModal.vehicle.vehicleImages
+              ? (() => {
+                  const allImages = editSingleModal.vehicle.vehicleImages.map(
+                    (img: { imageUrl: string }) => img.imageUrl
+                  );
+                  // Lấy ảnh thứ 5 (ảnh giấy tờ)
+                  return allImages[4] || "";
+                })()
+              : ""
           }
           initialLicensePlate={editSingleModal.vehicle?.licensePlate || ""}
           loading={editSingleLoading}
           onCancel={() => setEditSingleModal({ open: false, vehicle: null })}
-          onOk={async ({ images, licensePlate }) => {
+          onOk={async ({ images, documents, licensePlate }) => {
             setEditSingleLoading(true);
             try {
               if (!editSingleModal.vehicle) return;
 
+              // Gộp ảnh xe và ảnh giấy tờ thành 1 array
+              const allImages = [...images];
+              if (documents) {
+                allImages.push(documents); // Thêm ảnh giấy tờ vào vị trí thứ 5
+              }
+
               // Chuyển đổi images thành định dạng mà backend yêu cầu
-              const formattedImages = images.map((url: string) => ({
+              const formattedImages = allImages.map((url: string) => ({
                 imageUrl: url,
               }));
 
               await updateSingleMotorbikeInGroup({
                 vehicleId: editSingleModal.vehicle.id,
-                images: formattedImages, // Sử dụng định dạng mới
+                images: formattedImages, // Gửi tất cả ảnh (bao gồm cả ảnh giấy tờ)
                 licensePlate,
                 accessToken,
               });
@@ -587,7 +630,7 @@ export default function UserRegisterVehicle() {
                   v.id === editSingleModal.vehicle!.id
                     ? {
                         ...v,
-                        vehicleImages: formattedImages, // Cập nhật images
+                        vehicleImages: formattedImages, // Cập nhật tất cả ảnh
                         licensePlate,
                       }
                     : v
@@ -605,6 +648,181 @@ export default function UserRegisterVehicle() {
             }
           }}
         />
+      </Modal>
+
+      {/* Modal nội quy đăng ký xe */}
+      <Modal
+        open={rulesModal}
+        title={
+          <div className="flex items-center gap-2">
+            <span className="text-orange-500 text-xl">⚠️</span>
+            <span>Nội quy đăng ký xe</span>
+          </div>
+        }
+        onCancel={handleRejectRules}
+        width={1000}
+        footer={[
+          <Button key="cancel" onClick={handleRejectRules}>
+            Hủy bỏ
+          </Button>,
+          <Button key="accept" type="primary" onClick={handleAcceptRules}>
+            Tôi đã đọc và đồng ý
+          </Button>,
+        ]}
+      >
+        <div className="space-y-4 max-h-[700px] overflow-y-auto">
+          {" "}
+          {/* ✅ Tăng height từ 96 lên 700px */}
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <p className="text-yellow-800 font-medium">
+              Vui lòng đọc kỹ các quy định sau trước khi đăng ký xe:
+            </p>
+          </div>
+          <div className="space-y-4">
+            {" "}
+            {/* ✅ Tăng spacing từ 3 lên 4 */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                1. Về thông tin xe:
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                <li>Thông tin xe phải chính xác và trung thực</li>
+                <li>Hình ảnh xe phải rõ ràng, không được chỉnh sửa quá mức</li>
+                <li>
+                  Xe phải trong tình trạng an toàn, có đầy đủ giấy tờ pháp lý
+                </li>
+                <li>Xe phải được bảo dưỡng định kỳ và đảm bảo chất lượng</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                2. Về giá cả và phí dịch vụ:
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                <li>Giá thuê phải hợp lý và cạnh tranh</li>
+                <li>Không được thay đổi giá sau khi khách đã đặt</li>
+                <li>Các phí phát sinh phải được thông báo rõ ràng</li>
+                <li>Không được tính phí ẩn hoặc phí không hợp lý</li>
+              </ul>
+            </div>
+            {/* ✅ Thêm mục mới về định vị */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                3. Về thiết bị định vị và nhận diện:
+              </h4>
+              <div className="bg-red-50 border-l-4 border-red-400 p-3 mb-3">
+                <p className="text-red-800 font-medium">
+                  <strong>BẮT BUỘC:</strong> Tất cả các xe cho thuê phải tuân
+                  thủ các quy định sau:
+                </p>
+              </div>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                <li>
+                  <strong>Gắn thiết bị định vị GPS:</strong> Xe phải được lắp
+                  đặt thiết bị định vị để theo dõi vị trí và đảm bảo an toàn
+                </li>
+                <li>
+                  <strong>Dán decal nhận diện:</strong> Phải dán sticker/decal
+                  có nội dung
+                  <span className="bg-yellow-200 px-2 py-1 rounded font-semibold mx-1">
+                    &quot;ĐÂY LÀ XE CHO THUÊ - NẾU CÓ NGƯỜI YÊU CẦU CHỈNH SỬA
+                    XE, VUI LÒNG LIÊN HỆ NGAY 0947495583&quot;
+                  </span>
+                  ở vị trí dễ nhìn thấy (kính sau hoặc cửa xe)
+                </li>
+                <li>
+                  <strong>Kích thước decal:</strong> Tối thiểu 15cm x 5cm, chữ
+                  rõ ràng, dễ đọc
+                </li>
+                <li>
+                  <strong>Vị trí đặt decal:</strong> Góc dưới bên phải kính lái
+                  hoặc kính sau
+                </li>
+                <li>
+                  <strong>Thông tin liên hệ:</strong> Decal phải có số điện
+                  thoại hotline hỗ trợ
+                </li>
+              </ul>
+              <div className="bg-blue-50 border border-blue-200 p-3 mt-3 rounded">
+                <p className="text-blue-800 text-sm">
+                  <strong>💡 Ghi chú:</strong> Thiết bị định vị và decal nhận
+                  diện giúp bảo vệ cả chủ xe và khách thuê, đồng thời tuân thủ
+                  quy định pháp luật về kinh doanh vận tải.
+                </p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                4. Về trách nhiệm:
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                <li>Chủ xe chịu trách nhiệm về tình trạng xe trước khi giao</li>
+                <li>Phải có mặt đúng giờ khi giao/nhận xe</li>
+                <li>Hỗ trợ khách hàng trong trường hợp khẩn cấp</li>
+                <li>Đảm bảo xe luôn trong tình trạng sẵn sàng cho thuê</li>
+                <li>Thông báo ngay khi xe gặp sự cố hoặc không thể cho thuê</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                5. Về vi phạm và xử lý:
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                <li>Vi phạm nội quy có thể dẫn đến khóa tài khoản</li>
+                <li>Cung cấp thông tin sai lệch sẽ bị xử lý nghiêm khắc</li>
+                <li>Không tuân thủ cam kết sẽ ảnh hưởng đến uy tín</li>
+                <li>
+                  <strong className="text-red-600">
+                    Không gắn định vị hoặc decal nhận diện sẽ bị từ chối duyệt
+                    xe
+                  </strong>
+                </li>
+                <li>Tái phạm nhiều lần có thể bị cấm vĩnh viễn</li>
+              </ul>
+            </div>
+            {/* ✅ Thêm mục về hỗ trợ */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                6. Hỗ trợ và liên hệ:
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
+                <li>
+                  Liên hệ hotline <strong>0947495583</strong> để được hỗ trợ gắn
+                  về các nội quy nếu cần trao đổi thêm
+                </li>
+                <li>Hướng dẫn chi tiết về quy trình đăng ký xe</li>
+              </ul>
+            </div>
+          </div>
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <p className="text-blue-800">
+              <strong>Lưu ý quan trọng:</strong> Bằng việc nhấn &quot;Tôi đã đọc
+              và đồng ý&quot;, bạn xác nhận đã hiểu và cam kết tuân thủ tất cả
+              các quy định trên,
+              <strong className="text-red-600">
+                đặc biệt là việc gắn định vị GPS và dán decal &quot;ĐÂY LÀ XE
+                CHO THUÊ&quot;
+              </strong>
+              trước khi đưa xe vào hoạt động.
+            </p>
+          </div>
+          {/* ✅ Thêm warning cuối */}
+          <div className="bg-orange-50 border border-orange-200 p-4 rounded">
+            <div className="flex items-start gap-2">
+              <span className="text-orange-500 text-lg">⚠️</span>
+              <div>
+                <p className="text-orange-800 font-medium mb-1">
+                  Cảnh báo quan trọng:
+                </p>
+                <p className="text-orange-700 text-sm">
+                  Xe không tuân thủ quy định về định vị và decal nhận diện sẽ
+                  không được duyệt hoặc bị gỡ khỏi hệ thống. Vui lòng chuẩn bị
+                  đầy đủ trước khi đăng ký.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </Modal>
 
       <Modal
@@ -647,6 +865,9 @@ export default function UserRegisterVehicle() {
             onOk={() => {
               setRegisterVehicleModal(false);
               fetchGroupVehicles(activeType);
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000); // Delay 1s để modal đóng trước
             }}
           />
         </Spin>

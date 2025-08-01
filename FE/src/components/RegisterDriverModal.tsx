@@ -6,7 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast, ToastPosition } from "react-toastify";
 import { UploadImage } from "@/components/UploadImage";
 import axios from "axios";
-import { Button, Form, notification, Modal, Input, Select } from "antd";
+import { Button, Form, notification, Modal, Input } from "antd";
 
 // Định nghĩa interface cho props
 interface RegisterDriverModalProps {
@@ -35,7 +35,7 @@ function RegisterDriverModal({
 
   const onSubmit = async (values: DriverFormValues) => {
     setLoading(true);
-    const { licenseNumber, classField } = values;
+    const { licenseNumber, classField, image } = values; // lấy image từ values
 
     try {
       const did = user?.result?.driverLicenses?._id;
@@ -47,7 +47,8 @@ function RegisterDriverModal({
         data: {
           licenseNumber,
           classField,
-        }, // Gửi dữ liệu cập nhật
+          image, // gửi image lên backend
+        },
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -55,18 +56,15 @@ function RegisterDriverModal({
         },
       });
 
-      if (response.status === 200) {
-        console.log(response.data);
-        setProfile({ ...response.data });
-        handleCancelRegisterDriver();
-        const successMessage = user?.result?.driverLicenses
+      console.log(response.data);
+      setProfile({ ...response.data });
+      notification.success({
+        message: user?.result?.driverLicenses
           ? "Cập nhật thành công"
-          : "Đăng kí thành công";
-
-        notification.success({
-          message: successMessage,
-        });
-      }
+          : "Đăng ký thành công",
+      });
+      handleCancelRegisterDriver();
+      window.location.reload();
     } catch (error: any) {
       toast.error(error.response?.data?.errors?.[0]?.msg || "Đã xảy ra lỗi", {
         position: "top-center" as ToastPosition,
@@ -147,10 +145,11 @@ function RegisterDriverModal({
         <div className="grow w-1/3">
           <Form.Item label="Hình ảnh" name="image" required>
             <UploadImage
-              onChange={(licenseNumber, classField) => {
+              onChange={(licenseNumber, classField, imageUrl) => {
                 form.setFieldsValue({
                   licenseNumber: licenseNumber,
                   classField: classField,
+                  image: imageUrl, // set image url vào form
                 });
               }}
             />
