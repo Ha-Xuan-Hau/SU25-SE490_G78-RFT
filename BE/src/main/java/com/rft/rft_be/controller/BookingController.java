@@ -52,12 +52,6 @@ public class BookingController {
         return new ResponseEntity<>(bookingResponse, HttpStatus.CREATED);
     }
 
-    @PostMapping("/{bookingId}/confirm")
-    public ResponseEntity<?> confirmBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
-        bookingService.confirmBooking(bookingId, extractToken(authHeader));
-        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Xác nhận đơn thành công");
-    }
-
     @PostMapping("/{bookingId}/deliver")
     public ResponseEntity<?> deliverVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         bookingService.deliverVehicle(bookingId, extractToken(authHeader));
