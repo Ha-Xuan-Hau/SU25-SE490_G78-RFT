@@ -17,7 +17,6 @@ import {
 import {
   Button,
   Form,
-  Image,
   Input,
   Modal,
   Table,
@@ -27,7 +26,6 @@ import {
   Spin,
   Tabs,
 } from "antd";
-import dayjs from "dayjs";
 import type { ColumnType } from "antd/es/table";
 
 // Define TypeScript interfaces
@@ -251,7 +249,7 @@ export default function ManageContracts() {
   const displayContracts = getFilteredContracts();
 
   const showModal = (contract: ContractData) => {
-    setCurrentContract(contract); // ✅ Lưu thông tin contract hiện tại
+    setCurrentContract(contract); // Lưu thông tin contract hiện tại
     setOpen(true);
     form.setFieldsValue({
       id: contract.id,
@@ -313,7 +311,7 @@ export default function ManageContracts() {
       case "PROCESSING":
         return (
           <Tag color="orange" icon={<MinusCircleOutlined />}>
-            Chờ xác nhận
+            Đang xử lý
           </Tag>
         );
       case "RENTING":
@@ -619,34 +617,34 @@ export default function ManageContracts() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <Form.Item label="Mã đặt xe" name="id">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Tên khách hàng" name="userName">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Số điện thoại" name="userPhone">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Địa chỉ nhận xe" name="userAddress">
-                <Input.TextArea disabled rows={2} />
+                <Input.TextArea readOnly rows={2} />
               </Form.Item>
             </div>
 
             <div>
               <Form.Item label="Thời gian bắt đầu thuê" name="bookingStartTime">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Thời gian kết thúc thuê" name="bookingEndTime">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Thời gian khách trả xe" name="timeFinish">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Tổng giá tiền thuê" name="bookingTotalCost">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Contract ID" hidden name="id">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
             </div>
           </div>
