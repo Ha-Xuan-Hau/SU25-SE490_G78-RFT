@@ -42,6 +42,54 @@ export const UploadMultipleImage = ({
   }, [value]);
 
   // Function to call Google Vision API
+  // const isVehicleImage = async (file: File) => {
+  //   const reader = new FileReader();
+  //   const base64String = await new Promise<string>((resolve, reject) => {
+  //     reader.onloadend = () => resolve(reader.result as string);
+  //     reader.onerror = reject;
+  //     reader.readAsDataURL(file);
+  //   });
+
+  //   const requestBody = {
+  //     requests: [
+  //       {
+  //         image: {
+  //           content: base64String.split(",")[1],
+  //         },
+  //         features: [
+  //           {
+  //             type: "LABEL_DETECTION",
+  //             maxResults: 10,
+  //           },
+  //         ],
+  //       },
+  //     ],
+  //   };
+
+  //   try {
+  //     const response = await axios.post(
+  //       `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
+  //       requestBody
+  //     );
+
+  //     const labels: { description: string }[] =
+  //       response.data.responses[0].labelAnnotations;
+
+  //     return labels.some(
+  //       (label) =>
+  //         label.description.toLowerCase().includes("car") ||
+  //         label.description.toLowerCase().includes("motorbike") ||
+  //         label.description.toLowerCase().includes("bicycle") ||
+  //         label.description.toLowerCase().includes("vehicle")
+  //     );
+  //   } catch (error) {
+  //     console.error("Google Vision API error:", error);
+  //     messageApi.error("Error calling Google Vision API");
+  //     return false;
+  //   }
+  // };
+
+  // Function to call Google Vision API
   const isVehicleImage = async (file: File) => {
     const reader = new FileReader();
     const base64String = await new Promise<string>((resolve, reject) => {
@@ -59,6 +107,10 @@ export const UploadMultipleImage = ({
           features: [
             {
               type: "LABEL_DETECTION",
+              maxResults: 20, // Tăng số lượng nhãn để có nhiều kết quả hơn
+            },
+            {
+              type: "OBJECT_LOCALIZATION", // Thêm tính năng nhận diện đối tượng
               maxResults: 10,
             },
           ],
@@ -72,19 +124,148 @@ export const UploadMultipleImage = ({
         requestBody
       );
 
-      const labels: { description: string }[] =
-        response.data.responses[0].labelAnnotations;
+      const responseData = response.data.responses[0];
+      const labels: { description: string; score: number }[] =
+        responseData.labelAnnotations || [];
+      const objects: { name: string }[] =
+        responseData.localizedObjectAnnotations || [];
 
-      return labels.some(
-        (label) =>
-          label.description.toLowerCase().includes("car") ||
-          label.description.toLowerCase().includes("motorbike") ||
-          label.description.toLowerCase().includes("bicycle") ||
-          label.description.toLowerCase().includes("vehicle")
+      // Danh sách các từ khóa liên quan đến phương tiện (tiếng Anh)
+      const vehicleKeywords = [
+        // Xe ô tô
+        "car",
+        "automobile",
+        "vehicle",
+        "sedan",
+        "suv",
+        "truck",
+        "pickup",
+        "van",
+        "minivan",
+        "hatchback",
+        "coupe",
+        "convertible",
+        "limousine",
+        "taxi",
+        "cab",
+        "bus",
+        "coach",
+        "minibus",
+        "jeep",
+        "crossover",
+        "wagon",
+        "estate",
+
+        // Xe máy
+        "motorcycle",
+        "motorbike",
+        "bike",
+        "scooter",
+        "moped",
+        "chopper",
+        "cruiser",
+        "sportbike",
+        "dirt bike",
+        "touring motorcycle",
+        "naked bike",
+        "vespa",
+
+        // Xe đạp
+        "bicycle",
+        "bike",
+        "cycling",
+        "mountain bike",
+        "road bike",
+        "bmx",
+        "electric bike",
+        "e-bike",
+        "tandem",
+        "tricycle",
+
+        // Các loại xe khác
+        // "ambulance",
+        // "fire truck",
+        // "police car",
+        // "tow truck",
+        // "garbage truck",
+        // "delivery truck",
+        // "cargo truck",
+        // "trailer",
+        // "semi-truck",
+        // "lorry",
+
+        // Các bộ phận xe
+        "wheel",
+        "tire",
+        "headlight",
+        "bumper",
+        "windshield",
+        "mirror",
+        "hood",
+        "door",
+        "license plate",
+        "steering wheel",
+        "dashboard",
+        "engine",
+
+        // Từ khóa chung
+        "transport",
+        "transportation",
+        "automotive",
+        "motor vehicle",
+        "land vehicle",
+        "personal vehicle",
+        "public transport",
+        "commercial vehicle",
+
+        // Xe điện
+        "electric vehicle",
+        "hybrid",
+        "tesla",
+        "electric car",
+        "ev",
+
+        // Xe thể thao
+        "sports car",
+        "racing car",
+        "formula",
+        "rally car",
+        "drift car",
+      ];
+
+      // Kiểm tra nhãn từ Label Detection
+      const hasVehicleLabel = labels.some((label) => {
+        const description = label.description.toLowerCase();
+        return (
+          vehicleKeywords.some((keyword) =>
+            description.includes(keyword.toLowerCase())
+          ) && label.score > 0.5
+        ); // Chỉ chấp nhận nhãn có độ tin cậy > 50%
+      });
+
+      // Kiểm tra đối tượng từ Object Localization
+      const hasVehicleObject = objects.some((obj) => {
+        const name = obj.name.toLowerCase();
+        return vehicleKeywords.some((keyword) =>
+          name.includes(keyword.toLowerCase())
+        );
+      });
+
+      // Log để debug (có thể xóa trong production)
+      console.log(
+        "Detected labels:",
+        labels.map((l) => `${l.description} (${l.score})`)
       );
+      console.log(
+        "Detected objects:",
+        objects.map((o) => o.name)
+      );
+      console.log("Is vehicle:", hasVehicleLabel || hasVehicleObject);
+
+      return hasVehicleLabel || hasVehicleObject;
     } catch (error) {
       console.error("Google Vision API error:", error);
-      messageApi.error("Error calling Google Vision API");
+      messageApi.error("Lỗi khi gọi Google Vision API");
       return false;
     }
   };
