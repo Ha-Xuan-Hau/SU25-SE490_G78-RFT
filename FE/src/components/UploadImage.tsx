@@ -4,9 +4,14 @@ import { CloudUploadOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import { showApiError } from "@/utils/toast.utils";
 
 interface UploadImageProps {
-  onChange?: (licenseNumber: string, licenseClass: string) => void; // Cập nhật kiểu dữ liệu
+  onChange?: (
+    licenseNumber: string,
+    licenseClass: string,
+    imageUrl?: string
+  ) => void;
 }
 
 // Sửa lại định nghĩa style
@@ -48,15 +53,18 @@ export const UploadImage = ({ onChange }: UploadImageProps) => {
       // Kiểm tra kết quả phân tích
       if (licenseNumber && licenseClass) {
         if (onChange) {
-          onChange(licenseNumber, licenseClass); // Gửi số GPLX và hạng bằng
+          onChange(licenseNumber, licenseClass, data?.url); // truyền thêm image url
         }
       } else {
         messageApi.error(
           "Hình ảnh không hợp lệ hoặc không chứa thông tin bằng lái."
         );
+        if (onChange) {
+          onChange("", "", ""); // reset cả image
+        }
       }
     } catch (error) {
-      messageApi.error(String(error));
+      showApiError(String(error));
     } finally {
       setLoading(false);
     }

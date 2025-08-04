@@ -110,6 +110,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // Tổng chi phí
+        BigDecimal driverFee = BigDecimal.ZERO;
         BigDecimal totalBeforeDiscount = BigDecimal.ZERO;
         BigDecimal totalDiscount = BigDecimal.ZERO;
         BigDecimal totalFinalCost = BigDecimal.ZERO;
@@ -119,6 +120,12 @@ public class BookingServiceImpl implements BookingService {
             BigDecimal baseCost = BookingCalculationUtils.calculateRentalPrice(calculation, v.getCostPerDay());
             BigDecimal deliveryCost = "delivery".equals(request.getPickupMethod()) ? BigDecimal.ZERO : BigDecimal.ZERO;
             totalBeforeDiscount = totalBeforeDiscount.add(baseCost.add(deliveryCost));
+        }
+
+        // Kiểm tra và cộng phí tài xế nếu có
+        if (request.getDriverFee() != null && request.getDriverFee().compareTo(BigDecimal.ZERO) > 0) {
+            driverFee = request.getDriverFee();
+            totalBeforeDiscount = totalBeforeDiscount.add(driverFee);
         }
 
         // Áp dụng coupon 1 lần
@@ -155,6 +162,11 @@ public class BookingServiceImpl implements BookingService {
 
         // Tạo bookingDetail và block slot
         List<BookingDetail> details = new ArrayList<>();
+
+        // Lấy phí tài xế từ request (nếu có)
+        BigDecimal requestDriverFee = (request.getDriverFee() != null) ? request.getDriverFee() : BigDecimal.ZERO;
+
+
         for (Vehicle v : vehicles) {
             BigDecimal baseCost = BookingCalculationUtils.calculateRentalPrice(calculation, v.getCostPerDay());
 
@@ -162,7 +174,7 @@ public class BookingServiceImpl implements BookingService {
                     .booking(booking)
                     .vehicle(v)
                     .cost(baseCost)
-                    .driverFee(BigDecimal.ZERO) // Nếu có
+                    .driverFee(requestDriverFee) // Nếu có
                     .build();
             details.add(detail);
 
@@ -758,7 +770,8 @@ public class BookingServiceImpl implements BookingService {
         walletTransactionRepository.save(tx);
 
         // Cập nhật booking
-        booking.setStatus(Booking.Status.PENDING);
+//        booking.setStatus(Booking.Status.PENDING);
+        booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
         notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
 

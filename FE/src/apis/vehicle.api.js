@@ -2,11 +2,11 @@
 import { apiClient } from './client';
 
 
-export async function getVehicles() {
+export async function getAvailableVehicles() {
     try {
         const response = await apiClient.request({
             method: 'GET',
-            url: '/vehicles',
+            url: '/vehicles/status/AVAILABLE',
         });
 
         const data = response.data;
@@ -16,6 +16,22 @@ export async function getVehicles() {
         throw error;
     }
 }
+
+export async function getVehiclesByTypeAndStatus(vehicleType, status) {
+    try {
+        const response = await apiClient.request({
+            method: 'GET',
+            url: `/vehicles/vehicle-type/${vehicleType}/status/${status}`,
+        });
+
+        const data = response.data;
+        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+    } catch (error) {
+        console.error(`Error fetching ${vehicleType} vehicles with status ${status}:`, error);
+        throw error;
+    }
+}
+
 
 export async function getVehicleById(vehicleId) {
     try {
