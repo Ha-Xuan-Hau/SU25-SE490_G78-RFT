@@ -33,6 +33,7 @@ import {
   Progress,
   Spin,
   Tabs,
+  Checkbox,
 } from "antd";
 import type { InputRef } from "antd";
 import type { ColumnType } from "antd/es/table";
@@ -154,6 +155,31 @@ export default function ManageAcceptedBookings() {
 
   // Provider state
   const [provider] = useProviderState();
+
+  // Thêm state để quản lý checkbox
+  const [deliveryChecklist, setDeliveryChecklist] = useState({
+    licenseCheck: false,
+    personalInfoCheck: false,
+    vehicleConditionCheck: false,
+    rulesGuidanceCheck: false,
+  });
+
+  // Reset checklist khi mở modal
+  const showDeliveryConfirmModal = (bookingId: string) => {
+    setSelectedDeliveryBookingId(bookingId);
+    setDeliveryConfirmModal(true);
+    // Reset checklist
+    setDeliveryChecklist({
+      licenseCheck: false,
+      personalInfoCheck: false,
+      vehicleConditionCheck: false,
+      rulesGuidanceCheck: false,
+    });
+  };
+
+  // Kiểm tra tất cả checkbox đã được check
+  const isAllChecklistCompleted =
+    Object.values(deliveryChecklist).every(Boolean);
 
   // Debug provider state and handle loading timeout
   useEffect(() => {
@@ -421,10 +447,10 @@ export default function ManageAcceptedBookings() {
   };
 
   // Show delivery confirmation modal
-  const showDeliveryConfirmModal = (bookingId: string) => {
-    setSelectedDeliveryBookingId(bookingId);
-    setDeliveryConfirmModal(true);
-  };
+  // const showDeliveryConfirmModal = (bookingId: string) => {
+  //   setSelectedDeliveryBookingId(bookingId);
+  //   setDeliveryConfirmModal(true);
+  // };
 
   // Hide delivery confirmation modal
   const hideDeliveryConfirmModal = () => {
@@ -1240,7 +1266,7 @@ export default function ManageAcceptedBookings() {
         onCancel={hideDeliveryConfirmModal}
         footer={[
           <Button key="cancel" onClick={hideDeliveryConfirmModal}>
-            Hủy
+            Đóng
           </Button>,
           <Button
             key="confirm"
@@ -1248,6 +1274,7 @@ export default function ManageAcceptedBookings() {
             onClick={confirmDelivery}
             loading={loading}
             icon={<CheckCircleOutlined />}
+            disabled={!isAllChecklistCompleted} // Disable nếu chưa check hết
           >
             Xác nhận đã giao xe
           </Button>,
@@ -1273,27 +1300,60 @@ export default function ManageAcceptedBookings() {
 
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
+              <Checkbox
+                checked={deliveryChecklist.licenseCheck}
+                onChange={(e) =>
+                  setDeliveryChecklist((prev) => ({
+                    ...prev,
+                    licenseCheck: e.target.checked,
+                  }))
+                }
+              />
               <span>Kiểm tra giấy phép lái xe của khách hàng</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
+              <Checkbox
+                checked={deliveryChecklist.personalInfoCheck}
+                onChange={(e) =>
+                  setDeliveryChecklist((prev) => ({
+                    ...prev,
+                    personalInfoCheck: e.target.checked,
+                  }))
+                }
+              />
               <span>Đối chiếu thông tin cá nhân với hệ thống</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
+              <Checkbox
+                checked={deliveryChecklist.vehicleConditionCheck}
+                onChange={(e) =>
+                  setDeliveryChecklist((prev) => ({
+                    ...prev,
+                    vehicleConditionCheck: e.target.checked,
+                  }))
+                }
+              />
               <span>Kiểm tra tình trạng xe trước khi giao</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
+              <Checkbox
+                checked={deliveryChecklist.rulesGuidanceCheck}
+                onChange={(e) =>
+                  setDeliveryChecklist((prev) => ({
+                    ...prev,
+                    rulesGuidanceCheck: e.target.checked,
+                  }))
+                }
+              />
               <span>Hướng dẫn khách hàng về quy định sử dụng xe</span>
             </div>
           </div>
 
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 text-sm font-medium text-center">
-              Bạn có chắc chắn đã hoàn thành các bước kiểm tra và sẵn sàng giao
-              xe?
+              {isAllChecklistCompleted
+                ? "Bạn có chắc chắn đã hoàn thành các bước kiểm tra và sẵn sàng giao xe?"
+                : "Vui lòng hoàn thành tất cả các bước kiểm tra trước khi giao xe"}
             </p>
           </div>
         </div>
@@ -1311,7 +1371,7 @@ export default function ManageAcceptedBookings() {
         onCancel={hideReturnConfirmModal}
         footer={[
           <Button key="cancel" onClick={hideReturnConfirmModal}>
-            Hủy
+            Đóng
           </Button>,
           <Button
             key="confirm"
@@ -1345,25 +1405,23 @@ export default function ManageAcceptedBookings() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra tình trạng bên ngoài xe (trầy xước, móp méo)</span>
+              <span>Kiểm tra bề mặt xe (trầy xước, móp méo, sơn)</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>
-                Kiểm tra nội thất xe (ghế ngồi, vô lăng, bảng điều khiển)
-              </span>
+              <span>Kiểm tra nội thất (ghế, vô lăng, bảng điều khiển)</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra mức nhiên liệu và các chất lỏng</span>
+              <span>Kiểm tra mức xăng/điện</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra các phụ kiện đi kèm (chìa khóa, giấy tờ xe)</span>
+              <span>Kiểm tra chìa khóa và giấy tờ xe</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Ghi nhận số km hiện tại của xe</span>
+              <span>Ghi nhận số km hiện tại</span>
             </div>
           </div>
 
