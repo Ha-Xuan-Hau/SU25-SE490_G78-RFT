@@ -3,6 +3,8 @@ package com.rft.rft_be.service.admin;
 import com.rft.rft_be.dto.admin.*;
 import com.rft.rft_be.entity.User;
 
+import java.util.List;
+
 public interface AdminUserService {
     
     /**
@@ -55,4 +57,8 @@ public interface AdminUserService {
      * Công dụng: Admin lọc users theo trạng thái để quản lý
      */
     AdminUserListResponseDTO searchUsersByStatus(User.Status status, int page, int size);
+
+    List<AdminStaffActivityDTO> getStaffActivities(String staffId);
+
+     List<AdminStaffActivityGroupDTO> getAllStaffActivities();
 } 

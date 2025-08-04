@@ -709,6 +709,22 @@ export default function BookingHistoryPage() {
 
         {/* Right side content area */}
         <div className="flex-1 bg-white rounded-lg shadow-sm p-6">
+          {/* Thông báo đơn chưa thanh toán - phiên bản đơn giản */}
+          {paymentCount > 0 && (
+            <div className="mb-4 text-center">
+              <h1 className="text-red-600 font-medium text-xl bg-red-50 border border-red-200 rounded-lg py-3 px-4">
+                ⚠️ Bạn có <span className="font-bold">{paymentCount}</span> đơn
+                chưa thanh toán, yêu cầu thanh toán nếu không đơn đặt xe sẽ bị
+                xóa sau 5 phút
+                <button
+                  onClick={() => handleTabChange("payment")}
+                  className="ml-2 text-red-700 underline hover:text-red-800 font-semibold"
+                >
+                  Xem ngay →
+                </button>
+              </h1>
+            </div>
+          )}
           <div className="mb-4">
             <h1 className="text-xl font-semibold text-gray-900">
               Lịch sử đặt xe

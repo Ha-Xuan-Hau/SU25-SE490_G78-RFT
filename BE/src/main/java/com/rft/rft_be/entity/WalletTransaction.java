@@ -28,7 +28,7 @@ public class WalletTransaction {
     private Wallet wallet;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id") // Staff duyet đơn
     private User user;
 
     @Column(name = "amount", precision = 18, scale = 2, nullable = false)

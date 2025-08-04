@@ -1,12 +1,16 @@
 package com.rft.rft_be.service.wallet;
 
 import com.rft.rft_be.dto.wallet.*;
+import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.entity.Wallet;
 import com.rft.rft_be.entity.WalletTransaction;
+import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.mapper.WalletMapper;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.repository.WalletRepository;
 import com.rft.rft_be.repository.WalletTransactionRepository;
+import com.rft.rft_be.service.Notification.NotificationService;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
@@ -14,20 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class WalletServiceImpl implements  WalletService {
+public class WalletServiceImpl implements WalletService {
 
     WalletRepository walletRepository;
     WalletTransactionRepository txRepository;
     UserRepository userRepository;
     WalletMapper walletMapper;
+    NotificationService notificationService;
+    NotificationMapper notificationMapper;
 
     @Override
     public WalletDTO getWalletByUserId(String userId) {
@@ -77,6 +83,7 @@ public class WalletServiceImpl implements  WalletService {
     public List<WalletTransactionDTO> getWithdrawalsByUser(String userId) {
         return walletMapper.toTransactionDTOs(txRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
+
     private WalletDTO toDTO(Wallet wallet) {
         return new WalletDTO(
                 wallet.getId(),
@@ -87,6 +94,7 @@ public class WalletServiceImpl implements  WalletService {
                 wallet.getBankAccountType()
         );
     }
+
     @Override
     public WalletTransactionDTO createWithdrawal(CreateWithdrawalRequestDTO dto) {
         Wallet wallet = walletRepository.findByUserId(dto.getUserId())
@@ -98,7 +106,9 @@ public class WalletServiceImpl implements  WalletService {
         tx.setAmount(dto.getAmount());
         tx.setStatus(WalletTransaction.Status.PENDING);
         tx.setWallet(wallet);
-        tx.setUser(wallet.getUser());
+        wallet.setBalance(wallet.getBalance().subtract(dto.getAmount()));
+        walletRepository.save(wallet);
+//        tx.setUser(wallet.getUser());
         tx.setCreatedAt(LocalDateTime.now());
         return walletMapper.toTransactionDTO(txRepository.save(tx));
     }
@@ -111,7 +121,7 @@ public class WalletServiceImpl implements  WalletService {
         tx.setAmount(dto.getAmount());
         tx.setStatus(WalletTransaction.Status.PENDING);
         tx.setWallet(wallet);
-        tx.setUser(wallet.getUser());
+//        tx.setUser(wallet.getUser());
         tx.setCreatedAt(LocalDateTime.now());
         return walletMapper.toTransactionDTO(txRepository.save(tx));
     }
@@ -126,6 +136,7 @@ public class WalletServiceImpl implements  WalletService {
         tx.setStatus(WalletTransaction.Status.CANCELLED);
         txRepository.save(tx);
     }
+
     @Override
     public void cancelWithdrawalAsUser(String transactionId, String userId) {
         WalletTransaction tx = txRepository.findById(transactionId)
@@ -145,28 +156,144 @@ public class WalletServiceImpl implements  WalletService {
     }
 
     @Override
+    public java.util.List<WalletTransactionDTO> getApprovedWithdrawals() {
+        //get approved transaction and userid not null
+        List<WalletTransaction> approvedTransactions = txRepository.findByStatusAndUserIdNotNull(WalletTransaction.Status.APPROVED);
+
+        if (approvedTransactions.isEmpty()) {
+            throw new RuntimeException("Không có giao dịch nào đã được phê duyệt.");
+        }
+
+        //map to dto
+        List<WalletTransactionDTO> transactionDTOs = approvedTransactions.stream()
+                .map(walletMapper::toTransactionDTO)
+                .collect(Collectors.toList());
+
+        //update User info
+        for (WalletTransactionDTO dto : transactionDTOs) {
+            Wallet wallet = walletRepository.findById(dto.getWalletId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy ví cho walletId: " + dto.getWalletId()));
+
+            User user = wallet.getUser();
+            if (user != null) {
+                dto.setFullName(user.getFullName());
+                dto.setEmail(user.getEmail());
+            } else {
+                dto.setFullName("N/A");
+                dto.setEmail("N/A");
+            }
+
+        }
+
+        //update Staff info
+        for (WalletTransactionDTO dto : transactionDTOs) {
+            // Lấy thông tin nhân viên dựa trên userId (staff Id)
+            User staff = userRepository.findById(dto.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên cho userId: " + dto.getUserId()));
+
+            dto.setStaffFullName(staff.getFullName());
+            dto.setStaffEmail(staff.getEmail());
+        }
+
+        return transactionDTOs;
+    }
+
+    @Override
     public List<WalletTransactionDTO> getAllWithdrawals(WalletTransaction.Status status) {
         List<WalletTransaction> list = txRepository.findByStatus(status);
-        return list.stream().map(walletMapper::toTransactionDTO).toList();
+
+        //get user info
+        List<WalletTransactionDTO> transactionDTOs = list.stream()
+                .map(walletMapper::toTransactionDTO)
+                .collect(Collectors.toList());
+
+        //update user info
+        for (WalletTransactionDTO dto : transactionDTOs) {
+            Wallet wallet = walletRepository.findById(dto.getWalletId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy ví cho walletId: " + dto.getWalletId()));
+
+            User user = wallet.getUser();
+            if (user != null) {
+                dto.setFullName(user.getFullName());
+                dto.setEmail(user.getEmail());
+            } else {
+                dto.setFullName("N/A");
+                dto.setEmail("N/A");
+            }
+
+        }
+        return transactionDTOs;
     }
 
     @Override
     public WalletTransactionDTO getWithdrawalById(String id) {
-        return walletMapper.toTransactionDTO(txRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch")));
+        //get transaction by id
+        WalletTransaction transaction = txRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
+
+        //map to dto
+        WalletTransactionDTO dto = walletMapper.toTransactionDTO(transaction);
+
+        //get user info from wallet
+        Wallet wallet = walletRepository.findById(dto.getWalletId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví người dùng cho walletId: " + dto.getWalletId()));
+
+        User user = wallet.getUser();
+        if (user != null) { // Kiểm tra xem người dùng có tồn tại không
+            dto.setFullName(user.getFullName());
+            dto.setEmail(user.getEmail());
+        } else {
+            dto.setFullName("N/A");
+            dto.setEmail("N/A");
+        }
+
+        return dto;
     }
 
     @Override
-    public void updateWithdrawalStatus(String id, String status) {
+    public void updateWithdrawalStatus(String id, String status, String staffId) {
         WalletTransaction tx = txRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
 
+        WalletTransactionDTO dto = walletMapper.toTransactionDTO(tx);
+
+        Wallet wallet = walletRepository.findById(dto.getWalletId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví cho walletId: " + dto.getWalletId()));
+
         try {
-            tx.setStatus(WalletTransaction.Status.valueOf(status.toUpperCase()));
+            WalletTransaction.Status newStatus = WalletTransaction.Status.valueOf(status.toUpperCase());
+
+            // ✅ Nếu từ chối → hoàn tiền lại
+            if (newStatus == WalletTransaction.Status.REJECTED) {
+                wallet.setBalance(wallet.getBalance().add(tx.getAmount()));
+                walletRepository.save(wallet);
+            }
+
+            tx.setStatus(newStatus);
+
+            // ✅ Gán nhân viên xử lý
+            User staff = userRepository.findById(staffId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên cho userId: " + staffId));
+            tx.setUser(staff);
+            tx.setUpdatedAt(LocalDateTime.now());
+
+            // ✅ Gửi thông báo cho user
+            User user = wallet.getUser();
+            String formattedAmount = NumberFormat.getCurrencyInstance(new Locale("vi", "VN")).format(dto.getAmount());
+            String message = (newStatus == WalletTransaction.Status.APPROVED)
+                    ? String.format("Yêu cầu rút \"%s\" của bạn đã được duyệt", formattedAmount)
+                    : String.format("Yêu cầu rút \"%s\" của bạn đã bị từ chối và tiền đã được hoàn lại", formattedAmount);
+
+            notificationService.createNotification(notificationMapper.toNotificationCreateDTO(
+                    user.getId(), NotificationMapper.WITHDRAWAL_APPROVED, message, null)
+            );
+
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Trạng thái khôn khả dụng: " + status);
+            throw new RuntimeException("Trạng thái không khả dụng: " + status);
         }
+
         txRepository.save(tx);
     }
+
 
 }

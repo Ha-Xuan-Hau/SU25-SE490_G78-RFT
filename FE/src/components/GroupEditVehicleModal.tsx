@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Modal, Form, Input, InputNumber, Button, Select, Card } from "antd";
 import type { Vehicle } from "@/types/vehicle";
 import motorbikeBrands from "../data/motorbike-brand.json";
@@ -16,16 +16,34 @@ interface GroupEditVehicleModalProps {
   onOk: (values: Record<string, unknown>) => void;
 }
 
-const featureOptions = [
+// ✅ Chỉ sửa phần này - Dynamic feature options
+const motorbikeFeatureOptions = [
   { label: "GPS", value: "GPS" },
   { label: "Bluetooth", value: "Bluetooth" },
-  { label: "Điều hoà khí", value: "Air Conditioning" },
-  { label: "Ghế da", value: "Leather Seats" },
-  { label: "Cảm biến đỗ xe", value: "Parking Sensors" },
-  { label: "Camera hành trình", value: "Backup Camera" },
-  { label: "Kính chống nắng", value: "Sunroof" },
-  { label: "Ghế sưởi", value: "Heated Seats" },
+  { label: "Khóa từ xa", value: "Remote Lock" },
+  { label: "Báo động chống trộm", value: "Anti-theft Alarm" },
+  { label: "Đèn LED", value: "LED Lights" },
+  { label: "Cốp xe", value: "Storage Box" },
+  { label: "Phanh ABS", value: "ABS Braking" },
+  { label: "Khởi động điện", value: "Electric Start" },
+  { label: "Sạc điện thoại USB", value: "USB Charging" },
+  { label: "Đồng hồ kỹ thuật số", value: "Digital Dashboard" },
 ];
+
+const bicycleFeatureOptions = [
+  { label: "Đèn LED", value: "LED Lights" },
+  { label: "Khóa chống trộm", value: "Anti-theft Lock" },
+  { label: "Giỏ xe", value: "Basket" },
+  { label: "Baga sau", value: "Rear Rack" },
+  { label: "Chuông xe", value: "Bell" },
+  { label: "Phanh đĩa", value: "Disc Brake" },
+  { label: "Bánh xe dự phòng", value: "Spare Tire" },
+  { label: "Bơm xe mini", value: "Mini Pump" },
+  { label: "Yên xe êm ái", value: "Comfortable Seat" },
+  { label: "Chắn bùn", value: "Mudguard" },
+  { label: "Gương chiếu hậu", value: "Mirror" },
+];
+
 const fuelTypeOptions = [
   { value: "GASOLINE", label: "Xăng" },
   { value: "ELECTRIC", label: "Điện" },
@@ -43,10 +61,8 @@ const transmissionOptions = [
   { value: "MANUAL", label: "Số sàn" },
   { value: "AUTOMATIC", label: "Số tự động" },
 ];
-// rentalRuleOptions sẽ lấy từ API
 
 import { useState } from "react";
-// Giả định có hook useUserState và API getPenaltiesByUserId
 import { useUserState } from "@/recoils/user.state";
 import { getPenaltiesByUserId } from "../apis/provider.api";
 
@@ -69,6 +85,30 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
     RentalRuleOption[]
   >([]);
 
+  // ✅ Chỉ thêm logic này để xác định loại xe và features
+  const vehicleType = useMemo(() => {
+    if (!vehicle) return "MOTORBIKE"; // Default
+
+    if (vehicle.vehicleType) {
+      const type = vehicle.vehicleType.toUpperCase();
+      if (type === "BICYCLE" || type === "Bicycle") return "BICYCLE";
+      return "MOTORBIKE"; // Default cho xe máy
+    }
+
+    // Fallback logic
+    if (!vehicle.numberSeat && !vehicle.licensePlate) {
+      return "BICYCLE";
+    }
+    return "MOTORBIKE";
+  }, [vehicle]);
+
+  const featureOptions = useMemo(() => {
+    return vehicleType === "BICYCLE"
+      ? bicycleFeatureOptions
+      : motorbikeFeatureOptions;
+  }, [vehicleType]);
+
+  // ✅ Giữ nguyên tất cả logic cũ
   useEffect(() => {
     async function fetchRentalRules() {
       if (!user?.id) return;
@@ -139,16 +179,27 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
     }
   }, [vehicle, form]);
 
+  // ✅ Chỉ sửa title để dynamic
+  const getModalTitle = () => {
+    return vehicleType === "BICYCLE"
+      ? "Chỉnh sửa thông tin nhóm xe đạp"
+      : "Chỉnh sửa thông tin nhóm xe máy";
+  };
+
+  const getCardTitle = () => {
+    return vehicleType === "BICYCLE" ? "Thông tin xe đạp" : "Thông tin xe máy";
+  };
+
   return (
     <Modal
       open={open}
-      title="Chỉnh sửa thông tin nhóm xe máy"
+      title={getModalTitle()}
       onCancel={onCancel}
       footer={null}
       destroyOnClose
     >
       <Form form={form} layout="vertical" onFinish={onOk}>
-        <Card title={<span>Thông tin xe máy</span>} className="mb-4">
+        <Card title={<span>{getCardTitle()}</span>} className="mb-4">
           <div className="grid md:grid-cols-2 gap-4">
             <Form.Item
               label="Tên hiển thị xe"

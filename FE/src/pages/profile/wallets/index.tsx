@@ -7,12 +7,11 @@ import {
   withdrawFromWallet,
 } from "@/apis/wallet.api";
 import { createTopUpVNPay } from "@/apis/payment.api";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import { showError, showSuccess, showWarning } from "@/utils/toast.utils";
 import { useUserState } from "@/recoils/user.state";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import {
   Button,
-  Card,
   Typography,
   Empty,
   Modal,
@@ -156,7 +155,7 @@ export default function UserWalletsPage() {
     setTopUpLoading(true);
     try {
       const paymentData = {
-        amout: Number(values.amount),
+        amount: Number(values.amount),
         bankCode: "", // Nếu không chọn ngân hàng, để rỗng
       };
       const res = (await createTopUpVNPay(paymentData)) as {
@@ -178,6 +177,19 @@ export default function UserWalletsPage() {
   // Mở modal rút tiền
   const handleOpenWithdrawModal = (card: bankCard, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Check if the card has the required fields
+    if (
+      !card.bankAccountNumber ||
+      !card.bankAccountName ||
+      !card.bankAccountType
+    ) {
+      showWarning(
+        "Vui lòng cập nhật thông tin thẻ ngân hàng trước khi thực hiện rút tiền."
+      );
+      return; // Prevent opening the modal
+    }
+
     setCurrentCard(card);
     setIsWithdrawModalVisible(true);
     withdrawForm.resetFields();

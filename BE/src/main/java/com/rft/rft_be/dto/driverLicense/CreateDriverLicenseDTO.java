@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class CreateDriverLicenseDTO {
-    private String userId;
     private String licenseNumber;
     private String classField;
     private String status; // VALID, EXPIRED

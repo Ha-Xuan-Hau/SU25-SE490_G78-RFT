@@ -33,7 +33,7 @@ public class VehicleRentCreateDTO {
     private Integer yearManufacture;
 
     private String transmission;
-    @NotBlank(message = "Fuel type is required")
+    //@NotBlank(message = "Fuel type is required")
     private String fuelType;
     private String description;
 
