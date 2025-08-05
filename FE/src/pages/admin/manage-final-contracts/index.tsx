@@ -22,19 +22,12 @@ import {
   CheckCircleOutlined,
   DollarOutlined,
   CalendarOutlined,
-  BankOutlined,
-  PhoneOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { showError, showSuccess } from "@/utils/toast.utils";
-import { translateENtoVI } from "@/lib/viDictionary";
-import {
-  getAllFinalUnapprovedContracts,
-  approveFinalContract,
-} from "@/apis/admin.api";
+import { showSuccess } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -43,78 +36,161 @@ const { confirm } = Modal;
 export interface FinalContract {
   id: string;
   contractId: string;
-  providerId: string | null;
-  providerName: string | null;
-  providerEmail: string | null;
-  providerPhone: string | null;
-  providerBankAccountNumber: string | null;
-  providerBankAccountName: string | null;
-  providerBankAccountType: string | null;
-  image: string | null;
-  timeFinish: string;
-  costSettlement: number;
-  note: string;
-  contractStatus: string;
+  userId: string; // ID của người thuê xe
+  userName: string;
+  userGmail: string;
+  image: string; // Ảnh hợp đồng hoặc xe
+  timeFinish: string; // Thời gian kết thúc thuê xe
+  costSettlement: number; // Chi phí tất toán
+  note: string; // Ghi chú
   createdAt: string;
-  userId?: string;
-  userName?: string;
-  updatedAt?: string;
+  updatedAt: string;
+  approvedBy?: string; // ID của admin/staff đã duyệt
+  approvedByName?: string; // Tên người duyệt
+  approvedAt?: string; // Thời gian duyệt
 }
 
+// Mockup data cho tất toán hợp đồng
+const mockFinalContracts: FinalContract[] = [
+  {
+    id: "FC001",
+    contractId: "CONTRACT001",
+    userId: "user001",
+    userName: "Nguyễn Văn An",
+    userGmail: "nguyenvanan@gmail.com",
+    image:
+      "https://via.placeholder.com/400x300/4CAF50/FFFFFF?text=H%E1%BB%A3p+%C4%90%E1%BB%93ng+Thu%C3%AA+Xe",
+    timeFinish: "2024-12-20T18:00:00Z",
+    costSettlement: 500000,
+    note: "Xe trả đúng hạn, không có hư hỏng",
+    createdAt: "2024-12-20T18:30:00Z",
+    updatedAt: "2024-12-21T09:00:00Z",
+    approvedBy: "admin001",
+    approvedByName: "Admin Nguyễn",
+    approvedAt: "2024-12-21T09:00:00Z",
+  },
+  {
+    id: "FC002",
+    contractId: "CONTRACT002",
+    userId: "user002",
+    userName: "Trần Thị Bình",
+    userGmail: "tranthibinh@gmail.com",
+    image:
+      "https://via.placeholder.com/400x300/2196F3/FFFFFF?text=H%E1%BB%A3p+%C4%90%E1%BB%93ng+Thu%C3%AA+Xe",
+    timeFinish: "2024-12-19T20:00:00Z",
+    costSettlement: 750000,
+    note: "Xe có một vài trầy xước nhỏ, khấu trừ 50k",
+    createdAt: "2024-12-19T20:15:00Z",
+    updatedAt: "2024-12-19T20:15:00Z",
+  },
+  {
+    id: "FC003",
+    contractId: "CONTRACT003",
+    userId: "user003",
+    userName: "Lê Minh Cường",
+    userGmail: "leminhcuong@gmail.com",
+    image:
+      "https://via.placeholder.com/400x300/FF9800/FFFFFF?text=H%E1%BB%A3p+%C4%90%E1%BB%93ng+Thu%C3%AA+Xe",
+    timeFinish: "2024-12-18T16:30:00Z",
+    costSettlement: 300000,
+    note: "Trả xe muộn 2 tiếng, phí phạt 100k",
+    createdAt: "2024-12-18T18:45:00Z",
+    updatedAt: "2024-12-18T18:45:00Z",
+  },
+  {
+    id: "FC004",
+    contractId: "CONTRACT004",
+    userId: "user004",
+    userName: "Phạm Thu Hà",
+    userGmail: "phamthuha@gmail.com",
+    image:
+      "https://via.placeholder.com/400x300/9C27B0/FFFFFF?text=H%E1%BB%A3p+%C4%90%E1%BB%93ng+Thu%C3%AA+Xe",
+    timeFinish: "2024-12-17T14:00:00Z",
+    costSettlement: 450000,
+    note: "Xe trong tình trạng tốt, không có vấn đề gì",
+    createdAt: "2024-12-17T14:30:00Z",
+    updatedAt: "2024-12-20T10:15:00Z",
+    approvedBy: "staff001",
+    approvedByName: "Staff Trần",
+    approvedAt: "2024-12-20T10:15:00Z",
+  },
+  {
+    id: "FC005",
+    contractId: "CONTRACT005",
+    userId: "user005",
+    userName: "Hoàng Đức Minh",
+    userGmail: "hoangducminh@gmail.com",
+    image:
+      "https://via.placeholder.com/400x300/607D8B/FFFFFF?text=H%E1%BB%A3p+%C4%90%E1%BB%93ng+Thu%C3%AA+Xe",
+    timeFinish: "2024-12-16T12:00:00Z",
+    costSettlement: 600000,
+    note: "Cần kiểm tra kỹ hệ thống phanh",
+    createdAt: "2024-12-16T12:30:00Z",
+    updatedAt: "2024-12-16T12:30:00Z",
+  },
+  {
+    id: "FC006",
+    contractId: "CONTRACT006",
+    userId: "user006",
+    userName: "Võ Thị Lan",
+    userGmail: "vothilan@gmail.com",
+    image:
+      "https://via.placeholder.com/400x300/F44336/FFFFFF?text=H%E1%BB%A3p+%C4%90%E1%BB%93ng+Thu%C3%AA+Xe",
+    timeFinish: "2024-12-15T10:00:00Z",
+    costSettlement: 800000,
+    note: "Xe bị hỏng gương chiếu hậu, cần thay thế",
+    createdAt: "2024-12-15T10:45:00Z",
+    updatedAt: "2024-12-15T10:45:00Z",
+  },
+];
+
 export default function FinalContractsPage() {
-  const [loading, setLoading] = useState(true);
-  const [contracts, setContracts] = useState<FinalContract[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [contracts, setContracts] =
+    useState<FinalContract[]>(mockFinalContracts);
   const [searchText, setSearchText] = useState("");
-  const [filteredContracts, setFilteredContracts] = useState<FinalContract[]>(
-    []
-  );
   const [selectedContract, setSelectedContract] =
     useState<FinalContract | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
+  // Get current user info
   const [userProfile] = useLocalStorage("user_profile", "");
   const currentUserId = userProfile?.id || "current_user";
+  const currentUserName = userProfile?.fullName || "Current User";
   const isAdmin = userProfile?.role === "ADMIN";
 
-  useEffect(() => {
-    fetchContracts();
-  }, []);
-
-  const fetchContracts = async () => {
-    setLoading(true);
-    try {
-      const data = await getAllFinalUnapprovedContracts();
-      setContracts(data);
-      setFilteredContracts(data);
-    } catch (error) {
-      message.error("Không thể tải hợp đồng. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
+  // Filter contracts based on user role
+  const getFilteredContracts = () => {
+    if (isAdmin) {
+      // Admin xem được tất cả
+      return contracts;
+    } else {
+      // Staff chỉ xem được: chưa duyệt + do mình duyệt
+      return contracts.filter(
+        (contract) =>
+          !contract.approvedBy || contract.approvedBy === currentUserId
+      );
     }
   };
 
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    const filtered = contracts.filter((contract) => {
-      return (
-        (contract.providerName &&
-          contract.providerName.toLowerCase().includes(value.toLowerCase())) ||
-        (contract.providerEmail &&
-          contract.providerEmail.toLowerCase().includes(value.toLowerCase())) ||
-        contract.contractId.toLowerCase().includes(value.toLowerCase()) ||
-        (contract.note &&
-          contract.note.toLowerCase().includes(value.toLowerCase()))
-      );
-    });
-    setFilteredContracts(filtered);
-  };
+  // Filter by search text
+  const filteredContracts = getFilteredContracts().filter((contract) => {
+    const searchLower = searchText.toLowerCase();
+    return (
+      contract.userName.toLowerCase().includes(searchLower) ||
+      contract.userGmail.toLowerCase().includes(searchLower) ||
+      contract.contractId.toLowerCase().includes(searchLower) ||
+      contract.id.toLowerCase().includes(searchLower) ||
+      contract.note.toLowerCase().includes(searchLower)
+    );
+  });
 
   const handleViewDetails = (contract: FinalContract) => {
     setSelectedContract(contract);
     setIsModalVisible(true);
   };
 
-  const handleApprove = async () => {
+  const handleApprove = () => {
     if (!selectedContract) return;
 
     confirm({
@@ -127,7 +203,7 @@ export default function FinalContractsPage() {
               <strong>Mã hợp đồng:</strong> {selectedContract.contractId}
             </div>
             <div>
-              <strong>Chủ xe:</strong> {selectedContract.providerName}
+              <strong>Chủ xe:</strong> {selectedContract.userName}
             </div>
             <div>
               <strong>Chi phí tất toán:</strong>{" "}
@@ -138,24 +214,24 @@ export default function FinalContractsPage() {
       ),
       okText: "Xác nhận duyệt",
       cancelText: "Hủy",
-      onOk: async () => {
-        try {
-          const approvalData = {
-            userId: currentUserId,
-            providerId: selectedContract.providerId,
-            costSettlement: selectedContract.costSettlement,
-            contractStatus: selectedContract.contractStatus,
-          };
-          await approveFinalContract(selectedContract.id, approvalData);
+      onOk: () => {
+        // Update contract with approval info
+        const updatedContract: FinalContract = {
+          ...selectedContract,
+          approvedBy: currentUserId,
+          approvedByName: currentUserName,
+          approvedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
 
-          // Reload the page after approval
-          window.location.reload(); // This will refresh the page and fetch updated contracts
+        setContracts((prev) =>
+          prev.map((contract) =>
+            contract.id === selectedContract.id ? updatedContract : contract
+          )
+        );
 
-          showSuccess("Duyệt tất toán hợp đồng thành công!");
-          setIsModalVisible(false);
-        } catch (error) {
-          showError("Duyệt hợp đồng thất bại. Vui lòng kiểm tra lại.");
-        }
+        showSuccess("Duyệt tất toán hợp đồng thành công!");
+        setIsModalVisible(false);
       },
     });
   };
@@ -171,39 +247,12 @@ export default function FinalContractsPage() {
     }).format(amount);
   };
 
-  const formatTimestamp = (
-    timestamp: number | string | number[] | undefined | null
-  ): string => {
-    if (!timestamp) return "";
-
-    if (Array.isArray(timestamp) && timestamp.length >= 5) {
-      const [year, month, day, hour, minute] = timestamp;
-      return `${day.toString().padStart(2, "0")}/${month
-        .toString()
-        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
-        .toString()
-        .padStart(2, "0")}`;
-    }
-
-    if (typeof timestamp === "number" || typeof timestamp === "string") {
-      const date = new Date(
-        typeof timestamp === "number" ? timestamp * 1000 : timestamp
-      );
-      return `${date.getDate().toString().padStart(2, "0")}/${(
-        date.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}/${date.getFullYear()} ${date
-        .getHours()
-        .toString()
-        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-    }
-
-    return "";
+  const isApproved = (contract: FinalContract) => {
+    return !!contract.approvedBy;
   };
 
-  const isApproved = (contract: FinalContract) => {
-    return !!contract.userId;
+  const canApprove = (contract: FinalContract) => {
+    return !contract.approvedBy; // Chỉ có thể duyệt nếu chưa được duyệt
   };
 
   const columns: ColumnsType<FinalContract> = [
@@ -230,23 +279,24 @@ export default function FinalContractsPage() {
         <div className="flex items-center gap-3">
           <Avatar icon={<UserOutlined />} />
           <div>
-            <div className="font-medium">{record.providerName}</div>
+            <div className="font-medium">{record.userName}</div>
             <div className="text-xs text-gray-500 flex items-center gap-1">
               <MailOutlined className="text-xs" />
-              {record.providerEmail}
+              {record.userGmail}
             </div>
           </div>
         </div>
       ),
-      sorter: (a, b) =>
-        (a.providerName ?? "").localeCompare(b.providerName ?? ""),
+      sorter: (a, b) => a.userName.localeCompare(b.userName),
     },
     {
       title: "Thời gian kết thúc",
       dataIndex: "timeFinish",
       key: "timeFinish",
       render: (timeFinish) => (
-        <span className="text-gray-600">{formatTimestamp(timeFinish)}</span>
+        <span className="text-gray-600">
+          {dayjs(timeFinish).format("DD/MM/YYYY HH:mm")}
+        </span>
       ),
       sorter: (a, b) => dayjs(a.timeFinish).unix() - dayjs(b.timeFinish).unix(),
     },
@@ -261,30 +311,36 @@ export default function FinalContractsPage() {
       align: "right",
     },
     {
-      title: "Trạng thái hợp đồng",
-      dataIndex: "contractStatus",
-      key: "contractStatus",
-      render: (status) => (
-        <Tag color={status === "FINISHED" ? "success" : "error"}>
-          {translateENtoVI(status)}
-        </Tag>
-      ),
+      title: "Trạng thái duyệt",
+      key: "approved",
+      render: (_, record) =>
+        isApproved(record) ? (
+          <Tag color="success" icon={<CheckCircleOutlined />}>
+            Đã duyệt
+          </Tag>
+        ) : (
+          <Tag color="warning">Chờ duyệt</Tag>
+        ),
       filters: [
-        { text: "Đã hoàn thành", value: "FINISHED" },
-        { text: "Đã hủy", value: "CANCELLED" },
+        { text: "Đã duyệt", value: "approved" },
+        { text: "Chờ duyệt", value: "pending" },
       ],
-      onFilter: (value, record) => record.contractStatus === value,
+      onFilter: (value, record) => {
+        if (value === "approved") return isApproved(record);
+        if (value === "pending") return !isApproved(record);
+        return true;
+      },
       align: "center",
     },
     {
       title: "Người duyệt",
       key: "approver",
       render: (_, record) =>
-        record.userName ? (
+        record.approvedByName ? (
           <div className="text-sm">
-            <div className="font-medium">{record.userName}</div>
+            <div className="font-medium">{record.approvedByName}</div>
             <div className="text-gray-500">
-              {formatTimestamp(record.updatedAt)}
+              {dayjs(record.approvedAt).format("DD/MM/YYYY HH:mm")}
             </div>
           </div>
         ) : (
@@ -296,20 +352,28 @@ export default function FinalContractsPage() {
       key: "action",
       width: 120,
       render: (_, record) => (
-        <div>
-          <Button
-            type="primary"
-            icon={<EyeOutlined />}
-            size="small"
-            onClick={() => handleViewDetails(record)}
-          >
-            Chi tiết
-          </Button>
-        </div>
+        <Button
+          type="primary"
+          icon={<EyeOutlined />}
+          size="small"
+          onClick={() => handleViewDetails(record)}
+        >
+          Chi tiết
+        </Button>
       ),
       align: "center",
     },
   ];
+
+  const getStatusCounts = () => {
+    const filtered = getFilteredContracts();
+    return {
+      approved: filtered.filter((c) => isApproved(c)).length,
+      pending: filtered.filter((c) => !isApproved(c)).length,
+    };
+  };
+
+  const statusCounts = getStatusCounts();
 
   return (
     <div className="space-y-6">
@@ -334,46 +398,98 @@ export default function FinalContractsPage() {
               enterButton={<SearchOutlined />}
               size="large"
               value={searchText}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => setSearchText(e.target.value)}
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+            <span>
+              Đã duyệt:{" "}
+              <span className="font-semibold">{statusCounts.approved}</span>
+            </span>
+            <span>
+              Chờ duyệt:{" "}
+              <span className="font-semibold">{statusCounts.pending}</span>
+            </span>
+            <span>
+              Tổng:{" "}
+              <span className="font-semibold">{filteredContracts.length}</span>
+            </span>
+            {!isAdmin && (
+              <span className="text-blue-600">(Chế độ xem: Staff)</span>
+            )}
           </div>
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <Table
-          columns={columns}
-          dataSource={filteredContracts}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} của ${total} hợp đồng`,
-          }}
-          scroll={{ x: 1400 }}
-          className="border-0"
-        />
+        <div className="p-6">
+          <Table
+            columns={columns}
+            dataSource={filteredContracts}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} của ${total} hợp đồng`,
+            }}
+            scroll={{ x: 1400 }}
+            className="border-0"
+          />
+        </div>
       </div>
 
       {/* Contract Details Modal */}
       <Modal
-        title="Chi tiết hợp đồng"
+        title={
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+            <FileTextOutlined className="text-xl" />
+            <div>
+              <div className="font-semibold text-lg">
+                Chi tiết tất toán hợp đồng
+              </div>
+              {selectedContract && (
+                <div className="text-sm text-gray-500">
+                  Mã: {selectedContract.contractId} -{" "}
+                  {formatAmount(selectedContract.costSettlement)}
+                </div>
+              )}
+            </div>
+          </div>
+        }
         open={isModalVisible}
         onCancel={handleCancel}
-        footer={null}
         width={900}
+        className="top-8"
+        footer={[
+          <Button key="cancel" onClick={handleCancel}>
+            Đóng
+          </Button>,
+          ...(selectedContract && canApprove(selectedContract)
+            ? [
+                <Button
+                  key="approve"
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  onClick={handleApprove}
+                >
+                  Duyệt tất toán
+                </Button>,
+              ]
+            : []),
+        ]}
       >
         {selectedContract && (
           <div className="pt-4 space-y-6">
+            {/* Thông tin hợp đồng */}
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Thông tin hợp đồng
               </h3>
-              <Descriptions bordered column={1} size="middle">
+              <Descriptions bordered column={2} size="middle">
                 <Descriptions.Item label="Mã tất toán" span={1}>
                   <span className="font-mono font-semibold">
                     {selectedContract.id}
@@ -387,7 +503,9 @@ export default function FinalContractsPage() {
                 <Descriptions.Item label="Thời gian kết thúc" span={1}>
                   <div className="flex items-center gap-2">
                     <CalendarOutlined />
-                    {formatTimestamp(selectedContract.timeFinish)}
+                    {dayjs(selectedContract.timeFinish).format(
+                      "DD/MM/YYYY HH:mm:ss"
+                    )}
                   </div>
                 </Descriptions.Item>
                 <Descriptions.Item label="Chi phí tất toán" span={1}>
@@ -399,18 +517,18 @@ export default function FinalContractsPage() {
                   </div>
                 </Descriptions.Item>
                 <Descriptions.Item label="Trạng thái" span={1}>
-                  <Tag
-                    color={
-                      selectedContract.contractStatus === "FINISHED"
-                        ? "success"
-                        : "error"
-                    }
-                  >
-                    {translateENtoVI(selectedContract.contractStatus)}
-                  </Tag>
+                  {isApproved(selectedContract) ? (
+                    <Tag color="success" icon={<CheckCircleOutlined />}>
+                      Đã duyệt
+                    </Tag>
+                  ) : (
+                    <Tag color="warning">Chờ duyệt</Tag>
+                  )}
                 </Descriptions.Item>
                 <Descriptions.Item label="Ngày tạo" span={1}>
-                  {formatTimestamp(selectedContract.createdAt)}
+                  {dayjs(selectedContract.createdAt).format(
+                    "DD/MM/YYYY HH:mm:ss"
+                  )}
                 </Descriptions.Item>
               </Descriptions>
             </div>
@@ -420,49 +538,19 @@ export default function FinalContractsPage() {
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Thông tin chủ xe
               </h3>
-              <Descriptions bordered column={1} size="middle">
+              <Descriptions bordered column={2} size="middle">
                 <Descriptions.Item label="Họ và tên" span={1}>
                   <div className="flex items-center gap-2">
                     <UserOutlined />
                     <span className="font-semibold">
-                      {selectedContract.providerName}
+                      {selectedContract.userName}
                     </span>
                   </div>
                 </Descriptions.Item>
                 <Descriptions.Item label="Email" span={1}>
                   <div className="flex items-center gap-2">
                     <MailOutlined />
-                    <span>{selectedContract.providerEmail}</span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="Số điện thoại" span={1}>
-                  <div className="flex items-center gap-2">
-                    <PhoneOutlined />
-                    <span className="font-semibold">
-                      {selectedContract.providerPhone}
-                    </span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="Ngân hàng thụ hưởng" span={1}>
-                  <div className="flex items-center gap-2">
-                    <BankOutlined />
-                    <span className="font-semibold">
-                      {selectedContract.providerBankAccountType}
-                    </span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="Tên chủ thẻ" span={1}>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">
-                      {selectedContract.providerBankAccountName}
-                    </span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="Số tài khoản" span={1}>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">
-                      {selectedContract.providerBankAccountNumber}
-                    </span>
+                    <span>{selectedContract.userGmail}</span>
                   </div>
                 </Descriptions.Item>
               </Descriptions>
@@ -475,7 +563,7 @@ export default function FinalContractsPage() {
               </h3>
               <div className="flex justify-center">
                 <Image
-                  src={selectedContract.image ?? undefined}
+                  src={selectedContract.image}
                   alt="Hình ảnh hợp đồng"
                   width={400}
                   height={300}
@@ -507,32 +595,20 @@ export default function FinalContractsPage() {
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                   Thông tin duyệt
                 </h3>
-                <Descriptions bordered column={1} size="middle">
+                <Descriptions bordered column={2} size="middle">
                   <Descriptions.Item label="Người duyệt" span={1}>
                     <span className="font-semibold">
-                      {selectedContract.userName}
+                      {selectedContract.approvedByName}
                     </span>
                   </Descriptions.Item>
                   <Descriptions.Item label="Thời gian duyệt" span={1}>
-                    {formatTimestamp(selectedContract.updatedAt)}
+                    {dayjs(selectedContract.approvedAt).format(
+                      "DD/MM/YYYY HH:mm:ss"
+                    )}
                   </Descriptions.Item>
                 </Descriptions>
               </div>
             )}
-
-            {/* Approve Button */}
-            {selectedContract.contractStatus === "FINISHED" &&
-              !selectedContract.userId && (
-                <div className="flex justify-end mt-4">
-                  <Button
-                    type="primary"
-                    icon={<CheckCircleOutlined />}
-                    onClick={handleApprove}
-                  >
-                    Duyệt tất toán
-                  </Button>
-                </div>
-              )}
           </div>
         )}
       </Modal>

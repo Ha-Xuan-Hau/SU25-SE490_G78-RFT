@@ -13,7 +13,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -145,14 +144,6 @@ public interface VehicleMapper {
             return null;
         }
 
-        // Tính tổng driver fee từ booking details
-        BigDecimal totalDriverFee = BigDecimal.ZERO;
-        if (booking.getBookingDetails() != null && !booking.getBookingDetails().isEmpty()) {
-            totalDriverFee = booking.getBookingDetails().stream()
-                    .map(detail -> detail.getDriverFee() != null ? detail.getDriverFee() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-        }
-
         // Tạo BookingResponseDTO và ánh xạ các trường cơ bản
         BookingResponseDTO dto = BookingResponseDTO.builder()
                 .id(booking.getId())
@@ -165,7 +156,6 @@ public interface VehicleMapper {
                 .status(booking.getStatus())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
-                .driverFee(totalDriverFee)
                 .build();
 
         if (booking.getUser() != null) {

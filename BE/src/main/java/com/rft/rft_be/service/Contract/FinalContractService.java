@@ -11,7 +11,6 @@ public interface FinalContractService {
     List<FinalContractDTO> getAllFinalContracts();
     FinalContractDTO getFinalContractById(String id);
     List<FinalContractDTO> getFinalContractsByContractId(String contractId);
-    List<FinalContractDTO> getUnapprovedFinalContracts();
     List<FinalContractDTO> getFinalContractsByUserId(String userId);
     List<FinalContractDTO> getFinalContractsByUserIdAndContractId(String userId, String contractId);
     List<FinalContractDTO> getFinalContractsByTimeFinishBetween(LocalDateTime startDate, LocalDateTime endDate);

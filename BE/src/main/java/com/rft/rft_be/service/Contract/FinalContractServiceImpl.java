@@ -1,35 +1,23 @@
 package com.rft.rft_be.service.Contract;
 
-import java.math.BigDecimal;
-import java.text.NumberFormat;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
-
-import com.rft.rft_be.mapper.NotificationMapper;
-import com.rft.rft_be.service.Notification.NotificationService;
+import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
+import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
+import com.rft.rft_be.entity.FinalContract;
+import com.rft.rft_be.entity.Contract;
+import com.rft.rft_be.mapper.ContractMapper;
+import com.rft.rft_be.repository.FinalContractRepository;
+import com.rft.rft_be.repository.ContractRepository;
+import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.dto.wallet.WalletDTO;
+import com.rft.rft_be.service.wallet.WalletService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
-import com.rft.rft_be.dto.finalcontract.FinalContractDTO;
-import com.rft.rft_be.dto.wallet.WalletDTO;
-import com.rft.rft_be.entity.Contract;
-import com.rft.rft_be.entity.FinalContract;
-import com.rft.rft_be.entity.Wallet;
-import com.rft.rft_be.entity.WalletTransaction;
-import com.rft.rft_be.mapper.ContractMapper;
-import com.rft.rft_be.repository.ContractRepository;
-import com.rft.rft_be.repository.FinalContractRepository;
-import com.rft.rft_be.repository.UserRepository;
-import com.rft.rft_be.repository.WalletRepository;
-import com.rft.rft_be.repository.WalletTransactionRepository;
-import com.rft.rft_be.service.wallet.WalletService;
-
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -41,10 +29,6 @@ public class FinalContractServiceImpl implements FinalContractService {
     private final ContractRepository contractRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
-    private final WalletRepository walletRepository;
-    private final WalletTransactionRepository walletTransactionRepository;
-    private final NotificationService notificationService;
-    private final NotificationMapper notificationMapper;
 
     @Override
     public List<FinalContractDTO> getAllFinalContracts() {
@@ -58,20 +42,6 @@ public class FinalContractServiceImpl implements FinalContractService {
             log.error("Error getting all final contracts", e);
             throw new RuntimeException("Failed to get all final contracts: " + e.getMessage());
         }
-    }
-
-    public List<FinalContractDTO> getUnapprovedFinalContracts() {
-
-        try {
-            List<FinalContract> finalContracts = finalContractRepository.findUnapprovedFinalContracts();
-            return finalContracts.stream()
-                    .map(fc -> enrichWithProviderBank(finalContractMapper.finalContract(fc), fc))
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.error("Error getting all unapproved final contracts", e);
-            throw new RuntimeException("Failed to get all unapproved final contracts: " + e.getMessage());
-        }
-
     }
 
     @Override
@@ -175,12 +145,13 @@ public class FinalContractServiceImpl implements FinalContractService {
             Contract contract = contractRepository.findById(createFinalContractDTO.getContractId())
                     .orElseThrow(() -> new RuntimeException("Contract not found with id: " + createFinalContractDTO.getContractId()));
 
-            //    User user = userRepository.findById(createFinalContractDTO.getUserId())
-            //          .orElseThrow(() -> new RuntimeException("User not found with id: " + createFinalContractDTO.getUserId()));
+        //    User user = userRepository.findById(createFinalContractDTO.getUserId())
+          //          .orElseThrow(() -> new RuntimeException("User not found with id: " + createFinalContractDTO.getUserId()));
+
             // Create new final contract entity
             FinalContract finalContract = FinalContract.builder()
                     .contract(contract)
-                    //             .user(user)
+       //             .user(user)
                     .image(createFinalContractDTO.getImage())
                     .timeFinish(createFinalContractDTO.getTimeFinish())
                     .costSettlement(createFinalContractDTO.getCostSettlement())
@@ -231,37 +202,13 @@ public class FinalContractServiceImpl implements FinalContractService {
             // Update user if userId is provided
             if (finalContractDTO.getUserId() != null) {
                 existingFinalContract.setUser(
-                        userRepository.findById(finalContractDTO.getUserId())
-                                .orElseThrow(() -> new RuntimeException("User not found with id: " + finalContractDTO.getUserId()))
+                    userRepository.findById(finalContractDTO.getUserId())
+                        .orElseThrow(() -> new RuntimeException("User not found with id: " + finalContractDTO.getUserId()))
                 );
             }
 
             // Update timestamp
             existingFinalContract.setUpdatedAt(LocalDateTime.now());
-
-            //cập nhật tiền vào ví
-            if (finalContractDTO.getContractStatus() != null && finalContractDTO.getContractStatus().trim().equals("FINISHED")) {
-                BigDecimal finalAmount = finalContractDTO.getCostSettlement();
-
-                Wallet providerWallet = walletRepository.findByUserId(finalContractDTO.getProviderId())
-                        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
-                providerWallet.setBalance(providerWallet.getBalance().add(finalAmount));
-                walletRepository.save(providerWallet);
-
-                // Ghi log giao dịch nhận tiềm
-                WalletTransaction penaltyTx = WalletTransaction.builder()
-                        .wallet(providerWallet)
-                        .amount(finalAmount)
-                        .status(WalletTransaction.Status.APPROVED)
-                        .build();
-                walletTransactionRepository.save(penaltyTx);
-
-                String formattedAmount = NumberFormat.getCurrencyInstance(new Locale("vi", "VN")).format(finalContractDTO.getCostSettlement());
-                notificationService.createNotification(notificationMapper.toNotificationCreateDTO(
-                        finalContractDTO.getProviderId(), NotificationMapper.WITHDRAWAL_APPROVED,
-                        String.format("Bạn đã nhận %s vào ví RFT cho giao dịch thành công", formattedAmount), null)
-                );
-            }
 
             // Save and return updated final contract
             FinalContract updatedFinalContract = finalContractRepository.save(existingFinalContract);
@@ -335,9 +282,9 @@ public class FinalContractServiceImpl implements FinalContractService {
         try {
             // Lấy providerId từ vehicle đầu tiên của contract
             String providerId = null;
-            if (fc.getContract() != null && fc.getContract().getBooking() != null
-                    && fc.getContract().getBooking().getBookingDetails() != null
-                    && !fc.getContract().getBooking().getBookingDetails().isEmpty()) {
+            if (fc.getContract() != null && fc.getContract().getBooking() != null &&
+                fc.getContract().getBooking().getBookingDetails() != null &&
+                !fc.getContract().getBooking().getBookingDetails().isEmpty()) {
                 providerId = fc.getContract().getBooking().getBookingDetails().get(0).getVehicle().getUser().getId();
             }
             if (providerId != null) {

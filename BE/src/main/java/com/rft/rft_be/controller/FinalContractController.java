@@ -49,19 +49,6 @@ public class FinalContractController {
         }
     }
 
-    @GetMapping("/unapproved")
-    public ResponseEntity<?> getUnapprovedFinalContracts() {
-        try {
-            List<FinalContractDTO> finalContracts = finalContractService.getUnapprovedFinalContracts();
-            return ResponseEntity.ok(finalContracts);
-        } catch (Exception e) {
-            log.error("Error getting unapproved final contracts", e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to retrieve final contracts: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
     @GetMapping("/{id}")
     public ResponseEntity<?> getFinalContractById(@PathVariable String id) {
         try {
@@ -76,28 +63,6 @@ public class FinalContractController {
             log.error("Error getting final contract by id: {}", id, e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Internal server error: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateFinalContract(@PathVariable String id, @RequestBody FinalContractDTO finalContractDTO) {
-        try {
-            FinalContractDTO updatedFinalContract = finalContractService.updateFinalContract(id, finalContractDTO);
-            return ResponseEntity.ok(updatedFinalContract);
-        } catch (RuntimeException e) {
-            log.error("Error updating final contract with id: {}", id, e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-            }
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        } catch (Exception e) {
-            log.error("Error updating final contract with id: {}", id, e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to update final contract: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
@@ -189,7 +154,27 @@ public class FinalContractController {
         }
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateFinalContract(@PathVariable String id, @RequestBody FinalContractDTO finalContractDTO) {
+        try {
+            FinalContractDTO updatedFinalContract = finalContractService.updateFinalContract(id, finalContractDTO);
+            return ResponseEntity.ok(updatedFinalContract);
+        } catch (RuntimeException e) {
+            log.error("Error updating final contract with id: {}", id, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
 
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            log.error("Error updating final contract with id: {}", id, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to update final contract: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteFinalContract(@PathVariable String id) {

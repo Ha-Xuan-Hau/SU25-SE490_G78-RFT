@@ -2,6 +2,7 @@ package com.rft.rft_be.service.booking;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
@@ -9,18 +10,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
 import com.rft.rft_be.service.Notification.NotificationService;
-import com.rft.rft_be.util.JwtUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.nimbusds.jwt.SignedJWT;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
@@ -61,7 +63,6 @@ public class BookingServiceImpl implements BookingService {
     BookingDetailRepository bookingDetailRepository;
     NotificationService notificationService;
     NotificationMapper notificationMapper;
-    final JwtUtil jwtUtil;
 
     @Override
     @Transactional
@@ -110,7 +111,6 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // Tổng chi phí
-        BigDecimal driverFee = BigDecimal.ZERO;
         BigDecimal totalBeforeDiscount = BigDecimal.ZERO;
         BigDecimal totalDiscount = BigDecimal.ZERO;
         BigDecimal totalFinalCost = BigDecimal.ZERO;
@@ -120,12 +120,6 @@ public class BookingServiceImpl implements BookingService {
             BigDecimal baseCost = BookingCalculationUtils.calculateRentalPrice(calculation, v.getCostPerDay());
             BigDecimal deliveryCost = "delivery".equals(request.getPickupMethod()) ? BigDecimal.ZERO : BigDecimal.ZERO;
             totalBeforeDiscount = totalBeforeDiscount.add(baseCost.add(deliveryCost));
-        }
-
-        // Kiểm tra và cộng phí tài xế nếu có
-        if (request.getDriverFee() != null && request.getDriverFee().compareTo(BigDecimal.ZERO) > 0) {
-            driverFee = request.getDriverFee();
-            totalBeforeDiscount = totalBeforeDiscount.add(driverFee);
         }
 
         // Áp dụng coupon 1 lần
@@ -162,11 +156,6 @@ public class BookingServiceImpl implements BookingService {
 
         // Tạo bookingDetail và block slot
         List<BookingDetail> details = new ArrayList<>();
-
-        // Lấy phí tài xế từ request (nếu có)
-        BigDecimal requestDriverFee = (request.getDriverFee() != null) ? request.getDriverFee() : BigDecimal.ZERO;
-
-
         for (Vehicle v : vehicles) {
             BigDecimal baseCost = BookingCalculationUtils.calculateRentalPrice(calculation, v.getCostPerDay());
 
@@ -174,7 +163,7 @@ public class BookingServiceImpl implements BookingService {
                     .booking(booking)
                     .vehicle(v)
                     .cost(baseCost)
-                    .driverFee(requestDriverFee) // Nếu có
+                    .driverFee(BigDecimal.ZERO) // Nếu có
                     .build();
             details.add(detail);
 
@@ -386,7 +375,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void confirmBooking(String bookingId, String token) {
-        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (booking.getBookingDetails().isEmpty()) {
             throw new IllegalStateException("Đơn đặt không chứa xe nào.");
@@ -417,7 +406,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void deliverVehicle(String bookingId, String token) {
-        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (booking.getBookingDetails().isEmpty()) {
             throw new IllegalStateException("Đơn đặt không chứa xe nào.");
@@ -459,7 +448,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void receiveVehicle(String bookingId, String token) {
-        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (!booking.getUser().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Chỉ người thuê xe mới được xác nhận đã nhận xe.");
@@ -490,7 +479,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void returnVehicle(String bookingId, String token) {
-        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (!booking.getUser().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Chỉ người thuê xe mới được trả xe.");
@@ -508,7 +497,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void completeBooking(String bookingId, String token,LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
-        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
         if (booking.getStatus() != Booking.Status.RETURNED) {
@@ -555,7 +544,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public CancelBookingResponseDTO cancelBooking(String bookingId, String token, CancelBookingRequestDTO cancelRequest) {
-        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        String currentUserId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
         if (booking.getBookingDetails().isEmpty()) {
@@ -621,7 +610,7 @@ public class BookingServiceImpl implements BookingService {
             // Ghi log giao dịch hoàn tiền
             WalletTransaction refundTx = WalletTransaction.builder()
                     .wallet(renterWallet)
-//                    .user(booking.getUser())
+                    .user(booking.getUser())
                     .amount(refundAmount)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();
@@ -638,7 +627,7 @@ public class BookingServiceImpl implements BookingService {
             // Ghi log giao dịch nhận phí phạt
             WalletTransaction penaltyTx = WalletTransaction.builder()
                     .wallet(providerWallet)
-//                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
+                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
                     .amount(penalty)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();
@@ -726,18 +715,18 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found: " + bookingId));
     }
 
-   // public String extractUserIdFromToken(String token) {
-      //  try {
-      //      return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
-     //   } catch (ParseException e) {
-     //       throw new RuntimeException("Không thể lấy userId từ token", e);
-    //    }
-  //  }
+    public String extractUserIdFromToken(String token) {
+        try {
+            return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
+        } catch (ParseException e) {
+            throw new RuntimeException("Không thể lấy userId từ token", e);
+        }
+    }
 
     @Override
     @Transactional
     public void payBookingWithWallet(String bookingId, String token) {
-        String userId = jwtUtil.extractUserIdFromToken(token);
+        String userId = extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
         if (!booking.getUser().getId().equals(userId)) {
@@ -770,8 +759,7 @@ public class BookingServiceImpl implements BookingService {
         walletTransactionRepository.save(tx);
 
         // Cập nhật booking
-//        booking.setStatus(Booking.Status.PENDING);
-        booking.setStatus(Booking.Status.CONFIRMED);
+        booking.setStatus(Booking.Status.PENDING);
         bookingRepository.save(booking);
         notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
 

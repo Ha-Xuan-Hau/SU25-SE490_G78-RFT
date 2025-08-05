@@ -8,10 +8,6 @@ import {
   Modal,
   Tag,
   Input,
-  Form,
-  Select,
-  Space,
-  message,
   Avatar,
   Descriptions,
   Divider,
@@ -19,29 +15,30 @@ import {
 import {
   EyeOutlined,
   SearchOutlined,
-  WalletOutlined,
+  CreditCardOutlined,
   UserOutlined,
   MailOutlined,
   BankOutlined,
   DollarOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
-import { showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 const { Search } = Input;
-const { Option } = Select;
 
-export interface WithdrawalRequest {
+export interface Transaction {
   id: string;
   walletId: string;
   amount: number;
   userId: string;
   userName: string;
   userGmail: string;
-  status: "PENDING" | "PROCESSING" | "APPROVED" | "REJECTED" | "CANCELLED";
+  type: "DEPOSIT" | "WITHDRAWAL" | "PAYMENT" | "REFUND" | "TRANSFER";
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  description: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,77 +51,115 @@ export interface BankCard {
   balance?: number;
 }
 
-// Mockup data cho yêu cầu rút tiền
-const mockWithdrawals: WithdrawalRequest[] = [
+// Mockup data cho giao dịch thanh toán
+const mockTransactions: Transaction[] = [
   {
-    id: "WD001",
+    id: "TXN001",
     walletId: "wallet001",
     amount: 500000,
     userId: "user001",
     userName: "Nguyễn Văn An",
     userGmail: "nguyenvanan@gmail.com",
-    status: "PENDING",
+    type: "PAYMENT",
+    status: "COMPLETED",
+    description: "Thanh toán thuê xe máy Honda Wave",
     createdAt: "2024-12-20T08:30:00Z",
-    updatedAt: "2024-12-20T08:30:00Z",
+    updatedAt: "2024-12-20T08:35:00Z",
   },
   {
-    id: "WD002",
+    id: "TXN002",
     walletId: "wallet002",
     amount: 1000000,
     userId: "user002",
     userName: "Trần Thị Bình",
     userGmail: "tranthibinh@gmail.com",
-    status: "PROCESSING",
+    type: "DEPOSIT",
+    status: "COMPLETED",
+    description: "Nạp tiền vào ví từ ngân hàng",
     createdAt: "2024-12-19T10:15:00Z",
-    updatedAt: "2024-12-20T09:00:00Z",
+    updatedAt: "2024-12-19T10:20:00Z",
   },
   {
-    id: "WD003",
+    id: "TXN003",
     walletId: "wallet003",
     amount: 750000,
     userId: "user003",
     userName: "Lê Minh Cường",
     userGmail: "leminhcuong@gmail.com",
-    status: "APPROVED",
+    type: "WITHDRAWAL",
+    status: "PROCESSING",
+    description: "Rút tiền về tài khoản ngân hàng",
     createdAt: "2024-12-18T14:20:00Z",
-    updatedAt: "2024-12-19T11:30:00Z",
+    updatedAt: "2024-12-19T09:30:00Z",
   },
   {
-    id: "WD004",
+    id: "TXN004",
     walletId: "wallet004",
     amount: 300000,
     userId: "user004",
     userName: "Phạm Thu Hà",
     userGmail: "phamthuha@gmail.com",
-    status: "REJECTED",
+    type: "REFUND",
+    status: "COMPLETED",
+    description: "Hoàn tiền do hủy đặt xe ô tô",
     createdAt: "2024-12-17T16:45:00Z",
-    updatedAt: "2024-12-18T08:20:00Z",
+    updatedAt: "2024-12-17T17:00:00Z",
   },
   {
-    id: "WD005",
+    id: "TXN005",
     walletId: "wallet005",
-    amount: 2000000,
+    amount: 200000,
     userId: "user005",
     userName: "Hoàng Đức Minh",
     userGmail: "hoangducminh@gmail.com",
-    status: "CANCELLED",
+    type: "PAYMENT",
+    status: "FAILED",
+    description: "Thanh toán thuê xe đạp điện",
     createdAt: "2024-12-16T11:00:00Z",
-    updatedAt: "2024-12-17T14:15:00Z",
+    updatedAt: "2024-12-16T11:05:00Z",
   },
   {
-    id: "WD006",
+    id: "TXN006",
     walletId: "wallet006",
     amount: 850000,
     userId: "user006",
     userName: "Võ Thị Lan",
     userGmail: "vothilan@gmail.com",
-    status: "APPROVED",
+    type: "TRANSFER",
+    status: "COMPLETED",
+    description: "Chuyển tiền cho thuê xe ô tô",
     createdAt: "2024-12-15T13:30:00Z",
-    updatedAt: "2024-12-16T10:45:00Z",
+    updatedAt: "2024-12-15T13:35:00Z",
+  },
+  {
+    id: "TXN007",
+    walletId: "wallet001",
+    amount: 150000,
+    userId: "user001",
+    userName: "Nguyễn Văn An",
+    userGmail: "nguyenvanan@gmail.com",
+    type: "DEPOSIT",
+    status: "COMPLETED",
+    description: "Nạp tiền từ thẻ tín dụng",
+    createdAt: "2024-12-14T09:20:00Z",
+    updatedAt: "2024-12-14T09:25:00Z",
+  },
+  {
+    id: "TXN008",
+    walletId: "wallet003",
+    amount: 400000,
+    userId: "user003",
+    userName: "Lê Minh Cường",
+    userGmail: "leminhcuong@gmail.com",
+    type: "PAYMENT",
+    status: "CANCELLED",
+    description: "Thanh toán thuê xe máy Yamaha Exciter",
+    createdAt: "2024-12-13T15:10:00Z",
+    updatedAt: "2024-12-13T15:15:00Z",
   },
 ];
 
-// Mockup data cho thẻ ngân hàng (giả lập theo userId)
+// Mockup data cho thẻ ngân hàng (tái sử dụng từ withdrawal)
 const mockBankCards: { [userId: string]: BankCard } = {
   user001: {
     id: "bank001",
@@ -170,70 +205,33 @@ const mockBankCards: { [userId: string]: BankCard } = {
   },
 };
 
-export default function WithdrawalRequestsPage() {
+export default function TransactionsPage() {
   const [loading, setLoading] = useState(false);
-  const [withdrawals, setWithdrawals] =
-    useState<WithdrawalRequest[]>(mockWithdrawals);
+  const [transactions, setTransactions] =
+    useState<Transaction[]>(mockTransactions);
   const [searchText, setSearchText] = useState("");
-  const [selectedWithdrawal, setSelectedWithdrawal] =
-    useState<WithdrawalRequest | null>(null);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [form] = Form.useForm();
 
-  // Filter withdrawals based on search text
-  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
+  // Filter transactions based on search text
+  const filteredTransactions = transactions.filter((transaction) => {
     const searchLower = searchText.toLowerCase();
     return (
-      withdrawal.userName.toLowerCase().includes(searchLower) ||
-      withdrawal.userGmail.toLowerCase().includes(searchLower) ||
-      withdrawal.id.toLowerCase().includes(searchLower) ||
-      withdrawal.walletId.toLowerCase().includes(searchLower)
+      transaction.userName.toLowerCase().includes(searchLower) ||
+      transaction.userGmail.toLowerCase().includes(searchLower) ||
+      transaction.id.toLowerCase().includes(searchLower) ||
+      transaction.description.toLowerCase().includes(searchLower)
     );
   });
 
-  const handleViewDetails = (withdrawal: WithdrawalRequest) => {
-    setSelectedWithdrawal(withdrawal);
+  const handleViewDetails = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
     setIsModalVisible(true);
-
-    // Set form values
-    form.setFieldsValue({
-      status: withdrawal.status,
-    });
-  };
-
-  const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (selectedWithdrawal) {
-        // Update existing withdrawal
-        const updatedWithdrawal: WithdrawalRequest = {
-          ...selectedWithdrawal,
-          status: values.status,
-          updatedAt: new Date().toISOString(),
-        };
-
-        setWithdrawals((prev) =>
-          prev.map((withdrawal) =>
-            withdrawal.id === selectedWithdrawal.id
-              ? updatedWithdrawal
-              : withdrawal
-          )
-        );
-
-        showSuccess("Cập nhật trạng thái yêu cầu rút tiền thành công!");
-      }
-
-      setIsModalVisible(false);
-    } catch (error) {
-      showError("Có lỗi xảy ra, vui lòng thử lại!");
-      console.error("Validation failed:", error);
-    }
   };
 
   const handleCancel = () => {
     setIsModalVisible(false);
-    form.resetFields();
   };
 
   const getStatusColor = (status: string) => {
@@ -242,9 +240,9 @@ export default function WithdrawalRequestsPage() {
         return "warning";
       case "PROCESSING":
         return "processing";
-      case "APPROVED":
+      case "COMPLETED":
         return "success";
-      case "REJECTED":
+      case "FAILED":
         return "error";
       case "CANCELLED":
         return "default";
@@ -259,14 +257,31 @@ export default function WithdrawalRequestsPage() {
         return "Chờ xử lý";
       case "PROCESSING":
         return "Đang xử lý";
-      case "APPROVED":
-        return "Đã duyệt";
-      case "REJECTED":
-        return "Từ chối";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "FAILED":
+        return "Thất bại";
       case "CANCELLED":
         return "Đã hủy";
       default:
         return status;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case "DEPOSIT":
+        return "success";
+      case "WITHDRAWAL":
+        return "warning";
+      case "PAYMENT":
+        return "processing";
+      case "REFUND":
+        return "cyan";
+      case "TRANSFER":
+        return "purple";
+      default:
+        return "default";
     }
   };
 
@@ -281,7 +296,7 @@ export default function WithdrawalRequestsPage() {
     return mockBankCards[userId] || null;
   };
 
-  const columns: ColumnsType<WithdrawalRequest> = [
+  const columns: ColumnsType<Transaction> = [
     {
       title: "STT",
       key: "index",
@@ -290,7 +305,7 @@ export default function WithdrawalRequestsPage() {
       align: "center",
     },
     {
-      title: "Mã yêu cầu",
+      title: "Mã giao dịch",
       dataIndex: "id",
       key: "id",
       render: (id) => <span className="font-mono font-semibold">{id}</span>,
@@ -333,8 +348,8 @@ export default function WithdrawalRequestsPage() {
       filters: [
         { text: "Chờ xử lý", value: "PENDING" },
         { text: "Đang xử lý", value: "PROCESSING" },
-        { text: "Đã duyệt", value: "APPROVED" },
-        { text: "Từ chối", value: "REJECTED" },
+        { text: "Hoàn thành", value: "COMPLETED" },
+        { text: "Thất bại", value: "FAILED" },
         { text: "Đã hủy", value: "CANCELLED" },
       ],
       onFilter: (value, record) => record.status === value,
@@ -369,26 +384,35 @@ export default function WithdrawalRequestsPage() {
     },
   ];
 
-  const getStatusCounts = () => {
+  const getTypeCounts = () => {
     return {
-      pending: withdrawals.filter((w) => w.status === "PENDING").length,
-      processing: withdrawals.filter((w) => w.status === "PROCESSING").length,
-      approved: withdrawals.filter((w) => w.status === "APPROVED").length,
-      rejected: withdrawals.filter((w) => w.status === "REJECTED").length,
-      cancelled: withdrawals.filter((w) => w.status === "CANCELLED").length,
+      deposit: transactions.filter((t) => t.type === "DEPOSIT").length,
+      withdrawal: transactions.filter((t) => t.type === "WITHDRAWAL").length,
+      payment: transactions.filter((t) => t.type === "PAYMENT").length,
+      refund: transactions.filter((t) => t.type === "REFUND").length,
+      transfer: transactions.filter((t) => t.type === "TRANSFER").length,
     };
   };
 
+  const getStatusCounts = () => {
+    return {
+      completed: transactions.filter((t) => t.status === "COMPLETED").length,
+      processing: transactions.filter((t) => t.status === "PROCESSING").length,
+      failed: transactions.filter((t) => t.status === "FAILED").length,
+    };
+  };
+
+  const typeCounts = getTypeCounts();
   const statusCounts = getStatusCounts();
 
   return (
     <div className="space-y-6">
       <div>
         <Title level={2} className="!mb-2">
-          Yêu cầu rút tiền
+          Giao dịch thanh toán
         </Title>
         <p className="text-gray-600">
-          Quản lý các yêu cầu rút tiền từ ví của người dùng
+          Xem chi tiết các giao dịch thanh toán trong hệ thống
         </p>
       </div>
 
@@ -397,37 +421,13 @@ export default function WithdrawalRequestsPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex-1 max-w-md">
             <Search
-              placeholder="Tìm kiếm theo tên, email, mã yêu cầu..."
+              placeholder="Tìm kiếm theo tên, email, mã giao dịch, mô tả..."
               allowClear
               enterButton={<SearchOutlined />}
               size="large"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
             />
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-            <span>
-              Chờ xử lý:{" "}
-              <span className="font-semibold">{statusCounts.pending}</span>
-            </span>
-            <span>
-              Đang xử lý:{" "}
-              <span className="font-semibold">{statusCounts.processing}</span>
-            </span>
-            <span>
-              Đã duyệt:{" "}
-              <span className="font-semibold">{statusCounts.approved}</span>
-            </span>
-            <span>
-              Từ chối:{" "}
-              <span className="font-semibold">{statusCounts.rejected}</span>
-            </span>
-            <span>
-              Tổng:{" "}
-              <span className="font-semibold">
-                {filteredWithdrawals.length}
-              </span>
-            </span>
           </div>
         </div>
       </div>
@@ -437,7 +437,7 @@ export default function WithdrawalRequestsPage() {
         <div className="p-6">
           <Table
             columns={columns}
-            dataSource={filteredWithdrawals}
+            dataSource={filteredTransactions}
             rowKey="id"
             loading={loading}
             pagination={{
@@ -445,27 +445,25 @@ export default function WithdrawalRequestsPage() {
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} yêu cầu rút tiền`,
+                `${range[0]}-${range[1]} của ${total} giao dịch`,
             }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1400 }}
             className="border-0"
           />
         </div>
       </div>
 
-      {/* Withdrawal Details Modal */}
+      {/* Transaction Details Modal (Read-only) */}
       <Modal
         title={
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-            <WalletOutlined className="text-xl" />
+            <CreditCardOutlined className="text-xl" />
             <div>
-              <div className="font-semibold text-lg">
-                Chi tiết yêu cầu rút tiền
-              </div>
-              {selectedWithdrawal && (
+              <div className="font-semibold text-lg">Chi tiết giao dịch</div>
+              {selectedTransaction && (
                 <div className="text-sm text-gray-500">
-                  Mã: {selectedWithdrawal.id} -{" "}
-                  {formatAmount(selectedWithdrawal.amount)}
+                  Mã: {selectedTransaction.id} -{" "}
+                  {formatAmount(selectedTransaction.amount)}
                 </div>
               )}
             </div>
@@ -476,52 +474,50 @@ export default function WithdrawalRequestsPage() {
         width={900}
         className="top-8"
         footer={[
-          <Button key="cancel" onClick={handleCancel}>
+          <Button key="close" onClick={handleCancel}>
             Đóng
-          </Button>,
-          <Button key="save" type="primary" onClick={handleSave}>
-            Cập nhật trạng thái
           </Button>,
         ]}
       >
-        {selectedWithdrawal && (
+        {selectedTransaction && (
           <div className="pt-4 space-y-6">
-            {/* Thông tin yêu cầu */}
+            {/* Thông tin giao dịch */}
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Thông tin yêu cầu
+                Thông tin giao dịch
               </h3>
               <Descriptions bordered column={2} size="middle">
-                <Descriptions.Item label="Mã yêu cầu" span={1}>
+                <Descriptions.Item label="Mã giao dịch" span={1}>
                   <span className="font-mono font-semibold">
-                    {selectedWithdrawal.id}
+                    {selectedTransaction.id}
                   </span>
                 </Descriptions.Item>
                 <Descriptions.Item label="Mã ví" span={1}>
                   <span className="font-mono">
-                    {selectedWithdrawal.walletId}
+                    {selectedTransaction.walletId}
                   </span>
                 </Descriptions.Item>
-                <Descriptions.Item label="Số tiền rút" span={1}>
+
+                <Descriptions.Item label="Số tiền" span={1}>
                   <span className="font-semibold text-lg">
-                    {formatAmount(selectedWithdrawal.amount)}
+                    {formatAmount(selectedTransaction.amount)}
                   </span>
                 </Descriptions.Item>
-                <Descriptions.Item label="Trạng thái hiện tại" span={1}>
+                <Descriptions.Item label="Trạng thái" span={1}>
                   <Tag
-                    color={getStatusColor(selectedWithdrawal.status)}
+                    color={getStatusColor(selectedTransaction.status)}
                     className="text-sm"
                   >
-                    {getStatusText(selectedWithdrawal.status)}
+                    {getStatusText(selectedTransaction.status)}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="Ngày tạo" span={1}>
-                  {dayjs(selectedWithdrawal.createdAt).format(
+                  {dayjs(selectedTransaction.createdAt).format(
                     "DD/MM/YYYY HH:mm:ss"
                   )}
                 </Descriptions.Item>
-                <Descriptions.Item label="Cập nhật lần cuối" span={1}>
-                  {dayjs(selectedWithdrawal.updatedAt).format(
+                <Descriptions.Item label="Cập nhật lần cuối" span={2}>
+                  {dayjs(selectedTransaction.updatedAt).format(
                     "DD/MM/YYYY HH:mm:ss"
                   )}
                 </Descriptions.Item>
@@ -538,21 +534,21 @@ export default function WithdrawalRequestsPage() {
                   <div className="flex items-center gap-2">
                     <UserOutlined />
                     <span className="font-semibold">
-                      {selectedWithdrawal.userName}
+                      {selectedTransaction.userName}
                     </span>
                   </div>
                 </Descriptions.Item>
                 <Descriptions.Item label="Email" span={1}>
                   <div className="flex items-center gap-2">
                     <MailOutlined />
-                    <span>{selectedWithdrawal.userGmail}</span>
+                    <span>{selectedTransaction.userGmail}</span>
                   </div>
                 </Descriptions.Item>
               </Descriptions>
             </div>
 
             {/* Thông tin ngân hàng */}
-            {getBankInfo(selectedWithdrawal.userId) && (
+            {getBankInfo(selectedTransaction.userId) && (
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                   Thông tin tài khoản ngân hàng
@@ -563,7 +559,7 @@ export default function WithdrawalRequestsPage() {
                       <BankOutlined />
                       <span className="font-semibold">
                         {
-                          getBankInfo(selectedWithdrawal.userId)
+                          getBankInfo(selectedTransaction.userId)
                             ?.bankAccountType
                         }
                       </span>
@@ -572,55 +568,31 @@ export default function WithdrawalRequestsPage() {
                   <Descriptions.Item label="Số tài khoản" span={1}>
                     <span className="font-mono font-semibold">
                       {
-                        getBankInfo(selectedWithdrawal.userId)
+                        getBankInfo(selectedTransaction.userId)
                           ?.bankAccountNumber
                       }
                     </span>
                   </Descriptions.Item>
                   <Descriptions.Item label="Tên chủ tài khoản" span={2}>
                     <span className="font-semibold">
-                      {getBankInfo(selectedWithdrawal.userId)?.bankAccountName}
+                      {getBankInfo(selectedTransaction.userId)?.bankAccountName}
                     </span>
                   </Descriptions.Item>
+                  {getBankInfo(selectedTransaction.userId)?.balance && (
+                    <Descriptions.Item label="Số dư ví hiện tại" span={2}>
+                      <div className="flex items-center gap-2">
+                        <DollarOutlined />
+                        <span className="font-semibold text-lg">
+                          {formatAmount(
+                            getBankInfo(selectedTransaction.userId)!.balance!
+                          )}
+                        </span>
+                      </div>
+                    </Descriptions.Item>
+                  )}
                 </Descriptions>
               </div>
             )}
-
-            <Divider />
-
-            {/* Form cập nhật trạng thái */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Cập nhật trạng thái
-              </h3>
-              <Form form={form} layout="vertical">
-                <Form.Item
-                  name="status"
-                  label="Trạng thái mới"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn trạng thái!" },
-                  ]}
-                >
-                  <Select placeholder="Chọn trạng thái" size="large">
-                    <Option value="PENDING">
-                      <Tag color="warning">Chờ xử lý</Tag>
-                    </Option>
-                    <Option value="PROCESSING">
-                      <Tag color="processing">Đang xử lý</Tag>
-                    </Option>
-                    <Option value="APPROVED">
-                      <Tag color="success">Đã duyệt</Tag>
-                    </Option>
-                    <Option value="REJECTED">
-                      <Tag color="error">Từ chối</Tag>
-                    </Option>
-                    <Option value="CANCELLED">
-                      <Tag color="default">Đã hủy</Tag>
-                    </Option>
-                  </Select>
-                </Form.Item>
-              </Form>
-            </div>
           </div>
         )}
       </Modal>
@@ -628,4 +600,4 @@ export default function WithdrawalRequestsPage() {
   );
 }
 
-WithdrawalRequestsPage.Layout = AdminLayout;
+TransactionsPage.Layout = AdminLayout;

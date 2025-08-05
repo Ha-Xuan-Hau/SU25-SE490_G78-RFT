@@ -6,16 +6,12 @@ import lombok.Setter;
 
 @Getter
 @Setter
-// DTO dùng để nhận yêu cầu gửi báo cáo từ phía người dùng
 public class ReportRequest {
     @NotBlank
     private String targetId; // userId hoặc vehicleId
 
     @NotBlank
-    private String generalType;
-
-    @NotBlank
-    private String type;
+    private String type; // USER_ERROR, PROVIDER_ERROR, VEHICLE_ERROR
 
     @NotBlank
     private String reason;

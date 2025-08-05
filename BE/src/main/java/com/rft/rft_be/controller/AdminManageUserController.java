@@ -144,14 +144,6 @@ public class AdminManageUserController {
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(adminUserService.searchUsersByStatus(status, page, size));
     }
-    @GetMapping("/staff/{id}/activities")
-    public ResponseEntity<List<AdminStaffActivityDTO>> getStaffActivityHistory(@PathVariable String id) {
-        return ResponseEntity.ok(adminUserService.getStaffActivities(id));
-    }
-    @GetMapping("/staff/activities")
-    public ResponseEntity<List<AdminStaffActivityGroupDTO>> getAllStaffActivityHistory() {
-        return ResponseEntity.ok(adminUserService.getAllStaffActivities());
-    }
 
     // ==================== NOTIFICATION MANAGEMENT ENDPOINTS ====================
 

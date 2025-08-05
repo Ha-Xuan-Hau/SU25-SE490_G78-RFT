@@ -107,22 +107,16 @@ export default function VehicleDetail() {
 
   // Hàm xử lý đặt nhiều xe
   const handleMultiBook = () => {
-    if (user === null) {
-      // Mở AuthPopup cho người dùng đăng nhập
-      setIsMultiModalOpen(false); // Đóng modal chọn nhiều xe
-      setIsAuthPopupOpen(true);
-    } else {
-      // Chuyển sang trang booking, truyền danh sách id xe và thông tin thời gian, quantity
-      setIsMultiModalOpen(false);
-      // Tạo query param cho danh sách id xe
-      const vehicleIdsParam = selectedVehicleIds.join(",");
-      const bookingUrl = `/booking?vehicleId=${encodeURIComponent(
-        vehicleIdsParam
-      )}&pickupTime=${encodeURIComponent(
-        pickupDateTime
-      )}&returnTime=${encodeURIComponent(returnDateTime)}`;
-      window.location.href = bookingUrl;
-    }
+    // Chuyển sang trang booking, truyền danh sách id xe và thông tin thời gian, quantity
+    setIsMultiModalOpen(false);
+    // Tạo query param cho danh sách id xe
+    const vehicleIdsParam = selectedVehicleIds.join(",");
+    const bookingUrl = `/booking?vehicleId=${encodeURIComponent(
+      vehicleIdsParam
+    )}&pickupTime=${encodeURIComponent(
+      pickupDateTime
+    )}&returnTime=${encodeURIComponent(returnDateTime)}`;
+    window.location.href = bookingUrl;
   };
 
   // --- Dates handling ---
@@ -241,13 +235,7 @@ export default function VehicleDetail() {
       setIsAuthPopupOpen(false); // Đóng AuthPopup
 
       // Kiểm tra xem người dùng có giấy phép lái xe chưa
-      if (
-        vehicle?.vehicleType &&
-        vehicle.vehicleType.toUpperCase() === "CAR" &&
-        (!user.result?.driverLicenses ||
-          (Array.isArray(user.result.driverLicenses) &&
-            user.result.driverLicenses.length === 0))
-      ) {
+      if (user.result?.driverLicenses === undefined) {
         setIsModalCheckOpen(true);
       } else if (vehicle?.id) {
         // Nếu có đủ điều kiện thì redirect đến trang booking
@@ -972,6 +960,55 @@ export default function VehicleDetail() {
                   )}
                 </div>
               </div>
+              {/* CHỈ hiển thị cho xe máy và xe đạp, KHÔNG cho ô tô */}
+              {availableQuantity > 1 &&
+                vehicle?.vehicleType &&
+                vehicle.vehicleType.toUpperCase() !== "CAR" && (
+                  <div className="mt-4 flex items-center justify-between border-t border-b py-4 border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">
+                        Số lượng xe khả dụng:
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
+                        {availableQuantity}
+                      </span>
+                    </div>
+                    <button
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
+                      onClick={async () => {
+                        setShowMultiBooking(true);
+                        // Gọi API lấy danh sách xe khả dụng
+                        try {
+                          const thumb = vehicle?.thumb;
+                          const providerId = vehicle?.userId;
+                          const from = pickupDateTime
+                            ? dayjs(pickupDateTime, "YYYY-MM-DD HH:mm").format(
+                                "YYYY-MM-DDTHH:mm:ss"
+                              )
+                            : "";
+                          const to = returnDateTime
+                            ? dayjs(returnDateTime, "YYYY-MM-DD HH:mm").format(
+                                "YYYY-MM-DDTHH:mm:ss"
+                              )
+                            : "";
+                          const vehicles = await getAvailableThumbList({
+                            thumb,
+                            providerId,
+                            from,
+                            to,
+                          });
+                          setAvailableVehicles(vehicles);
+                          setIsMultiModalOpen(true);
+                        } catch (err) {
+                          setAvailableVehicles([]);
+                          setIsMultiModalOpen(true);
+                        }
+                      }}
+                    >
+                      Xem thêm
+                    </button>
+                  </div>
+                )}
 
               {/* Price details */}
               <div className="mt-6">
@@ -1079,50 +1116,6 @@ export default function VehicleDetail() {
                   Đặt xe
                 </button>
               </div>
-              {/* CHỈ hiển thị cho xe máy và xe đạp, KHÔNG cho ô tô */}
-              {availableQuantity > 1 &&
-                vehicle?.vehicleType &&
-                vehicle.vehicleType.toUpperCase() !== "CAR" && (
-                  <div className="mt-4">
-                    <button
-                      className="w-full text-lg py-3 rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 flex items-center justify-center gap-2"
-                      onClick={async () => {
-                        setShowMultiBooking(true);
-                        // Gọi API lấy danh sách xe khả dụng
-                        try {
-                          const thumb = vehicle?.thumb;
-                          const providerId = vehicle?.userId;
-                          const from = pickupDateTime
-                            ? dayjs(pickupDateTime, "YYYY-MM-DD HH:mm").format(
-                                "YYYY-MM-DDTHH:mm:ss"
-                              )
-                            : "";
-                          const to = returnDateTime
-                            ? dayjs(returnDateTime, "YYYY-MM-DD HH:mm").format(
-                                "YYYY-MM-DDTHH:mm:ss"
-                              )
-                            : "";
-                          const vehicles = await getAvailableThumbList({
-                            thumb,
-                            providerId,
-                            from,
-                            to,
-                          });
-                          setAvailableVehicles(vehicles);
-                          setIsMultiModalOpen(true);
-                        } catch (err) {
-                          setAvailableVehicles([]);
-                          setIsMultiModalOpen(true);
-                        }
-                      }}
-                    >
-                      <span>Đặt nhiều xe</span>
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
-                        {availableQuantity}
-                      </span>
-                    </button>
-                  </div>
-                )}
             </div>
 
             {/* Bảng phụ phí phát sinh */}
@@ -1230,7 +1223,7 @@ export default function VehicleDetail() {
           </p>
           <p className="font-medium mb-4">Yêu cầu giấy phép:</p>
           <ul className="list-disc pl-5 mb-4">
-            <li>Xe ô tô: Bằng lái loại B</li>
+            <li>Xe ô tô: Bằng lái loại B2</li>
           </ul>
         </div>
         <Link href="/profile">
