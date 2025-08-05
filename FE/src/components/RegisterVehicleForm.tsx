@@ -286,6 +286,11 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           { label: "Cruise Control", value: "Cruise Control" },
           { label: "Hệ thống phanh ABS", value: "ABS Braking" },
           { label: "Cảm biến áp suất lốp", value: "TPMS" },
+          { label: "Camera lùi", value: "Back Camera" },
+          { label: "Khe cắm USB", value: "USB Port" },
+          { label: "Màn hình DVD", value: "DVD Screen" },
+          { label: "Túi khí an toàn", value: "Safety Airbag" },
+          { label: "Cảnh báo tốc độ", value: "Speed Alert" },
         ];
 
       case VehicleType.MOTORBIKE:
