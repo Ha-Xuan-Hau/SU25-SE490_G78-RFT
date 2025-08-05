@@ -44,7 +44,7 @@ public class AdminVehicleApprovalController {
         return ResponseEntity.ok().build();
     }
 
-    // 5. Duyệt hoặc Từ chối nhiều xe cùng lúc
+    // 4. Duyệt hoặc Từ chối nhiều xe cùng lúc
     @PutMapping("/status/batch")
     public ResponseEntity<?> updateVehicleStatuses(@RequestBody @Valid List<AdminUpdateVehicleStatusDTO> requests) {
         adminVehicleApprovalService.updateMultipleVehicleStatuses(requests);

@@ -43,7 +43,4 @@ public class BookingRequestDTO {
     String penaltyType;
     BigDecimal penaltyValue;
     Integer minCancelHour;
-
-    //nếu thuê xe có lái
-    BigDecimal driverFee;
 }

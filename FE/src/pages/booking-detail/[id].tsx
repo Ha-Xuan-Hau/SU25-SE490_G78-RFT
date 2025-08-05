@@ -110,7 +110,7 @@ export default function BookingDetailPage() {
               {translateENtoVI(data?.status || "")}
             </Tag>
             <span className="text-gray-500">
-              Mã thanh toán: {data?.codeTransaction}
+              Mã đơn: {data?.codeTransaction}
             </span>
           </div>
         </div>
@@ -241,18 +241,6 @@ export default function BookingDetailPage() {
                     <span className="font-mono font-medium">{data?.id}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Ngày tạo đơn:</span>
-                    <span className="font-medium">
-                      {formatDateTime(data?.createdAt || "")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Có thuê tài xế</span>
-                    <span className="font-mono font-medium">
-                      {data?.driverFee ? "Có" : "Không"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-gray-600">Ngày nhận xe:</span>
                     <span className="font-medium text-blue-600">
                       {formatDateTime(data?.timeBookingStart || "")}
@@ -265,9 +253,9 @@ export default function BookingDetailPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Ngày trả xe thực tế:</span>
-                    <span className="font-medium text-blue-600">
-                      {formatDateTime(data?.timeBookingEnd || "")}
+                    <span className="text-gray-600">Ngày tạo đơn:</span>
+                    <span className="font-medium">
+                      {formatDateTime(data?.createdAt || "")}
                     </span>
                   </div>
                 </div>

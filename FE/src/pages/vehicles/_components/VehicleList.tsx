@@ -3,7 +3,7 @@
 
 import React from "react";
 import { Pagination } from "antd";
-import VehicleCard from "@/components/Home/Card";
+import VehicleCard from "@/components/Home/Vehicle/Card/Card";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import type { Vehicle } from "@/types/vehicle";
 import { Search, AlertCircle, RefreshCw } from "lucide-react";

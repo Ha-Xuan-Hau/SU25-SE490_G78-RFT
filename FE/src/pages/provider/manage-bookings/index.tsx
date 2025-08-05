@@ -160,11 +160,11 @@ export default function ManagePendingBookings() {
         }
 
         setLoading(true);
-        console.log("Fetching confirmed bookings for provider:", providerId);
+        console.log("Fetching pending bookings for provider:", providerId);
 
         const result = (await getBookingsByProviderAndStatus(
           providerId,
-          "CONFIRMED"
+          "PENDING"
         )) as ApiResponse<BookingData[]>;
 
         if (result.success) {
@@ -452,10 +452,10 @@ export default function ManagePendingBookings() {
         <div className="mb-4 flex flex-col md:flex-row md:justify-between md:items-center">
           <div>
             <h2 className="text-xl font-semibold text-gray-800">
-              Đơn đặt xe vừa mới nhận
+              Đơn đặt xe chờ xác nhận
             </h2>
             <p className="text-gray-600">
-              Danh sách các đơn đặt xe đã được khách hàng thanh toán
+              Danh sách các đơn đặt xe đã thanh toán và đang chờ bạn xác nhận
             </p>
           </div>
           <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
@@ -844,7 +844,7 @@ export default function ManagePendingBookings() {
             <div className="flex justify-end gap-3">
               <Button onClick={handleCancel}>Đóng</Button>
 
-              {/* <Popconfirm
+              <Popconfirm
                 title="Hủy đơn đặt xe?"
                 description="Bạn có chắc muốn hủy đơn đặt xe này?"
                 okText="Hủy đơn"
@@ -878,7 +878,7 @@ export default function ManagePendingBookings() {
                 loading={actionLoading === bookingDetail.id}
               >
                 Chấp nhận đơn
-              </Button> */}
+              </Button>
             </div>
           </div>
         ) : (

@@ -156,7 +156,6 @@ const BookingPage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>("VNPAY");
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [availableQuantity, setAvailableQuantity] = useState(1);
-  const [withDriver, setWithDriver] = useState<boolean>(false);
 
   //  Rental calculation states
   const [rentalCalculation, setRentalCalculation] =
@@ -590,57 +589,6 @@ const BookingPage: React.FC = () => {
             throw new Error("CONFLICT: Xe vừa được đặt bởi người khác");
           }
 
-          // Tính driver fee trước khi tạo booking request
-          let calculatedDriverFee = 0;
-          if (withDriver) {
-            if (rentalCalculation?.isHourlyRate) {
-              // Tính driver fee theo giờ
-              if (
-                vehicleIds.length === 1 &&
-                vehicle?.extraFeeRule?.hasHourlyRental
-              ) {
-                const driverHourlyRate =
-                  vehicle.extraFeeRule.driverFeePerHour || 0;
-                calculatedDriverFee =
-                  calculateRentalPrice(
-                    rentalCalculation,
-                    driverHourlyRate,
-                    vehicle.extraFeeRule.driverFeePerDay || 0
-                  ) * selectedQuantity;
-              } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-                calculatedDriverFee = multiVehicles.reduce((sum, v) => {
-                  if (v?.extraFeeRule?.hasHourlyRental) {
-                    const driverHourlyRate =
-                      v.extraFeeRule.driverFeePerHour || 0;
-                    return (
-                      sum +
-                      calculateRentalPrice(
-                        rentalCalculation,
-                        driverHourlyRate,
-                        v.extraFeeRule.driverFeePerDay || 0
-                      )
-                    );
-                  }
-                  return sum;
-                }, 0);
-              }
-            } else {
-              // Tính driver fee theo ngày
-              if (vehicleIds.length === 1) {
-                calculatedDriverFee =
-                  totalDays *
-                  (vehicle?.extraFeeRule?.driverFeePerDay || 0) *
-                  selectedQuantity;
-              } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-                calculatedDriverFee = multiVehicles.reduce(
-                  (sum, v) =>
-                    sum + totalDays * (v.extraFeeRule?.driverFeePerDay || 0),
-                  0
-                );
-              }
-            }
-          }
-
           // Tạo booking request data
           const bookingRequestData = {
             vehicleIds: finalVehicleIds, // Sử dụng finalVehicleIds đã được validate
@@ -662,7 +610,6 @@ const BookingPage: React.FC = () => {
               (vehicle || multiVehicles[0])?.penaltyType || "PERCENT",
             penaltyValue: (vehicle || multiVehicles[0])?.penaltyValue || 10,
             minCancelHour: (vehicle || multiVehicles[0])?.minCancelHour || 24,
-            driverFee: calculatedDriverFee,
           };
 
           console.log("Creating booking with data:", bookingRequestData);
@@ -868,105 +815,31 @@ const BookingPage: React.FC = () => {
     // Tổng hợp giá cho nhiều xe (cộng từng xe)
     costPerDay = multiVehicles.reduce((sum, v) => sum + (v.costPerDay || 0), 0);
   }
-  // let subtotal = 0;
-  // if (rentalCalculation && hourlyRate > 0) {
-  //   if (vehicleIds.length === 1) {
-  //     subtotal =
-  //       calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay) *
-  //       selectedQuantity;
-  //   } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-  //     // Tính tổng giá cho từng xe
-  //     subtotal = multiVehicles.reduce((sum, v) => {
-  //       const rate = Math.round((v.costPerDay || 0) / 12);
-  //       return (
-  //         sum + calculateRentalPrice(rentalCalculation, rate, v.costPerDay || 0)
-  //       );
-  //     }, 0);
-  //   }
-  // } else {
-  //   if (vehicleIds.length === 1) {
-  //     subtotal = totalDays * costPerDay * selectedQuantity;
-  //   } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-  //     subtotal = multiVehicles.reduce(
-  //       (sum, v) => sum + totalDays * (v.costPerDay || 0),
-  //       0
-  //     );
-  //   }
-  // }
-
   let subtotal = 0;
   if (rentalCalculation && hourlyRate > 0) {
     if (vehicleIds.length === 1) {
-      const basePrice =
+      subtotal =
         calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay) *
         selectedQuantity;
-      // Add driver fee for hourly rental if applicable
-      let driverFee = 0;
-      if (
-        withDriver &&
-        vehicle?.extraFeeRule?.hasDriverOption &&
-        vehicle?.extraFeeRule?.hasHourlyRental
-      ) {
-        const driverHourlyRate = vehicle.extraFeeRule.driverFeePerHour || 0;
-        driverFee =
-          calculateRentalPrice(
-            rentalCalculation,
-            driverHourlyRate,
-            vehicle.extraFeeRule.driverFeePerDay || 0
-          ) * selectedQuantity;
-      }
-      subtotal = basePrice + driverFee;
     } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
       // Tính tổng giá cho từng xe
       subtotal = multiVehicles.reduce((sum, v) => {
         const rate = Math.round((v.costPerDay || 0) / 12);
-        const basePrice = calculateRentalPrice(
-          rentalCalculation,
-          rate,
-          v.costPerDay || 0
+        return (
+          sum + calculateRentalPrice(rentalCalculation, rate, v.costPerDay || 0)
         );
-        // Add driver fee for multi-vehicle if applicable
-        let driverFee = 0;
-        if (
-          withDriver &&
-          v?.extraFeeRule?.hasDriverOption &&
-          v?.extraFeeRule?.hasHourlyRental
-        ) {
-          const driverHourlyRate = v.extraFeeRule.driverFeePerHour || 0;
-          driverFee = calculateRentalPrice(
-            rentalCalculation,
-            driverHourlyRate,
-            v.extraFeeRule.driverFeePerDay || 0
-          );
-        }
-        return sum + basePrice + driverFee;
       }, 0);
     }
   } else {
     if (vehicleIds.length === 1) {
-      const basePrice = totalDays * costPerDay * selectedQuantity;
-      // Add driver fee for daily rental if applicable
-      let driverFee = 0;
-      if (withDriver && vehicle?.extraFeeRule?.hasDriverOption) {
-        driverFee =
-          totalDays *
-          (vehicle.extraFeeRule.driverFeePerDay || 0) *
-          selectedQuantity;
-      }
-      subtotal = basePrice + driverFee;
+      subtotal = totalDays * costPerDay * selectedQuantity;
     } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-      subtotal = multiVehicles.reduce((sum, v) => {
-        const basePrice = totalDays * (v.costPerDay || 0);
-        // Add driver fee for multi-vehicle if applicable
-        let driverFee = 0;
-        if (withDriver && v?.extraFeeRule?.hasDriverOption) {
-          driverFee = totalDays * (v.extraFeeRule.driverFeePerDay || 0);
-        }
-        return sum + basePrice + driverFee;
-      }, 0);
+      subtotal = multiVehicles.reduce(
+        (sum, v) => sum + totalDays * (v.costPerDay || 0),
+        0
+      );
     }
   }
-
   const deliveryFee = 0; // Miễn phí giao xe
   const discountAmount = (subtotal * amountDiscount) / 100;
   const totalAmount = subtotal + deliveryFee - discountAmount;
@@ -1244,120 +1117,6 @@ const BookingPage: React.FC = () => {
                     )}
                   </h3>
                 </div>
-
-                {/* Driver Option - Chỉ hiển thị cho xe ô tô có hỗ trợ tài xế */}
-                {((vehicleIds.length === 1 &&
-                  vehicle?.vehicleType?.toUpperCase() === "CAR" &&
-                  vehicle?.extraFeeRule?.hasDriverOption) ||
-                  (vehicleIds.length > 1 &&
-                    multiVehicles.length > 0 &&
-                    multiVehicles[0]?.vehicleType?.toUpperCase() === "CAR" &&
-                    multiVehicles[0]?.extraFeeRule?.hasDriverOption)) && (
-                  <div className="mb-6 pb-4 border-b border-gray-200">
-                    <div className="flex items-center mb-4">
-                      <h4 className="text-lg font-semibold text-gray-800">
-                        Dịch vụ tài xế
-                      </h4>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {/* Option 1: Tự lái */}
-                      <div
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          !withDriver
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:border-blue-300"
-                        }`}
-                        onClick={() => setWithDriver(false)}
-                      >
-                        <div className="flex items-center mb-2">
-                          <Radio checked={!withDriver} />
-                          <span className="ml-2 font-semibold text-gray-800 text-base">
-                            Tự lái xe
-                          </span>
-                        </div>
-                        <div className="text-gray-600 text-sm">
-                          Bạn sẽ tự lái xe trong suốt thời gian thuê
-                        </div>
-                        <div className="text-green-600 font-semibold text-sm mt-1">
-                          Không phụ phí
-                        </div>
-                      </div>
-
-                      {/* Option 2: Có tài xế */}
-                      <div
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          withDriver
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:border-blue-300"
-                        }`}
-                        onClick={() => setWithDriver(true)}
-                      >
-                        <div className="flex items-center mb-2">
-                          <Radio checked={withDriver} />
-                          <span className="ml-2 font-semibold text-gray-800 text-base">
-                            Thuê kèm tài xế
-                          </span>
-                        </div>
-                        <div className="text-gray-600 text-sm">
-                          Tài xế chuyên nghiệp sẽ lái xe cho bạn
-                        </div>
-                        <div className="text-orange-500 font-semibold text-sm mt-1">
-                          {vehicleIds.length === 1 &&
-                          vehicle?.extraFeeRule?.driverFeePerDay
-                            ? `+${vehicle.extraFeeRule.driverFeePerDay.toLocaleString(
-                                "vi-VN"
-                              )}₫/ngày`
-                            : multiVehicles.length > 0 &&
-                              multiVehicles[0]?.extraFeeRule?.driverFeePerDay
-                            ? `+${multiVehicles[0].extraFeeRule.driverFeePerDay.toLocaleString(
-                                "vi-VN"
-                              )}₫/ngày`
-                            : "Có phụ phí"}
-                          {((vehicleIds.length === 1 &&
-                            vehicle?.extraFeeRule?.hasHourlyRental &&
-                            vehicle?.extraFeeRule?.driverFeePerHour) ||
-                            (multiVehicles.length > 0 &&
-                              multiVehicles[0]?.extraFeeRule?.hasHourlyRental &&
-                              multiVehicles[0]?.extraFeeRule
-                                ?.driverFeePerHour)) && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Thuê theo giờ:{" "}
-                              {vehicleIds.length === 1
-                                ? vehicle?.extraFeeRule?.driverFeePerHour?.toLocaleString(
-                                    "vi-VN"
-                                  )
-                                : multiVehicles[0]?.extraFeeRule?.driverFeePerHour?.toLocaleString(
-                                    "vi-VN"
-                                  )}
-                              ₫/giờ
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {withDriver && (
-                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <span className="text-yellow-600 text-lg">ℹ️</span>
-                          <div className="text-yellow-800 text-sm">
-                            <div className="font-medium">
-                              Lưu ý khi thuê tài xế:
-                            </div>
-                            <ul className="mt-1 text-xs space-y-1 list-disc list-inside">
-                              <li>Tài xế sẽ có mặt đúng giờ đã hẹn</li>
-                              <li>
-                                Chi phí xăng, phí đường bộ do khách hàng chi trả
-                              </li>
-                              <li>Tài xế sẽ đi cùng trong suốt chuyến đi</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 <div className="mb-6 pb-4 border-b border-gray-200">
                   <RangePicker
@@ -1903,50 +1662,7 @@ const BookingPage: React.FC = () => {
                         : `Thuê xe (${totalDays} ngày)`}
                     </span>
                     <span className="font-semibold text-sm">
-                      {/* Tính base price không bao gồm driver fee */}
-                      {(() => {
-                        let basePrice = 0;
-                        if (rentalCalculation && hourlyRate > 0) {
-                          if (vehicleIds.length === 1) {
-                            basePrice =
-                              calculateRentalPrice(
-                                rentalCalculation,
-                                hourlyRate,
-                                costPerDay
-                              ) * selectedQuantity;
-                          } else if (
-                            vehicleIds.length > 1 &&
-                            multiVehicles.length > 0
-                          ) {
-                            basePrice = multiVehicles.reduce((sum, v) => {
-                              const rate = Math.round((v.costPerDay || 0) / 12);
-                              return (
-                                sum +
-                                calculateRentalPrice(
-                                  rentalCalculation,
-                                  rate,
-                                  v.costPerDay || 0
-                                )
-                              );
-                            }, 0);
-                          }
-                        } else {
-                          if (vehicleIds.length === 1) {
-                            basePrice =
-                              totalDays * costPerDay * selectedQuantity;
-                          } else if (
-                            vehicleIds.length > 1 &&
-                            multiVehicles.length > 0
-                          ) {
-                            basePrice = multiVehicles.reduce(
-                              (sum, v) => sum + totalDays * (v.costPerDay || 0),
-                              0
-                            );
-                          }
-                        }
-                        return basePrice.toLocaleString("vi-VN");
-                      })()}
-                      ₫
+                      {subtotal.toLocaleString("vi-VN")}₫
                     </span>
                   </div>
 
@@ -1966,82 +1682,6 @@ const BookingPage: React.FC = () => {
                       )}
                     </div>
                   )}
-
-                  {/* Driver fee - chỉ hiển thị khi chọn tài xế */}
-                  {withDriver &&
-                    ((vehicleIds.length === 1 &&
-                      vehicle?.extraFeeRule?.hasDriverOption) ||
-                      (vehicleIds.length > 1 &&
-                        multiVehicles.length > 0 &&
-                        multiVehicles[0]?.extraFeeRule?.hasDriverOption)) && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 text-sm">
-                          {rentalCalculation?.isHourlyRate
-                            ? "Phí tài xế (theo giờ)"
-                            : "Phí tài xế"}
-                        </span>
-                        <span className="font-semibold text-sm">
-                          {(() => {
-                            let driverFee = 0;
-                            if (rentalCalculation?.isHourlyRate) {
-                              if (
-                                vehicleIds.length === 1 &&
-                                vehicle?.extraFeeRule?.hasHourlyRental
-                              ) {
-                                const driverHourlyRate =
-                                  vehicle.extraFeeRule.driverFeePerHour || 0;
-                                driverFee =
-                                  calculateRentalPrice(
-                                    rentalCalculation,
-                                    driverHourlyRate,
-                                    vehicle.extraFeeRule.driverFeePerDay || 0
-                                  ) * selectedQuantity;
-                              } else if (
-                                vehicleIds.length > 1 &&
-                                multiVehicles.length > 0
-                              ) {
-                                driverFee = multiVehicles.reduce((sum, v) => {
-                                  if (v?.extraFeeRule?.hasHourlyRental) {
-                                    const driverHourlyRate =
-                                      v.extraFeeRule.driverFeePerHour || 0;
-                                    return (
-                                      sum +
-                                      calculateRentalPrice(
-                                        rentalCalculation,
-                                        driverHourlyRate,
-                                        v.extraFeeRule.driverFeePerDay || 0
-                                      )
-                                    );
-                                  }
-                                  return sum;
-                                }, 0);
-                              }
-                            } else {
-                              if (vehicleIds.length === 1) {
-                                driverFee =
-                                  totalDays *
-                                  (vehicle?.extraFeeRule?.driverFeePerDay ||
-                                    0) *
-                                  selectedQuantity;
-                              } else if (
-                                vehicleIds.length > 1 &&
-                                multiVehicles.length > 0
-                              ) {
-                                driverFee = multiVehicles.reduce(
-                                  (sum, v) =>
-                                    sum +
-                                    totalDays *
-                                      (v.extraFeeRule?.driverFeePerDay || 0),
-                                  0
-                                );
-                              }
-                            }
-                            return driverFee.toLocaleString("vi-VN");
-                          })()}
-                          ₫
-                        </span>
-                      </div>
-                    )}
 
                   {deliveryFee > 0 && (
                     <div className="flex justify-between items-center">

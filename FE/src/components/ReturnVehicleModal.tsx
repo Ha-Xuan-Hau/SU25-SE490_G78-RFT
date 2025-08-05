@@ -76,14 +76,10 @@ export const ReturnVehicleModal: React.FC<ReturnVehicleModalProps> = ({
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
           <div className="flex">
+            <ExclamationCircleOutlined className="text-yellow-600 mt-0.5 mr-2" />
             <div className="text-sm text-yellow-800">
               <div className="font-medium mb-1">Lưu ý:</div>
               <ul className="list-disc list-inside space-y-1">
-                <li>
-                  Yêu cầu khách kiểm tra lại hành lý của mình, đảm bảo không để
-                  quên đồ dùng cá nhân của mình trên xe
-                </li>
-                <li>Yêu cầu khách dọn dẹp xe trước khi trả</li>
                 <li>Sau khi xác nhận, chủ xe sẽ được thông báo</li>
                 <li>Chủ xe sẽ xác nhận đã nhận xe từ bạn</li>
                 <li>Quá trình thuê xe sẽ kết thúc</li>

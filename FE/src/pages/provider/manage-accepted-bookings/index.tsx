@@ -138,17 +138,6 @@ export default function ManageAcceptedBookings() {
     null
   );
 
-  const [deliveryConfirmModal, setDeliveryConfirmModal] =
-    useState<boolean>(false);
-  const [selectedDeliveryBookingId, setSelectedDeliveryBookingId] = useState<
-    string | null
-  >(null);
-
-  const [returnConfirmModal, setReturnConfirmModal] = useState<boolean>(false);
-  const [selectedReturnBookingId, setSelectedReturnBookingId] = useState<
-    string | null
-  >(null);
-
   // Ref to track if we've already fetched data for current provider
   const hasFetchedRef = useRef<string | null>(null);
 
@@ -420,54 +409,6 @@ export default function ManageAcceptedBookings() {
     setSelectedBookingId(null);
   };
 
-  // Show delivery confirmation modal
-  const showDeliveryConfirmModal = (bookingId: string) => {
-    setSelectedDeliveryBookingId(bookingId);
-    setDeliveryConfirmModal(true);
-  };
-
-  // Hide delivery confirmation modal
-  const hideDeliveryConfirmModal = () => {
-    setDeliveryConfirmModal(false);
-    setSelectedDeliveryBookingId(null);
-  };
-
-  // Confirm delivery
-  const confirmDelivery = async () => {
-    if (!selectedDeliveryBookingId) return;
-
-    setDeliveryConfirmModal(false);
-    await updateContractStatus(selectedDeliveryBookingId, "DELIVERED");
-    setSelectedDeliveryBookingId(null);
-  };
-
-  // Show return confirmation modal
-  const showReturnConfirmModal = (bookingId: string) => {
-    setSelectedReturnBookingId(bookingId);
-    setReturnConfirmModal(true);
-  };
-
-  // Hide return confirmation modal
-  const hideReturnConfirmModal = () => {
-    setReturnConfirmModal(false);
-    setSelectedReturnBookingId(null);
-  };
-
-  // Confirm return
-  const confirmReturn = async () => {
-    if (!selectedReturnBookingId) return;
-
-    setReturnConfirmModal(false);
-
-    // Tìm booking để mở modal tất toán
-    const booking = bookings.find((b) => b.id === selectedReturnBookingId);
-    if (booking) {
-      showModal(booking); // Mở modal tất toán hợp đồng
-    }
-
-    setSelectedReturnBookingId(null);
-  };
-
   // Update contract status using API
   const updateContractStatus = async (bookingId: string, newStatus: string) => {
     setLoading(true);
@@ -590,7 +531,7 @@ export default function ManageAcceptedBookings() {
             <Button
               type="primary"
               size="small"
-              onClick={() => showDeliveryConfirmModal(booking.id)}
+              onClick={() => updateContractStatus(booking.id, "DELIVERED")}
               className="w-full"
             >
               Xác nhận giao xe
@@ -640,7 +581,7 @@ export default function ManageAcceptedBookings() {
           <Button
             type="primary"
             size="small"
-            onClick={() => showReturnConfirmModal(booking.id)}
+            onClick={() => showModal(booking)}
             icon={<PlusCircleOutlined />}
             className="w-full"
           >
@@ -1226,154 +1167,6 @@ export default function ManageAcceptedBookings() {
             </Button>
           </div>
         </Form>
-      </Modal>
-
-      {/* Delivery Confirmation Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <CarOutlined className="text-blue-500" />
-            <span>Xác nhận giao xe</span>
-          </div>
-        }
-        open={deliveryConfirmModal}
-        onCancel={hideDeliveryConfirmModal}
-        footer={[
-          <Button key="cancel" onClick={hideDeliveryConfirmModal}>
-            Hủy
-          </Button>,
-          <Button
-            key="confirm"
-            type="primary"
-            onClick={confirmDelivery}
-            loading={loading}
-            icon={<CheckCircleOutlined />}
-          >
-            Xác nhận đã giao xe
-          </Button>,
-        ]}
-        width={500}
-        destroyOnClose
-      >
-        <div className="py-4">
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <ExclamationCircleOutlined className="text-yellow-600 text-xl mt-1" />
-              <div>
-                <h4 className="font-semibold text-yellow-800 mb-2">
-                  Lưu ý quan trọng khi giao xe:
-                </h4>
-                <p className="text-yellow-700 text-sm leading-relaxed">
-                  Yêu cầu kiểm tra kỹ thông tin người thuê xe, đảm bảo rằng giấy
-                  phép lái xe phải chính xác với giấy phép lái xe trên hệ thống.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra giấy phép lái xe của khách hàng</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Đối chiếu thông tin cá nhân với hệ thống</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra tình trạng xe trước khi giao</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Hướng dẫn khách hàng về quy định sử dụng xe</span>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-sm font-medium text-center">
-              Bạn có chắc chắn đã hoàn thành các bước kiểm tra và sẵn sàng giao
-              xe?
-            </p>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Return Confirmation Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <RollbackOutlined className="text-green-500" />
-            <span>Xác nhận trả xe</span>
-          </div>
-        }
-        open={returnConfirmModal}
-        onCancel={hideReturnConfirmModal}
-        footer={[
-          <Button key="cancel" onClick={hideReturnConfirmModal}>
-            Hủy
-          </Button>,
-          <Button
-            key="confirm"
-            type="primary"
-            onClick={confirmReturn}
-            loading={loading}
-            icon={<CheckCircleOutlined />}
-          >
-            Tiếp tục tất toán
-          </Button>,
-        ]}
-        width={500}
-        destroyOnClose
-      >
-        <div className="py-4">
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <ExclamationCircleOutlined className="text-green-600 text-xl mt-1" />
-              <div>
-                <h4 className="font-semibold text-green-800 mb-2">
-                  Lưu ý quan trọng khi nhận xe trả lại:
-                </h4>
-                <p className="text-green-700 text-sm leading-relaxed">
-                  Vui lòng kiểm tra kỹ tình trạng xe trước khi xác nhận nhận xe
-                  từ khách hàng.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra tình trạng bên ngoài xe (trầy xước, móp méo)</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>
-                Kiểm tra nội thất xe (ghế ngồi, vô lăng, bảng điều khiển)
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra mức nhiên liệu và các chất lỏng</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra các phụ kiện đi kèm (chìa khóa, giấy tờ xe)</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircleOutlined className="text-green-500" />
-              <span>Ghi nhận số km hiện tại của xe</span>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-sm font-medium text-center">
-              Sau khi xác nhận, bạn sẽ được chuyển đến màn hình tất toán hợp
-              đồng để điền thông tin chi tiết.
-            </p>
-          </div>
-        </div>
       </Modal>
 
       {/* Cancel Booking Modal */}

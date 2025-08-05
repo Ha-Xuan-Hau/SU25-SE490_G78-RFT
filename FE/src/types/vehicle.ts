@@ -32,31 +32,12 @@ export interface Vehicle {
   openTime?: string; // Opening time for the vehicle rental
   closeTime?: string; // Closing time for the vehicle rental
 
-  // maxKmPerDay?: number; // Maximum kilometers allowed per day
-  // feePerExtraKm?: number; // Fee for extra kilometers beyond the limit
-  // allowedHourLate?: number; // Allowed hours late for return
-  // feePerExtraHour?: number; // Fee for extra hours beyond the allowed late time
-  // cleaningFee?: number; // Fee for cleaning the vehicle after use
-  // smellRemovalFee?: number; // Fee for removing odors from the vehicle
-
-  // driverFeePerDay: number; // Fee for hiring a driver per day
-  // hasDriverOption: boolean;
-  // driverFeePerHour: number;
-  // hasHourlyRental: boolean;
-  extraFeeRule?: {
-    maxKmPerDay?: number;
-    feePerExtraKm?: number;
-    allowedHourLate?: number;
-    feePerExtraHour?: number;
-    cleaningFee?: number;
-    smellRemovalFee?: number;
-    batteryChargeFeePerPercent?: number;
-    apply_batteryChargeFee?: any;
-    driverFeePerDay?: number;
-    hasDriverOption?: boolean;
-    driverFeePerHour?: number;
-    hasHourlyRental?: boolean;
-  };
+  maxKmPerDay?: number; // Maximum kilometers allowed per day
+  feePerExtraKm?: number; // Fee for extra kilometers beyond the limit
+  allowedHourLate?: number; // Allowed hours late for return
+  feePerExtraHour?: number; // Fee for extra hours beyond the allowed late time
+  cleaningFee?: number; // Fee for cleaning the vehicle after use
+  smellRemovalFee?: number; // Fee for removing odors from the vehicle
 }
 
 export interface VehicleFeature {

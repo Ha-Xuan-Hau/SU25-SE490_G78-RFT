@@ -1,3 +1,4 @@
+// Bộ từ điển dịch tiếng Anh sang tiếng Việt cho các đặc điểm xe, tiện nghi, ...
 export const viDictionary: Record<string, string> = {
   AUTOMATIC: "Hộp số tự động",
   MANUAL: "Hộp số sàn",
@@ -29,45 +30,6 @@ export const viDictionary: Record<string, string> = {
   COMPLETED: "Đã hoàn thành",
   VALID: "Còn hiệu lực",
   INVALID: "Không còn hiệu lực",
-  FINISHED: "Đã hoàn thành",
-
-  APPROVED: "Đã duyệt",
-
-  //Features cho ô tô
-  "Leather Seats": "Ghế da",
-  "Parking Sensors": "Cảm biến đỗ xe",
-  "Backup Camera": "Camera hành trình",
-  Sunroof: "Kính chống nắng",
-  "Heated Seats": "Ghế sưởi",
-  "Premium Audio": "Hệ thống âm thanh cao cấp",
-  "Panoramic Roof": "Cửa sổ trời",
-  "Remote Start": "Hệ thống khởi động từ xa",
-  "Blind Spot Monitor": "Cảnh báo điểm mù",
-  "Cruise Control": "Cruise Control",
-  "ABS Braking": "Hệ thống phanh ABS",
-  TPMS: "Cảm biến áp suất lốp",
-
-  //Features cho xe máy
-  "Remote Lock": "Khóa từ xa",
-  "Anti-theft Alarm": "Báo động chống trộm",
-  "LED Lights": "Đèn LED",
-  "Storage Box": "Cốp xe",
-  "Electric Start": "Khởi động điện",
-  "USB Charging": "Sạc điện thoại USB",
-  "Digital Dashboard": "Đồng hồ kỹ thuật số",
-  "GPS Tracking": "Hệ thống định vị",
-
-  //Features cho xe đạp
-  "Anti-theft Lock": "Khóa chống trộm",
-  Basket: "Giỏ xe",
-  "Rear Rack": "Baga sau",
-  Bell: "Chuông xe",
-  "Disc Brake": "Phanh đĩa",
-  "Spare Tire": "Bánh xe dự phòng",
-  "Mini Pump": "Bơm xe mini",
-  "Comfortable Seat": "Yên xe êm ái",
-  Mudguard: "Chắn bùn",
-  Mirror: "Gương chiếu hậu",
 };
 
 export function translateENtoVI(text: string): string {
