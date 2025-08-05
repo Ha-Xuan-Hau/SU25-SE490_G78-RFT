@@ -95,9 +95,9 @@ const getStatusBadge = (status?: string) => {
   } else if (status === "Chờ thanh toán" || status === "UNPAID") {
     color = "volcano";
     text = "Chờ thanh toán";
-  } else if (status === "Chờ xử lý" || status === "PENDING") {
-    color = "orange";
-    text = "Chờ xử lý";
+    // } else if (status === "Chờ xử lý" || status === "PENDING") {
+    //   color = "orange";
+    //   text = "Chờ xử lý";
   } else {
     color = "default";
     text = "Đang chờ";

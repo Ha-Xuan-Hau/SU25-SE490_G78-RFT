@@ -635,12 +635,12 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
       onFinish={async (values) => {
         setSubmitting(true);
         try {
-          // ✅ Xử lý biển số xe theo loại xe VÀ theo insert/update
+          //Xử lý biển số xe theo loại xe VÀ theo insert/update
           let licensePlateData: string | string[] = ""; // Có thể là string hoặc array
           let quantity = 1;
 
           if (isInsert) {
-            // ✅ CREATE: Luôn gửi array
+            // CREATE: Luôn gửi array
             if (vehicleType === VehicleType.CAR) {
               licensePlateData = [values.licensePlate || ""]; // Array với 1 phần tử
               quantity = 1;
@@ -663,7 +663,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               quantity = isMultipleVehicles ? values.vehicleQuantity || 1 : 1;
             }
           } else {
-            // ✅ UPDATE: Luôn gửi string
+            // UPDATE: Luôn gửi string
             if (vehicleType === VehicleType.CAR) {
               licensePlateData = values.licensePlate || ""; // String
               quantity = 1;
@@ -692,6 +692,10 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             imageUrl: url,
           }));
 
+          const processedDescription = values.description
+            ? values.description.replace(/\n/g, "\n") // Đảm bảo \n được giữ nguyên
+            : "";
+
           // Base submit data cho tất cả loại xe
           const baseSubmitData = {
             penaltyId: values.rentalRule,
@@ -705,7 +709,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             yearManufacture: values.yearOfManufacture,
             transmission: values.transmission,
             fuelType: values.fuelType,
-            description: values.description,
+            description: processedDescription,
             numberVehicle: quantity,
             costPerDay: values.costPerDay,
             status: "PENDING",

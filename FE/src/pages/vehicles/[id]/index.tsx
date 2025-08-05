@@ -41,14 +41,13 @@ import {
 } from "@/utils/booking.utils";
 
 // Types and Utils
-import { Vehicle, VehicleFeature } from "@/types/vehicle";
+import { Vehicle, VehicleFeature, VehicleImage } from "@/types/vehicle";
 import { Comment as VehicleComment } from "@/types/vehicle";
 import { formatCurrency } from "@/lib/format-currency";
 import dayjs, { Dayjs } from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { RangePickerProps } from "antd/es/date-picker";
-
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
@@ -79,8 +78,10 @@ export default function VehicleDetail() {
   const [rentalDurationDays, setRentalDurationDays] = useState<number>(1);
   const [totalPrice, setTotalPrice] = useState<number>(0);
 
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
+
   // Modal state
-  // const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalCheckOpen, setIsModalCheckOpen] = useState(false);
   const [isAuthPopupOpen, setIsAuthPopupOpen] = useState(false);
 
@@ -88,7 +89,7 @@ export default function VehicleDetail() {
     useState<RentalCalculation | null>(null);
   const [hourlyRate, setHourlyRate] = useState<number>(0);
 
-  // NEW: Buffer time state
+  // Buffer time state
   const [bufferConflictMessage, setBufferConflictMessage] =
     useState<string>("");
 
@@ -96,25 +97,21 @@ export default function VehicleDetail() {
   const [currentCommentPage, setCurrentCommentPage] = useState<number>(1);
   const commentsPerPage = 5;
 
-  //multiple booking
+  // Multiple booking
   const [availableQuantity, setAvailableQuantity] = useState(1);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
   const [showMultiBooking, setShowMultiBooking] = useState(false);
   const [isMultiModalOpen, setIsMultiModalOpen] = useState(false);
-  // State cho chọn nhiều xe
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
 
   // Hàm xử lý đặt nhiều xe
   const handleMultiBook = () => {
     if (user === null) {
-      // Mở AuthPopup cho người dùng đăng nhập
-      setIsMultiModalOpen(false); // Đóng modal chọn nhiều xe
+      setIsMultiModalOpen(false);
       setIsAuthPopupOpen(true);
     } else {
-      // Chuyển sang trang booking, truyền danh sách id xe và thông tin thời gian, quantity
       setIsMultiModalOpen(false);
-      // Tạo query param cho danh sách id xe
       const vehicleIdsParam = selectedVehicleIds.join(",");
       const bookingUrl = `/booking?vehicleId=${encodeURIComponent(
         vehicleIdsParam
@@ -127,13 +124,11 @@ export default function VehicleDetail() {
 
   // --- Dates handling ---
   const updateDates = (value: RangeValue) => {
-    // Kiểm tra rõ ràng trước khi cập nhật
     if (value === null) {
       setDates([] as never[]);
     } else if (Array.isArray(value) && value.length === 2) {
       setDates(value as unknown as never[]);
     } else {
-      // Xử lý trường hợp không hợp lệ
       setDates([] as never[]);
     }
   };
@@ -173,7 +168,6 @@ export default function VehicleDetail() {
       fetchBookedSlots();
     }
   }, [id, vehicle?.vehicleType]);
-  // --- Effects ---
 
   useEffect(() => {
     if (vehicle?.costPerDay) {
@@ -187,7 +181,6 @@ export default function VehicleDetail() {
       const startDate = dayjs(pickupDateTime);
       const endDate = dayjs(returnDateTime);
 
-      // Validate dates
       if (endDate <= startDate) {
         setRentalDurationDays(1);
         setTotalPrice(vehicle.costPerDay);
@@ -195,11 +188,9 @@ export default function VehicleDetail() {
         return;
       }
 
-      // Tính toán thời gian thuê
       const calculation = calculateRentalDuration(startDate, endDate);
       setRentalCalculation(calculation);
 
-      // Tính giá
       const price = calculateRentalPrice(
         calculation,
         hourlyRate,
@@ -207,12 +198,10 @@ export default function VehicleDetail() {
       );
       setTotalPrice(price);
 
-      // Set legacy state cho compatibility
       setRentalDurationDays(
         calculation.isHourlyRate ? 1 : calculation.billingDays
       );
     } else if (vehicle?.costPerDay) {
-      // Default price if no dates selected
       setTotalPrice(vehicle.costPerDay);
       setRentalCalculation(null);
     }
@@ -223,7 +212,6 @@ export default function VehicleDetail() {
     if (bookedTimeSlots.length > 0) {
       console.log("Booked time slots:", bookedTimeSlots);
 
-      // Hiển thị cụ thể các ngày đã được đặt để debug
       const bookedRanges = bookedTimeSlots.map((slot) => {
         const startDate = parseBackendTime(slot.startDate).format("YYYY-MM-DD");
         const endDate = parseBackendTime(slot.endDate).format("YYYY-MM-DD");
@@ -236,11 +224,9 @@ export default function VehicleDetail() {
 
   // Thêm effect này để theo dõi thay đổi của user
   useEffect(() => {
-    // Nếu người dùng đã đăng nhập và AuthPopup đang mở
     if (user && isAuthPopupOpen) {
-      setIsAuthPopupOpen(false); // Đóng AuthPopup
+      setIsAuthPopupOpen(false);
 
-      // Kiểm tra xem người dùng có giấy phép lái xe chưa
       if (
         vehicle?.vehicleType &&
         vehicle.vehicleType.toUpperCase() === "CAR" &&
@@ -250,7 +236,6 @@ export default function VehicleDetail() {
       ) {
         setIsModalCheckOpen(true);
       } else if (vehicle?.id) {
-        // Nếu có đủ điều kiện thì redirect đến trang booking
         console.log(
           "Navigating from useEffect to booking page with vehicle ID:",
           vehicle.id
@@ -275,36 +260,29 @@ export default function VehicleDetail() {
 
   // Format dates for DateRangePicker
   const formattedDates = useMemo(() => {
-    // If dates is null or undefined
     if (!dates) {
       return null;
     }
 
-    // Kiểm tra có phải mảng không và cấu trúc cụ thể
     if (Array.isArray(dates)) {
-      // Nếu là mảng rỗng, trả về null
       if (dates.length === 0) {
         return null;
       }
 
-      // Nếu có đúng 2 phần tử
       if (dates.length === 2) {
-        // Luôn chuyển đổi sang đối tượng dayjs mới
         const startDate = dates[0] ? dayjs(dates[0]) : null;
         const endDate = dates[1] ? dayjs(dates[1]) : null;
 
         return [startDate, endDate] as [Dayjs | null, Dayjs | null];
       }
 
-      // Các trường hợp khác - ví dụ mảng có 1 phần tử
       return null;
     }
 
-    // Mảng không hợp lệ
     return null;
   }, [dates]);
 
-  // Tạo disabledTime và disabledDate functions sử dụng logic giống booking page
+  // Tạo disabledTime và disabledDate functions
   const openTime = vehicle?.openTime || "00:00";
   const closeTime = vehicle?.closeTime || "00:00";
 
@@ -342,7 +320,7 @@ export default function VehicleDetail() {
   }
 
   // --- Data preparation ---
-  const images = vehicle.vehicleImages || [];
+  const images = (vehicle.vehicleImages || []).slice(0, 4);
   const vehicleComments: VehicleComment[] = (vehicle.userComments ||
     []) as VehicleComment[];
   const features: VehicleFeature[] = vehicle?.vehicleFeatures || [];
@@ -387,17 +365,14 @@ export default function VehicleDetail() {
     userLicenses: string[] | undefined,
     vehicleType: string
   ): boolean => {
-    // Xe đạp không yêu cầu bằng lái
     if (vehicleType === "BICYCLE" || vehicleType === "MOTORBIKE") {
       return true;
     }
 
-    // Nếu user không có bằng lái nào
     if (!userLicenses || userLicenses.length === 0) {
       return false;
     }
 
-    // Kiểm tra theo từng loại xe
     switch (vehicleType) {
       case "CAR":
         return userLicenses.some((license) => license === "B");
@@ -421,7 +396,6 @@ export default function VehicleDetail() {
 
   // Booking handlers
   const handleRent = () => {
-    // Add debug information
     console.log("handleRent called");
 
     if (!pickupDateTime || !returnDateTime) {
@@ -429,24 +403,19 @@ export default function VehicleDetail() {
       return;
     }
 
-    // Lấy validLicenses từ cả hai nơi có thể chứa nó
     const userLicenses = user?.validLicenses || user?.result?.validLicenses;
 
     if (user === null) {
-      // Mở AuthPopup cho người dùng đăng nhập
       setIsAuthPopupOpen(true);
     } else if (!userLicenses) {
-      // Người dùng chưa có thông tin giấy phép lái xe
       setIsModalCheckOpen(true);
     } else {
-      // Kiểm tra tính phù hợp của bằng lái xe
       const hasProperLicense = hasValidLicense(
         userLicenses,
         vehicle.vehicleType
       );
 
       if (!hasProperLicense) {
-        // Hiển thị thông báo nếu người dùng không có bằng lái phù hợp
         Modal.error({
           title: "Bạn không có giấy phép phù hợp",
           content: `Loại xe này yêu cầu ${getLicenseRequirement(
@@ -459,11 +428,8 @@ export default function VehicleDetail() {
       if (validationMessage === "Khoảng ngày đã được thuê.") {
         message.error("Khoảng ngày đã được thuê. Vui lòng chọn ngày khác!");
       } else {
-        // Prevent page reload by using e.preventDefault() if available
-        // Use router.push with the complete object to ensure proper navigation
         console.log("Navigating to booking page with ID:", vehicle?.id);
 
-        // Using Next.js router with pathname as string to avoid potential encoding issues
         const bookingUrl = `/booking/?vehicleId=${
           vehicle?.id
         }&pickupTime=${encodeURIComponent(
@@ -471,7 +437,6 @@ export default function VehicleDetail() {
         )}&returnTime=${encodeURIComponent(returnDateTime || "")}`;
         console.log("Booking URL:", bookingUrl);
 
-        // Use window.location for a hard navigation if router isn't working
         window.location.href = bookingUrl;
       }
     }
@@ -483,7 +448,6 @@ export default function VehicleDetail() {
       const startDate = values[0] as Dayjs;
       const endDate = values[1] as Dayjs;
 
-      // Update pickup and return times - For URL params, use readable format
       setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
       setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));
 
@@ -504,24 +468,21 @@ export default function VehicleDetail() {
           setAvailableQuantity(quantity);
           setSelectedQuantity(1);
           setShowMultiBooking(quantity > 1);
-          setAvailableVehicles([]); // reset danh sách xe khi đổi ngày
+          setAvailableVehicles([]);
         } catch (err) {
           setAvailableQuantity(1);
           setShowMultiBooking(false);
           setAvailableVehicles([]);
         }
       } else {
-        // Nếu là ô tô, reset về 1 xe và không cho phép đặt nhiều
         setAvailableQuantity(1);
         setShowMultiBooking(false);
         setAvailableVehicles([]);
       }
 
-      // Tính toán thời gian thuê mới
       const calculation = calculateRentalDuration(startDate, endDate);
       setRentalCalculation(calculation);
 
-      // Kiểm tra buffer time conflict giống booking page
       if (vehicle?.vehicleType) {
         const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
         const conflictCheck = checkBufferTimeConflict(
@@ -545,7 +506,6 @@ export default function VehicleDetail() {
         setValidationMessage("");
       }
     } else {
-      // Reset values if no dates selected
       setPickupDateTime("");
       setReturnDateTime("");
       setBufferConflictMessage("");
@@ -555,76 +515,108 @@ export default function VehicleDetail() {
       setAvailableVehicles([]);
     }
 
-    // Update Recoil state
     updateDates(values);
   };
 
   // --- Render component ---
   return (
-    <section className="!pt-20 pb-20 relative">
+    <section className="pt-16 sm:pt-20 pb-10 sm:pb-20 relative">
       {/* Main container */}
-      <div className="container mx-auto max-w-[1440px] px-5 2xl:px-8">
-        {/* Vehicle images gallery */}
-        <div className="grid grid-cols-12 mt-8 gap-8">
-          {/* Main image */}
-          <div className="lg:col-span-8 col-span-12 row-span-2 lg:block hidden">
+      <div className="container mx-auto max-w-[1440px] px-4 sm:px-5 2xl:px-8">
+        {/* Vehicle images gallery - Desktop */}
+        <div className="hidden lg:grid grid-cols-12 mt-8 gap-2">
+          {/* Main image - spans 8 columns */}
+          <div className="col-span-8">
             {images.length > 0 && (
-              <div className="">
+              <div
+                className="cursor-pointer"
+                onClick={() => {
+                  setPreviewImageIndex(0);
+                  setIsImagePreviewOpen(true);
+                }}
+              >
                 <Image
                   src={images[0]?.imageUrl}
                   alt={`${vehicle.brandName} ${vehicle.modelName}`}
                   width={800}
-                  height={600}
-                  className="rounded-2xl w-full h-[600px] object-cover"
+                  height={500}
+                  className="rounded-2xl w-full h-[500px] object-cover hover:opacity-90 transition-opacity"
                   unoptimized={true}
                 />
               </div>
             )}
           </div>
 
-          {/* Secondary images */}
-          <div className="lg:col-span-4 lg:block hidden">
-            {images.length > 1 && (
-              <Image
-                src={images[1]?.imageUrl}
-                alt={`${vehicle.brandName} ${vehicle.modelName}`}
-                width={500}
-                height={600}
-                className="rounded-2xl w-full h-full object-cover"
-                unoptimized={true}
-              />
-            )}
-          </div>
-          <div className="lg:col-span-2 col-span-6 lg:block hidden">
-            {images.length > 2 && (
-              <Image
-                src={images[2]?.imageUrl}
-                alt={`${vehicle.brandName} ${vehicle.modelName}`}
-                width={400}
-                height={500}
-                className="rounded-2xl w-full h-full object-cover"
-                unoptimized={true}
-              />
-            )}
-          </div>
-          <div className="lg:col-span-2 col-span-6 lg:block hidden">
-            {images.length > 3 && (
-              <Image
-                src={images[3]?.imageUrl}
-                alt={`${vehicle.brandName} ${vehicle.modelName}`}
-                width={400}
-                height={500}
-                className="rounded-2xl w-full h-full object-cover"
-                unoptimized={true}
-              />
-            )}
+          {/* Right side images - spans 4 columns */}
+          <div className="col-span-4">
+            <div className="grid grid-rows-3 gap-2 h-[500px]">
+              {/* Second image */}
+              {images.length > 1 && (
+                <div
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setPreviewImageIndex(1);
+                    setIsImagePreviewOpen(true);
+                  }}
+                >
+                  <Image
+                    src={images[1]?.imageUrl}
+                    alt={`${vehicle.brandName} ${vehicle.modelName}`}
+                    width={400}
+                    height={160}
+                    className="rounded-xl w-full h-full object-cover hover:opacity-90 transition-opacity"
+                    unoptimized={true}
+                  />
+                </div>
+              )}
+
+              {/* Third image */}
+              {images.length > 2 && (
+                <div
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setPreviewImageIndex(2);
+                    setIsImagePreviewOpen(true);
+                  }}
+                >
+                  <Image
+                    src={images[2]?.imageUrl}
+                    alt={`${vehicle.brandName} ${vehicle.modelName}`}
+                    width={400}
+                    height={160}
+                    className="rounded-xl w-full h-full object-cover hover:opacity-90 transition-opacity"
+                    unoptimized={true}
+                  />
+                </div>
+              )}
+
+              {/* Fourth image - Không có overlay "+X ảnh" nữa vì chỉ có 4 ảnh */}
+              {images.length > 3 && (
+                <div
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setPreviewImageIndex(3);
+                    setIsImagePreviewOpen(true);
+                  }}
+                >
+                  <Image
+                    src={images[3]?.imageUrl}
+                    alt={`${vehicle.brandName} ${vehicle.modelName}`}
+                    width={400}
+                    height={160}
+                    className="rounded-xl w-full h-full object-cover hover:opacity-90 transition-opacity"
+                    unoptimized={true}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Mobile carousel */}
-        <div className="lg:hidden relative mt-8">
+        <div className="lg:hidden relative mt-4 sm:mt-8">
           {images.length > 0 && (
-            <div className="relative h-[350px] w-full">
+            <div className="relative h-[250px] sm:h-[350px] w-full">
               <Image
                 src={
                   images[currentImageIndex]?.imageUrl ||
@@ -642,7 +634,7 @@ export default function VehicleDetail() {
                 className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full"
                 aria-label="Previous image"
               >
-                <Icon icon="mdi:chevron-left" width={24} height={24} />
+                <Icon icon="mdi:chevron-left" width={20} height={20} />
               </button>
 
               <button
@@ -650,40 +642,51 @@ export default function VehicleDetail() {
                 className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full"
                 aria-label="Next image"
               >
-                <Icon icon="mdi:chevron-right" width={24} height={24} />
+                <Icon icon="mdi:chevron-right" width={20} height={20} />
               </button>
 
               {/* Image counter */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
                 {currentImageIndex + 1}/{images.length}
               </div>
+
+              {/* View all images button */}
+              <button
+                onClick={() => {
+                  setPreviewImageIndex(currentImageIndex);
+                  setIsImagePreviewOpen(true);
+                }}
+                className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm hover:bg-black/70"
+              >
+                Xem tất cả
+              </button>
             </div>
           )}
         </div>
 
         {/* Vehicle title and rating */}
-        <div className="grid grid-cols-12 items-end gap-8 mt-10">
-          <div className="lg:col-span-8 col-span-12">
-            <h1 className="lg:text-5xl text-4xl font-semibold text-dark dark:text-white">
+        <div className="mt-6 sm:mt-10">
+          <div className="space-y-4">
+            <h1 className="text-2xl sm:text-3xl lg:text-5xl font-semibold text-dark dark:text-white">
               {vehicle?.thumb}
             </h1>
-            <div className="flex gap-2.5 mt-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
               <Icon
                 icon="solar:star-linear"
-                width={24}
-                height={24}
+                width={20}
+                height={20}
                 className="text-primary"
               />
-              <p className="text-lg text-dark dark:text-white">
+              <p className="text-base sm:text-lg text-dark dark:text-white">
                 {vehicle?.rating}
               </p>
               <Icon
                 icon="ph:map-pin"
-                width={24}
-                height={24}
+                width={20}
+                height={20}
                 className="text-dark/50 dark:text-white/50"
               />
-              <p className="text-dark/50 dark:text-white/50 text-lg">
+              <p className="text-dark/50 dark:text-white/50 text-base sm:text-lg">
                 {vehicle?.address}
               </p>
             </div>
@@ -691,32 +694,228 @@ export default function VehicleDetail() {
         </div>
 
         {/* Main content grid */}
-        <div className="grid grid-cols-12 gap-10 mt-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 mt-8 sm:mt-12">
           {/* Left column - Vehicle details */}
-          <div className="lg:col-span-8 col-span-12">
+          <div className="lg:col-span-8">
+            {/* Booking widget - Mobile (moved to top) */}
+            <div className="lg:hidden bg-primary/10 p-4 sm:p-6 rounded-2xl mb-6">
+              {/* Date picker */}
+              <div>
+                <h3 className="text-base sm:text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
+                  Thời gian thuê
+                </h3>
+
+                <div className="w-full">
+                  <DateRangePicker
+                    showTime={{
+                      format: "HH:mm",
+                      minuteStep: 30,
+                    }}
+                    format="DD-MM-YYYY HH:mm"
+                    disabledTime={disabledRangeTime}
+                    disabledDate={disabledDateFunction}
+                    className="w-full"
+                    onChange={handleDateChange}
+                    value={formattedDates}
+                    placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                  />
+                  {validationMessage && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {validationMessage}
+                    </p>
+                  )}
+                  {bufferConflictMessage && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2">
+                      <p className="text-red-600 text-sm">
+                        ⚠️ {bufferConflictMessage}
+                      </p>
+                      {vehicle?.vehicleType && (
+                        <p className="text-gray-600 text-xs mt-1">
+                          {
+                            BUFFER_TIME_RULES[
+                              vehicle.vehicleType.toUpperCase() as VehicleType
+                            ]?.description
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Price details */}
+              <div className="mt-6">
+                <h3 className="text-base sm:text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
+                  Chi tiết giá
+                </h3>
+                <div className="space-y-3 text-gray-700 dark:text-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm sm:text-base">
+                      {rentalCalculation?.isHourlyRate
+                        ? "Giá theo giờ"
+                        : "Giá theo ngày"}
+                    </span>
+                    <span className="text-sm sm:text-base font-medium">
+                      {rentalCalculation?.isHourlyRate
+                        ? `${hourlyRate.toLocaleString()}₫/giờ`
+                        : `${formatCurrency(unitPrice)}/ngày`}
+                    </span>
+                  </div>
+                  <hr className="border-gray-200 dark:border-gray-700" />
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm sm:text-base">Thời gian thuê</span>
+                    <span className="text-sm sm:text-base font-medium">
+                      {rentalCalculation
+                        ? formatRentalDuration(rentalCalculation)
+                        : `${rentalDurationDays} ngày`}
+                    </span>
+                  </div>
+                  <hr className="border-gray-200 dark:border-gray-700" />
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm sm:text-base">
+                      {rentalCalculation?.isHourlyRate
+                        ? "Giá theo thời gian"
+                        : "Giá cơ bản"}
+                    </span>
+                    <span className="text-sm sm:text-base font-medium">
+                      {formatCurrency(totalPrice)}
+                    </span>
+                  </div>
+
+                  {/* Hiển thị breakdown cho hourly rate */}
+                  {rentalCalculation?.isHourlyRate && (
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
+                      {rentalCalculation.billingHours > 0 && (
+                        <div>
+                          • {rentalCalculation.billingHours} giờ ×{" "}
+                          {hourlyRate.toLocaleString()}₫ ={" "}
+                          {(
+                            rentalCalculation.billingHours * hourlyRate
+                          ).toLocaleString()}
+                          ₫
+                        </div>
+                      )}
+                      {rentalCalculation.billingMinutes > 0 && (
+                        <div>
+                          • {rentalCalculation.billingMinutes} phút ×{" "}
+                          {Math.round(hourlyRate / 60).toLocaleString()}₫ ={" "}
+                          {Math.round(
+                            (rentalCalculation.billingMinutes / 60) * hourlyRate
+                          ).toLocaleString()}
+                          ₫
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <hr className="border-gray-200 dark:border-gray-700" />
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-lg sm:text-xl font-bold">Tổng</span>
+                    <span className="text-lg sm:text-xl font-bold text-primary">
+                      {formatCurrency(totalPrice)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Book button */}
+              <div className="space-y-3 mt-6">
+                <button
+                  className={`w-full text-base sm:text-lg py-3 rounded-lg font-semibold ${
+                    bufferConflictMessage || validationMessage
+                      ? "bg-gray-400 cursor-not-allowed text-gray-600"
+                      : "bg-teal-500 hover:bg-teal-600 text-white"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log("Book button clicked");
+
+                    if (bufferConflictMessage || validationMessage) {
+                      message.warning(
+                        "Vui lòng chọn thời gian khác để tiếp tục"
+                      );
+                      return;
+                    }
+
+                    handleRent();
+                  }}
+                  disabled={!!(bufferConflictMessage || validationMessage)}
+                  type="button"
+                >
+                  Đặt xe
+                </button>
+              </div>
+
+              {/* Multi-booking button for mobile */}
+              {availableQuantity > 1 &&
+                vehicle?.vehicleType &&
+                vehicle.vehicleType.toUpperCase() !== "CAR" && (
+                  <div className="mt-4">
+                    <button
+                      className="w-full text-base sm:text-lg py-3 rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 flex items-center justify-center gap-2"
+                      onClick={async () => {
+                        setShowMultiBooking(true);
+                        try {
+                          const thumb = vehicle?.thumb;
+                          const providerId = vehicle?.userId;
+                          const from = pickupDateTime
+                            ? dayjs(pickupDateTime, "YYYY-MM-DD HH:mm").format(
+                                "YYYY-MM-DDTHH:mm:ss"
+                              )
+                            : "";
+                          const to = returnDateTime
+                            ? dayjs(returnDateTime, "YYYY-MM-DD HH:mm").format(
+                                "YYYY-MM-DDTHH:mm:ss"
+                              )
+                            : "";
+                          const vehicles = await getAvailableThumbList({
+                            thumb,
+                            providerId,
+                            from,
+                            to,
+                          });
+                          setAvailableVehicles(vehicles);
+                          setIsMultiModalOpen(true);
+                        } catch (err) {
+                          setAvailableVehicles([]);
+                          setIsMultiModalOpen(true);
+                        }
+                      }}
+                    >
+                      <span>Đặt nhiều xe</span>
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 sm:px-3 py-1 text-sm sm:text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
+                        {availableQuantity}
+                      </span>
+                    </button>
+                  </div>
+                )}
+            </div>
+
             {/* Vehicle features */}
-            <div className="py-10 my-10 border-y border-dark/10 dark:border-white/20 flex flex-col gap-10">
-              <h3 className="text-3xl font-semibold">Đặc điểm</h3>
-              <div className="flex justify-between ">
-                <div className="flex items-center gap-1">
-                  <Icon icon={"mdi:car-shift-pattern"} width={24} height={24} />
-                  <p className="text-xl font-normal text-black dark:text-white">
+            <div className="py-6 sm:py-10 my-6 sm:my-10 border-y border-dark/10 dark:border-white/20 flex flex-col gap-6 sm:gap-10">
+              <h3 className="text-2xl sm:text-3xl font-semibold">Đặc điểm</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 sm:flex sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon icon={"mdi:car-shift-pattern"} width={20} height={20} />
+                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
                     {vehicle?.transmission
                       ? translateENtoVI(vehicle.transmission)
                       : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Icon icon={"mdi:car-seat"} width={24} height={24} />
-                  <p className="text-xl font-normal text-black dark:text-white">
+                <div className="flex items-center gap-2">
+                  <Icon icon={"mdi:car-seat"} width={20} height={20} />
+                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
                     {vehicle?.numberSeat
                       ? `${vehicle.numberSeat} Ghế ngồi`
                       : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Icon icon={"mdi:fuel"} width={24} height={24} />
-                  <p className="text-xl font-normal text-black dark:text-white">
+                <div className="flex items-center gap-2">
+                  <Icon icon={"mdi:fuel"} width={20} height={20} />
+                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
                     {vehicle?.fuelType ? translateENtoVI(vehicle.fuelType) : ""}
                   </p>
                 </div>
@@ -724,22 +923,27 @@ export default function VehicleDetail() {
             </div>
 
             {/* Vehicle description */}
-            <div className="flex flex-col gap-6">
-              <h3 className="text-3xl font-semibold">Mô tả</h3>
-              <p className="text-dark dark:text-white text-lg leading-relaxed">
+            <div className="flex flex-col gap-4 sm:gap-6">
+              <h3 className="text-2xl sm:text-3xl font-semibold">Mô tả</h3>
+              <div
+                className="text-dark dark:text-white text-base sm:text-lg leading-relaxed"
+                style={{ whiteSpace: "pre-wrap" }}
+              >
                 {vehicle?.description}
-              </p>
+              </div>
             </div>
 
             {/* Additional amenities */}
-            <div className="py-10 mt-10 border-t border-dark/5 dark:border-white/15">
-              <h3 className="text-2xl font-medium">Các tiện nghi khác</h3>
+            <div className="py-6 sm:py-10 mt-6 sm:mt-10 border-t border-dark/5 dark:border-white/15">
+              <h3 className="text-xl sm:text-2xl font-medium">
+                Các tiện nghi khác
+              </h3>
 
               {features && features.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 mt-8 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mt-6 sm:mt-8 gap-4 sm:gap-8">
                   {features.map((feature, index) => (
                     <div key={index} className="flex items-center gap-3">
-                      <p className="text-lg dark:text-white text-dark">
+                      <p className="text-base sm:text-lg dark:text-white text-dark">
                         {feature.name ? translateENtoVI(feature.name) : ""}
                       </p>
                     </div>
@@ -753,14 +957,16 @@ export default function VehicleDetail() {
             </div>
 
             {/* Required documents */}
-            <div className="py-10 mt-10 border-t border-gray-200 dark:border-white/15">
-              <div className="mt-10">
-                <h2 className="text-2xl font-medium">Giấy tờ thuê xe</h2>
+            <div className="py-6 sm:py-10 mt-6 sm:mt-10 border-t border-gray-200 dark:border-white/15">
+              <div className="mt-6 sm:mt-10">
+                <h2 className="text-xl sm:text-2xl font-medium">
+                  Giấy tờ thuê xe
+                </h2>
                 <div className="bg-amber-100 border-transparent rounded-md p-4 border-solid border-l-4 border-l-amber-600 mt-4">
-                  <h4 className="flex items-center gap-1 text-gray-800 m-0 font-medium text-xl">
+                  <h4 className="flex items-center gap-1 text-gray-800 m-0 font-medium text-lg sm:text-xl">
                     <span>Chọn 1 trong 2 hình thức</span>
                   </h4>
-                  <div className="mt-4 font-bold flex flex-col gap-3 text-base">
+                  <div className="mt-4 font-bold flex flex-col gap-3 text-sm sm:text-base">
                     <div className="flex gap-2 items-center">
                       <span>GPLX & CCCD gắn chip (đối chiếu)</span>
                     </div>
@@ -773,9 +979,11 @@ export default function VehicleDetail() {
             </div>
 
             {/* Terms and conditions */}
-            <div className="mt-10">
-              <h2 className="font-medium text-2xl">Quy định thuê xe của RFT</h2>
-              <ul className="mt-4 text-lg">
+            <div className="mt-6 sm:mt-10">
+              <h2 className="font-medium text-xl sm:text-2xl">
+                Quy định thuê xe của RFT
+              </h2>
+              <ul className="mt-4 text-base sm:text-lg space-y-2">
                 <li>Sử dụng xe đúng mục đích.</li>
                 <li>
                   Không sử dụng xe thuê vào mục đích phi pháp, trái pháp luật.
@@ -788,9 +996,11 @@ export default function VehicleDetail() {
             </div>
 
             {/* Cancellation policy */}
-            <div className="mt-10">
-              <h2 className="font-medium text-2xl">Chính sách thuê xe</h2>
-              <div className="mt-4 text-lg">
+            <div className="mt-6 sm:mt-10">
+              <h2 className="font-medium text-xl sm:text-2xl">
+                Chính sách thuê xe
+              </h2>
+              <div className="mt-4 text-base sm:text-lg">
                 {/* Hiển thị khung giờ thuê */}
                 {vehicle?.openTime === "00:00:00" &&
                 vehicle?.closeTime === "00:00:00" ? (
@@ -806,7 +1016,7 @@ export default function VehicleDetail() {
                 )}
                 {/* Hiển thị penalty nếu có */}
                 {vehicle?.penalty?.description && (
-                  <div className="mt-2 text-base ">
+                  <div className="mt-2 text-sm sm:text-base">
                     <b>Chính sách hủy:</b> {vehicle.penalty.description}
                   </div>
                 )}
@@ -814,15 +1024,15 @@ export default function VehicleDetail() {
             </div>
 
             {/* User reviews */}
-            <div className="py-10 my-10 border-y border-dark/10 dark:border-white/20">
-              <h3 className="text-2xl font-medium mb-6">
+            <div className="py-6 sm:py-10 my-6 sm:my-10 border-y border-dark/10 dark:border-white/20">
+              <h3 className="text-xl sm:text-2xl font-medium mb-6">
                 Đánh giá từ người dùng
               </h3>
 
-              <div className="mt-8">
+              <div className="mt-6 sm:mt-8">
                 {vehicleComments.length > 0 ? (
                   <>
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                       {getPaginatedComments(
                         vehicleComments,
                         currentCommentPage,
@@ -830,16 +1040,16 @@ export default function VehicleDetail() {
                       ).map((comment, index) => (
                         <div
                           key={comment.id || index}
-                          className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm"
+                          className="flex items-start gap-3 sm:gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm"
                         >
                           {comment.userImage && (
                             <div className="flex-shrink-0">
                               <Image
                                 src={comment.userImage}
                                 alt={`${comment.userName}'s avatar`}
-                                width={48}
-                                height={48}
-                                className="w-12 h-12 rounded-full object-cover"
+                                width={40}
+                                height={40}
+                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
                               />
                             </div>
                           )}
@@ -847,7 +1057,7 @@ export default function VehicleDetail() {
                           <div className="flex-1">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <h4 className="font-semibold text-lg text-gray-900 dark:text-white">
+                                <h4 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white">
                                   {comment.userName}
                                 </h4>
                                 <div className="flex items-center">
@@ -864,14 +1074,14 @@ export default function VehicleDetail() {
                                           ? "text-yellow-400"
                                           : "text-gray-300"
                                       }
-                                      width={18}
-                                      height={18}
+                                      width={16}
+                                      height={16}
                                     />
                                   ))}
                                 </div>
                               </div>
                             </div>
-                            <p className="text-gray-700 dark:text-gray-200 mt-1">
+                            <p className="text-gray-700 dark:text-gray-200 mt-1 text-sm sm:text-base">
                               {comment.comment}
                             </p>
                           </div>
@@ -881,11 +1091,11 @@ export default function VehicleDetail() {
 
                     {/* Pagination controls */}
                     {vehicleComments.length > commentsPerPage && (
-                      <div className="flex justify-between items-center mt-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
                         <button
                           onClick={goToPrevCommentPage}
                           disabled={currentCommentPage === 1}
-                          className={`px-4 py-2 rounded-md ${
+                          className={`w-full sm:w-auto px-4 py-2 rounded-md ${
                             currentCommentPage === 1
                               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                               : "bg-blue-500 text-white hover:bg-blue-600"
@@ -894,7 +1104,7 @@ export default function VehicleDetail() {
                           Trang trước
                         </button>
 
-                        <span className="text-gray-700 dark:text-gray-300">
+                        <span className="text-gray-700 dark:text-gray-300 text-sm sm:text-base">
                           Trang {currentCommentPage} /{" "}
                           {Math.ceil(vehicleComments.length / commentsPerPage)}
                         </span>
@@ -905,7 +1115,7 @@ export default function VehicleDetail() {
                             currentCommentPage >=
                             Math.ceil(vehicleComments.length / commentsPerPage)
                           }
-                          className={`px-4 py-2 rounded-md ${
+                          className={`w-full sm:w-auto px-4 py-2 rounded-md ${
                             currentCommentPage >=
                             Math.ceil(vehicleComments.length / commentsPerPage)
                               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -924,11 +1134,91 @@ export default function VehicleDetail() {
                 )}
               </div>
             </div>
+
+            {/* Bảng phụ phí phát sinh - Mobile */}
+            {vehicle?.vehicleType === "CAR" && (
+              <div className="lg:hidden mt-6 bg-white rounded-xl shadow p-4 sm:p-6 border border-gray-200">
+                <h3 className="text-base sm:text-lg font-bold mb-4 text-gray-700">
+                  Phụ phí có thể phát sinh
+                </h3>
+                <ul className="space-y-4">
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800 text-sm sm:text-base">
+                        Phí vượt giới hạn
+                      </span>
+                      <span className="text-primary font-bold text-sm sm:text-base">
+                        {vehicle?.extraFeeRule?.feePerExtraKm?.toLocaleString() ||
+                          "-"}
+                        đ/km
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-xs sm:text-sm mt-1">
+                      Phụ phí phát sinh nếu lộ trình di chuyển vượt quá{" "}
+                      {vehicle?.extraFeeRule?.maxKmPerDay?.toLocaleString() ||
+                        "-"}
+                      km khi thuê xe 1 ngày
+                    </div>
+                  </li>
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800 text-sm sm:text-base">
+                        Phí quá giờ
+                      </span>
+                      <span className="text-primary font-bold text-sm sm:text-base">
+                        {vehicle?.extraFeeRule?.feePerExtraHour?.toLocaleString() ||
+                          "-"}
+                        đ/giờ
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-xs sm:text-sm mt-1">
+                      Phụ phí phát sinh nếu hoàn trả xe trễ hơn{" "}
+                      {vehicle?.extraFeeRule?.allowedHourLate?.toLocaleString() ||
+                        "-"}{" "}
+                      giờ. Trường hợp trễ quá số giờ này, phụ phí thêm 1 ngày
+                      thuê
+                    </div>
+                  </li>
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800 text-sm sm:text-base">
+                        Phí vệ sinh
+                      </span>
+                      <span className="text-primary font-bold text-sm sm:text-base">
+                        {vehicle?.extraFeeRule?.cleaningFee?.toLocaleString() ||
+                          "-"}
+                        đ
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-xs sm:text-sm mt-1">
+                      Phụ phí phát sinh khi xe hoàn trả không đảm bảo vệ sinh
+                      (như vết bẩn, bụi, cát, sinh lầy...)
+                    </div>
+                  </li>
+                  <li>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800 text-sm sm:text-base">
+                        Phí khử mùi
+                      </span>
+                      <span className="text-primary font-bold text-sm sm:text-base">
+                        {vehicle?.extraFeeRule?.smellRemovalFee?.toLocaleString() ||
+                          "-"}
+                        đ
+                      </span>
+                    </div>
+                    <div className="text-gray-600 text-xs sm:text-sm mt-1">
+                      Phụ phí phát sinh khi xe hoàn trả bị ám mùi khó chịu (mùi
+                      thuốc lá, thực phẩm nặng mùi...)
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
 
-          {/* Right column - Booking widget */}
-          <div className="lg:col-span-4 col-span-12">
-            <div className="bg-primary/10 p-10 rounded-2xl relative z-10 overflow-hidden">
+          {/* Right column - Booking widget (Desktop only) */}
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="bg-primary/10 p-10 rounded-2xl relative z-10 overflow-hidden top-6">
               {/* Date picker */}
               <div>
                 <h3 className="text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
@@ -1014,7 +1304,7 @@ export default function VehicleDetail() {
                     </span>
                   </div>
 
-                  {/*  Hiển thị breakdown cho hourly rate */}
+                  {/* Hiển thị breakdown cho hourly rate */}
                   {rentalCalculation?.isHourlyRate && (
                     <div className="text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
                       {rentalCalculation.billingHours > 0 && (
@@ -1052,7 +1342,6 @@ export default function VehicleDetail() {
 
               {/* Book button */}
               <div className="space-y-3 mt-6">
-                {/* Using a simple button since handleRent has the navigation logic */}
                 <button
                   className={`w-full text-lg py-3 rounded-lg font-semibold ${
                     bufferConflictMessage || validationMessage
@@ -1060,10 +1349,9 @@ export default function VehicleDetail() {
                       : "bg-teal-500 hover:bg-teal-600 text-white"
                   }`}
                   onClick={(e) => {
-                    e.preventDefault(); // Prevent default form submission behavior
+                    e.preventDefault();
                     console.log("Book button clicked");
 
-                    // Check for conflicts before proceeding
                     if (bufferConflictMessage || validationMessage) {
                       message.warning(
                         "Vui lòng chọn thời gian khác để tiếp tục"
@@ -1074,12 +1362,13 @@ export default function VehicleDetail() {
                     handleRent();
                   }}
                   disabled={!!(bufferConflictMessage || validationMessage)}
-                  type="button" // Explicitly set type to button to prevent form submission
+                  type="button"
                 >
                   Đặt xe
                 </button>
               </div>
-              {/* CHỈ hiển thị cho xe máy và xe đạp, KHÔNG cho ô tô */}
+
+              {/* Multi-booking button */}
               {availableQuantity > 1 &&
                 vehicle?.vehicleType &&
                 vehicle.vehicleType.toUpperCase() !== "CAR" && (
@@ -1088,7 +1377,6 @@ export default function VehicleDetail() {
                       className="w-full text-lg py-3 rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 flex items-center justify-center gap-2"
                       onClick={async () => {
                         setShowMultiBooking(true);
-                        // Gọi API lấy danh sách xe khả dụng
                         try {
                           const thumb = vehicle?.thumb;
                           const providerId = vehicle?.userId;
@@ -1125,7 +1413,7 @@ export default function VehicleDetail() {
                 )}
             </div>
 
-            {/* Bảng phụ phí phát sinh */}
+            {/* Bảng phụ phí phát sinh - Desktop */}
             {vehicle?.vehicleType === "CAR" && (
               <div className="mt-8 bg-white rounded-xl shadow p-6 border border-gray-200">
                 <h3 className="text-lg font-bold mb-4 text-gray-700">
@@ -1239,7 +1527,8 @@ export default function VehicleDetail() {
           </AntButton>
         </Link>
       </Modal>
-      {/* Sửa lại Modal để có thông báo rõ ràng hơn */}
+
+      {/* Multi-vehicle selection modal */}
       <Modal
         title="Chọn xe khả dụng"
         open={isMultiModalOpen}
@@ -1249,7 +1538,6 @@ export default function VehicleDetail() {
         className="vehicle-select-modal"
       >
         <div className="flex flex-col gap-4">
-          {/* Thêm thông báo về loại xe được hỗ trợ */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
             <div className="flex items-center gap-2">
               <Icon
@@ -1300,12 +1588,11 @@ export default function VehicleDetail() {
                     <input
                       type="checkbox"
                       checked={selectedVehicleIds.includes(vehicleItem.id)}
-                      onChange={() => {}} // Handled by parent div click
+                      onChange={() => {}}
                       className="w-5 h-5 accent-blue-500"
                     />
 
-                    {/* Hình ảnh xe */}
-                    <div className="relative w-20 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="relative w-16 sm:w-20 h-12 sm:h-16 rounded-lg overflow-hidden flex-shrink-0">
                       {vehicleItem.vehicleImages &&
                       vehicleItem.vehicleImages.length > 0 ? (
                         <Image
@@ -1326,20 +1613,19 @@ export default function VehicleDetail() {
                                 : "mdi:car"
                             }
                             className="text-gray-400"
-                            width={24}
-                            height={24}
+                            width={20}
+                            height={20}
                           />
                         </div>
                       )}
                     </div>
 
-                    {/* Thông tin xe */}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-base text-gray-800 truncate">
+                      <h4 className="font-semibold text-sm sm:text-base text-gray-800 truncate">
                         {vehicleItem.thumb} - {vehicleItem.modelName} (
                         {vehicleItem.yearManufacture})
                       </h4>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-600 mt-1">
                         <span>Biển số: {vehicleItem.licensePlate}</span>
                         <span className="text-blue-600 font-medium">
                           {vehicleItem.costPerDay?.toLocaleString("vi-VN")}
@@ -1354,14 +1640,13 @@ export default function VehicleDetail() {
                 ))}
               </div>
 
-              {/* Thông tin tổng hợp */}
               <div className="border-t pt-4 mt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-base font-medium text-gray-700">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 mb-4">
+                  <span className="text-sm sm:text-base font-medium text-gray-700">
                     Đã chọn: {selectedVehicleIds.length} xe{" "}
                     {translateENtoVI(vehicle?.vehicleType || "")}
                   </span>
-                  <span className="text-lg font-bold text-blue-600">
+                  <span className="text-base sm:text-lg font-bold text-blue-600">
                     Tổng:{" "}
                     {availableVehicles
                       .filter((v) => selectedVehicleIds.includes(v.id))
@@ -1371,7 +1656,7 @@ export default function VehicleDetail() {
                   </span>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
                     onClick={() => setIsMultiModalOpen(false)}
@@ -1397,6 +1682,91 @@ export default function VehicleDetail() {
                 height={48}
               />
               <p>Không có xe khả dụng trong khoảng thời gian này.</p>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Image Preview Modal */}
+      <Modal
+        title={`Hình ảnh xe (${previewImageIndex + 1}/${Math.min(
+          images.length,
+          4
+        )})`} // Hiển thị tối đa 4
+        open={isImagePreviewOpen}
+        onCancel={() => setIsImagePreviewOpen(false)}
+        footer={null}
+        width="90%"
+        style={{ maxWidth: "1200px" }}
+        centered
+      >
+        <div className="relative">
+          {images.length > 0 && (
+            <div className="relative h-[50vh] sm:h-[70vh] w-full">
+              <Image
+                src={images[previewImageIndex]?.imageUrl}
+                alt={`Vehicle image ${previewImageIndex + 1}`}
+                fill
+                className="object-contain"
+                unoptimized={true}
+              />
+
+              {/* Navigation arrows */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={() =>
+                      setPreviewImageIndex(
+                        previewImageIndex === 0
+                          ? images.length - 1
+                          : previewImageIndex - 1
+                      )
+                    }
+                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 sm:p-3 rounded-full z-10"
+                  >
+                    <Icon icon="mdi:chevron-left" width={20} height={20} />
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setPreviewImageIndex(
+                        previewImageIndex === images.length - 1
+                          ? 0
+                          : previewImageIndex + 1
+                      )
+                    }
+                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 sm:p-3 rounded-full z-10"
+                  >
+                    <Icon icon="mdi:chevron-right" width={20} height={20} />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Thumbnail navigation */}
+          {images.length > 1 && (
+            <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
+              {images.map((image: VehicleImage, index: number) => (
+                <div
+                  key={index}
+                  className={`flex-shrink-0 cursor-pointer border-2 rounded-lg overflow-hidden ${
+                    index === previewImageIndex
+                      ? "border-blue-500"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => setPreviewImageIndex(index)}
+                >
+                  <Image
+                    src={image.imageUrl}
+                    alt={`Thumbnail ${index + 1}`}
+                    width={60}
+                    height={45}
+                    className="sm:w-20 sm:h-15 object-cover hover:opacity-80 transition-opacity"
+                    unoptimized={true}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
