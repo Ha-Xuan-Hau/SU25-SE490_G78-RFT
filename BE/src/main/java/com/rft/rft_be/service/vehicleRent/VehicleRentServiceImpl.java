@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -452,34 +453,47 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         List<Vehicle> carListAll = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
 
-        // Sắp xếp nếu cần
-//        if (sortBy != null && !sortBy.isEmpty()) {
-//            carListAll.sort((v1, v2) -> {
-//                try {
-//                    Object field1 = Vehicle.class.getDeclaredField(sortBy).get(v1);
-//                    Object field2 = Vehicle.class.getDeclaredField(sortBy).get(v2);
-//                    if (field1 instanceof Comparable && field2 instanceof Comparable) {
-//                        int cmp = ((Comparable) field1).compareTo(field2);
-//                        return "desc".equalsIgnoreCase(sortDir) ? -cmp : cmp;
-//                    }
-//                } catch (Exception ignored) {}
-//                return 0;
-//            });
-//        }
+        // Group by thumb and status
+        Map<String, List<Vehicle>> grouped = carListAll.stream()
+                .collect(Collectors.groupingBy(v -> {
+                    String thumb = v.getThumb() != null ? v.getThumb() : "Khác";
+                    String status = v.getStatus() != null ? v.getStatus().toString() : "UNKNOWN";
+                    
+                    return thumb + "|" + status;
+                }));
 
-        int totalElements = carListAll.size();
+        List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
+                .map(entry -> {
+                    String[] keyParts = entry.getKey().split("\\|");
+                    String thumb = keyParts[0];
+                    
+                    // Sắp xếp xe trong nhóm theo createdAt giảm dần (mới nhất lên đầu)
+                    List<VehicleDetailDTO> sortedVehicles = entry.getValue().stream()
+                            .sorted((v1, v2) -> {
+                                LocalDateTime createdAt1 = v1.getCreatedAt();
+                                LocalDateTime createdAt2 = v2.getCreatedAt();
+                                if (createdAt1 == null && createdAt2 == null) return 0;
+                                if (createdAt1 == null) return 1;
+                                if (createdAt2 == null) return -1;
+                                return createdAt2.compareTo(createdAt1); // Giảm dần
+                            })
+                            .map(vehicleMapper::vehicleToVehicleDetail)
+                            .collect(Collectors.toList());
+                    
+                    return VehicleThumbGroupDTO.builder()
+                            .thumb(thumb)
+                            .vehicle(sortedVehicles)
+                            .vehicleNumber(entry.getValue().size())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        // Manual pagination
+        int totalElements = groupList.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
         int fromIndex = Math.min(page * size, totalElements);
         int toIndex = Math.min(fromIndex + size, totalElements);
-
-        List<VehicleThumbGroupDTO> pagedContent = carListAll.subList(fromIndex, toIndex)
-                .stream()
-                .map(vehicle -> VehicleThumbGroupDTO.builder()
-                        .thumb(vehicle.getThumb())
-                        .vehicle(List.of(vehicleMapper.vehicleToVehicleDetail(vehicle)))
-                        .vehicleNumber(1)
-                        .build())
-                .collect(Collectors.toList());
+        List<VehicleThumbGroupDTO> pagedContent = groupList.subList(fromIndex, toIndex);
 
         return PageResponseDTO.<VehicleThumbGroupDTO>builder()
                 .content(pagedContent)
@@ -499,17 +513,42 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         List<Vehicle> motorbikes = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.MOTORBIKE);
+        
+        // Group by thumb and status
         Map<String, List<Vehicle>> grouped = motorbikes.stream()
-                .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
+                .collect(Collectors.groupingBy(v -> {
+                    String thumb = v.getThumb() != null ? v.getThumb() : "Khác";
+                    String status = v.getStatus() != null ? v.getStatus().toString() : "UNKNOWN";
+                    
+                    return thumb + "|" + status;
+                }));
+        
         List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
-                .map(entry -> VehicleThumbGroupDTO.builder()
-                        .thumb(entry.getKey())
-                        .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
+                .map(entry -> {
+                    String[] keyParts = entry.getKey().split("\\|");
+                    String thumb = keyParts[0];
+                    
+                    // Sắp xếp xe trong nhóm theo createdAt giảm dần (mới nhất lên đầu)
+                    List<VehicleDetailDTO> sortedVehicles = entry.getValue().stream()
+                            .sorted((v1, v2) -> {
+                                LocalDateTime createdAt1 = v1.getCreatedAt();
+                                LocalDateTime createdAt2 = v2.getCreatedAt();
+                                if (createdAt1 == null && createdAt2 == null) return 0;
+                                if (createdAt1 == null) return 1;
+                                if (createdAt2 == null) return -1;
+                                return createdAt2.compareTo(createdAt1); // Giảm dần
+                            })
+                            .map(vehicleMapper::vehicleToVehicleDetail)
+                            .collect(Collectors.toList());
+                    
+                    return VehicleThumbGroupDTO.builder()
+                            .thumb(thumb)
+                            .vehicle(sortedVehicles)
                         .vehicleNumber(entry.getValue().size())
-                        .build())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
-        // Optional: sort groupList by sortBy and sortDir if needed (currently not implemented)
         // Manual pagination
         int totalElements = groupList.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
@@ -535,17 +574,42 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         List<Vehicle> bicycles = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.BICYCLE);
+        
+        // Group by thumb and status
         Map<String, List<Vehicle>> grouped = bicycles.stream()
-                .collect(Collectors.groupingBy(v -> v.getThumb() != null ? v.getThumb() : "Khác"));
+                .collect(Collectors.groupingBy(v -> {
+                    String thumb = v.getThumb() != null ? v.getThumb() : "Khác";
+                    String status = v.getStatus() != null ? v.getStatus().toString() : "UNKNOWN";
+                    
+                    return thumb + "|" + status;
+                }));
+        
         List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
-                .map(entry -> VehicleThumbGroupDTO.builder()
-                        .thumb(entry.getKey())
-                        .vehicle(entry.getValue().stream().map(vehicleMapper::vehicleToVehicleDetail).collect(Collectors.toList()))
+                .map(entry -> {
+                    String[] keyParts = entry.getKey().split("\\|");
+                    String thumb = keyParts[0];
+                    
+                    // Sắp xếp xe trong nhóm theo createdAt giảm dần (mới nhất lên đầu)
+                    List<VehicleDetailDTO> sortedVehicles = entry.getValue().stream()
+                            .sorted((v1, v2) -> {
+                                LocalDateTime createdAt1 = v1.getCreatedAt();
+                                LocalDateTime createdAt2 = v2.getCreatedAt();
+                                if (createdAt1 == null && createdAt2 == null) return 0;
+                                if (createdAt1 == null) return 1;
+                                if (createdAt2 == null) return -1;
+                                return createdAt2.compareTo(createdAt1); // Giảm dần
+                            })
+                            .map(vehicleMapper::vehicleToVehicleDetail)
+                            .collect(Collectors.toList());
+                    
+                    return VehicleThumbGroupDTO.builder()
+                            .thumb(thumb)
+                            .vehicle(sortedVehicles)
                         .vehicleNumber(entry.getValue().size())
-                        .build())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
-        // Optional: sort groupList by sortBy and sortDir if needed (currently not implemented)
         // Manual pagination
         int totalElements = groupList.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
@@ -595,17 +659,165 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         List<VehicleGetDTO> createdVehicles = new ArrayList<>();
 
         if (!sameThumbVehicles.isEmpty()) {
-            log.info("[VehicleRent] Đã tìm thấy {} xe cùng thumb cho user {}. Tiến hành tăng số lượng và tạo xe mới.", sameThumbVehicles.size(), userId);
-            // Nếu đã có xe cùng thumb: tăng số lượng cho tất cả xe cùng nhóm
-            for (Vehicle v : sameThumbVehicles) {
-                int oldNumber = v.getNumberVehicle() != null ? v.getNumberVehicle() : 1;
-                v.setNumberVehicle(oldNumber + numberVehicle);
+            // Kiểm tra xem có xe nào giống hết tất cả các trường (trừ licensePlate, vehicleImages và description) không
+            boolean hasMatchingVehicle = sameThumbVehicles.stream().anyMatch(v -> {
+                // Kiểm tra vehicleType
+                boolean typeMatch = v.getVehicleType().equals(parseVehicleType(request.getVehicleType()));
+                
+                // Kiểm tra brand (chỉ cho xe máy, xe đạp không cần)
+                boolean brandMatch = true;
+                if (isMotorbike) {
+                    if (request.getBrandId() != null && v.getBrand() != null) {
+                        brandMatch = request.getBrandId().equals(v.getBrand().getId());
+                    } else if (request.getBrandId() == null && v.getBrand() == null) {
+                        brandMatch = true;
+                    } else {
+                        brandMatch = false;
+                    }
+                }
+                // Xe đạp không cần kiểm tra brand
+                
+                // Không cần kiểm tra model cho xe máy và xe đạp
+                boolean modelMatch = true;
+                
+                // Kiểm tra penalty
+                boolean penaltyMatch = false;
+                if (request.getPenaltyId() != null && v.getPenalty() != null) {
+                    penaltyMatch = request.getPenaltyId().equals(v.getPenalty().getId());
+                } else if (request.getPenaltyId() == null && v.getPenalty() == null) {
+                    penaltyMatch = true;
+                }
+                
+                // Kiểm tra vehicleFeatures
+                boolean featuresMatch = false;
+                if (request.getVehicleFeatures() != null && v.getVehicleFeatures() != null) {
+                    featuresMatch = request.getVehicleFeatures().equals(v.getVehicleFeatures());
+                } else if (request.getVehicleFeatures() == null && v.getVehicleFeatures() == null) {
+                    featuresMatch = true;
+                }
+                
+                // Kiểm tra insuranceStatus (có giá trị mặc định)
+                boolean insuranceMatch = false;
+                Vehicle.InsuranceStatus requestInsurance = parseInsuranceStatus(request.getInsuranceStatus());
+                if (v.getInsuranceStatus() != null && requestInsurance != null) {
+                    insuranceMatch = v.getInsuranceStatus().equals(requestInsurance);
+                } else if (v.getInsuranceStatus() == null && requestInsurance == null) {
+                    insuranceMatch = true;
+                } else if (v.getInsuranceStatus() == Vehicle.InsuranceStatus.NO && requestInsurance == Vehicle.InsuranceStatus.NO) {
+                    insuranceMatch = true;
+                }
+                
+                // Kiểm tra shipToAddress (có giá trị mặc định)
+                boolean shipMatch = false;
+                Vehicle.ShipToAddress requestShip = parseShipToAddress(request.getShipToAddress());
+                if (v.getShipToAddress() != null && requestShip != null) {
+                    shipMatch = v.getShipToAddress().equals(requestShip);
+                } else if (v.getShipToAddress() == null && requestShip == null) {
+                    shipMatch = true;
+                } else if (v.getShipToAddress() == Vehicle.ShipToAddress.NO && requestShip == Vehicle.ShipToAddress.NO) {
+                    shipMatch = true;
+                }
+                
+                // Kiểm tra numberSeat
+                boolean seatMatch = false;
+                if (request.getNumberSeat() != null && v.getNumberSeat() != null) {
+                    seatMatch = request.getNumberSeat().equals(v.getNumberSeat());
+                } else if (request.getNumberSeat() == null && v.getNumberSeat() == null) {
+                    seatMatch = true;
+                }
+                
+                // Kiểm tra yearManufacture
+                boolean yearMatch = false;
+                if (request.getYearManufacture() != null && v.getYearManufacture() != null) {
+                    yearMatch = request.getYearManufacture().equals(v.getYearManufacture());
+                } else if (request.getYearManufacture() == null && v.getYearManufacture() == null) {
+                    yearMatch = true;
+                }
+                
+                // Kiểm tra transmission
+                boolean transmissionMatch = false;
+                if (request.getTransmission() != null && v.getTransmission() != null) {
+                    transmissionMatch = v.getTransmission().equals(parseTransmission(request.getTransmission()));
+                } else if (request.getTransmission() == null && v.getTransmission() == null) {
+                    transmissionMatch = true;
+                }
+                
+                // Kiểm tra fuelType
+                boolean fuelMatch = false;
+                if (request.getFuelType() != null && v.getFuelType() != null) {
+                    fuelMatch = v.getFuelType().equals(parseFuelType(request.getFuelType()));
+                } else if (request.getFuelType() == null && v.getFuelType() == null) {
+                    fuelMatch = true;
+                }
+                
+                // Kiểm tra costPerDay
+                boolean costMatch = false;
+                if (request.getCostPerDay() != null && v.getCostPerDay() != null) {
+                    costMatch = request.getCostPerDay().compareTo(v.getCostPerDay()) == 0;
+                } else if (request.getCostPerDay() == null && v.getCostPerDay() == null) {
+                    costMatch = true;
+                }
+                
+                // Kiểm tra haveDriver (có giá trị mặc định)
+                boolean driverMatch = false;
+                Vehicle.HaveDriver requestDriver = parseHaveDriver(request.getHaveDriver());
+                if (request.getHaveDriver() != null && v.getHaveDriver() != null) {
+                    driverMatch = v.getHaveDriver().equals(requestDriver);
+                } else if (request.getHaveDriver() == null && v.getHaveDriver() == null) {
+                    driverMatch = true;
+                } else if (v.getHaveDriver() == Vehicle.HaveDriver.NO && requestDriver == Vehicle.HaveDriver.NO) {
+                    driverMatch = true;
+                } else if (v.getHaveDriver() == null && requestDriver == Vehicle.HaveDriver.NO) {
+                    // Xe cũ có driver = null, request có driver = NO -> coi như giống nhau
+                    driverMatch = true;
+                } else if (v.getHaveDriver() == Vehicle.HaveDriver.NO && requestDriver == null) {
+                    // Xe cũ có driver = NO, request có driver = null -> coi như giống nhau
+                    driverMatch = true;
+                }
+                
+                boolean allMatch = typeMatch && brandMatch && modelMatch && penaltyMatch && featuresMatch && 
+                       insuranceMatch && shipMatch && seatMatch && yearMatch && transmissionMatch && 
+                       fuelMatch && costMatch && driverMatch;
+                
+                // Log để debug
+                if (!allMatch) {
+                    log.info("[VehicleRent] Debug - Vehicle ID: {}, Type: {}, Brand: {}, Model: {}, Penalty: {}, Features: {}, Insurance: {}, Ship: {}, Seat: {}, Year: {}, Transmission: {}, Fuel: {}, Cost: {}, Driver: {}", 
+                        v.getId(), typeMatch, brandMatch, modelMatch, penaltyMatch, featuresMatch, insuranceMatch, shipMatch, seatMatch, yearMatch, transmissionMatch, fuelMatch, costMatch, driverMatch);
+                }
+                
+                return allMatch;
+            });
+            
+            if (hasMatchingVehicle) {
+                log.info("[VehicleRent] Thumb '{}' đã tồn tại với cùng tất cả thông tin (trừ licensePlate, vehicleImages và description) cho user {}. Cho phép tạo xe mới.", request.getThumb(), userId);
+            } else {
+                log.error("[VehicleRent] Thumb '{}' đã tồn tại nhưng khác thông tin cho user {}. Không cho phép tạo xe mới.", request.getThumb(), userId);
+                
+                // Log chi tiết để debug
+                Vehicle existingVehicle = sameThumbVehicles.get(0);
+                log.info("[VehicleRent] Debug - Request values: vehicleType={}, brandId={}, modelId={}, penaltyId={}, features={}, insurance={}, ship={}, seat={}, year={}, transmission={}, fuel={}, cost={}, driver={}", 
+                    request.getVehicleType(), request.getBrandId(), request.getModelId(), request.getPenaltyId(), 
+                    request.getVehicleFeatures(), request.getInsuranceStatus(), request.getShipToAddress(), 
+                    request.getNumberSeat(), request.getYearManufacture(), request.getTransmission(), 
+                    request.getFuelType(), request.getCostPerDay(), request.getHaveDriver());
+                
+                log.info("[VehicleRent] Debug - Existing vehicle values: vehicleType={}, brandId={}, modelId={}, penaltyId={}, features={}, insurance={}, ship={}, seat={}, year={}, transmission={}, fuel={}, cost={}, driver={}", 
+                    existingVehicle.getVehicleType(), 
+                    existingVehicle.getBrand() != null ? existingVehicle.getBrand().getId() : null,
+                    existingVehicle.getModel() != null ? existingVehicle.getModel().getId() : null,
+                    existingVehicle.getPenalty() != null ? existingVehicle.getPenalty().getId() : null,
+                    existingVehicle.getVehicleFeatures(), existingVehicle.getInsuranceStatus(), 
+                    existingVehicle.getShipToAddress(), existingVehicle.getNumberSeat(), 
+                    existingVehicle.getYearManufacture(), existingVehicle.getTransmission(), 
+                    existingVehicle.getFuelType(), existingVehicle.getCostPerDay(), existingVehicle.getHaveDriver());
+                
+                throw new RuntimeException("Thumb '" + request.getThumb() + "' đã tồn tại. Không thể tạo xe mới với thumb này.");
             }
-            vehicleRepository.saveAll(sameThumbVehicles);
-            log.info("[VehicleRent] Đã cập nhật số lượng xe cho tất cả xe cùng thumb.");
-
-            // Tạo mới từng xe với biển số mới (nếu chưa tồn tại)
-            Vehicle vehicleToCopy = sameThumbVehicles.get(0);
+            
+            // Tạo xe mới với thông tin từ form
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+            Vehicle.VehicleType vehicleType = parseVehicleType(request.getVehicleType());
             int loopCount = isBicycle ? numberVehicle : licensePlates.size();
             for (int i = 0; i < loopCount; i++) {
                 String plate = isBicycle ? null : licensePlates.get(i);
@@ -615,32 +827,29 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 }
                 log.info("[VehicleRent] Tạo mới xe với biển số: {} cho user: {}", plate, userId);
                 Vehicle.VehicleBuilder builder = Vehicle.builder()
-                        .user(vehicleToCopy.getUser())
-                        .penalty(vehicleToCopy.getPenalty())
-                        .vehicleType(vehicleToCopy.getVehicleType())
-                        .vehicleFeatures(vehicleToCopy.getVehicleFeatures())
-                        .insuranceStatus(vehicleToCopy.getInsuranceStatus())
-                        .shipToAddress(vehicleToCopy.getShipToAddress())
-                        .numberSeat(vehicleToCopy.getNumberSeat())
-                        .yearManufacture(vehicleToCopy.getYearManufacture())
-                        .transmission(vehicleToCopy.getTransmission())
-                        .fuelType(vehicleToCopy.getFuelType())
-                        .description(vehicleToCopy.getDescription())
-                        .costPerDay(vehicleToCopy.getCostPerDay())
+                        .user(user)
+                        .penalty(request.getPenaltyId() != null ? penaltyRepository.findById(request.getPenaltyId()).orElse(null) : null)
+                        .vehicleType(vehicleType)
+                        .vehicleFeatures(request.getVehicleFeatures())
+                        .insuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()))
+                        .shipToAddress(parseShipToAddress(request.getShipToAddress()))
+                        .numberSeat(request.getNumberSeat())
+                        .yearManufacture(request.getYearManufacture())
+                        .transmission(parseTransmission(request.getTransmission()))
+                        .fuelType(parseFuelType(request.getFuelType()))
+                        .description(request.getDescription())
+                        .costPerDay(request.getCostPerDay())
                         .status(Vehicle.Status.PENDING)
-                        .thumb(vehicleToCopy.getThumb())
-                        .numberVehicle(vehicleToCopy.getNumberVehicle())
+                        .thumb(request.getThumb())
+                        .numberVehicle(1)
                         .likes(0)
                         .totalRatings(0);
                 if (isMotorbike) {
-                    builder.brand(vehicleToCopy.getBrand());
-                    // Không set model
+                    builder.brand(request.getBrandId() != null ? brandRepository.findById(request.getBrandId()).orElse(null) : null);
                 }
-                // Nếu không phải bicycle thì set licensePlate
                 if (!isBicycle) {
                     builder.licensePlate(plate);
                 }
-                // Bicycle: không set brand, model, licensePlate
                 Vehicle newVehicle = builder.build();
                 if (request.getVehicleImages() != null) {
                     ObjectMapper mapper = new ObjectMapper();
@@ -663,8 +872,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 log.info("[VehicleRent] Đã lưu xe mới với biển số: {} thành công.", plate);
                 createdVehicles.add(vehicleMapper.vehicleGet(savedVehicle));
             }
-            // Trả về xe vừa tạo cuối cùng
-            log.info("[VehicleRent] Hoàn thành tạo/cập nhật {} xe với thumb: {} cho user: {} (trùng thumb)", createdVehicles.size(), request.getThumb(), userId);
+            log.info("[VehicleRent] Hoàn thành tạo mới {} xe với thumb: {} cho user: {} (khác thông tin cơ bản)", createdVehicles.size(), request.getThumb(), userId);
             return createdVehicles;
 
         } else {
@@ -739,36 +947,59 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public VehicleGetDTO updateCommonVehicleInfo(String vehicleId, VehicleRentUpdateDTO request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found: " + vehicleId));
-        String thumb = vehicle.getThumb();
-        // Lấy tất cả xe cùng thumb và user
-        List<Vehicle> sameThumbVehicles = vehicleRepository.findByUserId(userId).stream()
-                .filter(v -> thumb != null && thumb.equals(v.getThumb()))
-                .collect(Collectors.toList());
-        for (Vehicle v : sameThumbVehicles) {
-            // Cập nhật các trường chung (trừ id, vehicle_images, license_plate, total_ratings)
-            if (request.getBrandId() != null) v.setBrand(brandRepository.findById(request.getBrandId()).orElse(null));
-            //if (request.getModelId() != null) v.setModel(modelRepository.findById(request.getModelId()).orElse(null));
-            // Bỏ cập nhật penalty và likes vì DTO không có trường này
-            if (request.getVehicleType() != null) v.setVehicleType(parseVehicleType(request.getVehicleType()));
-            if (request.getVehicleFeatures() != null) v.setVehicleFeatures(request.getVehicleFeatures());
-            if (request.getInsuranceStatus() != null) v.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));
-            if (request.getShipToAddress() != null) v.setShipToAddress(parseShipToAddress(request.getShipToAddress()));
-            if (request.getNumberSeat() != null) v.setNumberSeat(request.getNumberSeat());
-            if (request.getYearManufacture() != null) v.setYearManufacture(request.getYearManufacture());
-            if (request.getTransmission() != null) v.setTransmission(parseTransmission(request.getTransmission()));
-            if (request.getFuelType() != null) v.setFuelType(parseFuelType(request.getFuelType()));
-            if (request.getDescription() != null) v.setDescription(request.getDescription());
-            if (request.getCostPerDay() != null) v.setCostPerDay(request.getCostPerDay());
-            if (request.getStatus() != null) v.setStatus(parseStatus(request.getStatus()));
-            if (request.getThumb() != null) v.setThumb(request.getThumb());
-            if (request.getNumberVehicle() != null) v.setNumberVehicle(request.getNumberVehicle());
-            setUpdatedAt(v, LocalDateTime.now());
+        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
+
+        // Cập nhật các trường chung
+        if (request.getBrandId() != null) {
+            Brand brand = brandRepository.findById(request.getBrandId())
+                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
+            vehicle.setBrand(brand);
         }
-        vehicleRepository.saveAll(sameThumbVehicles);
-        Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(vehicleId)
-                .orElse(vehicle);
+        if (request.getVehicleType() != null) {
+            vehicle.setVehicleType(parseVehicleType(request.getVehicleType()));
+        }
+        if (request.getVehicleFeatures() != null) {
+            vehicle.setVehicleFeatures(request.getVehicleFeatures());
+        }
+        if (request.getInsuranceStatus() != null) {
+            vehicle.setInsuranceStatus(parseInsuranceStatus(request.getInsuranceStatus()));
+        }
+        if (request.getShipToAddress() != null) {
+            vehicle.setShipToAddress(parseShipToAddress(request.getShipToAddress()));
+        }
+        if (request.getNumberSeat() != null) {
+            vehicle.setNumberSeat(request.getNumberSeat());
+        }
+        if (request.getYearManufacture() != null) {
+            vehicle.setYearManufacture(request.getYearManufacture());
+        }
+        if (request.getTransmission() != null) {
+            vehicle.setTransmission(parseTransmission(request.getTransmission()));
+        }
+        if (request.getFuelType() != null) {
+            vehicle.setFuelType(parseFuelType(request.getFuelType()));
+        }
+        if (request.getDescription() != null) {
+            vehicle.setDescription(request.getDescription());
+        }
+        if (request.getCostPerDay() != null) {
+            vehicle.setCostPerDay(request.getCostPerDay());
+        }
+        if (request.getStatus() != null) {
+            vehicle.setStatus(parseStatus(request.getStatus()));
+        }
+        if (request.getThumb() != null) {
+            vehicle.setThumb(request.getThumb());
+        }
+        if (request.getNumberVehicle() != null) {
+            vehicle.setNumberVehicle(request.getNumberVehicle());
+        }
+
+        setUpdatedAt(vehicle, LocalDateTime.now());
+        Vehicle updatedVehicle = vehicleRepository.save(vehicle);
+        Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
+                .orElse(updatedVehicle);
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
