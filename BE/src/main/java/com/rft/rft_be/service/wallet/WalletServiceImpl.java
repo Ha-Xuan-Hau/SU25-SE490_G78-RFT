@@ -118,6 +118,8 @@ public class WalletServiceImpl implements WalletService {
         tx.setAmount(dto.getAmount());
         tx.setStatus(WalletTransaction.Status.PENDING);
         tx.setWallet(wallet);
+        wallet.setBalance(wallet.getBalance().subtract(dto.getAmount()));
+        walletRepository.save(wallet);
 //        tx.setUser(wallet.getUser());
         tx.setCreatedAt(LocalDateTime.now());
         return walletMapper.toTransactionDTO(txRepository.save(tx));
