@@ -735,8 +735,7 @@ export default function UserRegisterVehicle() {
                   rõ ràng, dễ đọc
                 </li>
                 <li>
-                  <strong>Vị trí đặt decal:</strong> Góc dưới bên phải kính lái
-                  hoặc kính sau
+                  <strong>Vị trí đặt decal:</strong> Gắn ở thiết bị định vị trên xe
                 </li>
                 <li>
                   <strong>Thông tin liên hệ:</strong> Decal phải có số điện
@@ -773,8 +772,7 @@ export default function UserRegisterVehicle() {
                 <li>Không tuân thủ cam kết sẽ ảnh hưởng đến uy tín</li>
                 <li>
                   <strong className="text-red-600">
-                    Không gắn định vị hoặc decal nhận diện sẽ bị từ chối duyệt
-                    xe
+                   Trường hợp xe không gắn định vị chúng tôi sẽ từ chối hỗ trợ khi có tranh chấp xảy ra                  
                   </strong>
                 </li>
                 <li>Tái phạm nhiều lần có thể bị cấm vĩnh viễn</li>
