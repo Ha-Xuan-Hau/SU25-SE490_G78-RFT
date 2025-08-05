@@ -26,11 +26,22 @@ export interface Vehicle {
   address: string;
   comments?: Comment[];
   shipToAddress?: string; // "YES" or "NO"
+  penaltyId?: string; // ID of the penalty rule
   penaltyType?: string; // "PERCENT" or "FIXED"
   penaltyValue?: number; // Percentage or fixed amount
   minCancelHour?: number; // Minimum hours before cancellation allowed
   openTime?: string; // Opening time for the vehicle rental
   closeTime?: string; // Closing time for the vehicle rental
+
+  penalty?: {
+    id: string;
+    userId?: string | null;
+    userName?: string | null;
+    penaltyType: string;
+    penaltyValue: number;
+    minCancelHour: number;
+    description?: string;
+  };
 
   // maxKmPerDay?: number; // Maximum kilometers allowed per day
   // feePerExtraKm?: number; // Fee for extra kilometers beyond the limit
