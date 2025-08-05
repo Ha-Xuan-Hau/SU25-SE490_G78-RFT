@@ -7,6 +7,7 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
@@ -64,6 +65,7 @@ public class BookingServiceImpl implements BookingService {
     PenaltyRepository penaltyRepository;
     NotificationService notificationService;
     NotificationMapper notificationMapper;
+    FinalContractRepository finalContractRepository;
     final JwtUtil jwtUtil;
 
     @Override
@@ -295,7 +297,13 @@ public class BookingServiceImpl implements BookingService {
             throw new AccessDeniedException("Bạn không có quyền truy cập tài nguyên này");
         }
 
-        return vehicleMapper.mapToBookingResponseDTO(booking);
+        BookingResponseDTO dto = vehicleMapper.mapToBookingResponseDTO(booking);
+
+        // Lấy cancelNote nếu có
+        Optional<String> cancelNoteOpt = finalContractRepository.findCancelNoteByBookingId(bookingId);
+        dto.setCancelNote(cancelNoteOpt.orElse(null));
+
+        return dto;
     }
 
     @Override
