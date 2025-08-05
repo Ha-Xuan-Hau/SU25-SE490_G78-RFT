@@ -48,6 +48,18 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = walletRepository.findByUserId(dto.getUserId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
 
+        // ✅ Kiểm tra trùng số tài khoản + loại tài khoản
+        boolean exists = walletRepository.existsByBankAccountNumberAndBankAccountType(
+                dto.getBankAccountNumber(),
+                dto.getBankAccountType()
+        );
+
+        // Nếu tồn tại ví khác có cùng số tài khoản và loại tài khoản (ngoại trừ chính ví này)
+        if (exists && !dto.getBankAccountNumber().equals(wallet.getBankAccountNumber())) {
+            throw new RuntimeException("Tài khoản ngân hàng đã được sử dụng.");
+        }
+
+        // Cập nhật thông tin ví
         wallet.setBankAccountNumber(dto.getBankAccountNumber());
         wallet.setBankAccountName(dto.getBankAccountName());
         wallet.setBankAccountType(dto.getBankAccountType());
