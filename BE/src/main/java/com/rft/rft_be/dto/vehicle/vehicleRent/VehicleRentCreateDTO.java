@@ -18,7 +18,6 @@ public class VehicleRentCreateDTO {
     private String penaltyId;
     private List<String> licensePlate;
 
-    @NotBlank(message = "Vehicle type is required")
     private String vehicleType;
     @NotBlank(message = "Vehicle Features is required")
     private String vehicleFeatures;
@@ -33,7 +32,6 @@ public class VehicleRentCreateDTO {
     private Integer yearManufacture;
 
     private String transmission;
-    @NotBlank(message = "Fuel type is required")
     private String fuelType;
     private String description;
 
