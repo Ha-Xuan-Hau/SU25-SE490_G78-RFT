@@ -658,10 +658,17 @@ const BookingPage: React.FC = () => {
             couponId: selectedCoupon?.id || null,
 
             // Penalty info từ vehicle
-            penaltyType:
-              (vehicle || multiVehicles[0])?.penaltyType || "PERCENT",
-            penaltyValue: (vehicle || multiVehicles[0])?.penaltyValue || 10,
-            minCancelHour: (vehicle || multiVehicles[0])?.minCancelHour || 24,
+            // penaltyType: (vehicle || multiVehicles[0])?.penaltyType,
+            // penaltyValue: (vehicle || multiVehicles[0])?.penaltyValue,
+            // minCancelHour: (vehicle || multiVehicles[0])?.minCancelHour,
+
+            // Penalty info từ vehicle
+            penaltyId: (vehicle || multiVehicles[0])?.penalty?.id,
+            penaltyType: (vehicle || multiVehicles[0])?.penalty?.penaltyType,
+            penaltyValue: (vehicle || multiVehicles[0])?.penalty?.penaltyValue,
+            minCancelHour: (vehicle || multiVehicles[0])?.penalty
+              ?.minCancelHour,
+
             driverFee: calculatedDriverFee,
           };
 
