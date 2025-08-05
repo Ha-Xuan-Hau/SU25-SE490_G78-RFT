@@ -32,6 +32,7 @@ public class VehicleRentCreateDTO {
     private Integer yearManufacture;
 
     private String transmission;
+
     private String fuelType;
     private String description;
 

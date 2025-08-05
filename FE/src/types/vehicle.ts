@@ -74,7 +74,7 @@ export interface VehicleFeature {
   name: string;
 }
 
-interface VehicleImage {
+export interface VehicleImage {
   imageUrl: string;
 }
 

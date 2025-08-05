@@ -268,26 +268,42 @@ public class WalletServiceImpl implements WalletService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
 
         WalletTransactionDTO dto = walletMapper.toTransactionDTO(tx);
+
+        Wallet wallet = walletRepository.findById(dto.getWalletId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví cho walletId: " + dto.getWalletId()));
+
         try {
-            tx.setStatus(WalletTransaction.Status.valueOf(status.toUpperCase()));
+            WalletTransaction.Status newStatus = WalletTransaction.Status.valueOf(status.toUpperCase());
+
+            // ✅ Nếu từ chối → hoàn tiền lại
+            if (newStatus == WalletTransaction.Status.REJECTED) {
+                wallet.setBalance(wallet.getBalance().add(tx.getAmount()));
+                walletRepository.save(wallet);
+            }
+
+            tx.setStatus(newStatus);
+
+            // ✅ Gán nhân viên xử lý
             User staff = userRepository.findById(staffId)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên cho userId: " + staffId));
-
             tx.setUser(staff);
             tx.setUpdatedAt(LocalDateTime.now());
 
-            Wallet wallet = walletRepository.findById(dto.getWalletId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy ví cho walletId: " + dto.getWalletId()));
-
+            // ✅ Gửi thông báo cho user
             User user = wallet.getUser();
             String formattedAmount = NumberFormat.getCurrencyInstance(new Locale("vi", "VN")).format(dto.getAmount());
+            String message = (newStatus == WalletTransaction.Status.APPROVED)
+                    ? String.format("Yêu cầu rút \"%s\" của bạn đã được duyệt", formattedAmount)
+                    : String.format("Yêu cầu rút \"%s\" của bạn đã bị từ chối và tiền đã được hoàn lại", formattedAmount);
+
             notificationService.createNotification(notificationMapper.toNotificationCreateDTO(
-                    user.getId(), NotificationMapper.WITHDRAWAL_APPROVED,
-                    String.format("Yêu cầu rút \"%s\" của bạn đã được duyệt", formattedAmount), null)
+                    user.getId(), NotificationMapper.WITHDRAWAL_APPROVED, message, null)
             );
+
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Trạng thái không khả dụng: " + status);
         }
+
         txRepository.save(tx);
     }
 
