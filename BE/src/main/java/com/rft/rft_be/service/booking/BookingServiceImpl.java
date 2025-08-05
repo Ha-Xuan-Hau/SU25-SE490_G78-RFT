@@ -733,6 +733,124 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
+    public CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason) {
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+
+        if (booking.getBookingDetails().isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy xe nào trong đơn đặt này.");
+        }
+
+        String providerId = booking.getBookingDetails().get(0).getVehicle().getUser().getId();
+        boolean isProvider = providerId.equals(currentUserId);
+
+        if (!isProvider) {
+            throw new AccessDeniedException("Chỉ chủ xe mới có quyền hủy đơn do khách không đến nhận.");
+        }
+
+        if (booking.getStatus() != Booking.Status.CONFIRMED) {
+            throw new IllegalStateException("Chỉ được hủy đơn chưa nhận xe.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startDate = booking.getTimeBookingStart();
+
+        if (now.isBefore(startDate)) {
+            throw new IllegalStateException("Chưa đến thời gian nhận xe. Không thể dùng chức năng này.");
+        }
+
+        BigDecimal penalty = calculatePenalty(booking);
+        booking.setPenaltyValue(penalty);
+
+        BigDecimal refundAmount = booking.getTotalCost().subtract(penalty);
+        if (refundAmount.compareTo(BigDecimal.ZERO) < 0) refundAmount = BigDecimal.ZERO;
+
+        // Hoàn tiền (nếu có)
+        if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+            Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
+            renterWallet.setBalance(renterWallet.getBalance().add(refundAmount));
+            walletRepository.save(renterWallet);
+
+            WalletTransaction refundTx = WalletTransaction.builder()
+                    .wallet(renterWallet)
+                    .amount(refundAmount)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(refundTx);
+        }
+
+        // Chuyển tiền phạt cho chủ xe
+        if (penalty.compareTo(BigDecimal.ZERO) > 0) {
+            Wallet providerWallet = walletRepository.findByUserId(providerId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+            providerWallet.setBalance(providerWallet.getBalance().add(penalty));
+            walletRepository.save(providerWallet);
+
+            WalletTransaction penaltyTx = WalletTransaction.builder()
+                    .wallet(providerWallet)
+                    .amount(penalty)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(penaltyTx);
+        }
+
+        // Cập nhật trạng thái booking
+        booking.setStatus(Booking.Status.CANCELLED);
+        bookingRepository.save(booking);
+
+        // Xoá BookedTimeSlot
+        for (BookingDetail detail : booking.getBookingDetails()) {
+            bookedTimeSlotRepository.deleteByVehicleIdAndTimeRange(
+                    detail.getVehicle().getId(),
+                    booking.getTimeBookingStart(),
+                    booking.getTimeBookingEnd()
+            );
+        }
+
+        // Hủy hợp đồng (nếu có)
+        List<Contract> contracts = contractRepository.findByBookingId(bookingId);
+        String finalContractId = null;
+
+        if (!contracts.isEmpty()) {
+            Contract contract = contracts.get(0);
+            contract.setStatus(Contract.Status.CANCELLED);
+            contractRepository.save(contract);
+
+            CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
+                    .contractId(contract.getId())
+                    .userId(currentUserId)
+                    .timeFinish(LocalDateTime.now())
+                    .costSettlement(refundAmount)
+                    .note("Hủy do khách không đến nhận xe. " + (reason != null ? "Lý do: " + reason : ""))
+                    .build();
+
+            try {
+                var finalContract = finalContractService.createFinalContract(finalContractDTO);
+                finalContractId = finalContract.getId();
+            } catch (Exception e) {
+                log.error("Không thể tạo hợp đồng hủy đơn do khách không đến: {}", e.getMessage());
+            }
+        }
+
+        // Gửi thông báo
+        notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId,
+                "Đơn đã bị hủy do bạn không đến nhận xe đúng giờ.");
+        notificationService.notifyOrderCanceled(providerId, bookingId,
+                "Bạn đã hủy đơn vì khách không đến nhận xe." + (reason != null ? " Lý do: " + reason : ""));
+
+        return CancelBookingResponseDTO.builder()
+                .bookingId(bookingId)
+                .status(booking.getStatus().toString())
+                .contractStatus("CANCELLED")
+                .finalContractId(finalContractId)
+                .refundAmount(refundAmount)
+                .penaltyAmount(penalty)
+                .reason(reason)
+                .message("Đã hủy đơn do khách không đến nhận xe.")
+                .build();
+    }
+
     private BigDecimal calculatePenalty(Booking booking) {
         if (booking.getPenaltyType() == Booking.PenaltyType.FIXED) {
             return booking.getPenaltyValue() != null ? booking.getPenaltyValue() : BigDecimal.ZERO;

@@ -85,6 +85,14 @@ public class BookingController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{bookingId}/cancel/no-show")
+    public ResponseEntity<CancelBookingResponseDTO> cancelBookingByProviderDueToNoShow(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader, @RequestBody(required = false) Map<String, String> body) {
+        String token = extractToken(authHeader);
+        String reason = (body != null) ? body.getOrDefault("reason", "") : "";
+        CancelBookingResponseDTO response = bookingService.cancelBookingByProviderDueToNoShow(bookingId, token, reason);
+        return ResponseEntity.ok(response);
+    }
+
     private String extractToken(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
