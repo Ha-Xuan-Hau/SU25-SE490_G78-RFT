@@ -33,7 +33,7 @@ import {
   getReportDetail,
   getReportTypeMapping,
   calculateReportStatistics,
-} from "@/apis/admin.api";
+} from "@/apis/report.api";
 
 const { Title } = Typography;
 const { Search } = Input;
