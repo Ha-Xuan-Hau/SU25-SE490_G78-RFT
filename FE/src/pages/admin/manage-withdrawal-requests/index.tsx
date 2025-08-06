@@ -407,7 +407,7 @@ export default function WithdrawalRequestsPage() {
         onCancel={() => setConfirmAction(null)}
         footer={[
           <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Hủy
+            Đóng
           </Button>,
           <Button
             key="ok"
