@@ -1,4 +1,4 @@
-import { apiClient } from './client'; // Đường dẫn tùy theo cấu trúc thư mục của bạn
+import { apiClient } from './client';
 
 // const API_URL = '/adminmanageusers';
 
@@ -87,3 +87,4 @@ export const updateMultipleVehicleStatuses = async (requests) => {
     const response = await apiClient.put('/admin/vehicles/status/batch', requests);
     return response.data;
 };
+

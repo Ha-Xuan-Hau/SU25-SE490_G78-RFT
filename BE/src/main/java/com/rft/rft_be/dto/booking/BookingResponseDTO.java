@@ -43,7 +43,7 @@ public class BookingResponseDTO {
     String couponId;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
-
+    String cancelNote;
     // Additional fields for booking calculation
     String priceType;         // "hourly" hoặc "daily"
     String rentalDuration;    // formatted duration

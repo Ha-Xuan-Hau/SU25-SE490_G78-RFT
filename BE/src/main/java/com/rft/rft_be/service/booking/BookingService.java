@@ -46,4 +46,7 @@ public interface BookingService {
 
     boolean isTimeSlotAvailable(String vehicleId, LocalDateTime startTime, LocalDateTime endTime);
 
+    CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason);
+
+
 }

@@ -1392,10 +1392,10 @@ export default function ManageAcceptedBookings() {
               <ExclamationCircleOutlined className="text-green-600 text-xl mt-1" />
               <div>
                 <h4 className="font-semibold text-green-800 mb-2">
-                  Lưu ý quan trọng khi nhận xe trả lại:
+                 Những lưu ý quan trọng khi nhận xe trả lại:
                 </h4>
                 <p className="text-green-700 text-sm leading-relaxed">
-                  Vui lòng kiểm tra kỹ tình trạng xe trước khi xác nhận nhận xe
+                  Chủ xe vui lòng kiểm tra kỹ tình trạng xe trước khi xác nhận nhận xe
                   từ khách hàng.
                 </p>
               </div>
@@ -1405,23 +1405,25 @@ export default function ManageAcceptedBookings() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra bề mặt xe (trầy xước, móp méo, sơn)</span>
+              <span> Kiểm tra tình trạng bên ngoài xe (trầy xước, móp méo, ...)</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra nội thất (ghế, vô lăng, bảng điều khiển)</span>
+              <span>
+                 Kiểm tra nội thất trong xe (ghế ngồi, vô lăng, bảng điều khiển, ...)
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra mức xăng/điện</span>
+              <span> Kiểm tra mức tiêu hao nhiên liệu của xe </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Kiểm tra chìa khóa và giấy tờ xe</span>
+              <span>Kiểm tra các giấy tờ và vật dụng của xe</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span>Ghi nhận số km hiện tại</span>
+              <span>Kiểm tra số kilometer hiện tại của xe</span>
             </div>
           </div>
 

@@ -40,6 +40,7 @@ public class BookingRequestDTO {
     String pickupMethod;
 
     String couponId;
+    String penaltyId;
     String penaltyType;
     BigDecimal penaltyValue;
     Integer minCancelHour;
