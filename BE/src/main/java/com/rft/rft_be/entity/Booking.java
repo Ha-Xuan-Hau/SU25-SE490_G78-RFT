@@ -84,6 +84,7 @@ public class Booking {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    //skip qua PENDING, thanh toan xong thanh CONFIRMED luon
     public enum Status {
         UNPAID, PENDING, CONFIRMED, CANCELLED, DELIVERED,
         RECEIVED_BY_CUSTOMER, RETURNED, COMPLETED

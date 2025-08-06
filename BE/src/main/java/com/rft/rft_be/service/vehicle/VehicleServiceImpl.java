@@ -786,6 +786,7 @@ public class VehicleServiceImpl implements VehicleService {
 
         int totalQuantity = availableVehicles.size();
 
+
         return AvailableVehicleQuantityOnlyDTO.builder()
                 .quantity(totalQuantity)
                 .build();
@@ -800,7 +801,12 @@ public class VehicleServiceImpl implements VehicleService {
                 .filter(v -> !busyVehicleIds.contains(v.getId()))
                 .toList();
 
+//        int totalQuantity = availableVehicles.stream()
+//                .mapToInt(v -> v.getNumberVehicle() != null ? v.getNumberVehicle() : 1)
+//                .sum();
+
         int totalQuantity = availableVehicles.size();
+
 
         List<VehicleGetDTO> data = availableVehicles.stream()
                 .map(vehicleMapper::vehicleGet)

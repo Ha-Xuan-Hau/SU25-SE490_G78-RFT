@@ -112,6 +112,7 @@ const AboutUsPage: React.FC = () => {
                   <div className="space-y-2 text-gray-600">
                     <p>• Frontend Developer</p>
                     <p>• UI/UX Designer</p>
+                    <p>• Backend Developer</p>
                   </div>
                 </div>
               </Card>

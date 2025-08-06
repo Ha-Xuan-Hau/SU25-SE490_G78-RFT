@@ -71,7 +71,7 @@ public class PaymentController {
         }
     }
 
-    //tạo giao dịch nạp tiền bằng ví từ vnpay dto nhận giá trị là amout
+    //tạo giao dịch nạp tiền bằng ví từ vnpay dto nhận giá trị là amount
     @PostMapping("/topUp")
     public ResponseEntity<?> topUpWallet(@Valid @RequestBody PaymentRequest dto, HttpServletRequest request) {
         try {

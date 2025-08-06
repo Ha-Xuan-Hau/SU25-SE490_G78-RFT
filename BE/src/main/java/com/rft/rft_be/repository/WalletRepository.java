@@ -11,4 +11,6 @@ public interface WalletRepository extends JpaRepository<Wallet, String> {
     // Admin methods
     @org.springframework.data.jpa.repository.Query("SELECT w.balance FROM Wallet w WHERE w.user.id = :userId")
     Double findBalanceByUserId(@org.springframework.data.repository.query.Param("userId") String userId);
+    boolean existsByBankAccountNumberAndBankAccountType(String bankAccountNumber, String bankAccountType);
+
 }

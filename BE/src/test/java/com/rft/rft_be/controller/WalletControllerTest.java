@@ -6,6 +6,7 @@ import com.rft.rft_be.dto.wallet.CreateWithdrawalRequestDTO;
 import com.rft.rft_be.dto.wallet.UpdateWalletRequestDTO;
 import com.rft.rft_be.dto.wallet.WalletDTO;
 import com.rft.rft_be.dto.wallet.WalletTransactionDTO;
+import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.exception.ResourceNotFoundException;
 import com.rft.rft_be.service.wallet.WalletService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,9 +28,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,13 +59,7 @@ public class WalletControllerTest {
     void init() {
         objectMapper.registerModule(new JavaTimeModule());
 
-        walletDTO = new WalletDTO();
-        walletDTO.setId("wallet-001");
-        walletDTO.setUserId("testuser");
-        walletDTO.setBalance(new BigDecimal("100000"));
-        walletDTO.setBankAccountName("A");
-        walletDTO.setBankAccountNumber("123");
-        walletDTO.setBankAccountType("SAVINGS");
+        walletDTO = new WalletDTO("wallet-001", "testuser", new BigDecimal("100000"), "123", "A", "SAVINGS");
 
         transactionDTO = new WalletTransactionDTO();
         transactionDTO.setId("txn-001");
@@ -91,16 +84,12 @@ public class WalletControllerTest {
         mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/account")
                         .param("userId", "anotheruser")
                         .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("testuser", "USER"))))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+                .andExpect(MockMvcResultMatchers.status().isForbidden());
     }
 
     @Test
     void updateWallet_success() throws Exception {
-        UpdateWalletRequestDTO dto = new UpdateWalletRequestDTO();
-        dto.setUserId("testuser");
-        dto.setBankAccountName("A");
-        dto.setBankAccountNumber("123");
-        dto.setBankAccountType("SAVINGS");
+        UpdateWalletRequestDTO dto = new UpdateWalletRequestDTO("testuser", "123", "A", "SAVINGS");
 
         Mockito.when(walletService.updateWallet(ArgumentMatchers.any())).thenReturn(walletDTO);
 
@@ -115,18 +104,14 @@ public class WalletControllerTest {
 
     @Test
     void updateWallet_forbidden() throws Exception {
-        UpdateWalletRequestDTO dto = new UpdateWalletRequestDTO();
-        dto.setUserId("anotheruser");
-        dto.setBankAccountName("A");
-        dto.setBankAccountNumber("123");
-        dto.setBankAccountType("SAVINGS");
+        UpdateWalletRequestDTO dto = new UpdateWalletRequestDTO("anotheruser", "123", "A", "SAVINGS");
 
         mockMvc.perform(MockMvcRequestBuilders.put("/api/wallet/account")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto))
                         .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("testuser", "USER")))
                         .with(SecurityMockMvcRequestPostProcessors.csrf()))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+                .andExpect(MockMvcResultMatchers.status().isForbidden());
     }
 
     @Test
@@ -145,7 +130,7 @@ public class WalletControllerTest {
     }
 
     @Test
-    void createWithdrawalRequest_invalidUserId_forbidden() throws Exception {
+    void createWithdrawalRequest_forbidden() throws Exception {
         CreateWithdrawalRequestDTO dto = new CreateWithdrawalRequestDTO("anotheruser", new BigDecimal("10000"));
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/wallet/withdrawals")
@@ -153,12 +138,12 @@ public class WalletControllerTest {
                         .content(objectMapper.writeValueAsString(dto))
                         .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("testuser", "USER")))
                         .with(SecurityMockMvcRequestPostProcessors.csrf()))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+                .andExpect(MockMvcResultMatchers.status().isForbidden());
     }
 
     @Test
     void getAllTransactions_success() throws Exception {
-        List<WalletTransactionDTO> txns = Arrays.asList(transactionDTO);
+        List<WalletTransactionDTO> txns = List.of(transactionDTO);
         Mockito.when(walletService.getWithdrawalsByUser("testuser")).thenReturn(txns);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/withdrawals")
@@ -170,6 +155,8 @@ public class WalletControllerTest {
 
     @Test
     void cancelWithdrawal_success() throws Exception {
+        Mockito.doNothing().when(walletService).cancelWithdrawalAsUser("txn-001", "testuser");
+
         mockMvc.perform(MockMvcRequestBuilders.put("/api/wallet/withdrawals/txn-001/cancel")
                         .param("userId", "testuser")
                         .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("testuser", "USER")))
@@ -177,20 +164,10 @@ public class WalletControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
-//    @Test
-//    void getAllWithdrawals_success() throws Exception {
-//        List<WalletTransactionDTO> txns = Arrays.asList(transactionDTO);
-//        Mockito.when(walletService.getAllWithdrawals("PENDING")).thenReturn(txns);
-//
-//        mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/staff/withdrawals")
-//                        .param("status", "PENDING")
-//                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF"))))
-//                .andExpect(MockMvcResultMatchers.status().isOk())
-//                .andExpect(MockMvcResultMatchers.jsonPath("[0].id").value("txn-001"));
-//    }
-
     @Test
     void updateWithdrawalStatus_success() throws Exception {
+        Mockito.doNothing().when(walletService).updateWithdrawalStatus("txn-001", "COMPLETED", "staffuser");
+
         mockMvc.perform(MockMvcRequestBuilders.put("/api/wallet/staff/withdrawals/txn-001/status")
                         .param("status", "COMPLETED")
                         .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF")))
@@ -217,5 +194,27 @@ public class WalletControllerTest {
                         .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF"))))
                 .andExpect(MockMvcResultMatchers.status().isNotFound())
                 .andExpect(MockMvcResultMatchers.jsonPath("message").value("Transaction not found"));
+    }
+
+    @Test
+    void getAllWithdrawals_success() throws Exception {
+        List<WalletTransactionDTO> txns = List.of(transactionDTO);
+        Mockito.when(walletService.getAllWithdrawals(WalletTransaction.Status.PENDING)).thenReturn(txns);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/staff/withdrawals")
+                        .param("status", "PENDING")
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF"))))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("[0].id").value("txn-001"));
+    }
+    @Test
+    void getApprovedWithdrawals_success() throws Exception {
+        List<WalletTransactionDTO> approvedTxns = List.of(transactionDTO);
+        Mockito.when(walletService.getApprovedWithdrawals()).thenReturn(approvedTxns);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/wallet/staff/withdrawals/approved")
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("staffuser", "STAFF"))))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].id").value("txn-001"));
     }
 }

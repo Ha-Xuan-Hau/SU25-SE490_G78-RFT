@@ -2,27 +2,28 @@ package com.rft.rft_be.service.booking;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
 import com.rft.rft_be.service.Notification.NotificationService;
+import com.rft.rft_be.util.JwtUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.nimbusds.jwt.SignedJWT;
 import com.rft.rft_be.dto.booking.BookingDTO;
 import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
@@ -61,13 +62,19 @@ public class BookingServiceImpl implements BookingService {
     CouponRepository couponRepository;
     FinalContractService finalContractService;
     BookingDetailRepository bookingDetailRepository;
+    PenaltyRepository penaltyRepository;
     NotificationService notificationService;
     NotificationMapper notificationMapper;
+    FinalContractRepository finalContractRepository;
+    final JwtUtil jwtUtil;
 
     @Override
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request, String userId) {
         User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
+
+        Penalty vehiclePenaly = penaltyRepository.findById(request.getPenaltyId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
 
         LocalDateTime start = request.getTimeBookingStart();
@@ -111,6 +118,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // Tổng chi phí
+        BigDecimal driverFee = BigDecimal.ZERO;
         BigDecimal totalBeforeDiscount = BigDecimal.ZERO;
         BigDecimal totalDiscount = BigDecimal.ZERO;
         BigDecimal totalFinalCost = BigDecimal.ZERO;
@@ -120,6 +128,12 @@ public class BookingServiceImpl implements BookingService {
             BigDecimal baseCost = BookingCalculationUtils.calculateRentalPrice(calculation, v.getCostPerDay());
             BigDecimal deliveryCost = "delivery".equals(request.getPickupMethod()) ? BigDecimal.ZERO : BigDecimal.ZERO;
             totalBeforeDiscount = totalBeforeDiscount.add(baseCost.add(deliveryCost));
+        }
+
+        // Kiểm tra và cộng phí tài xế nếu có
+        if (request.getDriverFee() != null && request.getDriverFee().compareTo(BigDecimal.ZERO) > 0) {
+            driverFee = request.getDriverFee();
+            totalBeforeDiscount = totalBeforeDiscount.add(driverFee);
         }
 
         // Áp dụng coupon 1 lần
@@ -144,8 +158,8 @@ public class BookingServiceImpl implements BookingService {
                 .totalCost(totalFinalCost)
                 .codeTransaction("BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .timeTransaction(LocalDateTime.now())
-                .penaltyType(Booking.PenaltyType.valueOf(request.getPenaltyType()))
-                .penaltyValue(request.getPenaltyValue())
+                .penaltyType(Booking.PenaltyType.valueOf(vehiclePenaly.getPenaltyType().toString()))
+                .penaltyValue(vehiclePenaly.getPenaltyValue())
                 .minCancelHour(request.getMinCancelHour())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -156,6 +170,11 @@ public class BookingServiceImpl implements BookingService {
 
         // Tạo bookingDetail và block slot
         List<BookingDetail> details = new ArrayList<>();
+
+        // Lấy phí tài xế từ request (nếu có)
+        BigDecimal requestDriverFee = (request.getDriverFee() != null) ? request.getDriverFee() : BigDecimal.ZERO;
+
+
         for (Vehicle v : vehicles) {
             BigDecimal baseCost = BookingCalculationUtils.calculateRentalPrice(calculation, v.getCostPerDay());
 
@@ -163,7 +182,7 @@ public class BookingServiceImpl implements BookingService {
                     .booking(booking)
                     .vehicle(v)
                     .cost(baseCost)
-                    .driverFee(BigDecimal.ZERO) // Nếu có
+                    .driverFee(requestDriverFee) // Nếu có
                     .build();
             details.add(detail);
 
@@ -259,9 +278,32 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public BookingResponseDTO getBookingById(String bookingId) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userIdToken = authentication.getToken().getClaim("userId");
+
         Booking booking = bookingRepository.findByIdWithUserAndVehicle(bookingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Booking với ID: " + bookingId));
-        return vehicleMapper.mapToBookingResponseDTO(booking);
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Không tìm thấy Booking với ID: " + bookingId));
+
+        String renterId = booking.getUser().getId();
+        List<BookingDetail> bookingDetails = booking.getBookingDetails();
+        if (bookingDetails.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Booking không có xe nào");
+        }
+        String providerId = bookingDetails.get(0).getVehicle().getUser().getId();
+
+        // Cho phép nếu là renter hoặc provider
+        if (!userIdToken.trim().equals(renterId.trim()) && !userIdToken.trim().equals(providerId.trim())) {
+            throw new AccessDeniedException("Bạn không có quyền truy cập tài nguyên này");
+        }
+
+        BookingResponseDTO dto = vehicleMapper.mapToBookingResponseDTO(booking);
+
+        // Lấy cancelNote nếu có
+        Optional<String> cancelNoteOpt = finalContractRepository.findCancelNoteByBookingId(bookingId);
+        dto.setCancelNote(cancelNoteOpt.orElse(null));
+
+        return dto;
     }
 
     @Override
@@ -375,7 +417,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void confirmBooking(String bookingId, String token) {
-        String currentUserId = extractUserIdFromToken(token);
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (booking.getBookingDetails().isEmpty()) {
             throw new IllegalStateException("Đơn đặt không chứa xe nào.");
@@ -406,7 +448,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void deliverVehicle(String bookingId, String token) {
-        String currentUserId = extractUserIdFromToken(token);
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (booking.getBookingDetails().isEmpty()) {
             throw new IllegalStateException("Đơn đặt không chứa xe nào.");
@@ -448,7 +490,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void receiveVehicle(String bookingId, String token) {
-        String currentUserId = extractUserIdFromToken(token);
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (!booking.getUser().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Chỉ người thuê xe mới được xác nhận đã nhận xe.");
@@ -479,7 +521,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void returnVehicle(String bookingId, String token) {
-        String currentUserId = extractUserIdFromToken(token);
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
         if (!booking.getUser().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Chỉ người thuê xe mới được trả xe.");
@@ -497,7 +539,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void completeBooking(String bookingId, String token,LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
-        String currentUserId = extractUserIdFromToken(token);
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
         if (booking.getStatus() != Booking.Status.RETURNED) {
@@ -544,7 +586,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public CancelBookingResponseDTO cancelBooking(String bookingId, String token, CancelBookingRequestDTO cancelRequest) {
-        String currentUserId = extractUserIdFromToken(token);
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
         if (booking.getBookingDetails().isEmpty()) {
@@ -571,22 +613,25 @@ public class BookingServiceImpl implements BookingService {
         BigDecimal refundAmount = booking.getTotalCost(); // Default: full refund
 
         if (isRenter) {
-            LocalDateTime paymentTime = booking.getTimeTransaction();
             LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startDate = booking.getTimeBookingStart();
             Integer minCancelHour = booking.getMinCancelHour();
 
-            if (paymentTime != null && minCancelHour != null) {
-                long hoursSincePayment = ChronoUnit.HOURS.between(paymentTime, now);
+            if (startDate != null && minCancelHour != null) {
+                long hoursBeforeStart = ChronoUnit.HOURS.between(now, startDate);
 
-                if (hoursSincePayment > minCancelHour) {
+                if (hoursBeforeStart < minCancelHour) {
+                    // Quá sát giờ nhận xe → bị phạt
                     penalty = calculatePenalty(booking);
                     booking.setPenaltyValue(penalty);
                     refundAmount = booking.getTotalCost().subtract(penalty);
                 } else {
+                    // Hủy đúng hạn → không bị phạt
                     booking.setPenaltyValue(BigDecimal.ZERO);
                     refundAmount = booking.getTotalCost();
                 }
             } else {
+                // Thiếu dữ liệu → mặc định không phạt
                 booking.setPenaltyValue(BigDecimal.ZERO);
                 refundAmount = booking.getTotalCost();
             }
@@ -598,9 +643,7 @@ public class BookingServiceImpl implements BookingService {
         //Return money to wallet
         // Hoàn tiền về ví người thuê nếu có refundAmount > 0
 
-
-
-        if (refundAmount.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
+        if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
             //Lay user dua vao booking
             Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
@@ -611,7 +654,6 @@ public class BookingServiceImpl implements BookingService {
             WalletTransaction refundTx = WalletTransaction.builder()
                     .wallet(renterWallet)
 //                    .user(booking.getUser())
-//                    user ở đây là staff không phải id của provider hay user
                     .amount(refundAmount)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();
@@ -622,14 +664,15 @@ public class BookingServiceImpl implements BookingService {
         if (penalty.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
             Wallet providerWallet = walletRepository.findByUserId(providerId)
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+            log.info("Provider wallet before: {}", providerWallet.getBalance());
             providerWallet.setBalance(providerWallet.getBalance().add(penalty));
             walletRepository.save(providerWallet);
+            log.info("Provider wallet after: {}", providerWallet.getBalance());
 
             // Ghi log giao dịch nhận phí phạt
             WalletTransaction penaltyTx = WalletTransaction.builder()
                     .wallet(providerWallet)
 //                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
-//                    user ở đây là staff không phải id của provider hay user
                     .amount(penalty)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();
@@ -698,6 +741,124 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
+    public CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason) {
+        String currentUserId = jwtUtil.extractUserIdFromToken(token);
+        Booking booking = getBookingOrThrow(bookingId);
+
+        if (booking.getBookingDetails().isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy xe nào trong đơn đặt này.");
+        }
+
+        String providerId = booking.getBookingDetails().get(0).getVehicle().getUser().getId();
+        boolean isProvider = providerId.equals(currentUserId);
+
+        if (!isProvider) {
+            throw new AccessDeniedException("Chỉ chủ xe mới có quyền hủy đơn do khách không đến nhận.");
+        }
+
+        if (booking.getStatus() != Booking.Status.CONFIRMED) {
+            throw new IllegalStateException("Chỉ được hủy đơn chưa nhận xe.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startDate = booking.getTimeBookingStart();
+
+        if (now.isBefore(startDate)) {
+            throw new IllegalStateException("Chưa đến thời gian nhận xe. Không thể dùng chức năng này.");
+        }
+
+        BigDecimal penalty = calculatePenalty(booking);
+        booking.setPenaltyValue(penalty);
+
+        BigDecimal refundAmount = booking.getTotalCost().subtract(penalty);
+        if (refundAmount.compareTo(BigDecimal.ZERO) < 0) refundAmount = BigDecimal.ZERO;
+
+        // Hoàn tiền (nếu có)
+        if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+            Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
+            renterWallet.setBalance(renterWallet.getBalance().add(refundAmount));
+            walletRepository.save(renterWallet);
+
+            WalletTransaction refundTx = WalletTransaction.builder()
+                    .wallet(renterWallet)
+                    .amount(refundAmount)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(refundTx);
+        }
+
+        // Chuyển tiền phạt cho chủ xe
+        if (penalty.compareTo(BigDecimal.ZERO) > 0) {
+            Wallet providerWallet = walletRepository.findByUserId(providerId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+            providerWallet.setBalance(providerWallet.getBalance().add(penalty));
+            walletRepository.save(providerWallet);
+
+            WalletTransaction penaltyTx = WalletTransaction.builder()
+                    .wallet(providerWallet)
+                    .amount(penalty)
+                    .status(WalletTransaction.Status.APPROVED)
+                    .build();
+            walletTransactionRepository.save(penaltyTx);
+        }
+
+        // Cập nhật trạng thái booking
+        booking.setStatus(Booking.Status.CANCELLED);
+        bookingRepository.save(booking);
+
+        // Xoá BookedTimeSlot
+        for (BookingDetail detail : booking.getBookingDetails()) {
+            bookedTimeSlotRepository.deleteByVehicleIdAndTimeRange(
+                    detail.getVehicle().getId(),
+                    booking.getTimeBookingStart(),
+                    booking.getTimeBookingEnd()
+            );
+        }
+
+        // Hủy hợp đồng (nếu có)
+        List<Contract> contracts = contractRepository.findByBookingId(bookingId);
+        String finalContractId = null;
+
+        if (!contracts.isEmpty()) {
+            Contract contract = contracts.get(0);
+            contract.setStatus(Contract.Status.CANCELLED);
+            contractRepository.save(contract);
+
+            CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
+                    .contractId(contract.getId())
+                    .userId(currentUserId)
+                    .timeFinish(LocalDateTime.now())
+                    .costSettlement(refundAmount)
+                    .note("Hủy do khách không đến nhận xe. " + (reason != null ? "Lý do: " + reason : ""))
+                    .build();
+
+            try {
+                var finalContract = finalContractService.createFinalContract(finalContractDTO);
+                finalContractId = finalContract.getId();
+            } catch (Exception e) {
+                log.error("Không thể tạo hợp đồng hủy đơn do khách không đến: {}", e.getMessage());
+            }
+        }
+
+        // Gửi thông báo
+        notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId,
+                "Đơn đã bị hủy do bạn không đến nhận xe đúng giờ.");
+        notificationService.notifyOrderCanceled(providerId, bookingId,
+                "Bạn đã hủy đơn vì khách không đến nhận xe." + (reason != null ? " Lý do: " + reason : ""));
+
+        return CancelBookingResponseDTO.builder()
+                .bookingId(bookingId)
+                .status(booking.getStatus().toString())
+                .contractStatus("CANCELLED")
+                .finalContractId(finalContractId)
+                .refundAmount(refundAmount)
+                .penaltyAmount(penalty)
+                .reason(reason)
+                .message("Đã hủy đơn do khách không đến nhận xe.")
+                .build();
+    }
+
     private BigDecimal calculatePenalty(Booking booking) {
         if (booking.getPenaltyType() == Booking.PenaltyType.FIXED) {
             return booking.getPenaltyValue() != null ? booking.getPenaltyValue() : BigDecimal.ZERO;
@@ -717,18 +878,18 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found: " + bookingId));
     }
 
-    public String extractUserIdFromToken(String token) {
-        try {
-            return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
-        } catch (ParseException e) {
-            throw new RuntimeException("Không thể lấy userId từ token", e);
-        }
-    }
+   // public String extractUserIdFromToken(String token) {
+      //  try {
+      //      return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
+     //   } catch (ParseException e) {
+     //       throw new RuntimeException("Không thể lấy userId từ token", e);
+    //    }
+  //  }
 
     @Override
     @Transactional
     public void payBookingWithWallet(String bookingId, String token) {
-        String userId = extractUserIdFromToken(token);
+        String userId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
         if (!booking.getUser().getId().equals(userId)) {
@@ -754,15 +915,15 @@ public class BookingServiceImpl implements BookingService {
         // Ghi log giao dịch
         WalletTransaction tx = WalletTransaction.builder()
                 .wallet(wallet)
-//                .user(booking.getUser())
-//                    user ở đây là staff không phải id của provider hay user
+                .user(booking.getUser())
                 .amount(totalCost)
                 .status(WalletTransaction.Status.APPROVED)
                 .build();
         walletTransactionRepository.save(tx);
 
         // Cập nhật booking
-        booking.setStatus(Booking.Status.PENDING);
+//        booking.setStatus(Booking.Status.PENDING);
+        booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
         notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
 

@@ -17,7 +17,6 @@ import {
 import {
   Button,
   Form,
-  Image,
   Input,
   Modal,
   Table,
@@ -27,7 +26,6 @@ import {
   Spin,
   Tabs,
 } from "antd";
-import dayjs from "dayjs";
 import type { ColumnType } from "antd/es/table";
 
 // Define TypeScript interfaces
@@ -86,6 +84,10 @@ export default function ManageContracts() {
   const [providerLoading, setProviderLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
+  // ✅ Thêm state để lưu thông tin contract hiện tại
+  const [currentContract, setCurrentContract] = useState<ContractData | null>(
+    null
+  );
 
   // Ref to track if we've already fetched data for current provider
   const hasFetchedRef = useRef<string | null>(null);
@@ -96,16 +98,13 @@ export default function ManageContracts() {
   // Debug provider state and handle loading timeout
   useEffect(() => {
     console.log("Provider state:", provider);
-    // Set provider loading to false once we have determined the provider state
     if (provider !== null) {
       setProviderLoading(false);
     } else {
-      // Check if we've waited long enough or if there's no token
       const token = localStorage.getItem("access_token");
       if (!token) {
         setProviderLoading(false);
       } else {
-        // Set a timeout to stop loading after 5 seconds
         const timeout = setTimeout(() => {
           console.warn("Provider loading timeout");
           setProviderLoading(false);
@@ -127,7 +126,7 @@ export default function ManageContracts() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // API calls - Fetch contracts with PROCESSING and RENTING status
+  // API calls - Fetch contracts
   const fetchContracts = useCallback(
     async (forceRefresh = false) => {
       try {
@@ -135,14 +134,12 @@ export default function ManageContracts() {
         console.log("Provider ID from state:", providerId);
 
         if (!providerId) {
-          // Don't show error if provider is still loading
           if (!providerLoading) {
             showApiError("Vui lòng đăng nhập để xem danh sách hợp đồng");
           }
           return;
         }
 
-        // Check if we've already fetched for this provider (unless forced refresh)
         if (!forceRefresh && hasFetchedRef.current === providerId) {
           console.log("Already fetched contracts for provider:", providerId);
           return;
@@ -151,54 +148,6 @@ export default function ManageContracts() {
         setLoading(true);
         console.log("Fetching contracts for provider:", providerId);
 
-        // Fetch PROCESSING, RENTING, and FINISHED contracts
-        //       const [processingResult, rentingResult, finishedResult] =
-        //         await Promise.all([
-        //           getContractsByProviderAndStatus(
-        //             providerId,
-        //             "PROCESSING"
-        //           ) as Promise<ApiResponse<ContractData[]>>,
-        //           getContractsByProviderAndStatus(providerId, "RENTING") as Promise<
-        //             ApiResponse<ContractData[]>
-        //           >,
-        //           getContractsByProviderAndStatus(providerId, "FINISHED") as Promise<
-        //             ApiResponse<ContractData[]>
-        //           >,
-        //         ]);
-
-        //       const allContracts: ContractData[] = [];
-
-        //       if (processingResult.success) {
-        //         allContracts.push(...(processingResult.data || []));
-        //       }
-
-        //       if (rentingResult.success) {
-        //         allContracts.push(...(rentingResult.data || []));
-        //       }
-
-        //       if (finishedResult.success) {
-        //         allContracts.push(...(finishedResult.data || []));
-        //       }
-
-        //       setContracts(allContracts);
-        //       hasFetchedRef.current = providerId; // Mark as fetched for this provider
-
-        //       if (
-        //         !processingResult.success &&
-        //         !rentingResult.success &&
-        //         !finishedResult.success
-        //       ) {
-        //         showApiError("Không thể tải dữ liệu hợp đồng");
-        //       }
-        //     } catch (error) {
-        //       console.error("Error fetching contracts:", error);
-        //       showApiError(error, "Có lỗi xảy ra khi tải dữ liệu");
-        //     } finally {
-        //       setLoading(false);
-        //     }
-        //   },
-        //   [provider, providerLoading]
-        // );
         const [
           processingResult,
           rentingResult,
@@ -258,31 +207,6 @@ export default function ManageContracts() {
   }, [fetchContracts, providerLoading]);
 
   // Filter contracts based on active tab and search text
-  // const getFilteredContracts = () => {
-  //   let filtered = contracts;
-
-  //   // Filter by tab
-  //   if (activeTab === "processing") {
-  //     filtered = contracts.filter(
-  //       (contract) => contract.status === "PROCESSING"
-  //     );
-  //   } else if (activeTab === "renting") {
-  //     filtered = contracts.filter((contract) => contract.status === "RENTING");
-  //   }
-  //   // "all" tab shows all contracts
-
-  //   // Filter by search text
-  //   if (searchText.trim()) {
-  //     const searchLower = searchText.toLowerCase().trim();
-  //     filtered = filtered.filter(
-  //       (contract) =>
-  //         contract.userName.toLowerCase().includes(searchLower) ||
-  //         contract.vehicleLicensePlate.toLowerCase().includes(searchLower)
-  //     );
-  //   }
-
-  //   return filtered;
-  // };
   const getFilteredContracts = () => {
     let filtered = contracts;
     if (activeTab === "processing") {
@@ -298,7 +222,6 @@ export default function ManageContracts() {
         (contract) => contract.status === "CANCELLED"
       );
     }
-    // "all" tab shows all contracts
 
     // Filter by search text
     if (searchText.trim()) {
@@ -325,9 +248,8 @@ export default function ManageContracts() {
   // Get contracts to display
   const displayContracts = getFilteredContracts();
 
-  // Fetch contracts when provider is ready
-
   const showModal = (contract: ContractData) => {
+    setCurrentContract(contract); // Lưu thông tin contract hiện tại
     setOpen(true);
     form.setFieldsValue({
       id: contract.id,
@@ -338,7 +260,6 @@ export default function ManageContracts() {
       vehicleLicensePlate: contract.vehicleLicensePlate,
       bookingStartTime: formatDateTime(contract.bookingStartTime),
       bookingEndTime: formatDateTime(contract.bookingEndTime),
-
       bookingTotalCost:
         contract.bookingTotalCost.toLocaleString("vi-VN") + " VNĐ",
       timeFinish: contract.timeFinish
@@ -349,6 +270,15 @@ export default function ManageContracts() {
 
   const handleCancel = () => {
     setOpen(false);
+    setCurrentContract(null); // ✅ Reset current contract
+  };
+
+  // ✅ Thêm function để mở booking detail trong tab mới
+  const handleViewBookingDetail = () => {
+    if (currentContract?.bookingId) {
+      const url = `/booking-detail/${currentContract.bookingId}`;
+      window.open(url, "_blank");
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -360,14 +290,11 @@ export default function ManageContracts() {
 
   const formatDateTime = (dateValue: string | number[]) => {
     try {
-      // Handle array format from backend: [year, month, day, hour, minute]
       if (Array.isArray(dateValue)) {
         const [year, month, day, hour, minute] = dateValue;
-        // Month in JavaScript Date is 0-indexed, so subtract 1
         const date = new Date(year, month - 1, day, hour, minute || 0);
         return date.toLocaleString("vi-VN");
       }
-      // Handle ISO string format (yyyy-MM-ddTHH:mm:ss)
       if (typeof dateValue === "string") {
         const date = new Date(dateValue);
         return date.toLocaleString("vi-VN");
@@ -384,7 +311,7 @@ export default function ManageContracts() {
       case "PROCESSING":
         return (
           <Tag color="orange" icon={<MinusCircleOutlined />}>
-            Chờ xác nhận
+            Đang xử lý
           </Tag>
         );
       case "RENTING":
@@ -417,14 +344,6 @@ export default function ManageContracts() {
       width: 250,
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          {/* <Image
-            width={80}
-            height={60}
-            src={record.vehicleIma || "/placeholder.svg"}
-            alt={record.vehicleModel}
-            className="rounded-md object-cover"
-            fallback="/placeholder.svg?height=60&width=80"
-          /> */}
           <div>
             <div className="font-semibold"> {record.bookingId}</div>
             <div className="text-sm text-gray-400">{record.vehicleThumb}</div>
@@ -593,14 +512,6 @@ export default function ManageContracts() {
                 {displayContracts.map((contract) => (
                   <Card key={contract.id} className="shadow-md">
                     <div className="flex items-center gap-4 mb-2">
-                      {/* <Image
-                        width={80}
-                        height={60}
-                        src={contract.vehicleThumb || "/placeholder.svg"}
-                        alt={contract.vehicleModel}
-                        className="rounded-md object-cover"
-                        fallback="/placeholder.svg?height=60&width=80"
-                      /> */}
                       <div className="flex-1">
                         <div className="font-semibold text-lg">
                           {contract.bookingId}
@@ -694,7 +605,7 @@ export default function ManageContracts() {
         )}
       </Card>
 
-      {/* Modal for contract details */}
+      {/* ✅ Modal đã được cập nhật */}
       <Modal
         title="Chi tiết đơn đặt xe"
         open={open}
@@ -706,45 +617,60 @@ export default function ManageContracts() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <Form.Item label="Mã đặt xe" name="id">
-                <Input disabled />
-              </Form.Item>
-              <Form.Item label="Tên xe" name="vehicleThumb">
-                <Input disabled />
-              </Form.Item>
-              <Form.Item label="Biển số xe" name="vehicleLicensePlate">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Tên khách hàng" name="userName">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Số điện thoại" name="userPhone">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Địa chỉ nhận xe" name="userAddress">
-                <Input.TextArea disabled rows={2} />
+                <Input.TextArea readOnly rows={2} />
               </Form.Item>
             </div>
 
             <div>
               <Form.Item label="Thời gian bắt đầu thuê" name="bookingStartTime">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Thời gian kết thúc thuê" name="bookingEndTime">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
-
               <Form.Item label="Thời gian khách trả xe" name="timeFinish">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
-
               <Form.Item label="Tổng giá tiền thuê" name="bookingTotalCost">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Contract ID" hidden name="id">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
             </div>
           </div>
+
+          {/* ✅ Thêm dòng xem chi tiết đơn hàng */}
+          {currentContract?.bookingId && (
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-blue-800 mb-1">
+                    Xem chi tiết đơn hàng
+                  </h4>
+                  <p className="text-sm text-blue-600">
+                    Mã đơn hàng: {currentContract.bookingId}
+                  </p>
+                </div>
+                <Button
+                  type="primary"
+                  onClick={handleViewBookingDetail}
+                  className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+                >
+                  Xem chi tiết
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 mt-6">
             <Button onClick={handleCancel}>Đóng</Button>

@@ -131,11 +131,11 @@ export default function ManagePenaltiesPage() {
   // Hàm tạo mô tả tự động dựa trên các giá trị của form
   const generateDescription = (type: string, value: number, hours: number) => {
     if (type === "PERCENT") {
-      return `Phí hủy ${value}% giá trị đơn hàng nếu hủy quá ${hours} giờ sau khi đơn đặt xe được chấp nhận`;
+      return `Phí phạt ${value}% giá trị đơn hàng áp dụng khi hủy đơn trong vòng ${hours} giờ trước giờ nhận xe`;
     } else {
-      return `Phí hủy cố định ${formatCurrency(
+      return `Phí phạt cố định ${formatCurrency(
         value
-      )} nếu hủy quá ${hours} giờ sau khi đơn đặt xe được chấp nhận`;
+      )} áp dụng khi hủy đơn trong vòng ${hours} giờ trước giờ nhận xe`;
     }
   };
 
@@ -224,11 +224,11 @@ export default function ManagePenaltiesPage() {
       ),
     },
     {
-      title: "Giờ tối thiểu để hủy miễn phí",
+      title: "Thời gian tối đa cho phép hủy tự do",
       dataIndex: "min_cancel_hour",
       key: "min_cancel_hour",
       render: (hours: number) => (
-        <span>{hours} giờ sau khi đơn đặt xe được chấp nhận</span>
+        <span>{hours} giờ trước thời gian nhận xe trên đơn</span>
       ),
     },
     {
@@ -387,7 +387,7 @@ export default function ManagePenaltiesPage() {
             label={
               <span>
                 Giờ tối thiểu để hủy miễn phí
-                <Tooltip title="Khách hàng sẽ bị tính phí nếu hủy đơn trong khoảng thời gian này sau khi đơn đặt xe được chấp nhận">
+                <Tooltip title="Khách hàng sẽ bị tính phí nếu hủy đơn trong khoảng thời gian trước thời gian nhận xe">
                   <QuestionCircleOutlined className="ml-1 text-gray-400" />
                 </Tooltip>
               </span>

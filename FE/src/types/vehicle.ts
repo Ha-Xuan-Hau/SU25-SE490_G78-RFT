@@ -26,25 +26,55 @@ export interface Vehicle {
   address: string;
   comments?: Comment[];
   shipToAddress?: string; // "YES" or "NO"
+  penaltyId?: string; // ID of the penalty rule
   penaltyType?: string; // "PERCENT" or "FIXED"
   penaltyValue?: number; // Percentage or fixed amount
   minCancelHour?: number; // Minimum hours before cancellation allowed
   openTime?: string; // Opening time for the vehicle rental
   closeTime?: string; // Closing time for the vehicle rental
 
-  maxKmPerDay?: number; // Maximum kilometers allowed per day
-  feePerExtraKm?: number; // Fee for extra kilometers beyond the limit
-  allowedHourLate?: number; // Allowed hours late for return
-  feePerExtraHour?: number; // Fee for extra hours beyond the allowed late time
-  cleaningFee?: number; // Fee for cleaning the vehicle after use
-  smellRemovalFee?: number; // Fee for removing odors from the vehicle
+  penalty?: {
+    id: string;
+    userId?: string | null;
+    userName?: string | null;
+    penaltyType: string;
+    penaltyValue: number;
+    minCancelHour: number;
+    description?: string;
+  };
+
+  // maxKmPerDay?: number; // Maximum kilometers allowed per day
+  // feePerExtraKm?: number; // Fee for extra kilometers beyond the limit
+  // allowedHourLate?: number; // Allowed hours late for return
+  // feePerExtraHour?: number; // Fee for extra hours beyond the allowed late time
+  // cleaningFee?: number; // Fee for cleaning the vehicle after use
+  // smellRemovalFee?: number; // Fee for removing odors from the vehicle
+
+  // driverFeePerDay: number; // Fee for hiring a driver per day
+  // hasDriverOption: boolean;
+  // driverFeePerHour: number;
+  // hasHourlyRental: boolean;
+  extraFeeRule?: {
+    maxKmPerDay?: number;
+    feePerExtraKm?: number;
+    allowedHourLate?: number;
+    feePerExtraHour?: number;
+    cleaningFee?: number;
+    smellRemovalFee?: number;
+    batteryChargeFeePerPercent?: number;
+    apply_batteryChargeFee?: any;
+    driverFeePerDay?: number;
+    hasDriverOption?: boolean;
+    driverFeePerHour?: number;
+    hasHourlyRental?: boolean;
+  };
 }
 
 export interface VehicleFeature {
   name: string;
 }
 
-interface VehicleImage {
+export interface VehicleImage {
   imageUrl: string;
 }
 

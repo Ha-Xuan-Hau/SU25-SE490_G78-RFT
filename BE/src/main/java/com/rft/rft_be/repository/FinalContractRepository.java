@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface FinalContractRepository extends JpaRepository<FinalContract, String> {
 
@@ -32,4 +33,17 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
 
     @Query("SELECT COUNT(fc) FROM FinalContract fc WHERE fc.contract.id = :contractId")
     long countByContractId(@Param("contractId") String contractId);
+
+    @Query("SELECT fc FROM FinalContract fc WHERE fc.user IS NULL AND fc.contract.status = 'FINISHED'")
+    List<FinalContract> findUnapprovedFinalContracts();
+
+    List<FinalContract> findByUserIdOrderByCreatedAtDesc(String userId);
+
+    @Query("""
+    SELECT fc.note FROM FinalContract fc 
+    WHERE fc.contract.booking.id = :bookingId 
+    ORDER BY fc.createdAt DESC
+    LIMIT 1
+""")
+    Optional<String> findCancelNoteByBookingId(@Param("bookingId") String bookingId);
 }

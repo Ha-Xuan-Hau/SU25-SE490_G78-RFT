@@ -154,7 +154,7 @@ public class AuthenticationService {
                 .subject(user.getEmail())
                 .issueTime(new Date())
                 .expirationTime(new Date(
-                        Instant.now().plus(30, ChronoUnit.MINUTES).toEpochMilli()
+                        Instant.now().plus(180, ChronoUnit.MINUTES).toEpochMilli()
                 ))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("scope", user.getRole())

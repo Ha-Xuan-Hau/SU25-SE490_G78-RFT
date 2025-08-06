@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PenaltyRepository extends JpaRepository<Penalty, String> {
     @Query("SELECT p FROM Penalty p WHERE p.user.id = :userId")
@@ -16,4 +17,6 @@ public interface PenaltyRepository extends JpaRepository<Penalty, String> {
 
     @Query("SELECT p FROM Penalty p WHERE p.minCancelHour <= :hours")
     List<Penalty> findByMinCancelHourLessThanEqual(@Param("hours") Integer hours);
+
+    Optional<Penalty> findById(String penaltyId);
 }

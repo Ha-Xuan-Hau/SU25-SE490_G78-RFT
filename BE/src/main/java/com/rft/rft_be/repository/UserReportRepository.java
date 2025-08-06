@@ -5,8 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
     public interface UserReportRepository extends JpaRepository<UserReport, String> {
-    List<UserReport> findByReportedId(String reportedId);
-    List<UserReport> findByType(String type);
-    List<UserReport> findByTypeOrderByCreatedAtDesc(String type);
-        List<UserReport> findByReportedIdIn(List<String> ids);
+        List<UserReport> findByReportedIdAndType(String reportedId, String type);
+
 }

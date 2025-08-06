@@ -19,6 +19,7 @@ public class ProviderController {
     @PostMapping("/register")
     public ResponseEntity<?> registerAsProvider(@RequestBody RegisterProviderRequestDTO request) {
         userService.registerUserAsProvider(request);
-        return ResponseEntity.ok("Đăng ký trở thành đối tác thành công.");
+        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Đăng ký trở thành đối tác thành công.");
+
     }
 }

@@ -109,6 +109,12 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           label: "Quản lý phương tiện",
         },
         {
+          key: "vehicles",
+          path: "/admin/manage-vehicles-pending",
+          icon: "mdi:car-multiple",
+          label: "Duyệt đăng ký phương tiện",
+        },
+        {
           key: "bookings",
           path: "/admin/manage-bookings",
           icon: "mdi:calendar-clock",
@@ -135,9 +141,15 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           ? [
               {
                 key: "transactions",
-                path: "/admin/manage-transactions",
+                path: "/admin/manage-approved-withdrawal-requests",
                 icon: "mdi:credit-card-outline",
-                label: "Giao dịch thanh toán",
+                label: "Quản lý giao dịch rút tiền",
+              },
+              {
+                key: "transactions",
+                path: "/admin/manage-finalized-contracts",
+                icon: "mdi:file-document-edit-outline",
+                label: "Quản lý hợp đồng tất toán",
               },
             ]
           : []),

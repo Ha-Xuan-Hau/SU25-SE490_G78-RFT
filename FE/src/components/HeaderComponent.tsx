@@ -139,7 +139,7 @@ const HeaderComponent: React.FC = () => {
             className="flex items-center py-1"
           >
             <WalletOutlined className="mr-2 text-red-600" />
-            Quản lý tài chính
+            Quản lý giao dịch
           </div>
         ),
       });

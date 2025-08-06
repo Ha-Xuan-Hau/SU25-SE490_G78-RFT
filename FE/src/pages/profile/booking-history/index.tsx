@@ -93,7 +93,7 @@ const transformBooking = (backendBooking: BackendBooking): Booking => {
 // Status mapping from backend to UI
 const statusMapping: { [key: string]: string } = {
   UNPAID: "Chờ thanh toán",
-  PENDING: "Chờ xử lý",
+  // PENDING: "Chờ xử lý",
   CONFIRMED: "Đã xác nhận",
   DELIVERING: "Đang giao xe",
   DELIVERED: "Đang giao xe",
@@ -410,9 +410,8 @@ export default function BookingHistoryPage() {
     switch (activeTab) {
       case "processing":
         return (
-          displayStatus === "Chờ xử lý" ||
-          displayStatus === "Đã xác nhận" ||
-          bookingStatus === "CONFIRMED"
+          // displayStatus === "Chờ xử lý" ||
+          displayStatus === "Đã xác nhận" || bookingStatus === "CONFIRMED"
         );
       case "payment":
         return displayStatus === "Chờ thanh toán";
@@ -447,9 +446,8 @@ export default function BookingHistoryPage() {
   // Đếm số lượng cho từng loại (code giữ nguyên...)
   const waitingCount = bookingHistory.filter(
     (b: Booking) =>
-      getDisplayStatus(b) === "Chờ xử lý" ||
-      getDisplayStatus(b) === "Đã xác nhận" ||
-      b.status === "CONFIRMED"
+      // getDisplayStatus(b) === "Chờ xử lý" ||
+      getDisplayStatus(b) === "Đã xác nhận" || b.status === "CONFIRMED"
   ).length;
   const paymentCount = bookingHistory.filter(
     (b: Booking) => getDisplayStatus(b) === "Chờ thanh toán"
@@ -578,15 +576,15 @@ export default function BookingHistoryPage() {
                 onClick={() => handleTabChange("processing")}
                 className={`w-full flex items-center justify-between py-2 px-3 rounded-md transition-colors ${
                   activeTab === "processing"
-                    ? "bg-orange-50 text-orange-600 font-medium"
+                    ? "bg-cyan-50 text-cyan-600 font-medium"
                     : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                <span>Chờ xử lý</span>
+                <span>Đã xác nhận</span>
                 <span
                   className={`px-2 py-1 rounded-full text-xs ${
                     activeTab === "processing"
-                      ? "bg-orange-100 text-orange-600"
+                      ? "bg-cyan-100 text-cyan-600"
                       : "bg-gray-100 text-gray-600"
                   }`}
                 >
@@ -709,6 +707,22 @@ export default function BookingHistoryPage() {
 
         {/* Right side content area */}
         <div className="flex-1 bg-white rounded-lg shadow-sm p-6">
+          {/* Thông báo đơn chưa thanh toán - phiên bản đơn giản */}
+          {paymentCount > 0 && (
+            <div className="mb-4 text-center">
+              <h1 className="text-red-600 font-medium text-xl bg-red-50 border border-red-200 rounded-lg py-3 px-4">
+                ⚠️ Bạn có <span className="font-bold">{paymentCount}</span> đơn
+                chưa thanh toán, yêu cầu thanh toán nếu không đơn đặt xe sẽ bị
+                xóa sau 5 phút
+                <button
+                  onClick={() => handleTabChange("payment")}
+                  className="ml-2 text-red-700 underline hover:text-red-800 font-semibold"
+                >
+                  Xem ngay →
+                </button>
+              </h1>
+            </div>
+          )}
           <div className="mb-4">
             <h1 className="text-xl font-semibold text-gray-900">
               Lịch sử đặt xe
@@ -718,7 +732,7 @@ export default function BookingHistoryPage() {
                     activeTab === "payment"
                       ? "bg-red-100 text-red-600"
                       : activeTab === "processing"
-                      ? "bg-orange-100 text-orange-600"
+                      ? "bg-cyan-100 text-cyan-600"
                       : activeTab === "transporting"
                       ? "bg-yellow-100 text-yellow-600"
                       : activeTab === "active"
@@ -737,7 +751,7 @@ export default function BookingHistoryPage() {
                     : activeTab === "payment"
                     ? "Chờ thanh toán"
                     : activeTab === "processing"
-                    ? "Chờ xử lý"
+                    ? "Đã xác nhận"
                     : activeTab === "transporting"
                     ? "Đang giao xe"
                     : activeTab === "active"
@@ -835,7 +849,7 @@ export default function BookingHistoryPage() {
                               activeTab === "payment"
                                 ? "Chờ thanh toán"
                                 : activeTab === "processing"
-                                ? "Chờ xử lý"
+                                ? "Đã xác nhận"
                                 : activeTab === "transporting"
                                 ? "Đang giao xe"
                                 : activeTab === "active"
