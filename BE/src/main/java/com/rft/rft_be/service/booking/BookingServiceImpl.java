@@ -593,9 +593,7 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalStateException("Không tìm thấy xe nào trong đơn đặt này.");
         }
 
-        // Lấy chủ xe từ vehicle đầu tiên
         String providerId = booking.getBookingDetails().get(0).getVehicle().getUser().getId();
-
         boolean isRenter = booking.getUser().getId().equals(currentUserId);
         boolean isProvider = providerId.equals(currentUserId);
 
@@ -610,7 +608,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         BigDecimal penalty = BigDecimal.ZERO;
-        BigDecimal refundAmount = booking.getTotalCost(); // Default: full refund
+        BigDecimal refundAmount = booking.getTotalCost(); // Mặc định: hoàn toàn bộ
 
         if (isRenter) {
             LocalDateTime now = LocalDateTime.now();
@@ -619,71 +617,66 @@ public class BookingServiceImpl implements BookingService {
 
             if (startDate != null && minCancelHour != null) {
                 long hoursBeforeStart = ChronoUnit.HOURS.between(now, startDate);
-
                 if (hoursBeforeStart < minCancelHour) {
-                    // Quá sát giờ nhận xe → bị phạt
                     penalty = calculatePenalty(booking);
                     booking.setPenaltyValue(penalty);
                     refundAmount = booking.getTotalCost().subtract(penalty);
                 } else {
-                    // Hủy đúng hạn → không bị phạt
                     booking.setPenaltyValue(BigDecimal.ZERO);
-                    refundAmount = booking.getTotalCost();
                 }
             } else {
-                // Thiếu dữ liệu → mặc định không phạt
                 booking.setPenaltyValue(BigDecimal.ZERO);
-                refundAmount = booking.getTotalCost();
             }
         } else if (isProvider) {
             booking.setPenaltyValue(BigDecimal.ZERO);
-            refundAmount = booking.getTotalCost();
         }
 
-        //Return money to wallet
-        // Hoàn tiền về ví người thuê nếu có refundAmount > 0
-
+        // 1. Hoàn tiền cho người thuê (nếu có)
         if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
-            //Lay user dua vao booking
             Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
             renterWallet.setBalance(renterWallet.getBalance().add(refundAmount));
             walletRepository.save(renterWallet);
 
-            // Ghi log giao dịch hoàn tiền
             WalletTransaction refundTx = WalletTransaction.builder()
                     .wallet(renterWallet)
-//                    .user(booking.getUser())
                     .amount(refundAmount)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();
             walletTransactionRepository.save(refundTx);
+
+            notificationService.notifyRefundAfterCancellation(
+                    booking.getUser().getId(),
+                    bookingId,
+                    refundAmount.doubleValue()
+            );
         }
 
-        // Chuyển phí phạt về ví chủ xe nếu có
+        // 2. Trả phí phạt cho chủ xe (nếu có)
         if (penalty.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
             Wallet providerWallet = walletRepository.findByUserId(providerId)
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
-            log.info("Provider wallet before: {}", providerWallet.getBalance());
             providerWallet.setBalance(providerWallet.getBalance().add(penalty));
             walletRepository.save(providerWallet);
-            log.info("Provider wallet after: {}", providerWallet.getBalance());
 
-            // Ghi log giao dịch nhận phí phạt
             WalletTransaction penaltyTx = WalletTransaction.builder()
                     .wallet(providerWallet)
-//                    .user(booking.getBookingDetails().get(0).getVehicle().getUser())
                     .amount(penalty)
                     .status(WalletTransaction.Status.APPROVED)
                     .build();
             walletTransactionRepository.save(penaltyTx);
+
+            notificationService.notifyPenaltyReceivedAfterCancellation(
+                    providerId,
+                    bookingId,
+                    penalty.doubleValue()
+            );
         }
 
-        // Update booking status
+        // 3. Cập nhật trạng thái booking & xoá slot đã đặt
         booking.setStatus(Booking.Status.CANCELLED);
         bookingRepository.save(booking);
 
-        // Xoá tất cả các BookedTimeSlot liên quan đến từng xe trong booking này
         for (BookingDetail detail : booking.getBookingDetails()) {
             bookedTimeSlotRepository.deleteByVehicleIdAndTimeRange(
                     detail.getVehicle().getId(),
@@ -692,7 +685,7 @@ public class BookingServiceImpl implements BookingService {
             );
         }
 
-        // Update contract status to CANCELLED
+        // 4. Hủy hợp đồng + tạo final contract nếu được yêu cầu
         String finalContractId = null;
         List<Contract> contracts = contractRepository.findByBookingId(bookingId);
         if (!contracts.isEmpty()) {
@@ -706,11 +699,10 @@ public class BookingServiceImpl implements BookingService {
                         .userId(currentUserId)
                         .timeFinish(LocalDateTime.now())
                         .costSettlement(refundAmount)
-                        .note("Hủy bởi " + (isRenter ? "khách hàng" : "chủ xe")
-                                + (cancelRequest.getReason() != null && !cancelRequest.getReason().isEmpty()
-                                ? ". Lý do: " + cancelRequest.getReason() : ""))
+                        .note("Hủy bởi " + (isRenter ? "khách hàng" : "chủ xe") +
+                                (cancelRequest.getReason() != null && !cancelRequest.getReason().isEmpty()
+                                        ? ". Lý do: " + cancelRequest.getReason() : ""))
                         .build();
-
                 try {
                     var finalContract = finalContractService.createFinalContract(finalContractDTO);
                     finalContractId = finalContract.getId();
@@ -720,15 +712,26 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
+        // 5. Gửi thông báo huỷ đơn hàng cho cả hai phía
         if (isRenter) {
+            // Gửi cho renter: chỉ lý do gốc
             notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, cancelRequest.getReason());
-            notificationService.notifyOrderCanceled(providerId, bookingId, "Đơn hàng đã bị hủy bởi khách hàng.");
-        } else if (isProvider) {
+
+            // Gửi cho provider: prefix rõ là hủy bởi khách
+            notificationService.notifyOrderCanceled(providerId, bookingId, "Khách hàng đã hủy đơn" + (cancelRequest.getReason() != null && !cancelRequest.getReason().isBlank()
+                    ? ". Lý do: " + cancelRequest.getReason()
+                    : ""));
+        } else {
+            // Gửi cho provider
             notificationService.notifyOrderCanceled(providerId, bookingId, cancelRequest.getReason());
-            notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, "Đơn hàng đã bị hủy bởi chủ xe.");
+
+            // Gửi cho renter
+            notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, "Chủ xe đã hủy đơn" + (cancelRequest.getReason() != null && !cancelRequest.getReason().isBlank()
+                    ? ". Lý do: " + cancelRequest.getReason()
+                    : ""));
         }
 
-
+        // 6. Trả về response
         return CancelBookingResponseDTO.builder()
                 .bookingId(bookingId)
                 .status(booking.getStatus().toString())
@@ -740,6 +743,8 @@ public class BookingServiceImpl implements BookingService {
                 .message("Hủy đơn đặt xe thành công")
                 .build();
     }
+
+
 
     public CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason) {
         String currentUserId = jwtUtil.extractUserIdFromToken(token);
