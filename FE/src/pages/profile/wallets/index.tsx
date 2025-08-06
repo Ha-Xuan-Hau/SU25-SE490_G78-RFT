@@ -71,7 +71,7 @@ export default function UserWalletsPage() {
         // Nếu API trả về 1 object duy nhất, chuyển thành mảng cards
         if (Array.isArray(data?.cards)) {
           setCards(data.cards);
-        } else if (data?.bankAccountNumber) {
+        } else if (data?.id) {
           setCards([
             {
               id: data.id || "1",

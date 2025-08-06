@@ -52,12 +52,6 @@ public class BookingController {
         return new ResponseEntity<>(bookingResponse, HttpStatus.CREATED);
     }
 
-    @PostMapping("/{bookingId}/confirm")
-    public ResponseEntity<?> confirmBooking(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
-        bookingService.confirmBooking(bookingId, extractToken(authHeader));
-        return ResponseEntity.ok().header("Content-Type", "text/plain; charset=UTF-8").body("Xác nhận đơn thành công");
-    }
-
     @PostMapping("/{bookingId}/deliver")
     public ResponseEntity<?> deliverVehicle(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader) {
         bookingService.deliverVehicle(bookingId, extractToken(authHeader));
@@ -88,6 +82,14 @@ public class BookingController {
             @RequestBody CancelBookingRequestDTO cancelRequest,
             @RequestHeader("Authorization") String authHeader) {
         CancelBookingResponseDTO response = bookingService.cancelBooking(bookingId, extractToken(authHeader), cancelRequest);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{bookingId}/cancel/no-show")
+    public ResponseEntity<CancelBookingResponseDTO> cancelBookingByProviderDueToNoShow(@PathVariable String bookingId, @RequestHeader("Authorization") String authHeader, @RequestBody(required = false) Map<String, String> body) {
+        String token = extractToken(authHeader);
+        String reason = (body != null) ? body.getOrDefault("reason", "") : "";
+        CancelBookingResponseDTO response = bookingService.cancelBookingByProviderDueToNoShow(bookingId, token, reason);
         return ResponseEntity.ok(response);
     }
 

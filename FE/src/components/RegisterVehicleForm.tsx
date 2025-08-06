@@ -306,6 +306,22 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           { label: "Sạc điện thoại USB", value: "USB Charging" },
           { label: "Đồng hồ kỹ thuật số", value: "Digital Dashboard" },
           { label: "Hệ thống định vị", value: "GPS Tracking" },
+
+          //THEM MOI FEATURE
+          { label: "Kính chắn gió", value: "Windshield" },
+          { label: "Yên xe êm ái", value: "Comfort Seat" },
+          { label: "Hệ thống chống trượt", value: "Traction Control" },
+          { label: "Hệ thống treo cải tiến", value: "Advanced Suspension" },
+          { label: "Khóa bánh trước", value: "Front Wheel Lock" },
+          { label: "Gác chân cho người ngồi sau", value: "Passenger Footrest" },
+          { label: "Lốp không săm", value: "Tubeless Tires" },
+          { label: "Khóa cổ", value: "Steering Lock" },
+          { label: "Chống nghiêng tự động", value: "Auto Side Stand" },
+          {
+            label: "Hệ thống tiết kiệm nhiên liệu",
+            value: "Fuel-saving System",
+          },
+          { label: "Hệ thống làm mát", value: "Cooling System" },
         ];
 
       case VehicleType.BICYCLE:
@@ -640,12 +656,12 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
       onFinish={async (values) => {
         setSubmitting(true);
         try {
-          // ✅ Xử lý biển số xe theo loại xe VÀ theo insert/update
+          //Xử lý biển số xe theo loại xe VÀ theo insert/update
           let licensePlateData: string | string[] = ""; // Có thể là string hoặc array
           let quantity = 1;
 
           if (isInsert) {
-            // ✅ CREATE: Luôn gửi array
+            // CREATE: Luôn gửi array
             if (vehicleType === VehicleType.CAR) {
               licensePlateData = [values.licensePlate || ""]; // Array với 1 phần tử
               quantity = 1;
@@ -668,7 +684,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               quantity = isMultipleVehicles ? values.vehicleQuantity || 1 : 1;
             }
           } else {
-            // ✅ UPDATE: Luôn gửi string
+            // UPDATE: Luôn gửi string
             if (vehicleType === VehicleType.CAR) {
               licensePlateData = values.licensePlate || ""; // String
               quantity = 1;
@@ -697,6 +713,10 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             imageUrl: url,
           }));
 
+          const processedDescription = values.description
+            ? values.description.replace(/\n/g, "\n") // Đảm bảo \n được giữ nguyên
+            : "";
+
           // Base submit data cho tất cả loại xe
           const baseSubmitData = {
             penaltyId: values.rentalRule,
@@ -710,7 +730,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             yearManufacture: values.yearOfManufacture,
             transmission: values.transmission,
             fuelType: values.fuelType,
-            description: values.description,
+            description: processedDescription,
             numberVehicle: quantity,
             costPerDay: values.costPerDay,
             //status: "PENDING",

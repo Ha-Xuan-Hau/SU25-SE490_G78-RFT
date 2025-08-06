@@ -80,18 +80,6 @@ class BookingControllerTest {
     }
 
     @Test
-    void testConfirmBooking_success() throws Exception {
-        Mockito.doNothing().when(bookingService).confirmBooking("booking123", TOKEN);
-
-        mockMvc.perform(post("/api/bookings/booking123/confirm")
-                        .header("Authorization", "Bearer " + TOKEN)
-                        .with(authentication(SecurityContextHolder.getContext().getAuthentication())))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", "text/plain; charset=UTF-8"))
-                .andExpect(content().string("Xác nhận đơn thành công"));
-    }
-
-    @Test
     void testDeliverVehicle_success() throws Exception {
         Mockito.doNothing().when(bookingService).deliverVehicle("booking123", TOKEN);
 
@@ -354,14 +342,17 @@ class BookingControllerTest {
         Mockito.when(bookingService.createBooking(Mockito.any(), Mockito.eq("mock-user-id")))
                 .thenReturn(response);
 
-        String body = """
-                {
-                  "vehicleIds": ["v1"],
-                  "timeBookingStart": "2025-07-30T10:00:00",
-                  "timeBookingEnd": "2025-07-30T12:00:00",
-                  "phoneNumber": "0901234567"
-                }
-                """;
+        LocalDateTime now = LocalDateTime.now().plusDays(1); // ngày mai để luôn là tương lai
+        String startTime = now.withHour(10).withMinute(0).withSecond(0).withNano(0).toString();
+        String endTime = now.withHour(12).withMinute(0).withSecond(0).withNano(0).toString();
+        String body = String.format("""
+        {
+          "vehicleIds": ["v1"],
+          "timeBookingStart": "%s",
+          "timeBookingEnd": "%s",
+          "phoneNumber": "0901234567"
+        }
+        """, startTime, endTime);
 
         mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer mock-token")
@@ -379,14 +370,17 @@ class BookingControllerTest {
         Mockito.when(bookingService.createBooking(Mockito.any(), Mockito.anyString()))
                 .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Xe đã bị đặt"));
 
-        String body = """
-                {
-                   "vehicleIds": ["v1"],
-                   "timeBookingStart": "2025-07-30T10:00:00",
-                   "timeBookingEnd": "2025-07-30T12:00:00",
-                   "phoneNumber": "0901234567"
-                }
-                """;
+        LocalDateTime futureStart = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime futureEnd = futureStart.plusHours(2);
+
+        String body = String.format("""
+        {
+           "vehicleIds": ["v1"],
+           "timeBookingStart": "%s",
+           "timeBookingEnd": "%s",
+           "phoneNumber": "0901234567"
+        }
+        """, futureStart.toString(), futureEnd.toString());
 
         mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer mock-token")

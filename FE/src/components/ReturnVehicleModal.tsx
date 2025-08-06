@@ -80,12 +80,12 @@ export const ReturnVehicleModal: React.FC<ReturnVehicleModalProps> = ({
               <div className="font-medium mb-1">Lưu ý:</div>
               <ul className="list-disc list-inside space-y-1">
                 <li>
-                  Yêu cầu khách kiểm tra lại hành lý của mình, đảm bảo không để
-                  quên đồ dùng cá nhân của mình trên xe
+                  Khách hàng vui lòng kiểm tra lại hành lý của mình, đảm bảo không để
+                  quên đồ dùng cá nhân trên xe
                 </li>
-                <li>Yêu cầu khách dọn dẹp xe trước khi trả</li>
-                <li>Sau khi xác nhận, chủ xe sẽ được thông báo</li>
-                <li>Chủ xe sẽ xác nhận đã nhận xe từ bạn</li>
+                <li>Khách hàng vui lòng dọn dẹp xe trước khi trả lại</li>
+                <li>Sau khi xác nhận, chủ xe sẽ được thông báo và sẽ xác nhận xe và hoàn thành đơn của bạn</li>
+                <li>Vui lòng kiểm tra trạng thái đơn sau khi chủ xe xác nhận</li>
                 <li>Quá trình thuê xe sẽ kết thúc</li>
               </ul>
             </div>

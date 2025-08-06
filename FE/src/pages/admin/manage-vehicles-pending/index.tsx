@@ -172,22 +172,46 @@ export default function VehiclePendingPage() {
   ) => {
     try {
       await updateVehicleStatus(vehicleId, status, rejectReason);
-      loadPendingStats(); // Reload stats after updating
-      loadPendingVehicles(); // Reload vehicles after updating
-      showApiSuccess("Cập nhật trạng thái xe thành công."); // Show success message
+      showApiSuccess("Cập nhật trạng thái xe thành công.");
+      // Xóa các dòng reload ở đây vì sẽ được gọi từ hàm cha
+      // loadPendingStats();
+      // loadPendingVehicles();
     } catch (error) {
       console.error("Error updating vehicle status:", error);
-      showApiError("Có lỗi xảy ra khi cập nhật trạng thái xe."); // Show error message
+      showApiError("Có lỗi xảy ra khi cập nhật trạng thái xe.");
+      throw error; // Throw error để hàm cha biết có lỗi xảy ra
+    }
+  };
+  // const handleApprove = async (vehicleId: string) => {
+  //   await updateVehicleStatusAPI(vehicleId, "AVAILABLE"); // Duyệt xe
+  // };
+
+  // const handleReject = async (vehicleId: string) => {
+  //   await updateVehicleStatusAPI(vehicleId, "UNAVAILABLE", rejectReason); // Từ chối xe
+  //   setRejectReason(""); // Clear reason after rejection
+  // };
+
+  const handleApprove = async (vehicleId: string) => {
+    setLoading(true);
+    try {
+      await updateVehicleStatusAPI(vehicleId, "AVAILABLE");
+      // Đảm bảo reload dữ liệu sau khi cập nhật thành công
+      await Promise.all([loadPendingStats(), loadPendingVehicles()]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleApprove = async (vehicleId: string) => {
-    await updateVehicleStatusAPI(vehicleId, "AVAILABLE"); // Duyệt xe
-  };
-
   const handleReject = async (vehicleId: string) => {
-    await updateVehicleStatusAPI(vehicleId, "UNAVAILABLE", rejectReason); // Từ chối xe
-    setRejectReason(""); // Clear reason after rejection
+    setLoading(true);
+    try {
+      await updateVehicleStatusAPI(vehicleId, "UNAVAILABLE", rejectReason);
+      setRejectReason("");
+      // Đảm bảo reload dữ liệu sau khi cập nhật thành công
+      await Promise.all([loadPendingStats(), loadPendingVehicles()]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredData = vehicles.filter((item) => {
@@ -432,7 +456,7 @@ export default function VehiclePendingPage() {
       />
 
       {/* Confirmation Modals */}
-      <Modal
+      {/* <Modal
         title="Xác nhận duyệt xe"
         open={
           confirmAction === "APPROVE_ONE" || confirmAction === "APPROVE_BATCH"
@@ -493,6 +517,88 @@ export default function VehiclePendingPage() {
               } else {
                 handleBatchReject();
                 setConfirmAction(null); // Đóng modal xác nhận
+              }
+            }}
+            disabled={!rejectReason}
+          >
+            Từ chối
+          </Button>,
+        ]}
+      >
+        <p>Nhập lý do từ chối:</p>
+        <Input.TextArea
+          rows={4}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Nhập lý do..."
+        />
+      </Modal> */}
+
+      <Modal
+        title="Xác nhận duyệt xe"
+        open={
+          confirmAction === "APPROVE_ONE" || confirmAction === "APPROVE_BATCH"
+        }
+        onCancel={() => setConfirmAction(null)}
+        zIndex={2000} // Thêm dòng này để modal xác nhận hiển thị trên modal chi tiết
+        footer={[
+          <Button key="cancel" onClick={() => setConfirmAction(null)}>
+            Hủy
+          </Button>,
+          <Button
+            key="approve"
+            type="primary"
+            loading={loading}
+            onClick={async () => {
+              if (
+                confirmAction === "APPROVE_ONE" &&
+                vehicleDetailModal.vehicle
+              ) {
+                await handleApprove(vehicleDetailModal.vehicle.id);
+                setConfirmAction(null);
+                setVehicleDetailModal({ open: false, vehicle: null });
+              } else {
+                await handleBatchApprove();
+                setConfirmAction(null);
+              }
+            }}
+          >
+            Duyệt
+          </Button>,
+        ]}
+      >
+        <p>
+          Bạn có chắc chắn muốn duyệt{" "}
+          {confirmAction === "APPROVE_ONE" ? "xe này" : "các xe đã chọn"} không?
+        </p>
+      </Modal>
+
+      <Modal
+        title="Từ chối xe"
+        open={
+          confirmAction === "REJECT_ONE" || confirmAction === "REJECT_BATCH"
+        }
+        onCancel={() => setConfirmAction(null)}
+        zIndex={2000} // Thêm dòng này
+        footer={[
+          <Button key="cancel" onClick={() => setConfirmAction(null)}>
+            Hủy
+          </Button>,
+          <Button
+            key="confirm"
+            type="primary"
+            loading={loading}
+            onClick={async () => {
+              if (
+                confirmAction === "REJECT_ONE" &&
+                vehicleDetailModal.vehicle
+              ) {
+                await handleReject(vehicleDetailModal.vehicle.id);
+                setConfirmAction(null);
+                setVehicleDetailModal({ open: false, vehicle: null });
+              } else {
+                await handleBatchReject();
+                setConfirmAction(null);
               }
             }}
             disabled={!rejectReason}

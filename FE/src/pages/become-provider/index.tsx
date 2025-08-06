@@ -20,6 +20,7 @@ import {
   Divider,
   theme,
   TimePicker,
+  Modal,
 } from "antd";
 import {
   PhoneOutlined,
@@ -54,6 +55,11 @@ const BecomeProviderPage = () => {
   const [closeTime, setCloseTime] = useState<Dayjs | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const [timeOption, setTimeOption] = useState<"fulltime" | "custom">(
+    "fulltime"
+  );
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [user, setUser] = useUserState();
 
@@ -108,6 +114,71 @@ const BecomeProviderPage = () => {
       return;
     }
 
+    // if (current === 2) {
+    //   // Validate chọn dịch vụ
+    //   if (selectedServices.length === 0) {
+    //     showError(
+    //       "Cần chọn ít nhất một dịch vụ cho thuê xe bạn muốn cung cấp."
+    //     );
+    //     return;
+    //   }
+    //   if (!openTime || !closeTime) {
+    //     showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
+    //     return;
+    //   }
+    //   if (!openTime || !closeTime) {
+    //     showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
+    //     return;
+    //   }
+
+    //   // Chỉ cho phép mở 24/24 nếu cả hai đều là 00:00, còn lại phải openTime < closeTime
+    //   const isOpenAllDay =
+    //     openTime.format("HH:mm") === "00:00" &&
+    //     closeTime.format("HH:mm") === "00:00";
+
+    //   if (!isOpenAllDay && openTime.isSameOrAfter(closeTime)) {
+    //     showError(
+    //       "Giờ mở cửa phải trước giờ đóng cửa (trừ trường hợp mở 24/24 là 00:00 đến 00:00)."
+    //     );
+    //     return;
+    //   }
+
+    //   const formValues = form.getFieldsValue();
+    //   const openTimeStr = openTime ? openTime.format("HH:mm") : null;
+    //   const closeTimeStr = closeTime ? closeTime.format("HH:mm") : null;
+
+    //   const payload = {
+    //     ...formValues,
+    //     userId: user?.id,
+    //     vehicleTypes: selectedServices,
+    //     openTime: openTimeStr,
+    //     closeTime: closeTimeStr,
+    //   };
+
+    //   setLoading(true);
+    //   registerProvider(payload)
+    //     .then(() => {
+    //       setLoading(false);
+    //       setCurrent(current + 1);
+    //       showSuccess("Đăng ký thành công!");
+    //       // Sau khi chuyển sang bước hoàn tất, timeout 10s rồi logout
+    //       setTimeout(() => {
+    //         clearAccessToken();
+    //         setUser(null);
+    //         clearProfile();
+    //         window.location.href = "/";
+    //       }, 10000);
+    //     })
+    //     .catch((err) => {
+    //       setLoading(false);
+    //       showError(
+    //         err?.response?.data?.message ||
+    //           "Đăng ký thất bại. Vui lòng thử lại sau!"
+    //       );
+    //     });
+    //   return;
+    // }
+
     if (current === 2) {
       // Validate chọn dịch vụ
       if (selectedServices.length === 0) {
@@ -116,60 +187,22 @@ const BecomeProviderPage = () => {
         );
         return;
       }
-      if (!openTime || !closeTime) {
-        showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
-        return;
-      }
-      if (!openTime || !closeTime) {
-        showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
-        return;
-      }
 
-      // Chỉ cho phép mở 24/24 nếu cả hai đều là 00:00, còn lại phải openTime < closeTime
-      const isOpenAllDay =
-        openTime.format("HH:mm") === "00:00" &&
-        closeTime.format("HH:mm") === "00:00";
+      // Validate thời gian cho custom option
+      if (timeOption === "custom") {
+        if (!openTime || !closeTime) {
+          showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
+          return;
+        }
 
-      if (!isOpenAllDay && openTime.isSameOrAfter(closeTime)) {
-        showError(
-          "Giờ mở cửa phải trước giờ đóng cửa (trừ trường hợp mở 24/24 là 00:00 đến 00:00)."
-        );
-        return;
+        if (openTime.isSameOrAfter(closeTime)) {
+          showError("Giờ mở cửa phải trước giờ đóng cửa.");
+          return;
+        }
       }
 
-      const formValues = form.getFieldsValue();
-      const openTimeStr = openTime ? openTime.format("HH:mm") : null;
-      const closeTimeStr = closeTime ? closeTime.format("HH:mm") : null;
-
-      const payload = {
-        ...formValues,
-        userId: user?.id,
-        vehicleTypes: selectedServices,
-        openTime: openTimeStr,
-        closeTime: closeTimeStr,
-      };
-
-      setLoading(true);
-      registerProvider(payload)
-        .then(() => {
-          setLoading(false);
-          setCurrent(current + 1);
-          showSuccess("Đăng ký thành công!");
-          // Sau khi chuyển sang bước hoàn tất, timeout 10s rồi logout
-          setTimeout(() => {
-            clearAccessToken();
-            setUser(null);
-            clearProfile();
-            window.location.href = "/";
-          }, 10000);
-        })
-        .catch((err) => {
-          setLoading(false);
-          showError(
-            err?.response?.data?.message ||
-              "Đăng ký thất bại. Vui lòng thử lại sau!"
-          );
-        });
+      // Hiển thị modal xác nhận
+      setShowConfirmModal(true);
       return;
     }
 
@@ -184,6 +217,50 @@ const BecomeProviderPage = () => {
     setSelectedServices((prev) =>
       checked ? [...prev, serviceId] : prev.filter((id) => id !== serviceId)
     );
+  };
+
+  const handleConfirmRegistration = () => {
+    const formValues = form.getFieldsValue();
+
+    // Set thời gian dựa trên option đã chọn
+    let openTimeStr, closeTimeStr;
+    if (timeOption === "fulltime") {
+      openTimeStr = "00:00";
+      closeTimeStr = "00:00";
+    } else {
+      openTimeStr = openTime ? openTime.format("HH:mm") : null;
+      closeTimeStr = closeTime ? closeTime.format("HH:mm") : null;
+    }
+
+    const payload = {
+      ...formValues,
+      userId: user?.id,
+      vehicleTypes: selectedServices,
+      openTime: openTimeStr,
+      closeTime: closeTimeStr,
+    };
+
+    setLoading(true);
+    registerProvider(payload)
+      .then(() => {
+        setLoading(false);
+        setShowConfirmModal(false);
+        setCurrent(current + 1);
+        showSuccess("Đăng ký thành công!");
+        setTimeout(() => {
+          clearAccessToken();
+          setUser(null);
+          clearProfile();
+          window.location.href = "/";
+        }, 10000);
+      })
+      .catch((err) => {
+        setLoading(false);
+        showError(
+          err?.response?.data?.message ||
+            "Đăng ký thất bại. Vui lòng thử lại sau!"
+        );
+      });
   };
 
   // Render functions for different steps
@@ -309,6 +386,79 @@ const BecomeProviderPage = () => {
     </div>
   );
 
+  // const renderServiceContent = () => (
+  //   <div className="p-6 bg-white rounded-lg shadow">
+  //     <Title level={4}>Chọn dịch vụ cho thuê</Title>
+  //     <Paragraph className="mb-4 text-gray-600">
+  //       Vui lòng chọn (các) dịch vụ cho thuê xe bạn muốn cung cấp trên nền tảng
+  //       RFT
+  //     </Paragraph>
+
+  //     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-8">
+  //       {rentalServices.map((service) => (
+  //         <Card
+  //           key={service.id}
+  //           className={`cursor-pointer transition-all ${
+  //             selectedServices.includes(service.id)
+  //               ? `border-2 border-[${token.colorPrimary}] shadow-md`
+  //               : "border border-gray-200"
+  //           }`}
+  //           onClick={() =>
+  //             onServiceChange(
+  //               service.id,
+  //               !selectedServices.includes(service.id)
+  //             )
+  //           }
+  //           style={{
+  //             borderColor: selectedServices.includes(service.id)
+  //               ? token.colorPrimary
+  //               : undefined,
+  //           }}
+  //         >
+  //           <div className="flex items-center">
+  //             <Checkbox
+  //               checked={selectedServices.includes(service.id)}
+  //               onChange={(e) => onServiceChange(service.id, e.target.checked)}
+  //             />
+  //             <div className="ml-4">
+  //               <Title level={5} className="mb-0">
+  //                 {service.name}
+  //               </Title>
+  //               <Text type="secondary">{service.description}</Text>
+  //             </div>
+  //           </div>
+  //         </Card>
+  //       ))}
+  //     </div>
+  //     <Title level={4}>Chọn thời gian hoạt động</Title>
+  //     <Paragraph className="mb-4 text-gray-600">
+  //       Vui lòng chọn giờ mở cửa và đóng cửa cho dịch vụ cho thuê xe của bạn.
+  //       <br />
+  //       Phải đảm bảo rằng bạn hoạt động trong khoảng thời gian này.
+  //     </Paragraph>
+  //     <Form layout="inline" className="mb-6 mt-8">
+  //       <Form.Item label="Giờ mở cửa">
+  //         <TimePicker
+  //           value={openTime}
+  //           onChange={setOpenTime}
+  //           format="HH:mm"
+  //           minuteStep={30}
+  //           placeholder="Giờ mở cửa"
+  //         />
+  //       </Form.Item>
+  //       <Form.Item label="Giờ đóng cửa">
+  //         <TimePicker
+  //           value={closeTime}
+  //           onChange={setCloseTime}
+  //           format="HH:mm"
+  //           minuteStep={30}
+  //           placeholder="Giờ đóng cửa"
+  //         />
+  //       </Form.Item>
+  //     </Form>
+  //   </div>
+  // );
+
   const renderServiceContent = () => (
     <div className="p-6 bg-white rounded-lg shadow">
       <Title level={4}>Chọn dịch vụ cho thuê</Title>
@@ -353,32 +503,73 @@ const BecomeProviderPage = () => {
           </Card>
         ))}
       </div>
+
       <Title level={4}>Chọn thời gian hoạt động</Title>
       <Paragraph className="mb-4 text-gray-600">
-        Vui lòng chọn giờ mở cửa và đóng cửa cho dịch vụ cho thuê xe của bạn.
-        <br />
-        Phải đảm bảo rằng bạn hoạt động trong khoảng thời gian này.
+        Vui lòng chọn thời gian hoạt động cho dịch vụ cho thuê xe của bạn.
       </Paragraph>
-      <Form layout="inline" className="mb-6 mt-8">
-        <Form.Item label="Giờ mở cửa">
-          <TimePicker
-            value={openTime}
-            onChange={setOpenTime}
-            format="HH:mm"
-            minuteStep={30}
-            placeholder="Giờ mở cửa"
-          />
-        </Form.Item>
-        <Form.Item label="Giờ đóng cửa">
-          <TimePicker
-            value={closeTime}
-            onChange={setCloseTime}
-            format="HH:mm"
-            minuteStep={30}
-            placeholder="Giờ đóng cửa"
-          />
-        </Form.Item>
-      </Form>
+
+      <Radio.Group
+        value={timeOption}
+        onChange={(e) => {
+          setTimeOption(e.target.value);
+          if (e.target.value === "fulltime") {
+            setOpenTime(dayjs("00:00", "HH:mm"));
+            setCloseTime(dayjs("00:00", "HH:mm"));
+          } else {
+            setOpenTime(null);
+            setCloseTime(null);
+          }
+        }}
+        className="mb-6"
+      >
+        <Space direction="vertical" size="large">
+          <Radio value="fulltime">
+            <div>
+              <div className="font-medium">Hoạt động toàn thời gian (24/7)</div>
+              <div className="text-gray-500 text-sm">
+                Cung cấp dịch vụ 24 giờ/ngày, 7 ngày/tuần
+              </div>
+            </div>
+          </Radio>
+          <Radio value="custom">
+            <div>
+              <div className="font-medium">Chọn khung thời gian hoạt động</div>
+              <div className="text-gray-500 text-sm">
+                Tự chọn giờ mở cửa và đóng cửa
+              </div>
+            </div>
+          </Radio>
+        </Space>
+      </Radio.Group>
+
+      {timeOption === "custom" && (
+        <div className="ml-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+          <Form layout="inline" className="mb-4">
+            <Form.Item label="Giờ mở cửa">
+              <TimePicker
+                value={openTime}
+                onChange={setOpenTime}
+                format="HH:mm"
+                minuteStep={30}
+                placeholder="Giờ mở cửa"
+              />
+            </Form.Item>
+            <Form.Item label="Giờ đóng cửa">
+              <TimePicker
+                value={closeTime}
+                onChange={setCloseTime}
+                format="HH:mm"
+                minuteStep={30}
+                placeholder="Giờ đóng cửa"
+              />
+            </Form.Item>
+          </Form>
+          <Text type="secondary" className="text-sm">
+            Phải đảm bảo rằng bạn hoạt động trong khoảng thời gian này.
+          </Text>
+        </div>
+      )}
     </div>
   );
 
@@ -452,6 +643,62 @@ const BecomeProviderPage = () => {
           )}
         </div>
       </div>
+
+      <Modal
+        title="Xác nhận thông tin đăng ký"
+        open={showConfirmModal}
+        onCancel={() => setShowConfirmModal(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setShowConfirmModal(false)}>
+            Quay lại chỉnh sửa
+          </Button>,
+          <Button
+            key="confirm"
+            type="primary"
+            loading={loading}
+            onClick={handleConfirmRegistration}
+          >
+            Xác nhận đăng ký
+          </Button>,
+        ]}
+        width={600}
+      >
+        <div className="space-y-4">
+          <div>
+            <Title level={5}>Dịch vụ cung cấp:</Title>
+            <div className="flex flex-wrap gap-2">
+              {selectedServices.map((serviceId) => {
+                const service = rentalServices.find((s) => s.id === serviceId);
+                return (
+                  <span
+                    key={serviceId}
+                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                  >
+                    {service?.name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <Title level={5}>Thời gian hoạt động:</Title>
+            <Text>
+              {timeOption === "fulltime"
+                ? "Hoạt động 24/7 (toàn thời gian)"
+                : `${openTime?.format("HH:mm")} - ${closeTime?.format(
+                    "HH:mm"
+                  )} hàng ngày`}
+            </Text>
+          </div>
+
+          <Divider />
+
+          <Text type="secondary">
+            Vui lòng kiểm tra lại thông tin trước khi xác nhận đăng ký.
+          </Text>
+        </div>
+      </Modal>
     </section>
   );
 };

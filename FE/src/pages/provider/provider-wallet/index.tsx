@@ -109,7 +109,7 @@ export default function ProviderWalletsPage() {
       setWallet(data);
       if (Array.isArray(data?.cards)) {
         setCards(data.cards);
-      } else if (data?.bankAccountNumber) {
+      } else if (data?.id) {
         setCards([
           {
             id: data.id || "1",

@@ -16,7 +16,7 @@ interface GroupEditVehicleModalProps {
   onOk: (values: Record<string, unknown>) => void;
 }
 
-// ✅ Chỉ sửa phần này - Dynamic feature options
+// ✅ Dynamic feature options
 const motorbikeFeatureOptions = [
   { label: "GPS", value: "GPS" },
   { label: "Bluetooth", value: "Bluetooth" },
@@ -48,10 +48,12 @@ const fuelTypeOptions = [
   { value: "GASOLINE", label: "Xăng" },
   { value: "ELECTRIC", label: "Điện" },
 ];
+
 const insuranceOptions = [
   { value: "YES", label: "Có" },
   { value: "NO", label: "Không" },
 ];
+
 const deliveryOptions = [
   { value: "YES", label: "Có" },
   { value: "NO", label: "Không" },
@@ -75,17 +77,19 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [user] = useUserState();
+
   type RentalRuleOption = {
     value: string;
     label: string;
     penaltyType: string;
     penaltyValue: number;
   };
+
   const [rentalRuleOptions, setRentalRuleOptions] = useState<
     RentalRuleOption[]
   >([]);
 
-  // ✅ Chỉ thêm logic này để xác định loại xe và features
+  // ✅ Xác định loại xe và features
   const vehicleType = useMemo(() => {
     if (!vehicle) return "MOTORBIKE"; // Default
 
@@ -108,7 +112,7 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
       : motorbikeFeatureOptions;
   }, [vehicleType]);
 
-  // ✅ Giữ nguyên tất cả logic cũ
+  // ✅ Fetch rental rules
   useEffect(() => {
     async function fetchRentalRules() {
       if (!user?.id) return;
@@ -157,29 +161,42 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
       } else if (typeof v.rentalRule === "string") {
         penaltyId = v.rentalRule;
       }
+
       const brandId = motorbikeBrands.find(
         (brand) => brand.label === vehicle.brandName
       )?.value;
-      form.setFieldsValue({
+
+      // ✅ Điều chỉnh setFieldsValue dựa trên loại xe
+      const baseFields = {
         thumb: v.thumb,
-        fuelType: v.fuelType,
         vehicleFeatures: v.vehicleFeatures?.map((f) => f.name) || [],
-        brandName: v.brandName,
-        brandId: brandId,
-        transmission: v.transmission,
         yearManufacture: v.yearManufacture,
         costPerDay: v.costPerDay,
-        insuranceStatus: v.insuranceStatus ?? "NO",
         shipToAddress: v.shipToAddress || "NO",
         penaltyId: penaltyId,
         description: v.description,
-      });
+      };
+
+      if (vehicleType === "BICYCLE") {
+        // Chỉ set các trường cần thiết cho xe đạp
+        form.setFieldsValue(baseFields);
+      } else {
+        // Set đầy đủ các trường cho xe máy
+        form.setFieldsValue({
+          ...baseFields,
+          fuelType: v.fuelType,
+          brandName: v.brandName,
+          brandId: brandId,
+          transmission: v.transmission,
+          insuranceStatus: v.insuranceStatus ?? "NO",
+        });
+      }
     } else {
       form.resetFields();
     }
-  }, [vehicle, form]);
+  }, [vehicle, form, vehicleType]);
 
-  // ✅ Chỉ sửa title để dynamic
+  // ✅ Dynamic titles
   const getModalTitle = () => {
     return vehicleType === "BICYCLE"
       ? "Chỉnh sửa thông tin nhóm xe đạp"
@@ -201,6 +218,7 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
       <Form form={form} layout="vertical" onFinish={onOk}>
         <Card title={<span>{getCardTitle()}</span>} className="mb-4">
           <div className="grid md:grid-cols-2 gap-4">
+            {/* ✅ Tên hiển thị xe - hiển thị cho cả hai loại */}
             <Form.Item
               label="Tên hiển thị xe"
               name="thumb"
@@ -213,20 +231,26 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
             >
               <Input placeholder={vehicle?.thumb || "Nhập tên hiển thị xe"} />
             </Form.Item>
-            <Form.Item
-              label="Loại nhiên liệu"
-              name="fuelType"
-              rules={[
-                { required: true, message: "Vui lòng chọn loại nhiên liệu" },
-              ]}
-            >
-              <Select
-                placeholder={
-                  vehicle?.fuelType ? undefined : "Chọn loại nhiên liệu"
-                }
-                options={fuelTypeOptions}
-              />
-            </Form.Item>
+
+            {/* ✅ Loại nhiên liệu - chỉ hiển thị cho xe máy */}
+            {vehicleType !== "BICYCLE" && (
+              <Form.Item
+                label="Loại nhiên liệu"
+                name="fuelType"
+                rules={[
+                  { required: true, message: "Vui lòng chọn loại nhiên liệu" },
+                ]}
+              >
+                <Select
+                  placeholder={
+                    vehicle?.fuelType ? undefined : "Chọn loại nhiên liệu"
+                  }
+                  options={fuelTypeOptions}
+                />
+              </Form.Item>
+            )}
+
+            {/* ✅ Tiện ích xe - hiển thị cho cả hai loại với options khác nhau */}
             <Form.Item
               label="Tiện ích xe"
               name="vehicleFeatures"
@@ -252,30 +276,39 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
                 allowClear
               />
             </Form.Item>
-            <Form.Item
-              label="Hãng xe"
-              name="brandId" // Đây là tên trường mà bạn sẽ gửi lên
-              rules={[{ required: true, message: "Vui lòng chọn hãng xe" }]}
-            >
-              <Select
-                placeholder="Chọn hãng xe"
-                showSearch
-                options={motorbikeBrands} // Dữ liệu JSON đã được định nghĩa
-              />
-            </Form.Item>
 
-            <Form.Item
-              label="Truyền động"
-              name="transmission"
-              rules={[
-                { required: true, message: "Vui lòng chọn loại truyền động" },
-              ]}
-            >
-              <Select
-                options={transmissionOptions}
-                placeholder="Chọn loại truyền động"
-              />
-            </Form.Item>
+            {/* ✅ Hãng xe - chỉ hiển thị cho xe máy */}
+            {vehicleType !== "BICYCLE" && (
+              <Form.Item
+                label="Hãng xe"
+                name="brandId"
+                rules={[{ required: true, message: "Vui lòng chọn hãng xe" }]}
+              >
+                <Select
+                  placeholder="Chọn hãng xe"
+                  showSearch
+                  options={motorbikeBrands}
+                />
+              </Form.Item>
+            )}
+
+            {/* ✅ Truyền động - chỉ hiển thị cho xe máy */}
+            {vehicleType !== "BICYCLE" && (
+              <Form.Item
+                label="Truyền động"
+                name="transmission"
+                rules={[
+                  { required: true, message: "Vui lòng chọn loại truyền động" },
+                ]}
+              >
+                <Select
+                  options={transmissionOptions}
+                  placeholder="Chọn loại truyền động"
+                />
+              </Form.Item>
+            )}
+
+            {/* ✅ Năm sản xuất - hiển thị cho cả hai loại */}
             <Form.Item
               label="Năm sản xuất"
               name="yearManufacture"
@@ -292,6 +325,8 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
                 }
               />
             </Form.Item>
+
+            {/* ✅ Giá thuê - hiển thị cho cả hai loại */}
             <Form.Item
               label="Giá thuê/ngày (VNĐ)"
               name="costPerDay"
@@ -305,20 +340,26 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
                 }
               />
             </Form.Item>
-            <Form.Item
-              label="Bảo hiểm"
-              name="insuranceStatus"
-              rules={[{ required: true, message: "Vui lòng chọn bảo hiểm" }]}
-            >
-              <Select
-                placeholder={
-                  form.getFieldValue("insuranceStatus")
-                    ? undefined
-                    : "Chọn bảo hiểm"
-                }
-                options={insuranceOptions}
-              />
-            </Form.Item>
+
+            {/* ✅ Bảo hiểm - chỉ hiển thị cho xe máy */}
+            {vehicleType !== "BICYCLE" && (
+              <Form.Item
+                label="Bảo hiểm"
+                name="insuranceStatus"
+                rules={[{ required: true, message: "Vui lòng chọn bảo hiểm" }]}
+              >
+                <Select
+                  placeholder={
+                    form.getFieldValue("insuranceStatus")
+                      ? undefined
+                      : "Chọn bảo hiểm"
+                  }
+                  options={insuranceOptions}
+                />
+              </Form.Item>
+            )}
+
+            {/* ✅ Giao xe tận nơi - hiển thị cho cả hai loại */}
             <Form.Item
               label="Giao xe tận nơi"
               name="shipToAddress"
@@ -333,6 +374,8 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
                 options={deliveryOptions}
               />
             </Form.Item>
+
+            {/* ✅ Quy định thuê xe - hiển thị cho cả hai loại */}
             <Form.Item
               label="Quy định thuê xe"
               name="penaltyId"
@@ -352,6 +395,8 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
                 optionFilterProp="label"
               />
             </Form.Item>
+
+            {/* ✅ Mô tả xe - hiển thị cho cả hai loại */}
             <Form.Item
               label="Mô tả xe"
               name="description"

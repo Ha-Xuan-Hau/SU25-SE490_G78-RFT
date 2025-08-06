@@ -12,22 +12,8 @@ import {
   SearchOutlined,
   ExclamationCircleOutlined,
   CheckCircleOutlined,
-  MinusCircleOutlined,
 } from "@ant-design/icons";
-import {
-  Button,
-  Form,
-  Image,
-  Input,
-  Modal,
-  Table,
-  Tooltip,
-  Card,
-  Tag,
-  Spin,
-  Tabs,
-} from "antd";
-import dayjs from "dayjs";
+import { Button, Input, Table, Tooltip, Card, Tag, Spin, Tabs } from "antd";
 import type { ColumnType } from "antd/es/table";
 
 // Define TypeScript interfaces
@@ -78,8 +64,8 @@ interface ApiResponse<T> {
 
 export default function ManageContracts() {
   // States
-  const [form] = Form.useForm();
-  const [open, setOpen] = useState<boolean>(false);
+  // const [form] = Form.useForm();
+  // const [open, setOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [contracts, setContracts] = useState<ContractData[]>([]);
@@ -87,9 +73,9 @@ export default function ManageContracts() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
   // ✅ Thêm state để lưu thông tin contract hiện tại
-  const [currentContract, setCurrentContract] = useState<ContractData | null>(
-    null
-  );
+  // const [currentContract, setCurrentContract] = useState<ContractData | null>(
+  //   null
+  // );
 
   // Ref to track if we've already fetched data for current provider
   const hasFetchedRef = useRef<string | null>(null);
@@ -151,17 +137,17 @@ export default function ManageContracts() {
         console.log("Fetching contracts for provider:", providerId);
 
         const [
-          processingResult,
-          rentingResult,
+          // processingResult,
+          // rentingResult,
           finishedResult,
           cancelledResult,
         ] = await Promise.all([
-          getContractsByProviderAndStatus(providerId, "PROCESSING") as Promise<
-            ApiResponse<ContractData[]>
-          >,
-          getContractsByProviderAndStatus(providerId, "RENTING") as Promise<
-            ApiResponse<ContractData[]>
-          >,
+          // getContractsByProviderAndStatus(providerId, "PROCESSING") as Promise<
+          //   ApiResponse<ContractData[]>
+          // >,
+          // getContractsByProviderAndStatus(providerId, "RENTING") as Promise<
+          //   ApiResponse<ContractData[]>
+          // >,
           getContractsByProviderAndStatus(providerId, "FINISHED") as Promise<
             ApiResponse<ContractData[]>
           >,
@@ -171,10 +157,10 @@ export default function ManageContracts() {
         ]);
 
         const allContracts: ContractData[] = [];
-        if (processingResult.success)
-          allContracts.push(...(processingResult.data || []));
-        if (rentingResult.success)
-          allContracts.push(...(rentingResult.data || []));
+        // if (processingResult.success)
+        //   allContracts.push(...(processingResult.data || []));
+        // if (rentingResult.success)
+        //   allContracts.push(...(rentingResult.data || []));
         if (finishedResult.success)
           allContracts.push(...(finishedResult.data || []));
         if (cancelledResult.success)
@@ -184,8 +170,8 @@ export default function ManageContracts() {
         hasFetchedRef.current = providerId;
 
         if (
-          !processingResult.success &&
-          !rentingResult.success &&
+          // !processingResult.success &&
+          // !rentingResult.success &&
           !finishedResult.success &&
           !cancelledResult.success
         ) {
@@ -211,18 +197,26 @@ export default function ManageContracts() {
   // Filter contracts based on active tab and search text
   const getFilteredContracts = () => {
     let filtered = contracts;
-    if (activeTab === "processing") {
-      filtered = contracts.filter(
-        (contract) => contract.status === "PROCESSING"
-      );
-    } else if (activeTab === "renting") {
-      filtered = contracts.filter((contract) => contract.status === "RENTING");
-    } else if (activeTab === "finished") {
+    // if (activeTab === "processing") {
+    //   filtered = contracts.filter(
+    //     (contract) => contract.status === "PROCESSING"
+    //   );
+    // } else if (activeTab === "renting") {
+    //   filtered = contracts.filter((contract) => contract.status === "RENTING");
+    // } else
+    if (activeTab === "finished") {
       filtered = contracts.filter((contract) => contract.status === "FINISHED");
     } else if (activeTab === "cancelled") {
       filtered = contracts.filter(
         (contract) => contract.status === "CANCELLED"
       );
+    } else if (activeTab === "all") {
+      // ✅ Sắp xếp theo createdAt cho tab "all"
+      filtered = [...contracts].sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // Mới nhất trước (DESC)
+      });
     }
 
     // Filter by search text
@@ -250,36 +244,44 @@ export default function ManageContracts() {
   // Get contracts to display
   const displayContracts = getFilteredContracts();
 
-  const showModal = (contract: ContractData) => {
-    setCurrentContract(contract); // ✅ Lưu thông tin contract hiện tại
-    setOpen(true);
-    form.setFieldsValue({
-      id: contract.id,
-      userName: contract.userName,
-      userPhone: contract.userPhone,
-      userAddress: contract.userAddress,
-      vehicleThumb: contract.vehicleThumb,
-      vehicleLicensePlate: contract.vehicleLicensePlate,
-      bookingStartTime: formatDateTime(contract.bookingStartTime),
-      bookingEndTime: formatDateTime(contract.bookingEndTime),
-      bookingTotalCost:
-        contract.bookingTotalCost.toLocaleString("vi-VN") + " VNĐ",
-      timeFinish: contract.timeFinish
-        ? formatDateTime(contract.timeFinish)
-        : "N/A",
-    });
-  };
+  // const showModal = (contract: ContractData) => {
+  //   setCurrentContract(contract); // Lưu thông tin contract hiện tại
+  //   setOpen(true);
+  //   form.setFieldsValue({
+  //     id: contract.id,
+  //     userName: contract.userName,
+  //     userPhone: contract.userPhone,
+  //     userAddress: contract.userAddress,
+  //     vehicleThumb: contract.vehicleThumb,
+  //     vehicleLicensePlate: contract.vehicleLicensePlate,
+  //     bookingStartTime: formatDateTime(contract.bookingStartTime),
+  //     bookingEndTime: formatDateTime(contract.bookingEndTime),
+  //     bookingTotalCost:
+  //       contract.bookingTotalCost.toLocaleString("vi-VN") + " VNĐ",
+  //     timeFinish: contract.timeFinish
+  //       ? formatDateTime(contract.timeFinish)
+  //       : "N/A",
+  //   });
+  // };
 
-  const handleCancel = () => {
-    setOpen(false);
-    setCurrentContract(null); // ✅ Reset current contract
-  };
+  // const handleCancel = () => {
+  //   setOpen(false);
+  //   setCurrentContract(null); // ✅ Reset current contract
+  // };
 
-  // ✅ Thêm function để mở booking detail trong tab mới
-  const handleViewBookingDetail = () => {
-    if (currentContract?.bookingId) {
-      const url = `/booking-detail/${currentContract.bookingId}`;
-      window.open(url, "_blank");
+  // // ✅ Thêm function để mở booking detail trong tab mới
+  // const handleViewBookingDetail = () => {
+  //   if (currentContract?.bookingId) {
+  //     const url = `/booking-detail/${currentContract.bookingId}`;
+  //     window.open(url, "_blank");
+  //   }
+  // };
+
+  const handleViewDetail = (contract: ContractData) => {
+    if (contract.bookingId) {
+      const url = `/booking-detail/${contract.bookingId}`;
+      window.open(url, "_blank"); // Mở tab mới
+      // Hoặc dùng router.push(url) nếu muốn chuyển trang hiện tại
     }
   };
 
@@ -310,18 +312,18 @@ export default function ManageContracts() {
 
   const getStatusTag = (status: string) => {
     switch (status) {
-      case "PROCESSING":
-        return (
-          <Tag color="orange" icon={<MinusCircleOutlined />}>
-            Chờ xác nhận
-          </Tag>
-        );
-      case "RENTING":
-        return (
-          <Tag color="blue" icon={<CheckCircleOutlined />}>
-            Đang thuê
-          </Tag>
-        );
+      // case "PROCESSING":
+      //   return (
+      //     <Tag color="orange" icon={<MinusCircleOutlined />}>
+      //       Đang xử lý
+      //     </Tag>
+      //   );
+      // case "RENTING":
+      //   return (
+      //     <Tag color="blue" icon={<CheckCircleOutlined />}>
+      //       Đang thuê
+      //     </Tag>
+      //   );
       case "FINISHED":
         return (
           <Tag color="green" icon={<CheckCircleOutlined />}>
@@ -347,7 +349,7 @@ export default function ManageContracts() {
       render: (_, record) => (
         <div className="flex items-center gap-3">
           <div>
-            <div className="font-semibold"> {record.bookingId}</div>
+            <div className="font-semibold">Mã đơn: {record.bookingId}</div>
             <div className="text-sm text-gray-400">{record.vehicleThumb}</div>
           </div>
         </div>
@@ -408,10 +410,10 @@ export default function ManageContracts() {
       fixed: "right",
       width: 120,
       render: (_, contract) => (
-        <Tooltip title="Xem chi tiết">
+        <Tooltip title="Xem chi tiết đơn hàng">
           <Button
             size="small"
-            onClick={() => showModal(contract)}
+            onClick={() => handleViewDetail(contract)}
             icon={<SearchOutlined />}
           >
             Chi tiết
@@ -453,22 +455,22 @@ export default function ManageContracts() {
                 key: "all",
                 label: loading ? "Tất cả" : `Tất cả (${contracts.length})`,
               },
-              {
-                key: "processing",
-                label: loading
-                  ? "Đang xử lý"
-                  : `Đang xử lý (${
-                      contracts.filter((c) => c.status === "PROCESSING").length
-                    })`,
-              },
-              {
-                key: "renting",
-                label: loading
-                  ? "Đang thực hiện"
-                  : `Đang thực hiện (${
-                      contracts.filter((c) => c.status === "RENTING").length
-                    })`,
-              },
+              // {
+              //   key: "processing",
+              //   label: loading
+              //     ? "Đang xử lý"
+              //     : `Đang xử lý (${
+              //         contracts.filter((c) => c.status === "PROCESSING").length
+              //       })`,
+              // },
+              // {
+              //   key: "renting",
+              //   label: loading
+              //     ? "Đang thực hiện"
+              //     : `Đang thực hiện (${
+              //         contracts.filter((c) => c.status === "RENTING").length
+              //       })`,
+              // },
               {
                 key: "finished",
                 label: loading
@@ -571,7 +573,8 @@ export default function ManageContracts() {
                     <div className="flex gap-2">
                       <Button
                         size="small"
-                        onClick={() => showModal(contract)}
+                        // onClick={() => showModal(contract)}
+                        onClick={() => handleViewDetail(contract)}
                         className="flex-1"
                       >
                         Xem chi tiết
@@ -608,7 +611,7 @@ export default function ManageContracts() {
       </Card>
 
       {/* ✅ Modal đã được cập nhật */}
-      <Modal
+      {/* <Modal
         title="Chi tiết đơn đặt xe"
         open={open}
         footer={null}
@@ -619,39 +622,38 @@ export default function ManageContracts() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <Form.Item label="Mã đặt xe" name="id">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Tên khách hàng" name="userName">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Số điện thoại" name="userPhone">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Địa chỉ nhận xe" name="userAddress">
-                <Input.TextArea disabled rows={2} />
+                <Input.TextArea readOnly rows={2} />
               </Form.Item>
             </div>
 
             <div>
               <Form.Item label="Thời gian bắt đầu thuê" name="bookingStartTime">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Thời gian kết thúc thuê" name="bookingEndTime">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Thời gian khách trả xe" name="timeFinish">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Tổng giá tiền thuê" name="bookingTotalCost">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
               <Form.Item label="Contract ID" hidden name="id">
-                <Input disabled />
+                <Input readOnly />
               </Form.Item>
             </div>
           </div>
 
-          {/* ✅ Thêm dòng xem chi tiết đơn hàng */}
           {currentContract?.bookingId && (
             <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between">
@@ -678,7 +680,7 @@ export default function ManageContracts() {
             <Button onClick={handleCancel}>Đóng</Button>
           </div>
         </Form>
-      </Modal>
+      </Modal>  */}
     </div>
   );
 }
