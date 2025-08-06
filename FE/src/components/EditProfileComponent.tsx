@@ -16,8 +16,9 @@ import {
   UserOutlined,
   LoadingOutlined,
   CameraOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
-import moment from "moment";
+import dayjs from "dayjs";
 import type { RcFile, UploadProps } from "antd/es/upload/interface";
 import { User } from "@/types/user";
 import { updateUserProfile } from "@/apis/user.api";
@@ -25,6 +26,155 @@ import { showError, showSuccess } from "@/utils/toast.utils";
 import { useRefreshUser } from "@/recoils/user.state";
 import { useAuth } from "@/context/AuthContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
+
+// Custom DateInput Component
+const CustomDateInput: React.FC<{
+  value?: dayjs.Dayjs;
+  onChange?: (value: dayjs.Dayjs | null) => void;
+  placeholder?: string;
+  className?: string;
+}> = ({ value, onChange, placeholder, className }) => {
+  const [inputValue, setInputValue] = useState<string>("");
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+
+  // Sync input value với dayjs value
+  useEffect(() => {
+    if (value && value.isValid()) {
+      setInputValue(value.format("DD/MM/YYYY"));
+    } else {
+      setInputValue("");
+    }
+  }, [value]);
+
+  // Format input khi user gõ
+  const formatInput = (input: string) => {
+    // Chỉ giữ lại số
+    const numbers = input.replace(/\D/g, "");
+
+    let formatted = "";
+    if (numbers.length > 0) {
+      // DD
+      formatted = numbers.substring(0, 2);
+    }
+    if (numbers.length > 2) {
+      // DD/MM
+      formatted += "/" + numbers.substring(2, 4);
+    }
+    if (numbers.length > 4) {
+      // DD/MM/YYYY
+      formatted += "/" + numbers.substring(4, 8);
+    }
+
+    return formatted;
+  };
+
+  // Parse input thành dayjs
+  const parseInputToMoment = (input: string): dayjs.Dayjs | null => {
+    if (!input || input.length < 10) return null;
+
+    const dateParts = input.split("/");
+    if (dateParts.length !== 3) return null;
+
+    const day = parseInt(dateParts[0]);
+    const month = parseInt(dateParts[1]);
+    const year = parseInt(dateParts[2]);
+
+    // Kiểm tra tính hợp lệ cơ bản
+    if (
+      day < 1 ||
+      day > 31 ||
+      month < 1 ||
+      month > 12 ||
+      year < 1900 ||
+      year > 2100
+    ) {
+      return null;
+    }
+
+    const dayjsDate = dayjs(
+      `${year}-${month.toString().padStart(2, "0")}-${day
+        .toString()
+        .padStart(2, "0")}`
+    );
+
+    return dayjsDate.isValid() ? dayjsDate : null;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    const formatted = formatInput(rawValue);
+
+    setInputValue(formatted);
+
+    // Nếu đã nhập đủ format DD/MM/YYYY thì parse thành dayjs
+    if (formatted.length === 10) {
+      const dayjsDate = parseInputToMoment(formatted);
+      if (onChange) {
+        onChange(dayjsDate);
+      }
+    } else if (onChange) {
+      onChange(null);
+    }
+  };
+
+  const handleDatePickerChange = (date: dayjs.Dayjs | null) => {
+    if (onChange) {
+      onChange(date);
+    }
+    setIsPickerOpen(false);
+  };
+
+  const handleInputBlur = () => {
+    // Validate khi blur
+    if (inputValue && inputValue.length === 10) {
+      const dayjsDate = parseInputToMoment(inputValue);
+      if (!dayjsDate) {
+        setInputValue("");
+        if (onChange) {
+          onChange(null);
+        }
+      }
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Input
+        value={inputValue}
+        onChange={handleInputChange}
+        onBlur={handleInputBlur}
+        placeholder={placeholder || "DD/MM/YYYY"}
+        className={className}
+        maxLength={10}
+        suffix={
+          <CalendarOutlined
+            onClick={() => setIsPickerOpen(true)}
+            className="cursor-pointer text-gray-400 hover:text-gray-600"
+          />
+        }
+      />
+
+      {isPickerOpen && (
+        <div className="absolute top-full left-0 z-50 mt-1">
+          <DatePicker
+            open={true}
+            value={value}
+            onChange={handleDatePickerChange}
+            onOpenChange={(open) => {
+              if (!open) setIsPickerOpen(false);
+            }}
+            format="DD/MM/YYYY"
+            disabledDate={(current) => {
+              return current && current.isAfter(dayjs().endOf("day"));
+            }}
+            showToday={false}
+            className="invisible" // Ẩn input của DatePicker, chỉ hiện calendar
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Định nghĩa interface cho props
 interface EditProfileModalProps {
@@ -40,7 +190,7 @@ interface FormValues {
   email?: string;
   phone?: string;
   address?: string;
-  dateOfBirth?: moment.Moment;
+  dateOfBirth?: dayjs.Dayjs;
   profilePicture?: string;
 }
 
@@ -96,7 +246,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
         phone: currentUser.phone,
         address: currentUser.address,
         dateOfBirth: currentUser.dateOfBirth
-          ? moment()
+          ? dayjs()
               .set("year", currentUser.dateOfBirth[0])
               .set("month", currentUser.dateOfBirth[1] - 1)
               .set("date", currentUser.dateOfBirth[2])
@@ -125,6 +275,43 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
       setImageLoading(false);
       message.error("Tải ảnh thất bại");
     }
+  };
+
+  // Custom validator cho ngày sinh
+  const validateDateOfBirth = (_: any, value: dayjs.Dayjs) => {
+    if (!value) {
+      return Promise.resolve(); // Không bắt buộc nhập ngày sinh
+    }
+
+    if (!value.isValid()) {
+      return Promise.reject(
+        new Error(
+          "Ngày sinh không hợp lệ! Vui lòng nhập theo định dạng DD/MM/YYYY"
+        )
+      );
+    }
+
+    const today = dayjs();
+    const minAge = 16; // Tuổi tối thiểu
+    const maxAge = 100; // Tuổi tối đa
+
+    // Kiểm tra ngày sinh phải trong quá khứ
+    if (value.isAfter(today)) {
+      return Promise.reject(new Error("Ngày sinh phải là ngày trong quá khứ!"));
+    }
+
+    // Kiểm tra tuổi tối thiểu
+    const age = today.diff(value, "year");
+    if (age < minAge) {
+      return Promise.reject(new Error(`Bạn phải ít nhất ${minAge} tuổi!`));
+    }
+
+    // Kiểm tra tuổi tối đa (để tránh nhập nhầm)
+    if (age > maxAge) {
+      return Promise.reject(new Error(`Tuổi không được vượt quá ${maxAge}!`));
+    }
+
+    return Promise.resolve();
   };
 
   // Hàm xử lý cập nhật thông tin người dùng
@@ -268,12 +455,16 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
           </Col>
 
           <Col span={12}>
-            <Form.Item label="Ngày sinh" name="dateOfBirth">
-              <DatePicker
-                placeholder="Chọn ngày sinh"
-                format="DD/MM/YYYY"
-                className="w-full"
-              />
+            <Form.Item
+              label="Ngày sinh"
+              name="dateOfBirth"
+              rules={[
+                {
+                  validator: validateDateOfBirth,
+                },
+              ]}
+            >
+              <CustomDateInput placeholder="DD/MM/YYYY" className="w-full" />
             </Form.Item>
           </Col>
         </Row>
