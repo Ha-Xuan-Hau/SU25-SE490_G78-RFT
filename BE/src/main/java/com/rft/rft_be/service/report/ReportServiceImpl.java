@@ -25,8 +25,31 @@ public class ReportServiceImpl implements ReportService {
     private final VehicleRepository vehicleRepo;
     private final ReportMapper mapper;
 
-    private final List<String> seriousReport = List.of("Lừa đảo");
-    private final List<String> nonSeriousReport = List.of("Spam", "Không phù hợp", "Bạo lực", "Khác", "SPAM");
+    private final List<String> seriousReport = List.of(
+            "DAMAGED_VEHICLE", // khách làm hư hỏng xe
+            "FRAUD",                      // Gian lận
+            "MISLEADING_INFO",            // Xe khác với mô tả
+            "OWNER_NO_SHOW",              // Chủ xe không giao xe
+            "OWNER_CANCEL_UNREASONABLY",  // Chủ xe huỷ đơn không lý do
+            "DOCUMENT_ISSUE",             // Giấy tờ sai/mất
+            "TECHNICAL_ISSUE",            // Xe bị lỗi kỹ thuật
+            "UNSAFE_VEHICLE",             // Xe không an toàn
+            "FUEL_LEVEL_INCORRECT",   // Mức nhiên liệu không đúng như cam kết`
+            "NO_INSURANCE",               // Không có bảo hiểm
+            "EXPIRED_INSURANCE",          // Bảo hiểm hết hạn
+            "FAKE_DOCUMENT",              // Khách cung cấp giấy tờ giả
+            "FAKE_ORDER",                 // Khách đặt đơn giả
+            "DISPUTE_REFUND",     // Tranh chấp hoàn tiền/phạt
+            "LATE_RETURN_NO_CONTACT"      // Không trả xe đúng hạn và mất liên lạc
+    );
+    private final List<String> nonSeriousReport = List.of(
+            "INAPPROPRIATE",      // Ngôn từ không phù hợp
+            "VIOLENCE",           // Bạo lực
+            "SPAM",               // Spam
+            "OTHERS",             // Khác
+            "DIRTY_CAR",          // Xe bẩn
+            "MISLEADING_LISTING"  // Thông tin sai trong bài đăng
+    );
     private final List<String> staffReport = List.of("Report by staff");
 
     /**
