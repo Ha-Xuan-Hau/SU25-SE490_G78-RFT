@@ -428,6 +428,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         if (request.getPenaltyId() != null && !request.getPenaltyId().trim().isEmpty()) {
             Penalty penalty = penaltyRepository.findById(request.getPenaltyId())
+                    
                     .orElseThrow(() -> new RuntimeException("Phạt không tồn tại với id: " + request.getPenaltyId()));
             existingVehicle.setPenalty(penalty);
         }

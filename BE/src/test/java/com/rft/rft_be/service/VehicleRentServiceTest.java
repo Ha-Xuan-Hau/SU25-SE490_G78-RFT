@@ -98,6 +98,7 @@ public class VehicleRentServiceTest {
         when(vehicleMapper.vehicleGet(any(Vehicle.class))).thenReturn(dto);
         VehicleGetDTO result = vehicleRentService.createVehicle(request);
         assertNotNull(result);
+
     }
     @Test
     void createVehicle_userNotFound() {
