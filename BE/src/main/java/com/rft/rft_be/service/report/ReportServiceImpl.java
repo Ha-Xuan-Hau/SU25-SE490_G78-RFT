@@ -50,7 +50,7 @@ public class ReportServiceImpl implements ReportService {
             "DIRTY_CAR",          // Xe bẩn
             "MISLEADING_LISTING"  // Thông tin sai trong bài đăng
     );
-    private final List<String> staffReport = List.of("Report by staff");
+    private final List<String> staffReport = List.of("STAFF_REPORT");
 
     /**
      * Tạo mới một báo cáo dựa trên thông tin từ người báo cáo và yêu cầu.
@@ -64,7 +64,7 @@ public class ReportServiceImpl implements ReportService {
             request.setGeneralType("SERIOUS_ERROR");
         } else if (nonSeriousReport.contains(type)) {
             request.setGeneralType("NON_SERIOUS_ERROR");
-        } else if (staffReport.contains(type) || "Report by staff".equalsIgnoreCase(type)) {
+        } else if (staffReport.contains(type) || "STAFF_REPORT".equalsIgnoreCase(type)) {
             request.setGeneralType("STAFF_ERROR");
         } else {
             request.setGeneralType("NON_SERIOUS_ERROR");
