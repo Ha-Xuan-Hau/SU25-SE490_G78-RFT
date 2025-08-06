@@ -53,6 +53,7 @@ dayjs.extend(isSameOrBefore);
 
 // Ant Design Components
 import { Modal, message, Button as AntButton } from "antd";
+import ReportButton from "@/components/ReportComponent";
 
 // --- Type definitions ---
 type RangeValue = [Dayjs | null, Dayjs | null] | null;
@@ -1039,7 +1040,7 @@ export default function VehicleDetail() {
                         commentsPerPage
                       ).map((comment, index) => (
                         <div
-                          key={comment.id || index}
+                          key={comment.userId}
                           className="flex items-start gap-3 sm:gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm"
                         >
                           {comment.userImage && (
@@ -1060,7 +1061,8 @@ export default function VehicleDetail() {
                                 <h4 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white">
                                   {comment.userName}
                                 </h4>
-                                <div className="flex items-center">
+                                <div className="flex items-center gap-1">
+                                  {/* Rating stars */}
                                   {Array.from({ length: 5 }).map((_, i) => (
                                     <Icon
                                       key={i}
@@ -1078,6 +1080,16 @@ export default function VehicleDetail() {
                                       height={16}
                                     />
                                   ))}
+
+                                  {/* Report button - ngay cạnh rating */}
+                                  <ReportButton
+                                    targetId={comment.userId}
+                                    reportType="SPAM"
+                                    buttonText=""
+                                    size="small"
+                                    type="text"
+                                    icon={true}
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -1089,7 +1101,7 @@ export default function VehicleDetail() {
                       ))}
                     </div>
 
-                    {/* Pagination controls */}
+                    {/* Pagination controls - giữ nguyên */}
                     {vehicleComments.length > commentsPerPage && (
                       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
                         <button
@@ -1492,6 +1504,21 @@ export default function VehicleDetail() {
                 </ul>
               </div>
             )}
+            {/* Nút báo cáo thông tin sai lệch */}
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Thông tin xe không chính xác?
+                </span>
+                <ReportButton
+                  targetId={vehicle.id}
+                  reportType="INAPPROPRIATE"
+                  buttonText="Báo cáo"
+                  size="small"
+                  type="text"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
