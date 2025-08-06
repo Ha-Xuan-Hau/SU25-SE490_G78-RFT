@@ -415,6 +415,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 log.info("[DEBUG] Thay đổi năm sản xuất từ {} sang {}", existingVehicle.getYearManufacture(), request.getYearManufacture());
                 existingVehicle.setYearManufacture(request.getYearManufacture());
                 isChanged = true;
+
             }
         }
         if (request.getNumberVehicle() != null) {

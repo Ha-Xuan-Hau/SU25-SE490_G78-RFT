@@ -113,6 +113,7 @@ public class VehicleRentServiceTest {
         when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(createMockUser()));
         RuntimeException ex = assertThrows(RuntimeException.class, () -> vehicleRentService.createVehicle(request));
         assertTrue(ex.getMessage().contains("Loại xe không hợp lệ"));
+
     }
     @Test
     void createVehicle_licensePlateExists() {
