@@ -23,7 +23,7 @@ public class ReportServiceImpl implements ReportService {
     private final UserReportRepository reportRepo;
     private final UserRepository userRepo;
     private final VehicleRepository vehicleRepo;
-    private final ReportMapper mapper;
+    private final ReportMapper reportMapper;
 
     private final List<String> seriousReport = List.of(
             "DAMAGED_VEHICLE", // khách làm hư hỏng xe
@@ -70,7 +70,7 @@ public class ReportServiceImpl implements ReportService {
             request.setGeneralType("NON_SERIOUS_ERROR");
         }
 
-        UserReport report = mapper.toEntity(request);
+        UserReport report = reportMapper.toEntity(request);
         report.setReporter(reporter);
         report.setCreatedAt(java.time.LocalDateTime.now());
         reportRepo.save(report);
