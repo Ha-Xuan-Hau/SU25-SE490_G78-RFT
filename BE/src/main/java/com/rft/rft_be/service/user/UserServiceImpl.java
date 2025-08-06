@@ -11,8 +11,12 @@ import java.util.stream.Collectors;
 import com.rft.rft_be.dto.user.*;
 import com.rft.rft_be.entity.DriverLicense;
 import com.rft.rft_be.entity.UserRegisterVehicle;
+import com.rft.rft_be.entity.Wallet;
 import com.rft.rft_be.repository.DriverLicensRepository;
 import com.rft.rft_be.repository.UserRegisterVehicleRepository;
+import com.rft.rft_be.repository.WalletRepository;
+import com.rft.rft_be.service.otp.OtpService;
+import com.rft.rft_be.service.wallet.WalletService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,16 +48,30 @@ public class UserServiceImpl implements UserService {
     PasswordEncoder passwordEncoder;
     UserMapper userMapper;
     UserRegisterVehicleRepository userRegisterVehicleRepository;
+    WalletRepository walletRepository;
+    OtpService otpService;
 
     public UserDetailDTO register(UserRegisterDTO dto) {
         if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new RuntimeException("Email Already Exists");
+            throw new RuntimeException("Email này đã được đăng ký");
+        }
+        if (!otpService.verifyOtp(dto.getEmail(), dto.getOtp())){
+            throw new RuntimeException("Mã otp sai hoặc đã hết hạn thông tim mail và otp"
+                    +dto.getEmail()+ dto.getOtp() );
         }
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
         user.setAddress(dto.getAddress());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
+
+        //tạo ví cho người dùng
+        Wallet userWallet = Wallet.builder()
+                .user(user)
+                .build();
+        walletRepository.save(userWallet);
+
+        otpService.deleteOtp(dto.getEmail());
 
         return userMapper.userToUserDetailDto(userRepository.save(user));
     }
