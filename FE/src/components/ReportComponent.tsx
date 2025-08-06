@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Modal, Form, Input, notification } from "antd";
+import { Button, Modal, Form, Input, Select, notification } from "antd";
 import { FlagOutlined, CloseOutlined } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
 import { createReport } from "@/apis/report.api";
-import { useAuth } from "@/context/AuthContext"; // hoặc context auth của bạn
+import { useAuth } from "@/context/AuthContext";
 
 const { TextArea } = Input;
+const { Option } = Select;
 
 interface ReportButtonProps {
   targetId: string;
-  reportType: "SPAM" | "INAPPROPRIATE";
+  reportType?: string; // Single type
+  reportTypes?: string[]; // Multiple types
+  showTypeSelector?: boolean; // Show dropdown selector
   buttonText?: string;
   size?: "small" | "middle" | "large";
   type?: "default" | "primary" | "text" | "link";
@@ -21,6 +23,8 @@ interface ReportButtonProps {
 export default function ReportButton({
   targetId,
   reportType,
+  reportTypes,
+  showTypeSelector = false,
   buttonText,
   size = "small",
   type = "text",
@@ -29,14 +33,149 @@ export default function ReportButton({
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const router = useRouter();
 
-  // Hook để kiểm tra authentication - thay đổi theo auth system của bạn
-  const { user, isAuthenticated } = useAuth(); // hoặc useUser(), useSession(), etc.
+  const { user, isAuthenticated } = useAuth();
 
   // Mapping reportType to generalType and display text
   const getReportConfig = (reportType: string) => {
     switch (reportType) {
+      // SERIOUS ERRORS
+      case "DAMAGED_VEHICLE":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "DAMAGED_VEHICLE",
+          displayText: "Khách làm hư hỏng xe",
+          placeholder:
+            "Vui lòng mô tả chi tiết về thiệt hại mà khách hàng gây ra cho xe...",
+        };
+      case "FRAUD":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "FRAUD",
+          displayText: "Gian lận",
+          placeholder: "Vui lòng mô tả chi tiết về hành vi gian lận...",
+        };
+      case "MISLEADING_INFO":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "MISLEADING_INFO",
+          displayText: "Xe khác với mô tả",
+          placeholder:
+            "Vui lòng mô tả chi tiết về sự khác biệt giữa xe thực tế và mô tả (biển số, mẫu xe, màu sắc...)...",
+        };
+      case "OWNER_NO_SHOW":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "OWNER_NO_SHOW",
+          displayText: "Chủ xe không giao xe",
+          placeholder:
+            "Vui lòng mô tả chi tiết về việc chủ xe không giao xe như đã cam kết...",
+        };
+      case "OWNER_CANCEL_UNREASONABLY":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "OWNER_CANCEL_UNREASONABLY",
+          displayText: "Chủ xe hủy đơn không lý do",
+          placeholder:
+            "Vui lòng mô tả chi tiết về việc chủ xe hủy đơn mà không có lý do rõ ràng...",
+        };
+      case "DOCUMENT_ISSUE":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "DOCUMENT_ISSUE",
+          displayText: "Giấy tờ sai/mất",
+          placeholder:
+            "Vui lòng mô tả chi tiết về vấn đề với giấy tờ xe (thiếu, sai lệch, không hợp lệ...)...",
+        };
+      case "TECHNICAL_ISSUE":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "TECHNICAL_ISSUE",
+          displayText: "Xe bị lỗi kỹ thuật",
+          placeholder:
+            "Vui lòng mô tả chi tiết về lỗi kỹ thuật của xe (chết máy, hỏng động cơ...)...",
+        };
+      case "UNSAFE_VEHICLE":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "UNSAFE_VEHICLE",
+          displayText: "Xe không an toàn",
+          placeholder:
+            "Vui lòng mô tả chi tiết về vấn đề an toàn của xe (phanh hỏng, đèn không hoạt động...)...",
+        };
+      case "FUEL_LEVEL_INCORRECT":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "FUEL_LEVEL_INCORRECT",
+          displayText: "Mức nhiên liệu không đúng",
+          placeholder:
+            "Vui lòng mô tả chi tiết về mức nhiên liệu không đúng như cam kết...",
+        };
+      case "NO_INSURANCE":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "NO_INSURANCE",
+          displayText: "Không có bảo hiểm",
+          placeholder:
+            "Vui lòng mô tả chi tiết về việc xe không có bảo hiểm bắt buộc...",
+        };
+      case "EXPIRED_INSURANCE":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "EXPIRED_INSURANCE",
+          displayText: "Bảo hiểm hết hạn",
+          placeholder:
+            "Vui lòng mô tả chi tiết về việc bảo hiểm xe đã hết hạn...",
+        };
+      case "FAKE_DOCUMENT":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "FAKE_DOCUMENT",
+          displayText: "Khách cung cấp giấy tờ giả",
+          placeholder:
+            "Vui lòng mô tả chi tiết về giấy tờ giả mà khách hàng cung cấp...",
+        };
+      case "FAKE_ORDER":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "FAKE_ORDER",
+          displayText: "Khách đặt đơn giả",
+          placeholder:
+            "Vui lòng mô tả chi tiết về hành vi đặt đơn giả của khách hàng...",
+        };
+      case "DISPUTE_REFUND":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "DISPUTE_REFUND",
+          displayText: "Tranh chấp hoàn tiền/phạt",
+          placeholder:
+            "Vui lòng mô tả chi tiết về tranh chấp liên quan đến hoàn tiền hoặc phí phạt...",
+        };
+      case "LATE_RETURN_NO_CONTACT":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "LATE_RETURN_NO_CONTACT",
+          displayText: "Không trả xe đúng hạn và mất liên lạc",
+          placeholder:
+            "Vui lòng mô tả chi tiết về việc khách hàng không trả xe đúng hạn và không thể liên lạc...",
+        };
+
+      // NON-SERIOUS ERRORS
+      case "INAPPROPRIATE":
+        return {
+          generalType: "NON_SERIOUS_ERROR",
+          type: "INAPPROPRIATE",
+          displayText: "Ngôn từ không phù hợp",
+          placeholder:
+            "Vui lòng mô tả chi tiết về ngôn từ không phù hợp hoặc bạo lực...",
+        };
+      case "VIOLENCE":
+        return {
+          generalType: "NON_SERIOUS_ERROR",
+          type: "VIOLENCE",
+          displayText: "Bạo lực",
+          placeholder: "Vui lòng mô tả chi tiết về hành vi bạo lực...",
+        };
       case "SPAM":
         return {
           generalType: "NON_SERIOUS_ERROR",
@@ -44,17 +183,44 @@ export default function ReportButton({
           displayText: "Spam",
           placeholder: "Vui lòng mô tả chi tiết về hành vi spam...",
         };
-      case "INAPPROPRIATE":
+      case "OTHERS":
         return {
           generalType: "NON_SERIOUS_ERROR",
-          type: "INAPPROPRIATE",
-          displayText: "Sai thông tin xe",
-          placeholder: "Vui lòng mô tả chi tiết về thông tin sai lệch...",
+          type: "OTHERS",
+          displayText: "Khác",
+          placeholder: "Vui lòng mô tả chi tiết về vấn đề khác...",
         };
-      default:
+      case "DIRTY_CAR":
         return {
           generalType: "NON_SERIOUS_ERROR",
-          type: "OTHER",
+          type: "DIRTY_CAR",
+          displayText: "Xe bẩn",
+          placeholder:
+            "Vui lòng mô tả chi tiết về tình trạng xe bẩn khi trả lại...",
+        };
+      case "MISLEADING_LISTING":
+        return {
+          generalType: "NON_SERIOUS_ERROR",
+          type: "MISLEADING_LISTING",
+          displayText: "Thông tin sai trong bài đăng",
+          placeholder:
+            "Vui lòng mô tả chi tiết về thông tin sai lệch trong bài đăng xe...",
+        };
+
+      // STAFF ERRORS
+      case "STAFF_REPORT":
+        return {
+          generalType: "STAFF_ERROR",
+          type: "STAFF_REPORT",
+          displayText: "Báo cáo bởi nhân viên",
+          placeholder: "Vui lòng mô tả chi tiết về vấn đề được báo cáo...",
+        };
+
+      default:
+        console.log("Fell to default case for:", reportType);
+        return {
+          generalType: "NON_SERIOUS_ERROR",
+          type: "OTHERS",
           displayText: "Khác",
           placeholder: "Vui lòng mô tả chi tiết...",
         };
@@ -63,27 +229,35 @@ export default function ReportButton({
 
   // Handle click report button
   const handleReportClick = () => {
-    // Kiểm tra đăng nhập trước
     if (!isAuthenticated || !user) {
       notification.warning({
         message: "Yêu cầu đăng nhập",
         description: "Bạn cần đăng nhập để có thể báo cáo vi phạm.",
         duration: 4,
       });
-
-      // Bỏ dòng này: router.push('/login');
       return;
     }
 
-    // Nếu đã đăng nhập, mở modal
     setIsModalVisible(true);
   };
 
-  const handleReport = async (values: { reason: string }) => {
+  const handleReport = async (values: {
+    selectedReportType?: string;
+    reason: string;
+  }) => {
     try {
       setLoading(true);
 
-      const config = getReportConfig(reportType);
+      // Lấy reportType từ form (nếu có selector) hoặc từ props
+      const finalReportType = showTypeSelector
+        ? values.selectedReportType
+        : reportType;
+
+      if (!finalReportType) {
+        throw new Error("Vui lòng chọn loại báo cáo");
+      }
+
+      const config = getReportConfig(finalReportType);
 
       const reportData = {
         targetId,
@@ -106,10 +280,8 @@ export default function ReportButton({
     } catch (error) {
       console.error("Error creating report:", error);
 
-      // Handle specific error messages
       let errorMessage = "Không thể gửi báo cáo. Vui lòng thử lại sau.";
 
-      // Type guard for error object
       if (
         typeof error === "object" &&
         error !== null &&
@@ -138,7 +310,16 @@ export default function ReportButton({
     }
   };
 
-  const config = getReportConfig(reportType);
+  // Get placeholder text based on selected type
+  const getPlaceholderText = (selectedType?: string) => {
+    if (selectedType) {
+      return getReportConfig(selectedType).placeholder;
+    }
+    if (reportType) {
+      return getReportConfig(reportType).placeholder;
+    }
+    return "Vui lòng mô tả chi tiết...";
+  };
 
   return (
     <>
@@ -146,7 +327,7 @@ export default function ReportButton({
         type={type}
         size={size}
         icon={icon ? <FlagOutlined /> : undefined}
-        onClick={handleReportClick} // Sử dụng handleReportClick thay vì trực tiếp mở modal
+        onClick={handleReportClick}
         className="text-red-500 hover:text-red-600 hover:bg-red-50 border-none shadow-none"
       >
         {buttonText || "Báo cáo"}
@@ -171,33 +352,65 @@ export default function ReportButton({
         </div>
 
         <Form form={form} layout="vertical" onFinish={handleReport}>
-          {/* Label */}
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Vui lòng chọn lí do
-            </label>
+          {/* Type selector hoặc fixed display */}
+          {showTypeSelector && reportTypes ? (
+            <Form.Item
+              name="selectedReportType"
+              label="Vui lòng chọn lí do"
+              rules={[
+                { required: true, message: "Vui lòng chọn loại báo cáo" },
+              ]}
+            >
+              <Select placeholder="Chọn loại báo cáo">
+                {reportTypes.map((type) => {
+                  const config = getReportConfig(type);
+                  console.log(`Rendering option for ${type}:`, config); // Debug
+                  return (
+                    <Option key={type} value={type}>
+                      {config.displayText}
+                    </Option>
+                  );
+                })}
+              </Select>
+            </Form.Item>
+          ) : (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Vui lòng chọn lí do
+              </label>
 
-            {/* Fixed reason display */}
-            <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
-              {config.displayText}
+              <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
+                {reportType ? getReportConfig(reportType).displayText : ""}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Reason textarea */}
+          {/* Reason textarea với dynamic placeholder */}
           <Form.Item
-            name="reason"
-            rules={[
-              { required: true, message: "Vui lòng nhập lý do" },
-              { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
-              { max: 500, message: "Lý do không được vượt quá 500 ký tự" },
-            ]}
+            noStyle
+            shouldUpdate={(prevValues, currentValues) =>
+              prevValues.selectedReportType !== currentValues.selectedReportType
+            }
           >
-            <TextArea
-              rows={4}
-              placeholder={config.placeholder}
-              className="resize-none"
-              maxLength={500}
-            />
+            {({ getFieldValue }) => (
+              <Form.Item
+                name="reason"
+                rules={[
+                  { required: true, message: "Vui lòng nhập lý do" },
+                  { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
+                  { max: 500, message: "Lý do không được vượt quá 500 ký tự" },
+                ]}
+              >
+                <TextArea
+                  rows={4}
+                  placeholder={getPlaceholderText(
+                    getFieldValue("selectedReportType")
+                  )}
+                  className="resize-none"
+                  maxLength={500}
+                />
+              </Form.Item>
+            )}
           </Form.Item>
 
           {/* Submit button */}

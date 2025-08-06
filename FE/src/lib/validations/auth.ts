@@ -10,11 +10,12 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    name: z
+    email: z.string().email("Email không hợp lệ").min(1, "Email là bắt buộc"),
+    phone: z
       .string()
-      .min(2, "Họ tên phải có ít nhất 2 ký tự.")
-      .max(50, "Họ tên không được vượt quá 50 ký tự."),
-    phone: z.string().email("Email không hợp lệ").min(1, "Email là bắt buộc"),
+      .min(1, "Số điện thoại là bắt buộc")
+      .regex(/^[0-9+\-\s()]+$/, "Số điện thoại không hợp lệ")
+      .min(10, "Số điện thoại phải có ít nhất 10 số"),
     password: z
       .string()
       .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")
@@ -24,6 +25,15 @@ export const registerSchema = z
         "Mật khẩu phải có ít nhất một chữ hoa, một chữ thường và một số."
       ),
     confirmPassword: z.string(),
+    address: z
+      .string()
+      .min(1, "Địa chỉ là bắt buộc")
+      .min(10, "Địa chỉ phải có ít nhất 10 ký tự"),
+    otp: z
+      .string()
+      .min(1, "Mã OTP là bắt buộc")
+      .length(6, "Mã OTP phải có đúng 6 ký tự")
+      .regex(/^\d+$/, "Mã OTP chỉ được chứa số"),
     referralCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -60,3 +70,8 @@ export const resetPasswordSchema = z
     message: "Mật khẩu xác nhận không khớp.",
     path: ["confirmPassword"],
   });
+
+// Thêm schema mới cho việc gửi OTP
+export const sendOtpSchema = z.object({
+  email: z.string().email("Email không hợp lệ").min(1, "Email là bắt buộc"),
+});

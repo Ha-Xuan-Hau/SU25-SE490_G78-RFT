@@ -64,7 +64,7 @@ public class ReportServiceImpl implements ReportService {
             request.setGeneralType("SERIOUS_ERROR");
         } else if (nonSeriousReport.contains(type)) {
             request.setGeneralType("NON_SERIOUS_ERROR");
-        } else if (staffReport.contains(type) || "STAFF_REPORT".equalsIgnoreCase(type)) {
+        } else if (staffReport.contains(type) || "Report by staff".equalsIgnoreCase(type)) {
             request.setGeneralType("STAFF_ERROR");
         } else {
             request.setGeneralType("NON_SERIOUS_ERROR");

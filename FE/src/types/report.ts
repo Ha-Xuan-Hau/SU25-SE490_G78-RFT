@@ -1,6 +1,6 @@
-export interface ReportSummaryDTO {
-  totalReports: number;
-  reportTypes: string[];
+interface ReportSummaryDTO {
+  reportId: string;
+  type: string;
 }
 
 export interface ReportedUserDTO {
