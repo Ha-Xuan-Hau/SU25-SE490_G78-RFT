@@ -49,7 +49,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        log.info("Getting cars for user: {}, page: {}, size: {}", userId, page, size);
+        log.info("Lấy xe cho người dùng: {}, trang: {}, kích thước: {}", userId, page, size);
 
         // Lấy tất cả xe ô tô của user
         List<Vehicle> cars = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
@@ -86,13 +86,13 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         // Validate user exists
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với id: " + userId));
 
         Vehicle.VehicleType vehicleType;
         try {
             vehicleType = Vehicle.VehicleType.valueOf(request.getVehicleType().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid vehicle type: " + request.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
+            throw new RuntimeException("Loại xe không hợp lệ: " + request.getVehicleType() + ". Giá trị hợp lệ: CAR, MOTORBIKE, BICYCLE");
         }
 
         // Validate brand and model based on vehicle type
@@ -106,24 +106,24 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         if (vehicleType == Vehicle.VehicleType.CAR) {
             // Car: require brand, model and license plate
             brand = brandRepository.findById(request.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Car must have a valid brand. Not found: " + request.getBrandId()));
+                    .orElseThrow(() -> new RuntimeException("Xe hơi phải có hãng. Không tìm thấy: " + request.getBrandId()));
             model = modelRepository.findById(request.getModelId())
-                    .orElseThrow(() -> new RuntimeException("Vehicle must have a valid model. Not found: " + request.getModelId()));
+                    .orElseThrow(() -> new RuntimeException("Xe phải có mô hình hợp lệ. Không tìm thấy: " + request.getModelId()));
 
             // Validate license plate for CAR
             if (request.getLicensePlate() == null || request.getLicensePlate().isEmpty()) {
-                throw new RuntimeException("Vehicle must have a license plate");
+                throw new RuntimeException("Xe phải có biển số");
             }
             // Không gán licensePlate = request.getLicensePlate(); vì kiểu List<String>
 
         } else if (vehicleType == Vehicle.VehicleType.MOTORBIKE) {
             // Motorbike: require brand and license plate only
             brand = brandRepository.findById(request.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Vehicle must have a valid brand. Not found: " + request.getBrandId()));
+                    .orElseThrow(() -> new RuntimeException("Xe phải có hãng hợp lệ. Không tìm thấy: " + request.getBrandId()));
 
             // Validate license plate for MOTORBIKE
             if (request.getLicensePlate() == null || request.getLicensePlate().isEmpty()) {
-                throw new RuntimeException("Vehicle must have a license plate");
+                throw new RuntimeException("Xe phải có biển số");
             }
             // Không gán licensePlate = request.getLicensePlate(); vì kiểu List<String>
 
@@ -134,12 +134,12 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         // Check if license plate already exists for this user (chỉ khi có license plate)
         if (licensePlate != null && vehicleRepository.existsByLicensePlateAndUserId(licensePlate, userId)) {
-            throw new RuntimeException("License plate already exists for this user");
+            throw new RuntimeException("Biển số đã tồn tại cho người dùng này");
         }
         Penalty penalty = null;
         if (request.getPenaltyId() != null && !request.getPenaltyId().trim().isEmpty()) {
             penalty = penaltyRepository.findById(request.getPenaltyId())
-                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + request.getPenaltyId()));
+                    .orElseThrow(() -> new RuntimeException("Phạt không tồn tại với id: " + request.getPenaltyId()));
         }
         LocalDateTime now = LocalDateTime.now();
 
@@ -220,116 +220,237 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public VehicleGetDTO updateVehicle( String vehicleId, VehicleRentUpdateDTO request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        log.info("Updating vehicle: {} for user: {}", vehicleId, userId);
+        log.info("Cập nhật xe: {} cho người dùng: {}", vehicleId, userId);
 
         Vehicle existingVehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật nó"));
 
         ExtraFeeRule extraFeeRule = extraFeeRuleRepository.findByVehicleId(vehicleId);
 
-        // Update fields (only update non-null values from DTO)
-        if (request.getLicensePlate() != null && !request.getLicensePlate().isEmpty()) {
-            // Check if new license plate already exists (excluding current record)
-            if (existingVehicle.getLicensePlate() != null &&
-                    !existingVehicle.getLicensePlate().equals(request.getLicensePlate())) {
-                boolean exists = vehicleRepository.existsByLicensePlate(request.getLicensePlate());
-                if (exists) {
-                    throw new RuntimeException("Vehicle with license plate " + request.getLicensePlate() + " already exists");
-                }
-            }
-            else if (existingVehicle.getLicensePlate() == null &&
-                    request.getLicensePlate() != null) {
-                // Nếu DB là null mà DTO có biển số, cũng cần kiểm tra trùng
-                boolean exists = vehicleRepository.existsByLicensePlate(request.getLicensePlate());
-                if (exists) {
-                    throw new RuntimeException("Vehicle with license plate " + request.getLicensePlate() + " already exists");
-                }
-            }
-            existingVehicle.setLicensePlate(request.getLicensePlate());
-        }
-        // Validate brand if provided
+        boolean needApproval = false;
+        boolean isChanged = false;
+        // Brand
         if (request.getBrandId() != null) {
-            Brand brand = brandRepository.findById(request.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
-            existingVehicle.setBrand(brand);
+            String oldBrandId = existingVehicle.getBrand() != null ? existingVehicle.getBrand().getId() : null;
+            if (!Objects.equals(oldBrandId, request.getBrandId())) {
+                log.info("[DEBUG] Thay đổi hãng xe từ {} sang {}", oldBrandId, request.getBrandId());
+                existingVehicle.setBrand(brandRepository.findById(request.getBrandId()).orElse(null));
+                needApproval = true;
+                isChanged = true;
+            }
         }
-
-        // Validate model if provided
+        // Model
         if (request.getModelId() != null) {
-            Model model = modelRepository.findById(request.getModelId())
-                    .orElseThrow(() -> new RuntimeException("Model not found with id: " + request.getModelId()));
-
-            // If both brand and model are provided, validate they match
-            String brandIdToCheck = request.getBrandId() != null ? request.getBrandId() :
-                    (existingVehicle.getBrand() != null ? existingVehicle.getBrand().getId() : null);
-
-            existingVehicle.setModel(model);
+            String oldModelId = existingVehicle.getModel() != null ? existingVehicle.getModel().getId() : null;
+            if (!Objects.equals(oldModelId, request.getModelId())) {
+                log.info("[DEBUG] Thay đổi mô hình xe từ {} sang {}", oldModelId, request.getModelId());
+                existingVehicle.setModel(modelRepository.findById(request.getModelId()).orElse(null));
+                needApproval = true;
+                isChanged = true;
+            }
+        }
+        // License plate
+        if (request.getLicensePlate() != null && !request.getLicensePlate().isEmpty()) {
+            String oldPlate = existingVehicle.getLicensePlate() == null ? "" : existingVehicle.getLicensePlate();
+            String newPlate = request.getLicensePlate();
+            if (!oldPlate.equals(newPlate)) {
+                log.info("[DEBUG] Thay đổi biển số xe từ '{}' sang '{}'", oldPlate, newPlate);
+                // Check duplicate
+                if (existingVehicle.getLicensePlate() != null &&
+                        !existingVehicle.getLicensePlate().equals(request.getLicensePlate())) {
+                    boolean exists = vehicleRepository.existsByLicensePlate(request.getLicensePlate());
+                    if (exists) {
+                        throw new RuntimeException("Xe với biển số " + request.getLicensePlate() + " đã tồn tại");
+                    }
+                }
+                else if (existingVehicle.getLicensePlate() == null &&
+                        request.getLicensePlate() != null) {
+                    boolean exists = vehicleRepository.existsByLicensePlate(request.getLicensePlate());
+                    if (exists) {
+                        throw new RuntimeException("Xe với biển số " + request.getLicensePlate() + " đã tồn tại");
+                    }
+                }
+                existingVehicle.setLicensePlate(request.getLicensePlate());
+                needApproval = true;
+                isChanged = true;
+            }
+        }
+        // Number seat
+        if (request.getNumberSeat() != null) {
+            Integer oldSeat = existingVehicle.getNumberSeat();
+            Integer newSeat = request.getNumberSeat();
+            if (!Objects.equals(oldSeat, newSeat)) {
+                log.info("[DEBUG] Thay đổi số ghế từ {} sang {}", oldSeat, newSeat);
+                existingVehicle.setNumberSeat(newSeat);
+                needApproval = true;
+                isChanged = true;
+            }
+        }
+        // Insurance status
+        if (request.getInsuranceStatus() != null && !request.getInsuranceStatus().trim().isEmpty()) {
+            Vehicle.InsuranceStatus oldStatus = existingVehicle.getInsuranceStatus();
+            Vehicle.InsuranceStatus newStatus = null;
+            try {
+                newStatus = Vehicle.InsuranceStatus.valueOf(request.getInsuranceStatus().toUpperCase());
+            } catch (Exception ignored) {}
+            if (!Objects.equals(oldStatus, newStatus)) {
+                log.info("[DEBUG] Thay đổi trạng thái bảo hiểm từ {} sang {}", oldStatus, newStatus);
+                existingVehicle.setInsuranceStatus(newStatus);
+                needApproval = true;
+                isChanged = true;
+            }
+        }
+        // Transmission
+        if (request.getTransmission() != null && !request.getTransmission().trim().isEmpty()) {
+            Vehicle.Transmission oldTrans = existingVehicle.getTransmission();
+            Vehicle.Transmission newTrans = null;
+            try {
+                newTrans = Vehicle.Transmission.valueOf(request.getTransmission().toUpperCase());
+            } catch (Exception ignored) {}
+            if (!Objects.equals(oldTrans, newTrans)) {
+                log.info("[DEBUG] Thay đổi hộp số từ {} sang {}", oldTrans, newTrans);
+                existingVehicle.setTransmission(newTrans);
+                needApproval = true;
+                isChanged = true;
+            }
+        }
+        // Fuel type
+        if (request.getFuelType() != null && !request.getFuelType().trim().isEmpty()) {
+            Vehicle.FuelType oldFuel = existingVehicle.getFuelType();
+            Vehicle.FuelType newFuel = null;
+            try {
+                newFuel = Vehicle.FuelType.valueOf(request.getFuelType().toUpperCase());
+            } catch (Exception ignored) {}
+            if (!Objects.equals(oldFuel, newFuel)) {
+                log.info("[DEBUG] Thay đổi loại nhiên liệu từ {} sang {}", oldFuel, newFuel);
+                existingVehicle.setFuelType(newFuel);
+                needApproval = true;
+                isChanged = true;
+            }
+        }
+        // Vehicle type
+        if (request.getVehicleType() != null && !request.getVehicleType().trim().isEmpty()) {
+            Vehicle.VehicleType oldType = existingVehicle.getVehicleType();
+            Vehicle.VehicleType newType = null;
+            try {
+                newType = Vehicle.VehicleType.valueOf(request.getVehicleType().toUpperCase());
+            } catch (Exception ignored) {}
+            if (!Objects.equals(oldType, newType)) {
+                log.info("[DEBUG] Thay đổi loại xe từ {} sang {}", oldType, newType);
+                existingVehicle.setVehicleType(newType);
+                needApproval = true;
+                isChanged = true;
+            }
+        }
+        // Vehicle images
+        if (request.getVehicleImages() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String oldImages = existingVehicle.getVehicleImages();
+                String newImages = mapper.writeValueAsString(request.getVehicleImages().stream().map(VehicleImageDTO::getImageUrl).collect(Collectors.toList()));
+                if (oldImages == null) oldImages = "[]";
+                if (newImages == null) newImages = "[]";
+                if (!oldImages.equals(newImages)) {
+                    log.info("[DEBUG] Thay đổi ảnh xe từ '{}' sang '{}'", oldImages, newImages);
+                    existingVehicle.setVehicleImages(newImages);
+                    needApproval = true;
+                    isChanged = true;
+                }
+            } catch (Exception e) {
+                log.error("[DEBUG] Lỗi xử lý ảnh xe", e);
+            }
+        }
+        // Have driver
+        if (request.getHaveDriver() != null && !request.getHaveDriver().trim().isEmpty()) {
+            Vehicle.HaveDriver oldDriver = existingVehicle.getHaveDriver();
+            Vehicle.HaveDriver newDriver = null;
+            try {
+                newDriver = Vehicle.HaveDriver.valueOf(request.getHaveDriver().toUpperCase());
+            } catch (Exception ignored) {}
+            if (!Objects.equals(oldDriver, newDriver)) {
+                log.info("[DEBUG] Thay đổi có tài xế từ {} sang {}", oldDriver, newDriver);
+                existingVehicle.setHaveDriver(newDriver);
+                isChanged = true;
+            }
+        }
+        // Ship to address
+        if (request.getShipToAddress() != null && !request.getShipToAddress().trim().isEmpty()) {
+            Vehicle.ShipToAddress oldShip = existingVehicle.getShipToAddress();
+            Vehicle.ShipToAddress newShip = null;
+            try {
+                newShip = Vehicle.ShipToAddress.valueOf(request.getShipToAddress().toUpperCase());
+            } catch (Exception ignored) {}
+            if (!Objects.equals(oldShip, newShip)) {
+                log.info("[DEBUG] Thay đổi địa chỉ giao xe từ {} sang {}", oldShip, newShip);
+                existingVehicle.setShipToAddress(newShip);
+                isChanged = true;
+            }
+        }
+        // Status
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            Vehicle.Status oldStatus = existingVehicle.getStatus();
+            Vehicle.Status newStatus = null;
+            try {
+                newStatus = Vehicle.Status.valueOf(request.getStatus().toUpperCase());
+            } catch (Exception ignored) {}
+            if (!Objects.equals(oldStatus, newStatus)) {
+                log.info("[DEBUG] Thay đổi trạng thái từ {} sang {}", oldStatus, newStatus);
+                existingVehicle.setStatus(newStatus);
+                isChanged = true;
+            }
+        }
+        // Các trường còn lại chỉ update nếu khác, không ảnh hưởng trạng thái
+        if (request.getDescription() != null) {
+            String oldDesc = existingVehicle.getDescription() == null ? "" : existingVehicle.getDescription();
+            String newDesc = request.getDescription() == null ? "" : request.getDescription();
+            if (!oldDesc.equals(newDesc)) {
+                log.info("[DEBUG] Thay đổi mô tả từ '{}' sang '{}'", oldDesc, newDesc);
+                existingVehicle.setDescription(request.getDescription());
+                isChanged = true;
+            }
         }
 
-        // Update penalty if provided
+        if (request.getYearManufacture() != null) {
+            if (!Objects.equals(existingVehicle.getYearManufacture(), request.getYearManufacture())) {
+                log.info("[DEBUG] Thay đổi năm sản xuất từ {} sang {}", existingVehicle.getYearManufacture(), request.getYearManufacture());
+                existingVehicle.setYearManufacture(request.getYearManufacture());
+                isChanged = true;
+            }
+        }
+        if (request.getNumberVehicle() != null) {
+            if (!Objects.equals(existingVehicle.getNumberVehicle(), request.getNumberVehicle())) {
+                log.info("[DEBUG] Thay đổi số lượng xe từ {} sang {}", existingVehicle.getNumberVehicle(), request.getNumberVehicle());
+                existingVehicle.setNumberVehicle(request.getNumberVehicle());
+                isChanged = true;
+            }
+        }
+
         if (request.getPenaltyId() != null && !request.getPenaltyId().trim().isEmpty()) {
             Penalty penalty = penaltyRepository.findById(request.getPenaltyId())
-                    .orElseThrow(() -> new RuntimeException("Penalty not found with id: " + request.getPenaltyId()));
+                    .orElseThrow(() -> new RuntimeException("Phạt không tồn tại với id: " + request.getPenaltyId()));
             existingVehicle.setPenalty(penalty);
         }
 
         // Update other fields if provided
-        if (request.getVehicleType() != null) existingVehicle.setVehicleType(parseVehicleType(request.getVehicleType()));
-        if (request.getVehicleFeatures() != null) existingVehicle.setVehicleFeatures(request.getVehicleFeatures());
-        if (request.getVehicleImages() != null) {
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                String imagesJson = mapper.writeValueAsString(request.getVehicleImages()
-                        .stream()
-                        .map(VehicleImageDTO::getImageUrl)
-                        .collect(Collectors.toList())
-                );
-                existingVehicle.setVehicleImages(imagesJson);
-            } catch (Exception e) {
-                // handle error
-            }
-        }
-
-        if (request.getNumberSeat() != null) existingVehicle.setNumberSeat(request.getNumberSeat());
-        if (request.getYearManufacture() != null) existingVehicle.setYearManufacture(request.getYearManufacture());
-        if (request.getDescription() != null) existingVehicle.setDescription(request.getDescription());
-        if (request.getNumberVehicle() != null) existingVehicle.setNumberVehicle(request.getNumberVehicle());
-        if (request.getCostPerDay() != null) existingVehicle.setCostPerDay(request.getCostPerDay());
-        if (request.getMaxKmPerDay() != null) extraFeeRule.setMaxKmPerDay(request.getMaxKmPerDay());
-        if (request.getFeePerExtraKm() != null) extraFeeRule.setFeePerExtraKm(request.getFeePerExtraKm());
-        if (request.getAllowedHourLate() != null) extraFeeRule.setAllowedHourLate(request.getAllowedHourLate());
-        if (request.getFeePerExtraHour() != null) extraFeeRule.setFeePerExtraHour(request.getFeePerExtraHour());
-        if (request.getCleaningFee() != null) extraFeeRule.setCleaningFee(request.getCleaningFee());
-        if (request.getSmellRemovalFee() != null) extraFeeRule.setSmellRemovalFee(request.getSmellRemovalFee());
-        extraFeeRule.setApplyBatteryChargeFee("ELECTRIC".equalsIgnoreCase(request.getFuelType()));
-        if (request.getBatteryChargeFeePerPercent() != null) extraFeeRule.setBatteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent());
-        if (request.getDriverFeePerDay() != null) extraFeeRule.setDriverFeePerDay(request.getDriverFeePerDay());
-        if (request.getHasDriverOption() != null) extraFeeRule.setHasDriverOption(request.getHasDriverOption());
-        if (request.getDriverFeePerHour() != null) extraFeeRule.setDriverFeePerHour(request.getDriverFeePerHour());
-        if (request.getHasHourlyRental() != null) extraFeeRule.setHasHourlyRental(request.getHasHourlyRental());
-
-        // Update enum fields
-        if (request.getVehicleType() != null && !request.getVehicleType().trim().isEmpty()) {
-            try {
-                existingVehicle.setVehicleType(Vehicle.VehicleType.valueOf(request.getVehicleType().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid vehicle type: " + request.getVehicleType() + ". Valid values are: CAR, MOTORBIKE, BICYCLE");
-            }
-        }
-
         if (request.getHaveDriver() != null && !request.getHaveDriver().trim().isEmpty()) {
             try {
                 existingVehicle.setHaveDriver(Vehicle.HaveDriver.valueOf(request.getHaveDriver().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid have driver: " + request.getHaveDriver() + ". Valid values are: YES, NO");
+                throw new RuntimeException("Giá trị có tài xế không hợp lệ: " + request.getHaveDriver() + ". Giá trị hợp lệ: YES, NO");
             }
         }
 
+        // Update insurance status - cần duyệt lại
         if (request.getInsuranceStatus() != null && !request.getInsuranceStatus().trim().isEmpty()) {
             try {
-                existingVehicle.setInsuranceStatus(Vehicle.InsuranceStatus.valueOf(request.getInsuranceStatus().toUpperCase()));
+                Vehicle.InsuranceStatus newInsuranceStatus = Vehicle.InsuranceStatus.valueOf(request.getInsuranceStatus().toUpperCase());
+                if (!Objects.equals(existingVehicle.getInsuranceStatus(), newInsuranceStatus)) {
+                    log.info("[DEBUG] Thay đổi trạng thái bảo hiểm từ {} sang {}", existingVehicle.getInsuranceStatus(), newInsuranceStatus);
+                    existingVehicle.setInsuranceStatus(newInsuranceStatus);
+                    needApproval = true; // Bảo hiểm thay đổi cần duyệt lại
+                }
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid insurance status: " + request.getInsuranceStatus() + ". Valid values are: YES, NO");
+                throw new RuntimeException("Trạng thái bảo hiểm không hợp lệ: " + request.getInsuranceStatus() + ". Giá trị hợp lệ: YES, NO");
             }
         }
 
@@ -337,23 +458,35 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             try {
                 existingVehicle.setShipToAddress(Vehicle.ShipToAddress.valueOf(request.getShipToAddress().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid ship to address: " + request.getShipToAddress() + ". Valid values are: YES, NO");
+                throw new RuntimeException("Địa chỉ giao xe không hợp lệ: " + request.getShipToAddress() + ". Giá trị hợp lệ: YES, NO");
             }
         }
 
+        // Update transmission - cần duyệt lại
         if (request.getTransmission() != null && !request.getTransmission().trim().isEmpty()) {
             try {
-                existingVehicle.setTransmission(Vehicle.Transmission.valueOf(request.getTransmission().toUpperCase()));
+                Vehicle.Transmission newTransmission = Vehicle.Transmission.valueOf(request.getTransmission().toUpperCase());
+                if (!Objects.equals(existingVehicle.getTransmission(), newTransmission)) {
+                    log.info("[DEBUG] Thay đổi hộp số từ {} sang {}", existingVehicle.getTransmission(), newTransmission);
+                    existingVehicle.setTransmission(newTransmission);
+                    needApproval = true; // Truyền động thay đổi cần duyệt lại
+                }
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid transmission: " + request.getTransmission() + ". Valid values are: MANUAL, AUTOMATIC");
+                throw new RuntimeException("Hộp số không hợp lệ: " + request.getTransmission() + ". Giá trị hợp lệ: MANUAL, AUTOMATIC");
             }
         }
 
+        // Update fuel type - cần duyệt lại
         if (request.getFuelType() != null && !request.getFuelType().trim().isEmpty()) {
             try {
-                existingVehicle.setFuelType(Vehicle.FuelType.valueOf(request.getFuelType().toUpperCase()));
+                Vehicle.FuelType newFuelType = Vehicle.FuelType.valueOf(request.getFuelType().toUpperCase());
+                if (!Objects.equals(existingVehicle.getFuelType(), newFuelType)) {
+                    log.info("[DEBUG] Thay đổi loại nhiên liệu từ {} sang {}", existingVehicle.getFuelType(), newFuelType);
+                    existingVehicle.setFuelType(newFuelType);
+                    needApproval = true; // Nguyên liệu thay đổi cần duyệt lại
+                }
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid fuel type: " + request.getFuelType() + ". Valid values are: GASOLINE, ELECTRIC");
+                throw new RuntimeException("Loại nhiên liệu không hợp lệ: " + request.getFuelType() + ". Giá trị hợp lệ: GASOLINE, ELECTRIC");
             }
         }
 
@@ -361,9 +494,16 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             try {
                 existingVehicle.setStatus(Vehicle.Status.valueOf(request.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid status: " + request.getStatus() + ". Valid values are: AVAILABLE, UNAVAILABLE");
+                throw new RuntimeException("Trạng thái không hợp lệ: " + request.getStatus() + ". Giá trị hợp lệ: AVAILABLE, UNAVAILABLE");
             }
         }
+
+        // Chỉ chuyển trạng thái về PENDING nếu có trường cần duyệt lại thay đổi
+        if (needApproval) {
+            log.info("[DEBUG] Đặt trạng thái thành PENDING do các trường quan trọng thay đổi");
+            existingVehicle.setStatus(Vehicle.Status.PENDING);
+        }
+
         // Manually set updatedAt timestamp using reflection
         LocalDateTime now = LocalDateTime.now();
         setUpdatedAt(existingVehicle, now);
@@ -374,7 +514,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
                 .orElse(updatedVehicle);
 
-        log.info("Vehicle updated successfully: {}", vehicleId);
+        log.info("[DEBUG] Cập nhật xe thành công: {}", vehicleId);
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 //    @Override
@@ -397,10 +537,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public VehicleDetailDTO getVehicleById( String vehicleId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        log.info("Getting vehicle: {} for user: {}", vehicleId, userId);
+        log.info("Lấy xe: {} cho người dùng: {}", vehicleId, userId);
 
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to view it"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền xem nó"));
         VehicleDetailDTO dto = vehicleMapper.vehicleToVehicleDetail(vehicle);
         dto.setExtraFeeRule(extraFeeRuleMapper.toDto(extraFeeRuleRepository.findByVehicleId(vehicleId)));
 
@@ -442,7 +582,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
                 .orElse(updatedVehicle);
 
-        log.info("Đã chuyển đổi trạng thái xe thành công: {} -> {}", vehicleId, newStatus);
+        log.info("[DEBUG] Đã chuyển đổi trạng thái xe thành công: {} -> {}", vehicleId, newStatus);
         return vehicleMapper.vehicleGet(vehicleWithRelations);
     }
 
@@ -453,37 +593,25 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         List<Vehicle> carListAll = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
 
-        // Group by thumb and status
-        Map<String, List<Vehicle>> grouped = carListAll.stream()
-                .collect(Collectors.groupingBy(v -> {
-                    String thumb = v.getThumb() != null ? v.getThumb() : "Khác";
-                    String status = v.getStatus() != null ? v.getStatus().toString() : "UNKNOWN";
-                    
-                    return thumb + "|" + status;
-                }));
-
-        List<VehicleThumbGroupDTO> groupList = grouped.entrySet().stream()
-                .map(entry -> {
-                    String[] keyParts = entry.getKey().split("\\|");
-                    String thumb = keyParts[0];
-                    
-                    // Sắp xếp xe trong nhóm theo createdAt giảm dần (mới nhất lên đầu)
-                    List<VehicleDetailDTO> sortedVehicles = entry.getValue().stream()
-                            .sorted((v1, v2) -> {
-                                LocalDateTime createdAt1 = v1.getCreatedAt();
-                                LocalDateTime createdAt2 = v2.getCreatedAt();
-                                if (createdAt1 == null && createdAt2 == null) return 0;
-                                if (createdAt1 == null) return 1;
-                                if (createdAt2 == null) return -1;
-                                return createdAt2.compareTo(createdAt1); // Giảm dần
-                            })
-                            .map(vehicleMapper::vehicleToVehicleDetail)
-                            .collect(Collectors.toList());
+                // Ô tô không group theo thumb, mỗi xe là một nhóm riêng biệt
+        List<VehicleThumbGroupDTO> groupList = carListAll.stream()
+                .sorted((v1, v2) -> {
+                    // Sắp xếp xe theo createdAt giảm dần (mới nhất lên đầu)
+                    LocalDateTime createdAt1 = v1.getCreatedAt();
+                    LocalDateTime createdAt2 = v2.getCreatedAt();
+                    if (createdAt1 == null && createdAt2 == null) return 0;
+                    if (createdAt1 == null) return 1;
+                    if (createdAt2 == null) return -1;
+                    return createdAt2.compareTo(createdAt1); // Giảm dần
+                })
+                .map(vehicle -> {
+                    List<VehicleDetailDTO> vehicleList = new ArrayList<>();
+                    vehicleList.add(vehicleMapper.vehicleToVehicleDetail(vehicle));
                     
                     return VehicleThumbGroupDTO.builder()
-                            .thumb(thumb)
-                            .vehicle(sortedVehicles)
-                            .vehicleNumber(entry.getValue().size())
+                            .thumb(vehicle.getThumb() != null ? vehicle.getThumb() : "Khác")
+                            .vehicle(vehicleList)
+                            .vehicleNumber(1) // Mỗi ô tô là 1 nhóm riêng
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -642,7 +770,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         // Kiểm tra số lượng biển số hợp lệ
         boolean isBicycle = "BICYCLE".equalsIgnoreCase(request.getVehicleType());
         if (!isBicycle && (licensePlates == null || licensePlates.size() != numberVehicle)) {
-            log.error("[VehicleRent] Số lượng biển số không hợp lệ. Số lượng biển số: {}, số lượng xe: {}", licensePlates != null ? licensePlates.size() : 0, numberVehicle);
+            log.error("[DEBUG] Số lượng biển số không hợp lệ. Số lượng biển số: {}, số lượng xe: {}", licensePlates != null ? licensePlates.size() : 0, numberVehicle);
             throw new RuntimeException("Số lượng biển số xe phải bằng số lượng xe");
         }
 
@@ -781,7 +909,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 
                 // Log để debug
                 if (!allMatch) {
-                    log.info("[VehicleRent] Debug - Vehicle ID: {}, Type: {}, Brand: {}, Model: {}, Penalty: {}, Features: {}, Insurance: {}, Ship: {}, Seat: {}, Year: {}, Transmission: {}, Fuel: {}, Cost: {}, Driver: {}", 
+                    log.info("[DEBUG] Debug - ID xe: {}, Loại: {}, Hãng: {}, Mô hình: {}, Phạt: {}, Tính năng: {}, Bảo hiểm: {}, Giao xe: {}, Ghế: {}, Năm: {}, Truyền động: {}, Nhiên liệu: {}, Giá: {}, Tài xế: {}", 
                         v.getId(), typeMatch, brandMatch, modelMatch, penaltyMatch, featuresMatch, insuranceMatch, shipMatch, seatMatch, yearMatch, transmissionMatch, fuelMatch, costMatch, driverMatch);
                 }
                 
@@ -789,19 +917,19 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             });
             
             if (hasMatchingVehicle) {
-                log.info("[VehicleRent] Thumb '{}' đã tồn tại với cùng tất cả thông tin (trừ licensePlate, vehicleImages và description) cho user {}. Cho phép tạo xe mới.", request.getThumb(), userId);
+                log.info("[DEBUG] Thumb '{}' đã tồn tại với cùng tất cả thông tin (trừ biển số, ảnh xe và mô tả) cho người dùng {}. Cho phép tạo xe mới.", request.getThumb(), userId);
             } else {
-                log.error("[VehicleRent] Thumb '{}' đã tồn tại nhưng khác thông tin cho user {}. Không cho phép tạo xe mới.", request.getThumb(), userId);
+                log.error("[DEBUG] Thumb '{}' đã tồn tại nhưng khác thông tin cho người dùng {}. Không cho phép tạo xe mới.", request.getThumb(), userId);
                 
                 // Log chi tiết để debug
                 Vehicle existingVehicle = sameThumbVehicles.get(0);
-                log.info("[VehicleRent] Debug - Request values: vehicleType={}, brandId={}, modelId={}, penaltyId={}, features={}, insurance={}, ship={}, seat={}, year={}, transmission={}, fuel={}, cost={}, driver={}", 
+                log.info("[DEBUG] Request values: vehicleType={}, brandId={}, modelId={}, penaltyId={}, features={}, insurance={}, ship={}, seat={}, year={}, transmission={}, fuel={}, cost={}, driver={}", 
                     request.getVehicleType(), request.getBrandId(), request.getModelId(), request.getPenaltyId(), 
                     request.getVehicleFeatures(), request.getInsuranceStatus(), request.getShipToAddress(), 
                     request.getNumberSeat(), request.getYearManufacture(), request.getTransmission(), 
                     request.getFuelType(), request.getCostPerDay(), request.getHaveDriver());
                 
-                log.info("[VehicleRent] Debug - Existing vehicle values: vehicleType={}, brandId={}, modelId={}, penaltyId={}, features={}, insurance={}, ship={}, seat={}, year={}, transmission={}, fuel={}, cost={}, driver={}", 
+                log.info("[DEBUG] Existing vehicle values: vehicleType={}, brandId={}, modelId={}, penaltyId={}, features={}, insurance={}, ship={}, seat={}, year={}, transmission={}, fuel={}, cost={}, driver={}", 
                     existingVehicle.getVehicleType(), 
                     existingVehicle.getBrand() != null ? existingVehicle.getBrand().getId() : null,
                     existingVehicle.getModel() != null ? existingVehicle.getModel().getId() : null,
@@ -816,16 +944,16 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             
             // Tạo xe mới với thông tin từ form
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với id: " + userId));
             Vehicle.VehicleType vehicleType = parseVehicleType(request.getVehicleType());
             int loopCount = isBicycle ? numberVehicle : licensePlates.size();
             for (int i = 0; i < loopCount; i++) {
                 String plate = isBicycle ? null : licensePlates.get(i);
                 if (vehicleRepository.existsByLicensePlateAndUserId(plate, userId) && !isBicycle) {
-                    log.error("[VehicleRent] Biển số xe đã tồn tại: {}", plate);
+                    log.error("[DEBUG] Biển số xe đã tồn tại: {}", plate);
                     throw new RuntimeException("Biển số xe đã tồn tại: " + plate);
                 }
-                log.info("[VehicleRent] Tạo mới xe với biển số: {} cho user: {}", plate, userId);
+                log.info("[DEBUG] Tạo xe mới với biển số: {} cho người dùng: {}", plate, userId);
                 Vehicle.VehicleBuilder builder = Vehicle.builder()
                         .user(user)
                         .penalty(request.getPenaltyId() != null ? penaltyRepository.findById(request.getPenaltyId()).orElse(null) : null)
@@ -869,26 +997,26 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 }
                 setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
                 Vehicle savedVehicle = vehicleRepository.save(newVehicle);
-                log.info("[VehicleRent] Đã lưu xe mới với biển số: {} thành công.", plate);
+                log.info("[DEBUG] Đã lưu xe mới với biển số: {} thành công.", plate);
                 createdVehicles.add(vehicleMapper.vehicleGet(savedVehicle));
             }
-            log.info("[VehicleRent] Hoàn thành tạo mới {} xe với thumb: {} cho user: {} (khác thông tin cơ bản)", createdVehicles.size(), request.getThumb(), userId);
+            log.info("[DEBUG] Hoàn thành tạo mới {} xe với thumb: {} cho người dùng: {} (khác thông tin cơ bản)", createdVehicles.size(), request.getThumb(), userId);
             return createdVehicles;
 
         } else {
-            log.info("[VehicleRent] Không tìm thấy xe cùng thumb cho user {}. Tiến hành tạo mới {} xe.", userId, numberVehicle);
+            log.info("[DEBUG] Không tìm thấy xe cùng thumb cho người dùng {}. Tiến hành tạo mới {} xe.", userId, numberVehicle);
             // Nếu chưa có xe cùng thumb: tạo mới numberVehicle xe, mỗi xe 1 biển số
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với id: " + userId));
             Vehicle.VehicleType vehicleType = parseVehicleType(request.getVehicleType());
             int loopCount = isBicycle ? numberVehicle : licensePlates.size();
             for (int i = 0; i < loopCount; i++) {
                 String plate = isBicycle ? null : licensePlates.get(i);
                 if (vehicleRepository.existsByLicensePlateAndUserId(plate, userId) && !isBicycle) {
-                    log.error("[VehicleRent] Biển số xe đã tồn tại: {}", plate);
+                    log.error("[DEBUG] Biển số xe đã tồn tại: {}", plate);
                     throw new RuntimeException("Biển số xe đã tồn tại: " + plate);
                 }
-                log.info("[VehicleRent] Tạo mới xe với biển số: {} cho user: {}", plate, userId);
+                log.info("[DEBUG] Tạo xe mới với biển số: {} cho người dùng: {}", plate, userId);
                 Vehicle.VehicleBuilder builder = Vehicle.builder()
                         .user(user)
                         .penalty(request.getPenaltyId() != null ? penaltyRepository.findById(request.getPenaltyId()).orElse(null) : null)
@@ -935,10 +1063,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 }
                 setTimestamps(newVehicle, LocalDateTime.now(), LocalDateTime.now());
                 Vehicle savedVehicle = vehicleRepository.save(newVehicle);
-                log.info("Đã lưu xe mới với biển số: {} thành công.", plate);
+                log.info("[DEBUG] Đã lưu xe mới với biển số: {} thành công.", plate);
                 createdVehicles.add(vehicleMapper.vehicleGet(savedVehicle));
             }
-            log.info("[VehicleRent] Hoàn thành tạo mới {} xe với thumb: {} cho user: {} (khác thumb)", createdVehicles.size(), request.getThumb(), userId);
+            log.info("[DEBUG] Hoàn thành tạo mới {} xe với thumb: {} cho người dùng: {} (khác thumb)", createdVehicles.size(), request.getThumb(), userId);
             return createdVehicles;
         }
     }
@@ -948,12 +1076,12 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found or you don't have permission to update it"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật nó"));
 
         // Cập nhật các trường chung
         if (request.getBrandId() != null) {
             Brand brand = brandRepository.findById(request.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + request.getBrandId()));
+                    .orElseThrow(() -> new RuntimeException("Hãng không tồn tại với id: " + request.getBrandId()));
             vehicle.setBrand(brand);
         }
         if (request.getVehicleType() != null) {
@@ -1008,7 +1136,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found: " + vehicleId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy xe: " + vehicleId));
         // Chỉ cập nhật các trường riêng biệt
         if (request.getLicensePlate() != null) vehicle.setLicensePlate(request.getLicensePlate());
         if (request.getVehicleImages() != null) {
@@ -1145,7 +1273,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         try {
             return Vehicle.InsuranceStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid insurance status: {}, defaulting to NO", status);
+            log.warn("Trạng thái bảo hiểm không hợp lệ: {}, mặc định thành NO", status);
             return Vehicle.InsuranceStatus.NO;
         }
     }
@@ -1158,7 +1286,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         try {
             return Vehicle.ShipToAddress.valueOf(address.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid ship to address: {}, defaulting to NO", address);
+            log.warn("Địa chỉ giao xe không hợp lệ: {}, mặc định thành NO", address);
             return Vehicle.ShipToAddress.NO;
         }
     }
@@ -1170,7 +1298,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         try {
             return Vehicle.Transmission.valueOf(transmission.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid transmission: {}, setting to null", transmission);
+            log.warn("Hộp số không hợp lệ: {}, đặt thành null", transmission);
             return null;
         }
     }
@@ -1181,7 +1309,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         try{
             return Vehicle.HaveDriver.valueOf(hasDriver.toUpperCase());
         }catch (IllegalArgumentException e){
-            log.warn("Invalid has driver: {}, defaulting to NO", hasDriver);
+            log.warn("Giá trị có tài xế không hợp lệ: {}, mặc định thành NO", hasDriver);
             return null;
         }
     }
@@ -1192,7 +1320,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         try {
             return Vehicle.FuelType.valueOf(fuelType.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid fuel type: {}, setting to null", fuelType);
+            log.warn("Loại nhiên liệu không hợp lệ: {}, đặt thành null", fuelType);
             return null;
         }
     }
@@ -1204,7 +1332,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         try {
             return Vehicle.Status.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid status: {}, defaulting to AVAILABLE", status);
+            log.warn("Trạng thái không hợp lệ: {}, mặc định thành AVAILABLE", status);
             return Vehicle.Status.AVAILABLE;
         }
     }
@@ -1220,15 +1348,15 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             updatedAtField.setAccessible(true);
             updatedAtField.set(vehicle, updatedAt);
 
-            log.debug("Set timestamps for vehicle: createdAt={}, updatedAt={}", createdAt, updatedAt);
+            log.debug("Đặt thời gian cho xe: createdAt={}, updatedAt={}", createdAt, updatedAt);
         } catch (Exception e) {
-            log.error("Failed to set timestamps using reflection", e);
+            log.error("Không thể đặt thời gian sử dụng phương thức phản chiếu", e);
             // Fallback: try direct setter methods if they exist
             try {
                 vehicle.getClass().getMethod("setCreatedAt", LocalDateTime.class).invoke(vehicle, createdAt);
                 vehicle.getClass().getMethod("setUpdatedAt", LocalDateTime.class).invoke(vehicle, updatedAt);
             } catch (Exception ex) {
-                log.error("Failed to set timestamps using setter methods", ex);
+                log.error("Không thể đặt thời gian sử dụng phương thức setter", ex);
             }
         }
     }
@@ -1239,14 +1367,14 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             updatedAtField.setAccessible(true);
             updatedAtField.set(vehicle, updatedAt);
 
-            log.debug("Set updatedAt for vehicle: {}", updatedAt);
+            log.debug("Đặt updatedAt cho xe: {}", updatedAt);
         } catch (Exception e) {
-            log.error("Failed to set updatedAt using reflection", e);
+            log.error("Không thể đặt updatedAt sử dụng phương thức phản chiếu", e);
             // Fallback: try direct setter method if it exists
             try {
                 vehicle.getClass().getMethod("setUpdatedAt", LocalDateTime.class).invoke(vehicle, updatedAt);
             } catch (Exception ex) {
-                log.error("Failed to set updatedAt using setter method", ex);
+                log.error("Không thể đặt updatedAt sử dụng phương thức setter", ex);
             }
         }
     }
@@ -1258,7 +1386,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         try {
             return Vehicle.VehicleType.valueOf(type.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid vehicle type: {}, setting to null", type);
+            log.warn("Loại xe không hợp lệ: {}, đặt thành null", type);
             return null;
         }
     }
