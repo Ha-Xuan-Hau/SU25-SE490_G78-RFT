@@ -301,7 +301,7 @@ public class BookingServiceImpl implements BookingService {
 
         // Lấy cancelNote nếu có
         Optional<String> cancelNoteOpt = finalContractRepository.findCancelNoteByBookingId(bookingId);
-        dto.setCancelNote(cancelNoteOpt.orElse(null));
+        dto.setNote(cancelNoteOpt.orElse(null));
 
         return dto;
     }

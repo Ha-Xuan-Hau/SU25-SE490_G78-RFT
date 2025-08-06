@@ -1084,7 +1084,8 @@ export default function VehicleDetail() {
                                   {/* Report button - ngay cạnh rating */}
                                   <ReportButton
                                     targetId={comment.userId}
-                                    reportType="SPAM"
+                                    reportTypes={["SPAM", "INAPPROPRIATE"]}
+                                    showTypeSelector={true}
                                     buttonText=""
                                     size="small"
                                     type="text"
@@ -1505,14 +1506,14 @@ export default function VehicleDetail() {
               </div>
             )}
             {/* Nút báo cáo thông tin sai lệch */}
-            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="mt-6 pt-4  border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   Thông tin xe không chính xác?
                 </span>
                 <ReportButton
                   targetId={vehicle.id}
-                  reportType="INAPPROPRIATE"
+                  reportType="MISLEADING_LISTING"
                   buttonText="Báo cáo"
                   size="small"
                   type="text"

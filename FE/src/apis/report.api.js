@@ -75,18 +75,35 @@ export const createReportByStaff = async (reportData) => {
  * Lấy mapping loại báo cáo cho frontend
  */
 export const getReportTypeMapping = () => ({
-    // Serious Errors
-    'FRAUD': { generalType: 'SERIOUS_ERROR', label: 'Lừa đảo', color: 'error' },
-    'VIOLENCE': { generalType: 'SERIOUS_ERROR', label: 'Bạo lực', color: 'error' },
+    // Serious Errors - Báo cáo nghiêm trọng
+    'DAMAGED_VEHICLE': { generalType: 'SERIOUS_ERROR', label: 'Khách làm hư hỏng xe', color: 'error' },
+    'FRAUD': { generalType: 'SERIOUS_ERROR', label: 'Gian lận', color: 'error' },
+    'MISLEADING_INFO': { generalType: 'SERIOUS_ERROR', label: 'Xe khác với mô tả', color: 'error' },
+    'OWNER_NO_SHOW': { generalType: 'SERIOUS_ERROR', label: 'Chủ xe không giao xe', color: 'error' },
+    'OWNER_CANCEL_UNREASONABLY': { generalType: 'SERIOUS_ERROR', label: 'Chủ xe hủy đơn không lý do', color: 'error' },
+    'DOCUMENT_ISSUE': { generalType: 'SERIOUS_ERROR', label: 'Giấy tờ sai/mất', color: 'error' },
+    'TECHNICAL_ISSUE': { generalType: 'SERIOUS_ERROR', label: 'Xe bị lỗi kỹ thuật', color: 'error' },
+    'UNSAFE_VEHICLE': { generalType: 'SERIOUS_ERROR', label: 'Xe không an toàn', color: 'error' },
+    'FUEL_LEVEL_INCORRECT': { generalType: 'SERIOUS_ERROR', label: 'Mức nhiên liệu không đúng', color: 'error' },
+    'NO_INSURANCE': { generalType: 'SERIOUS_ERROR', label: 'Không có bảo hiểm', color: 'error' },
+    'EXPIRED_INSURANCE': { generalType: 'SERIOUS_ERROR', label: 'Bảo hiểm hết hạn', color: 'error' },
+    'FAKE_DOCUMENT': { generalType: 'SERIOUS_ERROR', label: 'Giấy tờ giả', color: 'error' },
+    'FAKE_ORDER': { generalType: 'SERIOUS_ERROR', label: 'Đặt đơn giả', color: 'error' },
+    'DISPUTE_REFUND': { generalType: 'SERIOUS_ERROR', label: 'Tranh chấp hoàn tiền/phạt', color: 'error' },
+    'LATE_RETURN_NO_CONTACT': { generalType: 'SERIOUS_ERROR', label: 'Không trả xe đúng hạn và mất liên lạc', color: 'error' },
 
-    // Non-serious Errors  
+    // Non-serious Errors - Lỗi vi phạm
+    'INAPPROPRIATE': { generalType: 'NON_SERIOUS_ERROR', label: 'Ngôn từ không phù hợp', color: 'red' },
+    'VIOLENCE': { generalType: 'NON_SERIOUS_ERROR', label: 'Bạo lực', color: 'red' },
     'SPAM': { generalType: 'NON_SERIOUS_ERROR', label: 'Spam', color: 'orange' },
-    'INAPPROPRIATE': { generalType: 'NON_SERIOUS_ERROR', label: 'Không phù hợp', color: 'red' },
+    'OTHERS': { generalType: 'NON_SERIOUS_ERROR', label: 'Khác', color: 'default' },
+    'DIRTY_CAR': { generalType: 'NON_SERIOUS_ERROR', label: 'Xe bẩn', color: 'orange' },
+    'MISLEADING_LISTING': { generalType: 'NON_SERIOUS_ERROR', label: 'Thông tin sai trong bài đăng', color: 'red' },
 
-    // Staff Errors
-    'OTHER': { generalType: 'STAFF_ERROR', label: 'Khác', color: 'default' },
-    'Report by staff': { generalType: 'STAFF_ERROR', label: 'Báo cáo bởi nhân viên', color: 'blue' }
+    // Staff Errors - Lỗi gắn cờ
+    'STAFF_REPORT': { generalType: 'STAFF_ERROR', label: 'Báo cáo bởi nhân viên', color: 'blue' }
 });
+
 
 /**
  * Lấy thống kê báo cáo theo loại (từ dữ liệu đã load)
