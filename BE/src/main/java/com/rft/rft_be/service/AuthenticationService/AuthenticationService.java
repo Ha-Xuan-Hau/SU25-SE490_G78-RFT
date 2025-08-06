@@ -104,6 +104,22 @@ public class AuthenticationService {
         emailSenderService.sendHtmlEmail(email, subject, filled);
     }
 
+    public void sendOtpVerificationEmail(String email) {
+        String otp = generateOtp();
+        otpService.saveOtp(email, otp);
+        String subject = "Mã OTP Xác thực địa chỉ email: "+otp;
+
+        String template;
+        try {
+            template = Files.readString(Path.of("src/main/resources/templates/otp_register_template.html"));
+        } catch (IOException e) {
+            throw new RuntimeException("Không thể đọc file template email", e);
+        }
+        String filled = template.replace("${otpCode}", otp);
+
+        emailSenderService.sendHtmlEmail(email, subject, filled);
+    }
+
     public void changePassword(ChangePasswordRequest request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");

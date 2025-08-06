@@ -44,9 +44,16 @@ public class AuthenticationController {
     }
 
     @PostMapping("/send-otp")
-    public ResponseEntity<?> sendOtp(@Valid @RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<?> sendOtp(@Valid @RequestBody SentOtpRequest request) {
         authenticationService.sendForgotPasswordOtpEmail(request.getEmail());
         // Gửi mail ở đây
+        return ResponseEntity.ok("OTP sent: " + request.getEmail());
+    }
+
+    @PostMapping("/sent-otp-register")
+    public ResponseEntity<?> sendOtpRegister(@Valid @RequestBody SentOtpRequest request) {
+        authenticationService.sendOtpVerificationEmail(request.getEmail());
+
         return ResponseEntity.ok("OTP sent: " + request.getEmail());
     }
 
@@ -57,7 +64,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserDetailDTO> register(@RequestBody UserRegisterDTO request){
+    public ResponseEntity<UserDetailDTO> register(@Valid @RequestBody UserRegisterDTO request){
         UserDetailDTO createdUser =userService.register(request);
         return ResponseEntity.ok(createdUser);
     }
