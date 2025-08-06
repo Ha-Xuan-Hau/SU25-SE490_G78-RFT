@@ -1,5 +1,7 @@
 package com.rft.rft_be.service.report;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.report.*;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.UserReport;
@@ -165,30 +167,52 @@ public class ReportServiceImpl implements ReportService {
      */
     @Override
     public ReportDetailDTO getReportDetailByTargetAndType(String targetId, String type) {
-        List<UserReport> allReports = reportRepo.findByReportedIdAndType(targetId, type);
-        if (allReports.isEmpty()) return null;
+        List<UserReport> reports = reportRepo.findByReportedIdAndType(targetId, type);
+        if (reports.isEmpty()) return null;
 
-        UserReport sample = allReports.get(0);
+        UserReport sample = reports.get(0);
 
-        List<UserReport> reports = allReports.stream()
-                .filter(r -> r.getType().equals(type))
-                .collect(Collectors.toList());
-
-        //Thông tin báo cáo
+        // Thông tin tóm tắt báo cáo
         ReportSummaryDTO summary = new ReportSummaryDTO();
         summary.setReportId(sample.getId());
         summary.setType(sample.getType());
 
-        //Thông tin người bị báo cáo
+        // Thông tin đối tượng bị báo cáo
         ReportedUserDTO reportedUser = new ReportedUserDTO();
-        reportedUser.setId(sample.getReportedId());
-        reportedUser.setFullName(resolveReportedName(sample.getReportedId()));
-        String email = userRepo.findById(sample.getReportedId())
-                .map(User::getEmail)
-                .orElse("Ẩn");
-        reportedUser.setEmail(email);
 
-        //List danh sách những người báo cao
+        if ("MISLEADING_LISTING".equalsIgnoreCase(type)) {
+            // Đối tượng là xe
+            vehicleRepo.findById(targetId).ifPresent(vehicle -> {
+                reportedUser.setVehicleId(vehicle.getId());
+                reportedUser.setVehicleName(vehicle.getDescription());
+
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    List<String> images = mapper.readValue(vehicle.getVehicleImages(), new TypeReference<List<String>>() {});
+                    if (!images.isEmpty()) {
+                        reportedUser.setVehicleImage(images.get(0));
+                    }
+                } catch (Exception e) {
+                    reportedUser.setVehicleImage(null);
+                }
+
+                // Gán thêm thông tin chủ xe nếu cần
+                User owner = vehicle.getUser();
+                if (owner != null) {
+                    reportedUser.setFullName(owner.getFullName());
+                    reportedUser.setEmail(owner.getEmail());
+                }
+            });
+        } else {
+            // Đối tượng là người dùng
+            userRepo.findById(targetId).ifPresent(user -> {
+                reportedUser.setId(user.getId());
+                reportedUser.setFullName(user.getFullName());
+                reportedUser.setEmail(user.getEmail());
+            });
+        }
+
+        // Danh sách người báo cáo
         List<ReporterDetailDTO> reporterList = reports.stream().map(r -> {
             ReporterDetailDTO dto = new ReporterDetailDTO();
             dto.setId(r.getReporter().getId());
@@ -203,6 +227,7 @@ public class ReportServiceImpl implements ReportService {
         detail.setReportSummary(summary);
         detail.setReportedUser(reportedUser);
         detail.setReporters(reporterList);
+
         return detail;
     }
 }

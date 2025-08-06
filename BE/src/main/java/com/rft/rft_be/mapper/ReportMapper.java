@@ -9,7 +9,7 @@ import org.mapstruct.*;
 public interface ReportMapper {
 
 
-    @BeanMapping(ignoreByDefault = true)
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "type", source = "type")
     @Mapping(target = "reason", source = "reason")
     @Mapping(target = "reportedId", source = "targetId")
