@@ -27,7 +27,7 @@ public class ReportController {
      * Người dùng hiện tại (reporter) được tự động gán từ @AuthenticationPrincipal.
      */
     @PostMapping
-    public ResponseEntity<Void> createReport(@RequestBody ReportRequest request) {
+    public ResponseEntity<Void> createReport(@RequestBody ReportRequest request ) {
         JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = auth.getToken().getClaim("userId");
 
