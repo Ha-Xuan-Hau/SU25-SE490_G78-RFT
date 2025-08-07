@@ -198,7 +198,7 @@ public class ReportServiceImpl implements ReportService {
             // Đối tượng là xe
             vehicleRepo.findById(targetId).ifPresent(vehicle -> {
                 reportedUser.setVehicleId(vehicle.getId());
-                reportedUser.setVehicleName(vehicle.getDescription());
+                reportedUser.setVehicleName(vehicle.getThumb());
 
                 try {
                     ObjectMapper mapper = new ObjectMapper();
