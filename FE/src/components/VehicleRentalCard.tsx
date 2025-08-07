@@ -1,4 +1,3 @@
-// components/VehicleRentalCard.tsx
 "use client";
 
 import type React from "react";
@@ -8,9 +7,11 @@ import Link from "next/link";
 import moment from "moment";
 import { formatCurrency } from "@/lib/format-currency";
 import { BookingDetail } from "@/types/booking"; // Import BookingDetail
+import ReportButton from "./ReportComponent";
 
 // Ant Design components
 import { Button, Card, Tag, Modal } from "antd";
+import { CarOutlined, WarningOutlined } from "@ant-design/icons";
 
 // Import modals
 import RatingModal from "./RatingModal";
@@ -125,6 +126,10 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   const [returnModalVisible, setReturnModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmReceiveModal, setConfirmReceiveModal] = useState(false);
+
+  const [reportGuideVisible, setReportGuideVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedReportTypes, setSelectedReportTypes] = useState<string[]>([]);
 
   // States for vehicle selection modal
   const [vehicleSelectionModal, setVehicleSelectionModal] = useState(false);
@@ -357,6 +362,166 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
     durationText = "Dưới 1 giờ";
   }
 
+  // Kiểm tra có thể báo cáo không và loại báo cáo nào
+  const canReport = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+
+    const reportableStatuses = [
+      "CONFIRMED",
+      "Đã xác nhận",
+      "DELIVERED",
+      "Đang giao xe",
+      "DELIVERING",
+      "RECEIVED_BY_CUSTOMER",
+      "Đang thực hiện",
+      "RETURNED",
+      "Đã trả xe",
+      "COMPLETED",
+      "Đã tất toán",
+    ];
+
+    return (
+      reportableStatuses.includes(contractStatus || "") ||
+      reportableStatuses.includes(bookingStatus || "")
+    );
+  };
+
+  // Lấy danh sách loại báo cáo theo trạng thái
+  const getReportTypes = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+
+    // Trạng thái CONFIRMED, DELIVERED - vấn đề khi nhận xe
+    if (
+      contractStatus === "CONFIRMED" ||
+      bookingStatus === "CONFIRMED" ||
+      contractStatus === "Đã xác nhận" ||
+      bookingStatus === "Đã xác nhận" ||
+      contractStatus === "DELIVERED" ||
+      bookingStatus === "DELIVERED" ||
+      contractStatus === "Đang giao xe" ||
+      bookingStatus === "Đang giao xe" ||
+      contractStatus === "DELIVERING" ||
+      bookingStatus === "DELIVERING"
+    ) {
+      return ["MISLEADING_INFO", "FRAUD", "DOCUMENT_ISSUE"];
+    }
+
+    // Trạng thái RECEIVED_BY_CUSTOMER, RETURNED, COMPLETED - vấn đề sau khi thuê
+    if (
+      contractStatus === "RECEIVED_BY_CUSTOMER" ||
+      bookingStatus === "RECEIVED_BY_CUSTOMER" ||
+      contractStatus === "Đang thực hiện" ||
+      bookingStatus === "Đang thực hiện" ||
+      contractStatus === "RETURNED" ||
+      bookingStatus === "RETURNED" ||
+      contractStatus === "Đã trả xe" ||
+      bookingStatus === "Đã trả xe" ||
+      contractStatus === "COMPLETED" ||
+      bookingStatus === "COMPLETED" ||
+      contractStatus === "Đã tất toán" ||
+      bookingStatus === "Đã tất toán"
+    ) {
+      return [
+        "TECHNICAL_ISSUE",
+        "UNSAFE_VEHICLE",
+        "FUEL_LEVEL_INCORRECT",
+        "EXPIRED_INSURANCE",
+        "NO_INSURANCE",
+        "DOCUMENT_ISSUE",
+      ];
+    }
+
+    return [];
+  };
+
+  const getReportPhase = () => {
+    const contractStatus = info?.contract?.status;
+    const bookingStatus = info?.status;
+    const status = contractStatus || bookingStatus;
+
+    if (
+      status === "CONFIRMED" ||
+      status === "Đã xác nhận" ||
+      status === "DELIVERED" ||
+      status === "Đang giao xe" ||
+      status === "DELIVERING"
+    ) {
+      return "handover";
+    }
+
+    if (
+      status === "RECEIVED_BY_CUSTOMER" ||
+      status === "Đang thực hiện" ||
+      status === "RETURNED" ||
+      status === "Đã trả xe" ||
+      status === "COMPLETED" ||
+      status === "Đã tất toán"
+    ) {
+      return "rental";
+    }
+
+    return "other";
+  };
+
+  // Handler cho nút báo cáo
+  const handleReportClick = () => {
+    const reportTypes = getReportTypes();
+    setSelectedReportTypes(reportTypes);
+    setReportGuideVisible(true);
+  };
+
+  // Handler khi đồng ý báo cáo
+  const handleAgreeReport = () => {
+    setReportGuideVisible(false);
+    setReportModalVisible(true);
+  };
+
+  // Handler khi đóng modal báo cáo
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
+    setSelectedReportTypes([]);
+  };
+
+  // Lấy nội dung hướng dẫn
+  const getGuideContent = () => {
+    const phase = getReportPhase();
+
+    if (phase === "handover") {
+      return {
+        title: "Hướng dẫn báo cáo vấn đề khi giao nhận xe",
+        description:
+          "Bạn đang trong giai đoạn giao nhận xe. Các vấn đề có thể báo cáo:",
+        issues: [
+          "🚗 Xe khác với mô tả (biển số, màu sắc, mẫu xe không đúng)",
+          "⚠️ Chủ xe gian lận (thay đổi địa điểm, thời gian, không giao xe)",
+          "📄 Vấn đề về giấy tờ xe (thiếu hoặc không hợp lệ)",
+        ],
+      };
+    } else if (phase === "rental") {
+      return {
+        title: "Hướng dẫn báo cáo vấn đề trong quá trình thuê xe",
+        description:
+          "Bạn đã nhận xe và đang trong quá trình sử dụng. Các vấn đề có thể báo cáo:",
+        issues: [
+          "🔧 Xe gặp lỗi kỹ thuật (chết máy, hỏng hóc)",
+          "⚠️ Xe không an toàn (phanh hỏng, đèn không hoạt động)",
+          "⛽ Mức nhiên liệu không đúng cam kết",
+          "📋 Vấn đề bảo hiểm (hết hạn hoặc không có)",
+          "📄 Giấy tờ xe không hợp lệ",
+        ],
+      };
+    }
+
+    return null;
+  };
+
+  // Kiểm tra có nhiều loại báo cáo không
+  const hasMultipleReportTypes = () => {
+    return getReportTypes().length > 1;
+  };
+
   return (
     <>
       <Card
@@ -486,6 +651,18 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
                 </Button>
               )}
 
+              {/* Nút báo cáo */}
+              {canReport() && (
+                <Button
+                  type="default"
+                  onClick={handleReportClick}
+                  className="border-red-400 text-red-600 hover:bg-red-50"
+                  icon={<WarningOutlined />}
+                >
+                  Báo cáo
+                </Button>
+              )}
+
               {/* Nút đánh giá */}
               {canRate() && onOpenRating && (
                 <Button
@@ -604,6 +781,159 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
             info?.vehicleId?.vehicleLicensePlate || "Không xác định",
         }}
       />
+      {/* Modal hướng dẫn báo cáo */}
+      <Modal
+        title={
+          <div className="flex items-center gap-3">
+            <WarningOutlined className="text-red-500" />
+            <span>Hướng dẫn báo cáo</span>
+          </div>
+        }
+        open={reportGuideVisible}
+        onCancel={() => setReportGuideVisible(false)}
+        width={600}
+        footer={[
+          <Button key="cancel" onClick={() => setReportGuideVisible(false)}>
+            Hủy
+          </Button>,
+          <Button key="agree" type="primary" danger onClick={handleAgreeReport}>
+            Đồng ý báo cáo
+          </Button>,
+        ]}
+      >
+        {getGuideContent() && (
+          <div className="py-4">
+            {/* Thông báo cảnh báo */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <WarningOutlined className="text-yellow-600 mt-1" />
+                <div className="text-sm text-yellow-800">
+                  <div className="font-medium mb-1">Lưu ý quan trọng:</div>
+                  <p>
+                    Vui lòng chỉ báo cáo khi thực sự gặp vấn đề. Báo cáo sai sự
+                    thật có thể dẫn đến việc tài khoản bị hạn chế.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Nội dung hướng dẫn */}
+            <div className="mb-6">
+              <h4 className="font-semibold text-lg mb-3">
+                {getGuideContent()?.title}
+              </h4>
+              <p className="text-gray-600 mb-4">
+                {getGuideContent()?.description}
+              </p>
+
+              <div className="space-y-2">
+                {getGuideContent()?.issues.map((issue, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg"
+                  >
+                    <span className="text-sm">{issue}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Thông tin xe */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <CarOutlined className="text-blue-600" />
+                <span className="font-medium">Thông tin xe báo cáo:</span>
+              </div>
+              <div className="text-sm text-gray-700">
+                <div>
+                  <strong>Tên xe:</strong> {info?.vehicleId?.vehicleThumb}
+                </div>
+                <div>
+                  <strong>Biển số:</strong>{" "}
+                  {info?.vehicleId?.vehicleLicensePlate}
+                </div>
+                <div>
+                  <strong>Mã đặt xe:</strong> {info._id}
+                </div>
+              </div>
+            </div>
+
+            {/* Quy trình xử lý */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="text-sm text-gray-700">
+                <div className="font-medium mb-2">Quy trình xử lý báo cáo:</div>
+                <ol className="list-decimal list-inside space-y-1 text-xs">
+                  <li>Báo cáo sẽ được gửi đến bộ phận hỗ trợ khách hàng</li>
+                  <li>
+                    Chúng tôi sẽ liên hệ xác minh thông tin trong thời gian sớm
+                    nhất
+                  </li>
+                  <li>
+                    Tùy theo mức độ nghiêm trọng, sẽ có biện pháp xử lý phù hợp
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ReportButton Modal - CHỈ RENDER KHI CẦN VÀ ẨN BUTTON */}
+      {/* {reportModalVisible && selectedReportTypes.length > 0 && (
+        <div style={{ display: "none" }}>
+          {selectedReportTypes.length === 1 ? (
+            <ReportButton
+              targetId={info.vehicleId._id}
+              reportType={selectedReportTypes[0]}
+              buttonText=""
+              size="small"
+              type="text"
+              icon={false}
+              autoOpen={true}
+              onModalClose={handleReportModalClose}
+            />
+          ) : (
+            <ReportButton
+              targetId={info.vehicleId._id}
+              reportTypes={selectedReportTypes}
+              showTypeSelector={true}
+              buttonText=""
+              size="small"
+              type="text"
+              icon={false}
+              autoOpen={true}
+              onModalClose={handleReportModalClose}
+            />
+          )}
+        </div>
+      )} */}
+      {/* Thay vì dùng display: none */}
+      {reportModalVisible &&
+        selectedReportTypes.length > 0 &&
+        (selectedReportTypes.length === 1 ? (
+          <ReportButton
+            targetId={info.vehicleId._id}
+            reportType={selectedReportTypes[0]}
+            buttonText=""
+            size="small"
+            type="text"
+            icon={false}
+            autoOpen={true}
+            onModalClose={handleReportModalClose}
+          />
+        ) : (
+          <ReportButton
+            targetId={info.vehicleId._id}
+            reportTypes={selectedReportTypes}
+            showTypeSelector={true}
+            buttonText=""
+            size="small"
+            type="text"
+            icon={false}
+            autoOpen={true}
+            onModalClose={handleReportModalClose}
+          />
+        ))}
     </>
   );
 };

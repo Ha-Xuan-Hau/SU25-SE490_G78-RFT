@@ -733,7 +733,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             description: processedDescription,
             numberVehicle: quantity,
             costPerDay: values.costPerDay,
-            // status: "PENDING",
+            //status: "PENDING",
             thumb: values.thumb,
             userId: user?.id || user?.result?.id,
             isMultipleVehicles: isMultipleVehicles,
