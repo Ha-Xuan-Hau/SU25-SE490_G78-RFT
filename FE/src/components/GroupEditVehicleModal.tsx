@@ -28,6 +28,23 @@ const motorbikeFeatureOptions = [
   { label: "Khởi động điện", value: "Electric Start" },
   { label: "Sạc điện thoại USB", value: "USB Charging" },
   { label: "Đồng hồ kỹ thuật số", value: "Digital Dashboard" },
+  { label: "Hệ thống định vị", value: "GPS Tracking" },
+
+  //THEM MOI FEATURE
+  { label: "Kính chắn gió", value: "Windshield" },
+  { label: "Yên xe êm ái", value: "Comfort Seat" },
+  { label: "Hệ thống chống trượt", value: "Traction Control" },
+  { label: "Hệ thống treo cải tiến", value: "Advanced Suspension" },
+  { label: "Khóa bánh trước", value: "Front Wheel Lock" },
+  { label: "Gác chân cho người ngồi sau", value: "Passenger Footrest" },
+  { label: "Lốp không săm", value: "Tubeless Tires" },
+  { label: "Khóa cổ", value: "Steering Lock" },
+  { label: "Chống nghiêng tự động", value: "Auto Side Stand" },
+  {
+    label: "Hệ thống tiết kiệm nhiên liệu",
+    value: "Fuel-saving System",
+  },
+  { label: "Hệ thống làm mát", value: "Cooling System" },
 ];
 
 const bicycleFeatureOptions = [

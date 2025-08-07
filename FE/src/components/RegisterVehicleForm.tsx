@@ -346,7 +346,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
 
   const fuelTypeOptions = [
     { value: "GASOLINE", label: "Xăng" },
-    { value: "DIESEL", label: "Dầu" },
+    // { value: "DIESEL", label: "Dầu" },
     { value: "ELECTRIC", label: "Điện" },
   ];
 
