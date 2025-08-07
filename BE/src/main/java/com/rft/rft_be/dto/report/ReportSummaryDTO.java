@@ -8,4 +8,5 @@ import lombok.*;
 public class ReportSummaryDTO {
     private String reportId;
     private String type;
+    private String booking;
 }

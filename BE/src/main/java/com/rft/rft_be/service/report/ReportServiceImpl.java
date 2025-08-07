@@ -3,10 +3,12 @@ package com.rft.rft_be.service.report;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.report.*;
+import com.rft.rft_be.entity.Booking;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.UserReport;
 import com.rft.rft_be.entity.Vehicle;
 import com.rft.rft_be.mapper.ReportMapper;
+import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.UserReportRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.repository.VehicleRepository;
@@ -26,6 +28,8 @@ public class ReportServiceImpl implements ReportService {
     private final UserRepository userRepo;
     private final VehicleRepository vehicleRepo;
     private final ReportMapper reportMapper;
+    private final BookingRepository bookingRepository;
+
 
     private final List<String> seriousReport = List.of(
             "DAMAGED_VEHICLE", // khách làm hư hỏng xe
@@ -36,12 +40,12 @@ public class ReportServiceImpl implements ReportService {
             "DOCUMENT_ISSUE",             // Giấy tờ sai/mất
             "TECHNICAL_ISSUE",            // Xe bị lỗi kỹ thuật
             "UNSAFE_VEHICLE",             // Xe không an toàn
-            "FUEL_LEVEL_INCORRECT",   // Mức nhiên liệu không đúng như cam kết`
+            "FUEL_LEVEL_INCORRECT",       // Mức nhiên liệu không đúng như cam kết`
             "NO_INSURANCE",               // Không có bảo hiểm
             "EXPIRED_INSURANCE",          // Bảo hiểm hết hạn
             "FAKE_DOCUMENT",              // Khách cung cấp giấy tờ giả
             "FAKE_ORDER",                 // Khách đặt đơn giả
-            "DISPUTE_REFUND",     // Tranh chấp hoàn tiền/phạt
+            "DISPUTE_REFUND",             // Tranh chấp hoàn tiền/phạt
             "LATE_RETURN_NO_CONTACT"      // Không trả xe đúng hạn và mất liên lạc
     );
     private final List<String> nonSeriousReport = List.of(
@@ -76,6 +80,12 @@ public class ReportServiceImpl implements ReportService {
         report.setReporter(reporter);
         report.setCreatedAt(java.time.LocalDateTime.now());
         reportRepo.save(report);
+
+        if (request.getBooking() != null) {
+            Booking booking = bookingRepository.findById(request.getBooking())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy booking với id: " + request.getBooking()));
+            report.setBooking(booking);
+        }
     }
     /**
      * Trả về tên của đối tượng bị báo cáo, có thể là tên người dùng hoặc biển số xe.
@@ -176,11 +186,15 @@ public class ReportServiceImpl implements ReportService {
         ReportSummaryDTO summary = new ReportSummaryDTO();
         summary.setReportId(sample.getId());
         summary.setType(sample.getType());
+        summary.setBooking(sample.getId());
+        if (sample.getBooking() != null) {
+            summary.setBooking(sample.getBooking().getId());
+        }
 
         // Thông tin đối tượng bị báo cáo
         ReportedUserDTO reportedUser = new ReportedUserDTO();
 
-        if ("MISLEADING_LISTING".equalsIgnoreCase(type)) {
+        if ("MISLEADING_LISTING".equalsIgnoreCase(type) || "MISLEADING_INFO".equalsIgnoreCase(type)) {
             // Đối tượng là xe
             vehicleRepo.findById(targetId).ifPresent(vehicle -> {
                 reportedUser.setVehicleId(vehicle.getId());
@@ -199,6 +213,7 @@ public class ReportServiceImpl implements ReportService {
                 // Gán thêm thông tin chủ xe nếu cần
                 User owner = vehicle.getUser();
                 if (owner != null) {
+                    reportedUser.setId(owner.getId());
                     reportedUser.setFullName(owner.getFullName());
                     reportedUser.setEmail(owner.getEmail());
                 }
@@ -230,4 +245,5 @@ public class ReportServiceImpl implements ReportService {
 
         return detail;
     }
+
 }
