@@ -609,7 +609,7 @@ export default function VehiclePendingPage() {
         zIndex={2000} // Thêm dòng này để modal xác nhận hiển thị trên modal chi tiết
         footer={[
           <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Hủy
+            Đóng
           </Button>,
           <Button
             key="approve"
@@ -648,7 +648,7 @@ export default function VehiclePendingPage() {
         zIndex={2000} // Thêm dòng này
         footer={[
           <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Hủy
+            Đóng
           </Button>,
           <Button
             key="confirm"

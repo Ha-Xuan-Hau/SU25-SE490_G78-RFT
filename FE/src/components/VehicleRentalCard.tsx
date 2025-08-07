@@ -702,7 +702,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         onCancel={() => setConfirmReceiveModal(false)}
         footer={[
           <Button key="cancel" onClick={() => setConfirmReceiveModal(false)}>
-            Hủy
+            Đóng
           </Button>,
           <Button
             key="confirm"

@@ -401,7 +401,7 @@ export default function ReportButton({
                 rules={[
                   { required: true, message: "Vui lòng nhập lý do" },
                   { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
-                  { max: 500, message: "Lý do không được vượt quá 500 ký tự" },
+                  { max: 255, message: "Lý do không được vượt quá 255 ký tự" },
                 ]}
               >
                 <TextArea

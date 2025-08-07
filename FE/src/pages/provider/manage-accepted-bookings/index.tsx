@@ -43,6 +43,7 @@ import {
   getBookingsByProviderAndStatus,
   updateBookingStatus,
   cancelBooking,
+  cancelBookingByProviderDueToNoShow,
 } from "@/apis/booking.api";
 import {
   showApiError,
@@ -148,6 +149,12 @@ export default function ManageAcceptedBookings() {
 
   const [returnConfirmModal, setReturnConfirmModal] = useState<boolean>(false);
   const [selectedReturnBookingId, setSelectedReturnBookingId] = useState<
+    string | null
+  >(null);
+
+  //late showtime
+  const [noShowModalVisible, setNoShowModalVisible] = useState<boolean>(false);
+  const [selectedNoShowBookingId, setSelectedNoShowBookingId] = useState<
     string | null
   >(null);
 
@@ -442,6 +449,55 @@ export default function ManageAcceptedBookings() {
     }
   };
 
+  // Thêm function để kiểm tra đã quá giờ nhận xe chưa
+  const isOverPickupTime = (booking: BookingData): boolean => {
+    if (booking.status !== "CONFIRMED") return false;
+
+    const now = new Date();
+    const pickupTime = new Date(
+      booking.timeBookingStart[0], // year
+      booking.timeBookingStart[1] - 1, // month (0-indexed)
+      booking.timeBookingStart[2], // day
+      booking.timeBookingStart[3] || 0, // hour
+      booking.timeBookingStart[4] || 0 // minute
+    );
+
+    return now > pickupTime;
+  };
+
+  // Thêm handlers cho modal "Khách không xuất hiện"
+  const showNoShowModal = (bookingId: string) => {
+    setSelectedNoShowBookingId(bookingId);
+    setNoShowModalVisible(true);
+  };
+
+  const hideNoShowModal = () => {
+    setNoShowModalVisible(false);
+    setSelectedNoShowBookingId(null);
+  };
+
+  // Thêm function để xử lý khi khách không xuất hiện
+  const handleNoShow = async () => {
+    if (!selectedNoShowBookingId) return;
+
+    setLoading(true);
+    try {
+      const result = await cancelBookingByProviderDueToNoShow(
+        selectedNoShowBookingId
+      );
+
+      showApiSuccess("Đã hủy đơn do khách không xuất hiện");
+      setNoShowModalVisible(false);
+      setSelectedNoShowBookingId(null);
+      await fetchBookings(true); // Force refresh data
+    } catch (error) {
+      console.error("Error handling no-show:", error);
+      showApiError("Lỗi khi xử lý đơn hàng");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Show cancel modal
   const showCancelModal = (bookingId: string) => {
     setSelectedBookingId(bookingId);
@@ -702,17 +758,35 @@ export default function ManageAcceptedBookings() {
             className="w-full"
           >
             Xác nhận giao xe
-          </Button>,
-          <Button
-            key="cancel"
-            danger
-            size="small"
-            onClick={() => showCancelModal(booking.id)}
-            className="w-full"
-          >
-            Hủy hợp đồng
           </Button>
         );
+
+        // Kiểm tra nếu đã quá giờ nhận xe
+        if (isOverPickupTime(booking)) {
+          baseActions.push(
+            <Button
+              key="no-show"
+              danger
+              size="small"
+              onClick={() => showNoShowModal(booking.id)}
+              className="w-full"
+            >
+              Khách không xuất hiện?
+            </Button>
+          );
+        } else {
+          baseActions.push(
+            <Button
+              key="cancel"
+              danger
+              size="small"
+              onClick={() => showCancelModal(booking.id)}
+              className="w-full"
+            >
+              Hủy hợp đồng
+            </Button>
+          );
+        }
         break;
 
       case "DELIVERED":
@@ -1746,6 +1820,130 @@ export default function ManageAcceptedBookings() {
               </div>
             </div>
           )}
+      </Modal>
+
+      {/* Modal "Khách không xuất hiện?" */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <ExclamationCircleOutlined className="text-red-500" />
+            <span>Xác nhận khách không xuất hiện</span>
+          </div>
+        }
+        open={noShowModalVisible}
+        onCancel={hideNoShowModal}
+        footer={[
+          <Button key="cancel" onClick={hideNoShowModal}>
+            Hủy
+          </Button>,
+          <Button
+            key="confirm"
+            type="primary"
+            danger
+            onClick={handleNoShow}
+            loading={loading}
+          >
+            Xác nhận
+          </Button>,
+        ]}
+        width={600}
+        destroyOnClose
+      >
+        <div className="py-4">
+          {/* Cảnh báo nghiêm trọng */}
+          <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <ExclamationCircleOutlined className="text-red-600 text-2xl mt-1" />
+              <div>
+                <h4 className="font-bold text-red-800 mb-2 text-lg">
+                  ⚠️ CẢNH BÁO NGHIÊM TRỌNG
+                </h4>
+                <div className="text-red-700 text-sm space-y-2">
+                  <p className="font-semibold">
+                    Nếu thông tin không chính xác, bạn sẽ bị báo cáo và tài
+                    khoản có thể bị cấm vĩnh viễn.
+                  </p>
+                  <p>Chỉ xác nhận &quot;khách không xuất hiện&quot; khi:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    <li>Đã quá giờ hẹn giao xe</li>
+                    <li>Đã cố gắng liên lạc với khách hàng nhiều lần</li>
+                    <li>Khách hàng không phản hồi hoặc không đến nhận xe</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Thông tin đơn hàng */}
+          <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h4 className="font-semibold text-gray-800 mb-3">
+              Thông tin đơn hàng:
+            </h4>
+            {selectedNoShowBookingId && (
+              <div className="space-y-2 text-sm">
+                {(() => {
+                  const booking = bookings.find(
+                    (b) => b.id === selectedNoShowBookingId
+                  );
+                  if (!booking) return null;
+
+                  const pickupTime = new Date(
+                    booking.timeBookingStart[0],
+                    booking.timeBookingStart[1] - 1,
+                    booking.timeBookingStart[2],
+                    booking.timeBookingStart[3] || 0,
+                    booking.timeBookingStart[4] || 0
+                  );
+
+                  return (
+                    <>
+                      <div>
+                        <strong>Mã đặt xe:</strong> {booking.id}
+                      </div>
+                      <div>
+                        <strong>Khách hàng:</strong> {booking.userName}
+                      </div>
+                      <div>
+                        <strong>Số điện thoại:</strong> {booking.phoneNumber}
+                      </div>
+                      <div>
+                        <strong>Xe thuê:</strong> {booking.vehicleThumb} -{" "}
+                        {booking.vehicleLicensePlate}
+                      </div>
+                      <div>
+                        <strong>Giờ hẹn nhận xe:</strong>{" "}
+                        {pickupTime.toLocaleString("vi-VN")}
+                      </div>
+                      <div className="text-red-600">
+                        <strong>Đã trễ:</strong>{" "}
+                        {Math.floor(
+                          (Date.now() - pickupTime.getTime()) / (1000 * 60)
+                        )}{" "}
+                        phút
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+
+          {/* Xác nhận cuối cùng */}
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <QuestionCircleOutlined className="text-yellow-600 mt-1" />
+              <div className="text-sm text-yellow-800">
+                <p className="font-semibold mb-1">
+                  Bạn có chắc chắn khách hàng không xuất hiện để nhận xe không?
+                </p>
+                <p>
+                  Hành động này sẽ hủy đơn hàng và có thể ảnh hưởng đến uy tín
+                  của khách hàng.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </Modal>
 
       {/* ReportButton Modal - Chỉ render khi cần */}

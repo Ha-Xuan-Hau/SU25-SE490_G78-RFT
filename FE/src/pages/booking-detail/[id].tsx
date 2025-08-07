@@ -8,6 +8,9 @@ import {
   EnvironmentOutlined,
   CarOutlined,
   FileTextOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import moment from "moment";
 import { formatCurrency } from "@/lib/format-currency";
@@ -65,6 +68,93 @@ export default function BookingDetailPage() {
     return statusColors[status] || "default";
   };
 
+  // Function để render thông tin theo trạng thái
+  const renderStatusSpecificInfo = () => {
+    const status = data?.status;
+
+    if (status === "COMPLETED") {
+      return (
+        <>
+          {/* Thời gian trả xe thực tế */}
+          {data?.returnedAt && (
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-gray-600">Thời gian trả xe thực tế:</span>
+              <span className="font-medium text-green-600">
+                {formatDateTime(data.returnedAt)}
+              </span>
+            </div>
+          )}
+
+          {/* Ghi chú */}
+          {data?.note && (
+            <div className="mt-4">
+              <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
+                <InfoCircleOutlined className="text-blue-500" />
+                Ghi chú
+              </h4>
+              <div className="bg-blue-50 rounded-lg p-4">
+                <span className="text-gray-700">{data.note}</span>
+              </div>
+            </div>
+          )}
+
+          <Divider />
+
+          {/* Tổng giá thuê cho đơn hoàn thành */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-xl font-bold text-gray-800">
+                <CheckCircleOutlined className="text-green-500" />
+                Tổng giá thuê:
+              </h3>
+              <h3 className="text-2xl font-bold text-green-600">
+                {data?.totalCost ? formatCurrency(data.totalCost) : "0 ₫"}
+              </h3>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (status === "CANCELLED") {
+      return (
+        <>
+          {/* Lý do hủy đơn */}
+          {data?.note && (
+            <div className="mt-4">
+              <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
+                <CloseCircleOutlined className="text-red-500" />
+                Lý do hủy đơn
+              </h4>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <span className="text-red-700">{data.note}</span>
+              </div>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    // Các trạng thái khác (PENDING, CONFIRMED, IN_PROGRESS)
+    return (
+      <>
+        <Divider />
+        {/* Tổng giá thuê cho các trạng thái khác */}
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xl font-bold text-gray-800">
+              <InfoCircleOutlined className="text-green-500" />
+              Tổng giá thuê:
+            </h3>
+            <h3 className="text-2xl font-bold text-green-600">
+              {data?.totalCost ? formatCurrency(data.totalCost) : "0 ₫"}
+            </h3>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -105,11 +195,18 @@ export default function BookingDetailPage() {
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Tag
               color={getStatusColor(data?.status || "")}
-              className="text-base px-3 py-1"
+              className="text-lg px-4 py-2 font-semibold rounded-full border-2"
+              style={{
+                fontSize: "20px",
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              }}
             >
               {translateENtoVI(data?.status || "")}
             </Tag>
-            <span className="text-gray-500">
+            <span className="text-gray-500 text-lg font-medium">
               Mã thanh toán: {data?.codeTransaction}
             </span>
           </div>
@@ -247,7 +344,7 @@ export default function BookingDetailPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Có thuê tài xế</span>
+                    <span className="text-gray-600">Có thuê tài xế:</span>
                     <span className="font-mono font-medium">
                       {data?.driverFee ? "Có" : "Không"}
                     </span>
@@ -259,13 +356,7 @@ export default function BookingDetailPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Ngày trả xe:</span>
-                    <span className="font-medium text-blue-600">
-                      {formatDateTime(data?.timeBookingEnd || "")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Ngày trả xe thực tế:</span>
+                    <span className="text-gray-600">Ngày trả xe dự kiến:</span>
                     <span className="font-medium text-blue-600">
                       {formatDateTime(data?.timeBookingEnd || "")}
                     </span>
@@ -273,20 +364,8 @@ export default function BookingDetailPage() {
                 </div>
               </div>
 
-              <Divider />
-
-              {/* Tổng giá */}
-              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-xl font-bold text-gray-800">
-                    <h2 className="text-green-500" />
-                    Tổng giá thuê:
-                  </h3>
-                  <h3 className="text-2xl font-bold text-green-600">
-                    {data?.totalCost ? formatCurrency(data.totalCost) : "0 ₫"}
-                  </h3>
-                </div>
-              </div>
+              {/* Render thông tin theo trạng thái */}
+              {renderStatusSpecificInfo()}
             </div>
           </Card>
         </div>
