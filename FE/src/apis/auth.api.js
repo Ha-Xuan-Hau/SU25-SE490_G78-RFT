@@ -1,6 +1,5 @@
 import { apiClient } from "./client";
 import { jwtDecode } from "jwt-decode";
-import { fetchUserProfile } from "../recoils/user.state";
 
 export async function login(credentials) {
     try {
@@ -59,6 +58,49 @@ export async function login(credentials) {
         return data;
     } catch (error) {
         console.error("Login error:", error);
+        throw error;
+    }
+}
+
+//Function cho register flow
+export async function sendOtpRegister(email) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/auth/sent-otp-register",
+            data: { email },
+        });
+        return data;
+    } catch (error) {
+        console.error("Send OTP register error:", error);
+        throw error;
+    }
+}
+
+export async function verifyOtp(email, otp) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/auth/verify-otp",
+            data: { email, otp },
+        });
+        return data;
+    } catch (error) {
+        console.error("Verify OTP error:", error);
+        throw error;
+    }
+}
+
+export async function register(userData) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/auth/register",
+            data: userData,
+        });
+        return data;
+    } catch (error) {
+        console.error("Register error:", error);
         throw error;
     }
 }

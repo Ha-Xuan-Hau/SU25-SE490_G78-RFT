@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, X } from "lucide-react";
+import { Eye, EyeOff, X, Mail } from "lucide-react";
 import {
   loginSchema,
   registerSchema,
   forgotPasswordSchema,
   verifyOTPSchema,
   resetPasswordSchema,
+  sendOtpSchema,
 } from "@/lib/validations/auth";
 import { z } from "zod";
 import { Icon } from "@iconify/react";
-import { login as apiLogin } from "@/apis/auth.api";
+import {
+  login as apiLogin,
+  sendOtpRegister,
+  verifyOtp,
+  register as apiRegister,
+} from "@/apis/auth.api";
 import { toast } from "react-toastify";
 import { useUserState } from "@/recoils/user.state";
 
@@ -41,11 +47,18 @@ export function AuthPopup({
     password: "",
     confirmPassword: "",
     email: "",
+    address: "",
     referralCode: "",
     otp: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // State cho register flow
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(0);
+  const [canResendOtp, setCanResendOtp] = useState(true);
 
   const { login } = useAuth();
 
@@ -57,31 +70,38 @@ export function AuthPopup({
       password: "",
       confirmPassword: "",
       email: "",
+      address: "",
       referralCode: "",
       otp: "",
     });
     setErrors({});
+    setIsOtpSent(false);
+    setIsOtpVerified(false);
+    setOtpTimer(0);
+    setCanResendOtp(true);
   }, [mode, isOpen]);
 
-  const validateForm = () => {
+  // OTP Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => {
+          if (prev <= 1) {
+            setCanResendOtp(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [otpTimer]);
+
+  const validateForm = (schema?: z.ZodSchema) => {
     try {
-      switch (mode) {
-        case "login":
-          loginSchema.parse(formData);
-          break;
-        case "register":
-          registerSchema.parse(formData);
-          break;
-        case "forgot-password":
-          forgotPasswordSchema.parse(formData);
-          break;
-        case "verify-otp":
-          verifyOTPSchema.parse(formData);
-          break;
-        case "reset-password":
-          resetPasswordSchema.parse(formData);
-          break;
-      }
+      const schemaToUse = schema || getValidationSchema();
+      schemaToUse.parse(formData);
       setErrors({});
       return true;
     } catch (error) {
@@ -98,8 +118,124 @@ export function AuthPopup({
     }
   };
 
+  const getValidationSchema = () => {
+    switch (mode) {
+      case "login":
+        return loginSchema;
+      case "register":
+        return registerSchema;
+      case "forgot-password":
+        return forgotPasswordSchema;
+      case "verify-otp":
+        return verifyOTPSchema;
+      case "reset-password":
+        return resetPasswordSchema;
+      default:
+        return loginSchema;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (mode === "register") {
+      await handleRegisterFlow();
+    } else {
+      await handleOtherForms();
+    }
+  };
+
+  const handleRegisterFlow = async () => {
+    if (!isOtpSent) {
+      // Step 1: Send OTP
+      if (!validateForm(sendOtpSchema)) return;
+
+      setIsLoading(true);
+      try {
+        await sendOtpRegister(formData.email);
+        setIsOtpSent(true);
+        setOtpTimer(60);
+        setCanResendOtp(false);
+        toast.success("Mã OTP đã được gửi đến email của bạn!");
+      } catch (err: any) {
+        const errorMessage =
+          err.response?.data?.message || "Có lỗi xảy ra khi gửi OTP";
+        setErrors({ submit: errorMessage });
+        toast.error(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (!isOtpVerified) {
+      // Step 2: Verify OTP
+      if (!formData.otp) {
+        setErrors({ otp: "Vui lòng nhập mã OTP" });
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await verifyOtp(formData.email, formData.otp);
+        if (response === "OTP verified" || response.includes("verified")) {
+          setIsOtpVerified(true);
+          toast.success("Xác thực OTP thành công!");
+        } else {
+          throw new Error("OTP không hợp lệ");
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err.response?.data?.message || "Mã OTP không hợp lệ";
+        setErrors({ otp: errorMessage });
+        toast.error(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Step 3: Complete registration
+      if (!validateForm(registerSchema)) return;
+
+      setIsLoading(true);
+      try {
+        const userData = {
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          address: formData.address,
+          otp: formData.otp,
+        };
+
+        const response = await apiRegister(userData);
+        toast.success("Đăng ký thành công!");
+
+        // Auto login after successful registration
+        try {
+          const loginResponse = await apiLogin({
+            email: formData.email,
+            password: formData.password,
+          });
+
+          if (loginResponse && loginResponse.access_token) {
+            const userData = loginResponse.result || {};
+            login(userData, loginResponse.access_token);
+            setRecoilUser(userData);
+          }
+        } catch (loginErr) {
+          console.error("Auto login failed:", loginErr);
+          openAuthPopup("login");
+        }
+
+        onClose();
+      } catch (err: any) {
+        const errorMessage =
+          err.response?.data?.message || "Có lỗi xảy ra khi đăng ký";
+        setErrors({ submit: errorMessage });
+        toast.error(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleOtherForms = async () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -110,28 +246,17 @@ export function AuthPopup({
           password: formData.password,
         });
 
-        // Kiểm tra dữ liệu trả về từ API
         if (response && response.access_token) {
-          // Existing code
           const userData = response.result || {};
-
-          // Update auth context
           login(userData, response.access_token);
-
-          // Also update Recoil state
           setRecoilUser(userData);
-
           toast.success("Đăng nhập thành công!");
           onClose();
-          // Don't reload the page - let React handle state updates
-          // window.location.reload();
         } else {
-          // Xử lý trường hợp response không đúng định dạng
           throw new Error("Định dạng phản hồi không hợp lệ");
         }
       }
     } catch (err: any) {
-      // Xử lý lỗi cải tiến hơn cho JavaScript
       const errorMessage =
         err.message ||
         err.response?.data?.message ||
@@ -139,6 +264,22 @@ export function AuthPopup({
 
       setErrors({ submit: errorMessage });
       toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!canResendOtp || !formData.email) return;
+
+    setIsLoading(true);
+    try {
+      await sendOtpRegister(formData.email);
+      setOtpTimer(60);
+      setCanResendOtp(false);
+      toast.success("Mã OTP mới đã được gửi!");
+    } catch (err: any) {
+      toast.error("Có lỗi xảy ra khi gửi lại OTP");
     } finally {
       setIsLoading(false);
     }
@@ -207,6 +348,218 @@ export function AuthPopup({
     }
   };
 
+  const renderRegisterForm = () => {
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Email field - always shown */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Email <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            disabled={isOtpSent}
+            className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+              errors.email ? "border-red-500" : "border-gray-300"
+            } ${isOtpSent ? "bg-gray-100" : ""}`}
+            required
+          />
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+          )}
+        </div>
+
+        {/* OTP field - shown after email is sent */}
+        {isOtpSent && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Mã OTP <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="otp"
+                value={formData.otp}
+                onChange={handleInputChange}
+                maxLength={6}
+                className={`mt-1 flex-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                  errors.otp ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Nhập mã 6 số"
+                required
+              />
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={!canResendOtp || isLoading}
+                className={`mt-1 px-3 py-2 text-sm rounded-md border ${
+                  canResendOtp && !isLoading
+                    ? "border-green-500 text-green-600 hover:bg-green-50"
+                    : "border-gray-300 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {otpTimer > 0 ? `${otpTimer}s` : "Gửi lại"}
+              </button>
+            </div>
+            {errors.otp && (
+              <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">
+              <Mail size={14} className="inline mr-1" />
+              Mã OTP đã được gửi đến email của bạn
+            </p>
+          </div>
+        )}
+
+        {/* Other fields - shown after OTP is verified */}
+        {isOtpVerified && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Số điện thoại <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                  errors.phone ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Ví dụ: 0123456789"
+                required
+              />
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Địa chỉ <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                  errors.address ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Ví dụ: 123 Đường ABC, Quận XYZ, TP HCM"
+                required
+              />
+              {errors.address && (
+                <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Mật khẩu <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                    errors.password ? "border-red-500" : "border-gray-300"
+                  }`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Mật khẩu phải có ít nhất 6 ký tự, bao gồm chữ hoa, chữ thường và
+                số
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Xác nhận mật khẩu <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                    errors.confirmPassword
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {errors.submit && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{errors.submit}</p>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full rounded-md bg-primary py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading
+            ? "Đang xử lý..."
+            : !isOtpSent
+            ? "Gửi mã OTP"
+            : !isOtpVerified
+            ? "Xác thực OTP"
+            : "Hoàn tất đăng ký"}
+        </button>
+
+        <div className="text-center text-sm">
+          <button
+            type="button"
+            onClick={() => openAuthPopup("login")}
+            className="text-dark hover:text-primary transition duration-300"
+          >
+            Đã có tài khoản? Đăng nhập
+          </button>
+        </div>
+      </form>
+    );
+  };
+
   const renderForm = () => {
     switch (mode) {
       case "login":
@@ -257,6 +610,13 @@ export function AuthPopup({
                 <p className="mt-1 text-sm text-red-600">{errors.password}</p>
               )}
             </div>
+
+            {errors.submit && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{errors.submit}</p>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -269,7 +629,6 @@ export function AuthPopup({
             <button
               type="button"
               className="w-full flex items-center justify-center space-x-2 rounded-md bg-white border border-dark py-2 text-dark hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition duration-300"
-              // onClick={handleGoogleSignIn} // Chức năng này sẽ được phát triển sau
             >
               <Icon icon="flat-color-icons:google" width={24} height={24} />
               <span>Đăng nhập với Google</span>
@@ -295,139 +654,7 @@ export function AuthPopup({
         );
 
       case "register":
-        return (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Họ tên
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                  errors.name ? "border-red-500" : "border-gray-300"
-                }`}
-                required
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Số điện thoại
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                  errors.phone ? "border-red-500" : "border-gray-300"
-                }`}
-                required
-              />
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Mật khẩu
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                    errors.password ? "border-red-500" : "border-gray-300"
-                  }`}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Xác nhận mật khẩu
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                    errors.confirmPassword
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Mã giới thiệu (không bắt buộc)
-              </label>
-              <input
-                type="text"
-                name="referralCode"
-                value={formData.referralCode}
-                onChange={handleInputChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                  errors.referralCode ? "border-red-500" : "border-gray-300"
-                }`}
-              />
-              {errors.referralCode && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.referralCode}
-                </p>
-              )}
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full rounded-md bg-primary py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
-            >
-              {isLoading ? "Đang xử lý..." : "Đăng ký"}
-            </button>
-            <div className="text-center text-sm">
-              <button
-                type="button"
-                onClick={() => openAuthPopup("login")}
-                className="text-dark hover:text-primary transition duration-300"
-              >
-                Đã có tài khoản? Đăng nhập
-              </button>
-            </div>
-          </form>
-        );
+        return renderRegisterForm();
 
       case "forgot-password":
         return (
@@ -619,7 +846,7 @@ export function AuthPopup({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-lg shadow-xl p-6 z-50"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-lg shadow-xl p-6 z-50 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">

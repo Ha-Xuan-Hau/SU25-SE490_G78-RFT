@@ -65,15 +65,18 @@ public class UserServiceImpl implements UserService {
         user.setAddress(dto.getAddress());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
 
+        // LƯU USER TRƯỚC
+        User savedUser = userRepository.save(user);
+
         //tạo ví cho người dùng
         Wallet userWallet = Wallet.builder()
-                .user(user)
+                .user(savedUser)
                 .build();
         walletRepository.save(userWallet);
 
         otpService.deleteOtp(dto.getEmail());
 
-        return userMapper.userToUserDetailDto(userRepository.save(user));
+        return userMapper.userToUserDetailDto(savedUser);
     }
 
     @Override
