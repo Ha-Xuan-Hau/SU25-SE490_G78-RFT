@@ -300,6 +300,22 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void notifyRefundAfterCancellation(String userId, String bookingId, Double amount) {
+        String message = notificationMapper.formatRefundAfterCancellationMessage(amount, bookingId);
+        String redirectUrl = "/booking-detail/" + bookingId;
+        createNotificationForUser(userId, NotificationMapper.REFUND_AFTER_CANCELLATION, message, redirectUrl);
+    }
+
+    @Override
+    @Transactional
+    public void notifyPenaltyReceivedAfterCancellation(String providerId, String bookingId, Double amount) {
+        String message = notificationMapper.formatPenaltyReceivedAfterCancellationMessage(amount, bookingId);
+        String redirectUrl = "/booking-detail/" + bookingId;
+        createNotificationForUser(providerId, NotificationMapper.PENALTY_RECEIVED_AFTER_CANCELLATION, message, redirectUrl);
+    }
+
+    @Override
+    @Transactional
     public void createMaintenanceNotice(String message, String scheduledTime) {
         String fullMessage = String.format("Hệ thống sẽ bảo trì vào %s. %s", scheduledTime, message);
 

@@ -32,13 +32,16 @@ public class NotificationMapper {
     public static final String MAINTENANCE_NOTICE = "MAINTENANCE_NOTICE";
     public static final String VEHICLE_APPROVED = "VEHICLE_APPROVED";
     public static final String VEHICLE_REJECTED = "VEHICLE_REJECTED";
+    public static final String REFUND_AFTER_CANCELLATION = "REFUND_AFTER_CANCELLATION";
+    public static final String PENALTY_RECEIVED_AFTER_CANCELLATION = "PENALTY_RECEIVED_AFTER_CANCELLATION";
+
 
     // Message templates
     public static final String ORDER_PLACED_MSG = "Đơn hàng của bạn cho xe %s đã được đặt thành công";
     public static final String PAYMENT_COMPLETED_MSG = "Thanh toán %.0f VND cho đơn hàng đã hoàn thành";
     public static final String ORDER_APPROVED_MSG = "Đơn hàng của bạn đã được phê duyệt";
     public static final String ORDER_REJECTED_MSG = "Đơn hàng của bạn đã bị từ chối. Lý do: %s";
-    public static final String ORDER_CANCELED_MSG = "Đơn hàng đã bị hủy. Lý do: %s";
+ //   public static final String ORDER_CANCELED_MSG = "Đơn hàng đã bị hủy. Lý do: %s";
     public static final String VEHICLE_HANDOVER_MSG = "Xe %s đã sẵn sàng để bàn giao tại %s";
     public static final String VEHICLE_PICKUP_CONFIRMED_MSG = "Khách hàng %s đã xác nhận nhận xe";
     public static final String VEHICLE_RETURN_CONFIRMED_MSG = "Chủ xe đã xác nhận việc trả xe của bạn";
@@ -50,6 +53,9 @@ public class NotificationMapper {
     public static final String BOOKING_COMPLETED_MSG = "Đơn hàng của bạn đã được hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ!";
     public static final String VEHICLE_APPROVED_MSG = "Xe \"%s\" của bạn đã được duyệt.";
     public static final String VEHICLE_REJECTED_MSG = "Xe \"%s\" không được duyệt. Lý do: %s";
+    public static final String REFUND_AFTER_CANCELLATION_MSG = "Bạn đã được hoàn lại %.0f VND từ đơn hàng #%s sau khi hủy. Vui lòng kiểm tra ví.";
+    public static final String PENALTY_RECEIVED_AFTER_CANCELLATION_MSG = "Bạn đã nhận được %.0f VND phí phạt từ đơn hàng #%s. Vui lòng kiểm tra ví.";
+
 
     // Notification categories for grouping
     public static final String CATEGORY_BOOKING = "BOOKING";
@@ -70,6 +76,14 @@ public class NotificationMapper {
                 .createdAt(notification.getCreatedAt())
                 .updatedAt(notification.getUpdatedAt())
                 .build();
+    }
+
+    public String formatRefundAfterCancellationMessage(Double amount, String bookingId) {
+        return String.format(REFUND_AFTER_CANCELLATION_MSG, amount, bookingId);
+    }
+
+    public String formatPenaltyReceivedAfterCancellationMessage(Double amount, String bookingId) {
+        return String.format(PENALTY_RECEIVED_AFTER_CANCELLATION_MSG, amount, bookingId);
     }
 
     public NotificationDetailDTO toDetailDTO(Notification notification) {
@@ -188,9 +202,11 @@ public class NotificationMapper {
     }
 
     public String formatOrderCanceledMessage(String reason) {
-        return String.format(ORDER_CANCELED_MSG, reason);
+        if (reason == null || reason.trim().isEmpty()) {
+            return "Đơn hàng đã bị hủy.";
+        }
+        return "Đơn hàng đã bị hủy do: " + reason;
     }
-
     public String formatVehicleHandoverMessage(String vehicleName, String location) {
         return String.format(VEHICLE_HANDOVER_MSG, vehicleName, location);
     }

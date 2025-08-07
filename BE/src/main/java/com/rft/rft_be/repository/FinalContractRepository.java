@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,4 +47,12 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
     LIMIT 1
 """)
     Optional<String> findCancelNoteByBookingId(@Param("bookingId") String bookingId);
+
+    @Query("""
+    SELECT fc.timeFinish FROM FinalContract fc
+    WHERE fc.contract.booking.id = :bookingId
+    ORDER BY fc.createdAt DESC
+    LIMIT 1
+""")
+    Optional<LocalDateTime> findReturnedAtByBookingId(@Param("bookingId") String bookingId);
 }
