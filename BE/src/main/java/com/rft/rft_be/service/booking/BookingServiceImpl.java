@@ -298,6 +298,8 @@ public class BookingServiceImpl implements BookingService {
         }
 
         BookingResponseDTO dto = vehicleMapper.mapToBookingResponseDTO(booking);
+        Optional<LocalDateTime> returnedAtOpt = finalContractRepository.findReturnedAtByBookingId(bookingId);
+        dto.setReturnedAt(returnedAtOpt.orElse(null));
 
         // Lấy cancelNote nếu có
         Optional<String> cancelNoteOpt = finalContractRepository.findCancelNoteByBookingId(bookingId);
