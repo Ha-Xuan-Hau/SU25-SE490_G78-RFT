@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Modal, Form, Input, Select, notification } from "antd";
 import { FlagOutlined, CloseOutlined } from "@ant-design/icons";
 import { createReport } from "@/apis/report.api";
@@ -11,13 +11,15 @@ const { Option } = Select;
 
 interface ReportButtonProps {
   targetId: string;
-  reportType?: string; // Single type
-  reportTypes?: string[]; // Multiple types
-  showTypeSelector?: boolean; // Show dropdown selector
+  reportType?: string;
+  reportTypes?: string[];
+  showTypeSelector?: boolean;
   buttonText?: string;
   size?: "small" | "middle" | "large";
   type?: "default" | "primary" | "text" | "link";
   icon?: boolean;
+  autoOpen?: boolean;
+  onModalClose?: () => void;
 }
 
 export default function ReportButton({
@@ -29,12 +31,27 @@ export default function ReportButton({
   size = "small",
   type = "text",
   icon = true,
+  autoOpen = false,
+  onModalClose,
 }: ReportButtonProps) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
   const { user, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (autoOpen) {
+      setIsModalVisible(true);
+    }
+  }, [autoOpen]);
+
+  // Cập nhật handleCancel
+  const handleCancel = () => {
+    setIsModalVisible(false);
+    form.resetFields();
+    onModalClose?.(); // Gọi callback
+  };
 
   // Mapping reportType to generalType and display text
   const getReportConfig = (reportType: string) => {
@@ -320,6 +337,100 @@ export default function ReportButton({
     }
     return "Vui lòng mô tả chi tiết...";
   };
+
+  if (autoOpen) {
+    return (
+      <Modal
+        open={isModalVisible}
+        onCancel={handleCancel}
+        footer={null}
+        width={400}
+        className="report-modal"
+        closeIcon={
+          <CloseOutlined className="text-gray-500 hover:text-gray-700" />
+        }
+      >
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Báo xấu</h2>
+        </div>
+
+        <Form form={form} layout="vertical" onFinish={handleReport}>
+          {/* Type selector hoặc fixed display */}
+          {showTypeSelector && reportTypes ? (
+            <Form.Item
+              name="selectedReportType"
+              label="Vui lòng chọn lí do"
+              rules={[
+                { required: true, message: "Vui lòng chọn loại báo cáo" },
+              ]}
+            >
+              <Select placeholder="Chọn loại báo cáo">
+                {reportTypes.map((type) => {
+                  const config = getReportConfig(type);
+                  return (
+                    <Option key={type} value={type}>
+                      {config.displayText}
+                    </Option>
+                  );
+                })}
+              </Select>
+            </Form.Item>
+          ) : (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Vui lòng chọn lí do
+              </label>
+
+              <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
+                {reportType ? getReportConfig(reportType).displayText : ""}
+              </div>
+            </div>
+          )}
+
+          {/* Reason textarea với dynamic placeholder */}
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) =>
+              prevValues.selectedReportType !== currentValues.selectedReportType
+            }
+          >
+            {({ getFieldValue }) => (
+              <Form.Item
+                name="reason"
+                rules={[
+                  { required: true, message: "Vui lòng nhập lý do" },
+                  { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
+                  { max: 500, message: "Lý do không được vượt quá 500 ký tự" },
+                ]}
+              >
+                <TextArea
+                  rows={4}
+                  placeholder={getPlaceholderText(
+                    getFieldValue("selectedReportType")
+                  )}
+                  className="resize-none"
+                  maxLength={500}
+                />
+              </Form.Item>
+            )}
+          </Form.Item>
+
+          {/* Submit button */}
+          <Form.Item className="mb-0 mt-6">
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              className="w-full h-12 bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600 rounded-md font-medium"
+            >
+              Báo cáo
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+    );
+  }
 
   return (
     <>

@@ -13,6 +13,11 @@ import {
   Tabs,
   notification,
   Spin,
+  Card,
+  Row,
+  Col,
+  Space,
+  Drawer,
 } from "antd";
 import {
   EyeOutlined,
@@ -24,6 +29,7 @@ import {
   BugOutlined,
   InfoCircleOutlined,
   ExclamationCircleOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
@@ -35,52 +41,16 @@ import {
   getReportTypeMapping,
   calculateReportStatistics,
 } from "@/apis/report.api";
+import {
+  AggregatedReport,
+  ReportDetailDTO,
+  ReporterDetailDTO,
+  ReportGroupedByTargetDTO,
+} from "@/types/report";
 
 const { Title } = Typography;
 const { Search } = Input;
-
-// TypeScript Interfaces
-interface ReportGroupedByTargetDTO {
-  targetId: string;
-  reportedNameOrVehicle: string;
-  email: string;
-  type: string;
-  count: number;
-}
-
-interface ReporterDetailDTO {
-  id: string;
-  fullName: string;
-  email: string;
-  reason: string;
-  createdAt: string;
-}
-
-interface ReportSummaryDTO {
-  reportId: string;
-  type: string;
-  // Xóa totalReports và reportTypes vì không có trong response
-}
-
-interface ReportedUserDTO {
-  id: string;
-  fullName: string;
-  email: string;
-}
-
-interface ReportDetailDTO {
-  reportSummary: ReportSummaryDTO;
-  reportedUser: ReportedUserDTO;
-  reporters: ReporterDetailDTO[];
-}
-
-interface AggregatedReport {
-  id: string;
-  reportedUserName: string;
-  reportedUserEmail: string;
-  reportCount: number;
-  types: Set<string>;
-}
+import ReportButton from "@/components/ReportComponent";
 
 type ReportType =
   // Serious Reports
@@ -124,6 +94,34 @@ export default function UserReportsPage() {
   const [activeTab, setActiveTab] = useState("1");
   const [statistics, setStatistics] = useState<Statistics>({});
   const [error, setError] = useState<string | null>(null);
+
+  // state report
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedTargetForReport, setSelectedTargetForReport] = useState<
+    string | null
+  >(null);
+
+  const [reportReporterModalVisible, setReportReporterModalVisible] =
+    useState(false);
+  const [selectedReporterForReport, setSelectedReporterForReport] = useState<
+    string | null
+  >(null);
+
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Mapping tab sang generalType cho API
   const getGeneralTypeByTab = (tab: string): string => {
@@ -221,6 +219,9 @@ export default function UserReportsPage() {
 
       setSelectedReportDetail(reportDetail);
       setIsModalVisible(true);
+      if (isMobile) {
+        setDrawerVisible(true);
+      }
     } catch (error) {
       handleApiError(error, "Không thể tải chi tiết báo cáo");
     } finally {
@@ -231,6 +232,50 @@ export default function UserReportsPage() {
   const handleCancel = () => {
     setIsModalVisible(false);
     setSelectedReportDetail(null);
+    setDrawerVisible(false);
+  };
+
+  const canCreateStaffReport = (reportDetail: ReportDetailDTO): boolean => {
+    const generalType = getGeneralTypeByTab(activeTab);
+
+    if (generalType === "SERIOUS_ERROR") {
+      // Lỗi nghiêm trọng: có thể báo cáo luôn
+      return true;
+    } else if (generalType === "NON_SERIOUS_ERROR") {
+      // Lỗi vi phạm: cần ít nhất 10 lượt báo cáo
+      return reportDetail.reporters.length >= 10;
+    }
+
+    return false;
+  };
+
+  // Handler tạo báo cáo staff
+  const handleCreateStaffReport = (targetId: string) => {
+    setSelectedTargetForReport(targetId);
+    setReportModalVisible(true);
+  };
+
+  // Handler khi đóng modal báo cáo
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
+    setSelectedTargetForReport(null);
+    // Refresh data sau khi báo cáo thành công
+    loadReports();
+  };
+
+  // Handler báo cáo người báo cáo (spam)
+  const handleReportReporter = (reporterId: string) => {
+    console.log("handleReportReporter called with reporterId:", reporterId);
+    setSelectedReporterForReport(reporterId);
+    setReportReporterModalVisible(true);
+  };
+
+  // Handler khi đóng modal báo cáo người báo cáo
+  const handleReportReporterModalClose = () => {
+    setReportReporterModalVisible(false);
+    setSelectedReporterForReport(null);
+    // Refresh data sau khi báo cáo thành công
+    loadReports();
   };
 
   // Safe getter functions
@@ -298,8 +343,60 @@ export default function UserReportsPage() {
     }));
   };
 
-  // Columns cho bảng tổng hợp
-  const aggregatedColumns: ColumnsType<AggregatedReport> = [
+  // Mobile columns cho bảng
+  const mobileColumns: ColumnsType<AggregatedReport> = [
+    {
+      title: "Thông tin",
+      key: "info",
+      render: (record: AggregatedReport) => (
+        <div className="space-y-2">
+          <div className="flex items-start gap-2">
+            <Avatar icon={<UserOutlined />} size="small" />
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm truncate">
+                {record.reportedUserName}
+              </div>
+              <div className="text-xs text-gray-500 truncate">
+                {record.reportedUserEmail}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1 flex-wrap">
+              {Array.from(record.types).map((type) => (
+                <Tag key={type} color={getTypeColor(type)} className="text-xs">
+                  {getTypeText(type)}
+                </Tag>
+              ))}
+            </div>
+            <span className="text-red-600 font-semibold text-sm">
+              {record.reportCount} báo cáo
+            </span>
+          </div>
+          <Button
+            type="primary"
+            size="small"
+            icon={<EyeOutlined />}
+            loading={modalLoading}
+            onClick={() => {
+              const originalReport = aggregatedReports.find(
+                (r) => r.targetId === record.id
+              );
+              if (originalReport) {
+                handleViewDetails(originalReport);
+              }
+            }}
+            className="w-full"
+          >
+            Xem chi tiết
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // Desktop columns cho bảng
+  const desktopColumns: ColumnsType<AggregatedReport> = [
     {
       title: "STT",
       key: "index",
@@ -456,222 +553,208 @@ export default function UserReportsPage() {
   const activeTabStats = getActiveTabStats();
   const totalCount = activeTabStats.reduce((sum, stat) => sum + stat.count, 0);
 
-  return (
+  // Mobile Reporter Table Component
+  const MobileReporterTable = ({
+    reporters,
+  }: {
+    reporters: ReporterDetailDTO[];
+  }) => (
+    <div className="space-y-3">
+      {reporters.map((reporter, index) => (
+        <Card key={reporter.id} size="small" className="border border-gray-200">
+          <div className="space-y-2">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="text-xs text-gray-500 font-medium">
+                  #{index + 1}
+                </span>
+                <Avatar icon={<UserOutlined />} size="small" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">
+                    {reporter.fullName}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    <MailOutlined className="mr-1" />
+                    {reporter.email}
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="small"
+                type="text"
+                danger
+                icon={<WarningOutlined />}
+                onClick={() => handleReportReporter(reporter.id)}
+                className="shrink-0"
+              >
+                Báo cáo
+              </Button>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-xs text-gray-500">Lý do:</div>
+              <div className="text-sm bg-gray-50 p-2 rounded text-gray-700">
+                {reporter.reason}
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-500">
+              {dayjs(reporter.createdAt).format("DD/MM/YYYY HH:mm")}
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
+  // Detail Modal/Drawer Content
+  const DetailContent = () => (
     <div className="space-y-6">
-      <div>
-        <Title level={2} className="!mb-2">
-          Báo cáo hệ thống
-        </Title>
-        <p className="text-gray-600">
-          Xem các báo cáo vi phạm từ người dùng trong hệ thống
-        </p>
-      </div>
-
-      {/* Search Section */}
-      <div className="bg-white p-6 rounded-xl shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1 max-w-md">
-            <Search
-              placeholder="Tìm kiếm theo tên người bị báo cáo"
-              allowClear
-              enterButton={<SearchOutlined />}
-              size="large"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              loading={loading}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {activeTabStats.map((stat) => (
-          <div key={stat.type} className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-sm text-gray-500">{stat.label}</div>
-            <div className="text-xl font-semibold">{stat.count}</div>
-          </div>
-        ))}
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Tổng số vi phạm</div>
-          <div className="text-xl font-semibold">{totalCount}</div>
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="text-red-800">{error}</div>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          className="px-6 pt-4"
-        >
-          <Tabs.TabPane tab="Lỗi vi phạm" key="1">
-            <Table
-              columns={aggregatedColumns}
-              dataSource={transformToAggregatedReports(aggregatedReports)}
-              rowKey="id"
-              loading={loading}
-              pagination={{
-                pageSize: 10,
-                showTotal: (total) => `Tổng ${total} người vi phạm`,
-                showSizeChanger: true,
-                showQuickJumper: true,
-              }}
-              locale={{
-                emptyText: loading ? <Spin /> : "Không có dữ liệu",
-              }}
-            />
-          </Tabs.TabPane>
-
-          <Tabs.TabPane tab="Lỗi nghiêm trọng" key="2">
-            <Table
-              columns={aggregatedColumns}
-              dataSource={transformToAggregatedReports(aggregatedReports)}
-              rowKey="id"
-              loading={loading}
-              pagination={{
-                pageSize: 10,
-                showTotal: (total) => `Tổng ${total} người vi phạm`,
-                showSizeChanger: true,
-                showQuickJumper: true,
-              }}
-              locale={{
-                emptyText: loading ? <Spin /> : "Không có dữ liệu",
-              }}
-            />
-          </Tabs.TabPane>
-
-          <Tabs.TabPane tab="Lỗi gắn cờ" key="3">
-            <Table
-              columns={aggregatedColumns}
-              dataSource={transformToAggregatedReports(aggregatedReports)}
-              rowKey="id"
-              loading={loading}
-              pagination={{
-                pageSize: 10,
-                showTotal: (total) => `Tổng ${total} người vi phạm`,
-                showSizeChanger: true,
-                showQuickJumper: true,
-              }}
-              locale={{
-                emptyText: loading ? <Spin /> : "Không có dữ liệu",
-              }}
-            />
-          </Tabs.TabPane>
-        </Tabs>
-      </div>
-
-      {/* Report Details Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-            <WarningOutlined className="text-xl" />
-            <div>
-              <div className="font-semibold text-lg">Chi tiết báo cáo</div>
-              {selectedReportDetail && (
-                <div className="text-sm text-gray-500">
-                  Người dùng: {selectedReportDetail.reportedUser.fullName}
-                </div>
-              )}
-            </div>
-          </div>
-        }
-        open={isModalVisible}
-        onCancel={handleCancel}
-        width={1000}
-        className="top-8"
-        footer={[
-          <Button key="close" onClick={handleCancel}>
-            Đóng
-          </Button>,
-        ]}
-      >
-        {selectedReportDetail && (
-          <div className="pt-4 space-y-6">
-            {/* Tổng quan báo cáo */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Tổng quan báo cáo
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-3 rounded-lg">
+      {selectedReportDetail && (
+        <>
+          {/* Tổng quan báo cáo */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Tổng quan báo cáo
+            </h3>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Card size="small" className="bg-gray-50">
                   <div className="text-sm text-gray-500">Mã báo cáo</div>
-                  <div className="text-xl font-semibold text-blue-600">
+                  <div className="text-lg font-semibold text-blue-600">
                     {selectedReportDetail.reportSummary.reportId}
                   </div>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="text-sm text-gray-500">Số lượt báo cáo</div>
-                  <div className="text-xl font-semibold">
-                    {selectedReportDetail.reporters.length}
-                  </div>
-                </div>
-              </div>
-            </div>
+                </Card>
+              </Col>
+            </Row>
+          </div>
 
-            {/* Loại báo cáo */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Loại báo cáo
-              </h3>
-              <div className="flex gap-2 flex-wrap">
-                <Tag
-                  color={getTypeColor(selectedReportDetail.reportSummary.type)}
-                  icon={getTypeIcon(selectedReportDetail.reportSummary.type)}
-                >
-                  {getTypeText(selectedReportDetail.reportSummary.type)}
-                </Tag>
-              </div>
-            </div>
+          {/* Điều kiện tạo báo cáo */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Trạng thái xử lý
+            </h3>
+            <Card className="bg-gray-50">
+              {(() => {
+                const generalType = getGeneralTypeByTab(activeTab);
+                const reportCount = selectedReportDetail.reporters.length;
+                const canReport = canCreateStaffReport(selectedReportDetail);
 
-            {/* Thông tin người bị báo cáo */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Thông tin người/ xe bị báo cáo
-              </h3>
-              <Descriptions bordered column={2} size="middle">
-                <Descriptions.Item label="Họ và tên/ Biển số xe" span={1}>
-                  <div className="flex items-center gap-2">
-                    <UserOutlined />
-                    <span className="font-semibold">
-                      {selectedReportDetail.reportedUser.fullName}
-                    </span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="Email" span={1}>
-                  <div className="flex items-center gap-2">
-                    <MailOutlined />
-                    <span>
-                      {selectedReportDetail.reportedUser.email || "N/A"}
-                    </span>
-                  </div>
-                </Descriptions.Item>
-                <Descriptions.Item label="Tổng số báo cáo" span={1}>
+                if (generalType === "SERIOUS_ERROR") {
+                  return (
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          canReport ? "bg-red-500" : "bg-gray-400"
+                        }`}
+                      ></div>
+                      <div>
+                        <div className="font-medium text-red-600">
+                          Lỗi nghiêm trọng
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Có thể tạo báo cáo vi phạm ngay lập tức
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } else if (generalType === "NON_SERIOUS_ERROR") {
+                  return (
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          canReport ? "bg-red-500" : "bg-yellow-500"
+                        }`}
+                      ></div>
+                      <div>
+                        <div
+                          className={`font-medium ${
+                            canReport ? "text-red-600" : "text-yellow-600"
+                          }`}
+                        >
+                          {canReport
+                            ? "Đủ điều kiện tạo báo cáo"
+                            : "Chưa đủ điều kiện"}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Cần ít nhất 10 lượt báo cáo (hiện tại: {reportCount}
+                          /10)
+                        </div>
+                        {!canReport && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Còn thiếu {10 - reportCount} lượt báo cáo
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
+            </Card>
+          </div>
+
+          {/* Loại báo cáo */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Loại báo cáo
+            </h3>
+            <div className="flex gap-2 flex-wrap">
+              <Tag
+                color={getTypeColor(selectedReportDetail.reportSummary.type)}
+                icon={getTypeIcon(selectedReportDetail.reportSummary.type)}
+              >
+                {getTypeText(selectedReportDetail.reportSummary.type)}
+              </Tag>
+            </div>
+          </div>
+
+          {/* Thông tin người bị báo cáo */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Thông tin người
+            </h3>
+            <Descriptions
+              bordered
+              column={isMobile ? 1 : 2}
+              size="middle"
+              layout={isMobile ? "vertical" : "horizontal"}
+            >
+              <Descriptions.Item label="Họ và tên" span={1}>
+                <div className="flex items-center gap-2">
+                  <UserOutlined />
                   <span className="font-semibold">
-                    {selectedReportDetail.reporters?.length || 0}
-                  </span>{" "}
-                  báo cáo
-                </Descriptions.Item>
-                <Descriptions.Item label="Mã báo cáo" span={1}>
-                  <span className="font-mono text-sm">
-                    {selectedReportDetail.reportSummary.reportId}
+                    {selectedReportDetail.reportedUser.fullName}
                   </span>
-                </Descriptions.Item>
-              </Descriptions>
-            </div>
+                </div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số lượt bị báo cáo" span={1}>
+                <span className="font-semibold">
+                  {selectedReportDetail.reporters?.length || 0}
+                </span>{" "}
+                báo cáo
+              </Descriptions.Item>
+              <Descriptions.Item label="Email" span={1}>
+                <div className="flex items-center gap-2">
+                  <MailOutlined />
+                  <span>
+                    {selectedReportDetail.reportedUser.email || "N/A"}
+                  </span>
+                </div>
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
 
-            {/* Danh sách người báo cáo */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                Danh sách người báo cáo
-              </h3>
+          {/* Danh sách người báo cáo */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Danh sách người báo cáo ({selectedReportDetail.reporters.length})
+            </h3>
+
+            {isMobile ? (
+              <MobileReporterTable reporters={selectedReportDetail.reporters} />
+            ) : (
               <Table
                 dataSource={selectedReportDetail.reporters}
                 columns={[
@@ -714,16 +797,311 @@ export default function UserReportsPage() {
                       <span>{dayjs(date).format("DD/MM/YYYY HH:mm")}</span>
                     ),
                   },
+                  {
+                    title: "Thao tác",
+                    key: "action",
+                    width: 100,
+                    render: (_, record: ReporterDetailDTO) => (
+                      <Button
+                        size="small"
+                        type="text"
+                        danger
+                        icon={<WarningOutlined />}
+                        onClick={() => handleReportReporter(record.id)}
+                        title="Báo cáo người dùng spam"
+                        className="hover:bg-red-50"
+                      >
+                        Báo cáo
+                      </Button>
+                    ),
+                    align: "center",
+                  },
                 ]}
                 pagination={false}
                 scroll={{ y: 300 }}
                 size="small"
                 rowKey="id"
               />
-            </div>
+            )}
           </div>
-        )}
-      </Modal>
+
+          {/* Lưu ý báo cáo spam */}
+          <Card className="bg-yellow-50 border-yellow-200">
+            <div className="flex items-start gap-2">
+              <WarningOutlined className="text-yellow-600 mt-1" />
+              <div className="text-sm text-yellow-800">
+                <div className="font-medium mb-1">Lưu ý về báo cáo spam:</div>
+                <p>
+                  Bạn có thể báo cáo những người dùng có hành vi spam báo cáo
+                  (báo cáo không đúng sự thật, báo cáo quá nhiều lần không có
+                  căn cứ). Việc này giúp duy trì chất lượng hệ thống báo cáo.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 md:space-y-6 p-2 md:p-0">
+      {/* Header */}
+      <div className="text-center md:text-left">
+        <Title level={2} className="!mb-2 text-xl md:text-2xl">
+          Báo cáo hệ thống
+        </Title>
+        <p className="text-gray-600 text-sm md:text-base">
+          Xem các báo cáo vi phạm từ người dùng trong hệ thống
+        </p>
+      </div>
+
+      {/* Search Section */}
+      <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex-1 max-w-md">
+            <Search
+              placeholder="Tìm kiếm theo tên người, biển số xe bị báo cáo"
+              allowClear
+              enterButton={<SearchOutlined />}
+              size="large"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              loading={loading}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <Row gutter={[8, 8]} className="md:gutter-16">
+        {activeTabStats.map((stat) => (
+          <Col key={stat.type} xs={12} sm={8} md={6}>
+            <Card size="small" className="text-center">
+              <div
+                className="text-xs md:text-sm text-gray-500 mb-1 truncate"
+                title={stat.label}
+              >
+                {stat.label}
+              </div>
+              <div className="text-lg md:text-xl font-semibold">
+                {stat.count}
+              </div>
+            </Card>
+          </Col>
+        ))}
+        <Col xs={12} sm={8} md={6}>
+          <Card size="small" className="text-center">
+            <div className="text-xs md:text-sm text-gray-500 mb-1">
+              Tổng số vi phạm
+            </div>
+            <div className="text-lg md:text-xl font-semibold">{totalCount}</div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="bg-red-50 border-red-200">
+          <div className="text-red-800 text-sm">{error}</div>
+        </Card>
+      )}
+
+      {/* Table */}
+      <Card className="shadow-sm overflow-hidden">
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          size={isMobile ? "small" : "middle"}
+          className={isMobile ? "px-2" : ""}
+        >
+          <Tabs.TabPane tab="Lỗi vi phạm" key="1">
+            <Table
+              columns={isMobile ? mobileColumns : desktopColumns}
+              dataSource={transformToAggregatedReports(aggregatedReports)}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: isMobile ? 5 : 10,
+                showTotal: (total) => `${total} người vi phạm`,
+                showSizeChanger: !isMobile,
+                showQuickJumper: !isMobile,
+                simple: isMobile,
+                size: isMobile ? "small" : "default",
+              }}
+              locale={{
+                emptyText: loading ? <Spin /> : "Không có dữ liệu",
+              }}
+              scroll={isMobile ? { x: true } : undefined}
+              size={isMobile ? "small" : "middle"}
+            />
+          </Tabs.TabPane>
+
+          <Tabs.TabPane tab="Lỗi nghiêm trọng" key="2">
+            <Table
+              columns={isMobile ? mobileColumns : desktopColumns}
+              dataSource={transformToAggregatedReports(aggregatedReports)}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: isMobile ? 5 : 10,
+                showTotal: (total) => `${total} người vi phạm`,
+                showSizeChanger: !isMobile,
+                showQuickJumper: !isMobile,
+                simple: isMobile,
+                size: isMobile ? "small" : "default",
+              }}
+              locale={{
+                emptyText: loading ? <Spin /> : "Không có dữ liệu",
+              }}
+              scroll={isMobile ? { x: true } : undefined}
+              size={isMobile ? "small" : "middle"}
+            />
+          </Tabs.TabPane>
+
+          <Tabs.TabPane tab="Lỗi gắn cờ" key="3">
+            <Table
+              columns={isMobile ? mobileColumns : desktopColumns}
+              dataSource={transformToAggregatedReports(aggregatedReports)}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: isMobile ? 5 : 10,
+                showTotal: (total) => `${total} người vi phạm`,
+                showSizeChanger: !isMobile,
+                showQuickJumper: !isMobile,
+                simple: isMobile,
+                size: isMobile ? "small" : "default",
+              }}
+              locale={{
+                emptyText: loading ? <Spin /> : "Không có dữ liệu",
+              }}
+              scroll={isMobile ? { x: true } : undefined}
+              size={isMobile ? "small" : "middle"}
+            />
+          </Tabs.TabPane>
+        </Tabs>
+      </Card>
+
+      {/* Desktop Modal */}
+      {!isMobile && (
+        <Modal
+          title={
+            <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+              <WarningOutlined className="text-xl" />
+              <div>
+                <div className="font-semibold text-lg">Chi tiết báo cáo</div>
+                {selectedReportDetail && (
+                  <div className="text-sm text-gray-500">
+                    Người dùng: {selectedReportDetail.reportedUser.fullName}
+                  </div>
+                )}
+              </div>
+            </div>
+          }
+          open={isModalVisible}
+          onCancel={handleCancel}
+          width={1000}
+          className="top-8"
+          footer={[
+            selectedReportDetail &&
+              canCreateStaffReport(selectedReportDetail) && (
+                <Button
+                  key="report"
+                  type="primary"
+                  danger
+                  icon={<WarningOutlined />}
+                  onClick={() =>
+                    handleCreateStaffReport(
+                      selectedReportDetail.reportedUser.id
+                    )
+                  }
+                >
+                  Tạo báo cáo vi phạm
+                </Button>
+              ),
+            <Button key="close" onClick={handleCancel}>
+              Đóng
+            </Button>,
+          ]}
+        >
+          <DetailContent />
+        </Modal>
+      )}
+
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <Drawer
+          title={
+            <div className="flex items-center gap-2">
+              <WarningOutlined />
+              <div>
+                <div className="font-semibold">Chi tiết báo cáo</div>
+                {selectedReportDetail && (
+                  <div className="text-xs text-gray-500 truncate">
+                    {selectedReportDetail.reportedUser.fullName}
+                  </div>
+                )}
+              </div>
+            </div>
+          }
+          placement="bottom"
+          height="90%"
+          open={drawerVisible}
+          onClose={handleCancel}
+          extra={
+            <Space>
+              {selectedReportDetail &&
+                canCreateStaffReport(selectedReportDetail) && (
+                  <Button
+                    type="primary"
+                    danger
+                    size="small"
+                    icon={<WarningOutlined />}
+                    onClick={() =>
+                      handleCreateStaffReport(
+                        selectedReportDetail.reportedUser.id
+                      )
+                    }
+                  >
+                    Báo cáo
+                  </Button>
+                )}
+            </Space>
+          }
+        >
+          <DetailContent />
+        </Drawer>
+      )}
+
+      {/* ReportButton Modal - Chỉ render khi cần */}
+      {reportModalVisible && selectedTargetForReport && (
+        <ReportButton
+          targetId={selectedTargetForReport}
+          reportType="STAFF_REPORT" // Báo cáo loại STAFF_REPORT
+          buttonText=""
+          size="small"
+          type="text"
+          icon={false}
+          autoOpen={true}
+          onModalClose={handleReportModalClose}
+        />
+      )}
+
+      {/* ReportButton Modal cho báo cáo người báo cáo spam */}
+      {reportReporterModalVisible && selectedReporterForReport && (
+        <ReportButton
+          key={`reporter-spam-${selectedReporterForReport}-${Date.now()}`}
+          targetId={selectedReporterForReport}
+          reportType="STAFF_REPORT"
+          buttonText=""
+          size="small"
+          type="text"
+          icon={false}
+          autoOpen={true}
+          onModalClose={handleReportReporterModalClose}
+        />
+      )}
     </div>
   );
 }
