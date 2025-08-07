@@ -51,6 +51,7 @@ import {
   showSuccess,
 } from "@/utils/toast.utils";
 import CancelBookingModal from "@/components/CancelBookingModal";
+import ReportButton from "@/components/ReportComponent";
 
 // Define TypeScript interfaces for backend booking data
 interface ApiResponse {
@@ -149,6 +150,13 @@ export default function ManageAcceptedBookings() {
   const [selectedReturnBookingId, setSelectedReturnBookingId] = useState<
     string | null
   >(null);
+
+  //state report
+  const [reportGuideVisible, setReportGuideVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedReportTypes, setSelectedReportTypes] = useState<string[]>([]);
+  const [selectedBookingForReport, setSelectedBookingForReport] =
+    useState<BookingData | null>(null);
 
   // Ref to track if we've already fetched data for current provider
   const hasFetchedRef = useRef<string | null>(null);
@@ -608,62 +616,137 @@ export default function ManageAcceptedBookings() {
   };
 
   // Action button rendering for 4-step process
+  // const renderActionButton = (booking: BookingData) => {
+  //   switch (booking.status) {
+  //     case "CONFIRMED":
+  //       return (
+  //         <div className="space-y-2">
+  //           <Button
+  //             type="primary"
+  //             size="small"
+  //             onClick={() => showDeliveryConfirmModal(booking.id)}
+  //             className="w-full"
+  //           >
+  //             Xác nhận giao xe
+  //           </Button>
+
+  //           <Button
+  //             danger
+  //             size="small"
+  //             onClick={() => showCancelModal(booking.id)}
+  //             className="w-full"
+  //           >
+  //             Hủy hợp đồng
+  //           </Button>
+  //         </div>
+  //       );
+
+  //     case "DELIVERED":
+  //       return (
+  //         <div className="space-y-2">
+  //           <Button
+  //             danger
+  //             size="small"
+  //             onClick={() => showCancelModal(booking.id)}
+  //             className="w-full"
+  //           >
+  //             Hủy hợp đồng
+  //           </Button>
+
+  //           <div className="text-xs text-gray-500 text-center">
+  //             Chờ khách xác nhận nhận xe
+  //           </div>
+  //         </div>
+  //       );
+
+  //     case "RECEIVED_BY_CUSTOMER":
+  //       return (
+  //         <div className="text-center">
+  //           <div className="text-xs text-gray-500 mb-1">
+  //             Khách đang sử dụng xe
+  //           </div>
+  //           <div className="text-xs text-blue-600">Chờ khách trả xe</div>
+  //         </div>
+  //       );
+
+  //     case "RETURNED":
+  //       return (
+  //         <Button
+  //           type="primary"
+  //           size="small"
+  //           onClick={() => showReturnConfirmModal(booking.id)}
+  //           icon={<PlusCircleOutlined />}
+  //           className="w-full"
+  //         >
+  //           Xác nhận trả xe
+  //         </Button>
+  //       );
+
+  //     default:
+  //       return null;
+  //   }
+  // };
+
+  // Thay thế function renderActionButton hiện có
   const renderActionButton = (booking: BookingData) => {
+    const baseActions = [];
+
     switch (booking.status) {
       case "CONFIRMED":
-        return (
-          <div className="space-y-2">
-            <Button
-              type="primary"
-              size="small"
-              onClick={() => showDeliveryConfirmModal(booking.id)}
-              className="w-full"
-            >
-              Xác nhận giao xe
-            </Button>
-
-            <Button
-              danger
-              size="small"
-              onClick={() => showCancelModal(booking.id)}
-              className="w-full"
-            >
-              Hủy hợp đồng
-            </Button>
-          </div>
+        baseActions.push(
+          <Button
+            key="deliver"
+            type="primary"
+            size="small"
+            onClick={() => showDeliveryConfirmModal(booking.id)}
+            className="w-full"
+          >
+            Xác nhận giao xe
+          </Button>,
+          <Button
+            key="cancel"
+            danger
+            size="small"
+            onClick={() => showCancelModal(booking.id)}
+            className="w-full"
+          >
+            Hủy hợp đồng
+          </Button>
         );
+        break;
 
       case "DELIVERED":
-        return (
-          <div className="space-y-2">
-            <Button
-              danger
-              size="small"
-              onClick={() => showCancelModal(booking.id)}
-              className="w-full"
-            >
-              Hủy hợp đồng
-            </Button>
-
-            <div className="text-xs text-gray-500 text-center">
-              Chờ khách xác nhận nhận xe
-            </div>
+        baseActions.push(
+          <Button
+            key="cancel"
+            danger
+            size="small"
+            onClick={() => showCancelModal(booking.id)}
+            className="w-full"
+          >
+            Hủy hợp đồng
+          </Button>,
+          <div key="waiting" className="text-xs text-gray-500 text-center">
+            Chờ khách xác nhận nhận xe
           </div>
         );
+        break;
 
       case "RECEIVED_BY_CUSTOMER":
-        return (
-          <div className="text-center">
+        baseActions.push(
+          <div key="in-use" className="text-center">
             <div className="text-xs text-gray-500 mb-1">
               Khách đang sử dụng xe
             </div>
             <div className="text-xs text-blue-600">Chờ khách trả xe</div>
           </div>
         );
+        break;
 
       case "RETURNED":
-        return (
+        baseActions.push(
           <Button
+            key="complete"
             type="primary"
             size="small"
             onClick={() => showReturnConfirmModal(booking.id)}
@@ -673,10 +756,26 @@ export default function ManageAcceptedBookings() {
             Xác nhận trả xe
           </Button>
         );
-
-      default:
-        return null;
+        break;
     }
+
+    // Thêm nút báo cáo nếu có thể báo cáo
+    if (canReport(booking) && getReportTypes(booking).length > 0) {
+      baseActions.push(
+        <Button
+          key="report"
+          type="default"
+          size="small"
+          onClick={() => handleReportClick(booking)}
+          className="w-full border-red-400 text-red-600 hover:bg-red-50"
+          icon={<ExclamationCircleOutlined />}
+        >
+          Báo cáo
+        </Button>
+      );
+    }
+
+    return <div className="space-y-2">{baseActions}</div>;
   };
 
   const getColumnSearchProps = (
@@ -1076,6 +1175,116 @@ export default function ManageAcceptedBookings() {
     },
   ];
 
+  // Kiểm tra có thể báo cáo không
+  const canReport = (booking: BookingData) => {
+    const reportableStatuses = [
+      "CONFIRMED",
+      "DELIVERED",
+      "RECEIVED_BY_CUSTOMER",
+      "RETURNED",
+      "CANCELLED",
+    ];
+    return reportableStatuses.includes(booking.status);
+  };
+
+  // Lấy danh sách loại báo cáo theo trạng thái
+  const getReportTypes = (booking: BookingData) => {
+    switch (booking.status) {
+      case "CONFIRMED":
+        return ["FAKE_DOCUMENT"];
+
+      case "RECEIVED_BY_CUSTOMER":
+        return ["DAMAGED_VEHICLE", "LATE_RETURN_NO_CONTACT"];
+
+      case "RETURNED":
+        return [
+          "DAMAGED_VEHICLE",
+          "LATE_RETURN_NO_CONTACT",
+          "DIRTY_CAR",
+          "DISPUTE_REFUND",
+        ];
+
+      case "CANCELLED":
+        return ["FAKE_ORDER"];
+
+      default:
+        return [];
+    }
+  };
+
+  // Lấy nội dung hướng dẫn
+  const getGuideContent = (booking: BookingData) => {
+    switch (booking.status) {
+      case "CONFIRMED":
+        return {
+          title: "Hướng dẫn báo cáo vấn đề trước khi giao xe",
+          description:
+            "Bạn đang trong giai đoạn chuẩn bị giao xe. Các vấn đề có thể báo cáo:",
+          issues: [
+            "📄 Khách cung cấp CMND/CCCD không đúng với hệ thống",
+            "🚫 CMND/CCCD giả hoặc không hợp lệ",
+          ],
+        };
+
+      case "RECEIVED_BY_CUSTOMER":
+        return {
+          title: "Hướng dẫn báo cáo vấn đề khi khách đang thuê xe",
+          description: "Khách đang sử dụng xe. Các vấn đề có thể báo cáo:",
+          issues: [
+            "🔧 Khách làm hư hỏng xe trong quá trình sử dụng",
+            "⏰ Khách không trả xe đúng giờ và mất liên lạc",
+            "📞 Không thể liên lạc được trong thời gian quá hạn",
+          ],
+        };
+
+      case "RETURNED":
+        return {
+          title: "Hướng dẫn báo cáo vấn đề sau khi nhận xe trả lại",
+          description: "Xe đã được trả lại. Các vấn đề có thể báo cáo:",
+          issues: [
+            "🔧 Phát hiện xe bị hư hỏng khi nhận lại",
+            "🧹 Xe bẩn, có rác hoặc mùi khó chịu",
+            "💰 Tranh chấp về phí phạt hoặc hoàn tiền",
+            "⏰ Vấn đề về việc trả xe muộn",
+          ],
+        };
+
+      // case "CANCELLED":
+      //   return {
+      //     title: "Hướng dẫn báo cáo đơn bị hủy",
+      //     description: "Đơn đặt xe đã bị hủy. Các vấn đề có thể báo cáo:",
+      //     issues: [
+      //       "🚫 Khách có hành vi gian lận hoặc đặt đơn giả",
+      //       "📱 Khách cố tình hủy liên tục để phá hoại hệ thống",
+      //     ],
+      //   };
+
+      default:
+        return null;
+    }
+  };
+
+  // Handler cho nút báo cáo
+  const handleReportClick = (booking: BookingData) => {
+    const reportTypes = getReportTypes(booking);
+    setSelectedBookingForReport(booking);
+    setSelectedReportTypes(reportTypes);
+    setReportGuideVisible(true);
+  };
+
+  // Handler khi đồng ý báo cáo
+  const handleAgreeReport = () => {
+    setReportGuideVisible(false);
+    setReportModalVisible(true);
+  };
+
+  // Handler khi đóng modal báo cáo
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
+    setSelectedReportTypes([]);
+    setSelectedBookingForReport(null);
+  };
+
   return (
     <div className="p-6">
       <Card>
@@ -1246,7 +1455,7 @@ export default function ManageAcceptedBookings() {
           </div>
 
           <div className="flex justify-end gap-2 mt-6">
-            <Button onClick={handleCancel}>Hủy</Button>
+            <Button onClick={handleCancel}>Đóng</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
               Xác nhận tất toán
             </Button>
@@ -1392,11 +1601,11 @@ export default function ManageAcceptedBookings() {
               <ExclamationCircleOutlined className="text-green-600 text-xl mt-1" />
               <div>
                 <h4 className="font-semibold text-green-800 mb-2">
-                 Những lưu ý quan trọng khi nhận xe trả lại:
+                  Những lưu ý quan trọng khi nhận xe trả lại:
                 </h4>
                 <p className="text-green-700 text-sm leading-relaxed">
-                  Chủ xe vui lòng kiểm tra kỹ tình trạng xe trước khi xác nhận nhận xe
-                  từ khách hàng.
+                  Chủ xe vui lòng kiểm tra kỹ tình trạng xe trước khi xác nhận
+                  nhận xe từ khách hàng.
                 </p>
               </div>
             </div>
@@ -1405,12 +1614,16 @@ export default function ManageAcceptedBookings() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
-              <span> Kiểm tra tình trạng bên ngoài xe (trầy xước, móp méo, ...)</span>
+              <span>
+                {" "}
+                Kiểm tra tình trạng bên ngoài xe (trầy xước, móp méo, ...)
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircleOutlined className="text-green-500" />
               <span>
-                 Kiểm tra nội thất trong xe (ghế ngồi, vô lăng, bảng điều khiển, ...)
+                Kiểm tra nội thất trong xe (ghế ngồi, vô lăng, bảng điều khiển,
+                ...)
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -1445,6 +1658,124 @@ export default function ManageAcceptedBookings() {
         userType="provider"
         loading={loading}
       />
+
+      {/* Modal hướng dẫn báo cáo */}
+      <Modal
+        title={
+          <div className="flex items-center gap-3">
+            <ExclamationCircleOutlined className="text-red-500" />
+            <span>Hướng dẫn báo cáo</span>
+          </div>
+        }
+        open={reportGuideVisible}
+        onCancel={() => setReportGuideVisible(false)}
+        width={600}
+        footer={[
+          <Button key="cancel" onClick={() => setReportGuideVisible(false)}>
+            Đóng
+          </Button>,
+          <Button key="agree" type="primary" danger onClick={handleAgreeReport}>
+            Đồng ý báo cáo
+          </Button>,
+        ]}
+      >
+        {selectedBookingForReport &&
+          getGuideContent(selectedBookingForReport) && (
+            <div className="py-4">
+              {/* Thông báo cảnh báo */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <ExclamationCircleOutlined className="text-yellow-600 mt-1" />
+                  <div className="text-sm text-yellow-800">
+                    <div className="font-medium mb-1">Lưu ý quan trọng:</div>
+                    <p>
+                      Vui lòng chỉ báo cáo khi thực sự gặp vấn đề. Báo cáo sai
+                      sự thật có thể dẫn đến việc tài khoản bị hạn chế.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nội dung hướng dẫn */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-lg mb-3">
+                  {getGuideContent(selectedBookingForReport)?.title}
+                </h4>
+                <p className="text-gray-600 mb-4">
+                  {getGuideContent(selectedBookingForReport)?.description}
+                </p>
+
+                <div className="space-y-2">
+                  {getGuideContent(selectedBookingForReport)?.issues.map(
+                    (issue, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg"
+                      >
+                        <span className="text-sm">{issue}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Thông tin booking */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <CarOutlined className="text-blue-600" />
+                  <span className="font-medium">Thông tin đơn báo cáo:</span>
+                </div>
+                <div className="text-sm text-gray-700">
+                  <div>
+                    <strong>Mã đặt xe:</strong> {selectedBookingForReport.id}
+                  </div>
+                  <div>
+                    <strong>Khách hàng:</strong>{" "}
+                    {selectedBookingForReport.userName}
+                  </div>
+                  <div>
+                    <strong>Xe thuê:</strong>{" "}
+                    {selectedBookingForReport.vehicleThumb} - Biển số:{" "}
+                    {selectedBookingForReport.vehicleLicensePlate}
+                  </div>
+                  <div>
+                    <strong>Trạng thái:</strong>{" "}
+                    {getStatusTag(selectedBookingForReport.status)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+      </Modal>
+
+      {/* ReportButton Modal - Chỉ render khi cần */}
+      {reportModalVisible &&
+        selectedReportTypes.length > 0 &&
+        selectedBookingForReport &&
+        (selectedReportTypes.length === 1 ? (
+          <ReportButton
+            targetId={selectedBookingForReport.userId} // Báo cáo user thay vì xe
+            reportType={selectedReportTypes[0]}
+            buttonText=""
+            size="small"
+            type="text"
+            icon={false}
+            autoOpen={true}
+            onModalClose={handleReportModalClose}
+          />
+        ) : (
+          <ReportButton
+            targetId={selectedBookingForReport.userId} // Báo cáo user thay vì xe
+            reportTypes={selectedReportTypes}
+            showTypeSelector={true}
+            buttonText=""
+            size="small"
+            type="text"
+            icon={false}
+            autoOpen={true}
+            onModalClose={handleReportModalClose}
+          />
+        ))}
     </div>
   );
 }

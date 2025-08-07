@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Table,
   Tabs,
@@ -117,6 +117,8 @@ export default function VehiclePendingPage() {
     "APPROVE_ONE" | "APPROVE_BATCH" | "REJECT_ONE" | "REJECT_BATCH" | null
   >(null); // Cập nhật loại xác nhận
   const [rejectReason, setRejectReason] = useState("");
+
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadPendingStats();
@@ -276,7 +278,19 @@ export default function VehiclePendingPage() {
     }
   };
 
-  // Columns for the vehicle table
+  useEffect(() => {
+    const currentTabVehicles = filteredData.filter(
+      (v) => v.vehicleType === activeTab
+    );
+    const isIndeterminate =
+      selectedVehicles.length > 0 &&
+      selectedVehicles.length < currentTabVehicles.length;
+
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = isIndeterminate;
+    }
+  }, [selectedVehicles, filteredData, activeTab]); // Columns for the vehicle table
+
   const carColumns: ColumnsType<Vehicle> = [
     {
       title: "STT",
@@ -286,17 +300,69 @@ export default function VehiclePendingPage() {
       align: "center",
     },
     {
-      title: "Chọn",
+      title: (
+        <div className="flex items-center gap-2">
+          <input
+            ref={selectAllCheckboxRef}
+            type="checkbox"
+            checked={
+              filteredData.filter((v) => v.vehicleType === activeTab).length >
+                0 &&
+              selectedVehicles.length ===
+                filteredData.filter((v) => v.vehicleType === activeTab).length
+            }
+            onChange={(e) => {
+              const currentTabVehicles = filteredData.filter(
+                (v) => v.vehicleType === activeTab
+              );
+              if (e.target.checked) {
+                // Chọn tất cả xe trong tab hiện tại
+                const newSelected = [...selectedVehicles];
+                currentTabVehicles.forEach((vehicle) => {
+                  if (!newSelected.find((v) => v.id === vehicle.id)) {
+                    newSelected.push(vehicle);
+                  }
+                });
+                setSelectedVehicles(newSelected);
+              } else {
+                // Bỏ chọn tất cả xe trong tab hiện tại
+                setSelectedVehicles(
+                  selectedVehicles.filter(
+                    (selected) =>
+                      !currentTabVehicles.find(
+                        (current) => current.id === selected.id
+                      )
+                  )
+                );
+              }
+            }}
+          />
+          <span className="text-xs">Chọn</span>
+        </div>
+      ),
       key: "select",
+      width: 80,
       render: (_, record) => (
         <input
           type="checkbox"
-          checked={selectedVehicles.includes(record)}
+          checked={selectedVehicles.some((v) => v.id === record.id)}
           onChange={() => handleCheckboxChange(record)}
         />
       ),
       align: "center",
     },
+    // {
+    //   title: "Chọn",
+    //   key: "select",
+    //   render: (_, record) => (
+    //     <input
+    //       type="checkbox"
+    //       checked={selectedVehicles.includes(record)}
+    //       onChange={() => handleCheckboxChange(record)}
+    //     />
+    //   ),
+    //   align: "center",
+    // },
     {
       title: "Hình ảnh",
       key: "image",
