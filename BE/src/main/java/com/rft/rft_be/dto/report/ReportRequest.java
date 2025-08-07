@@ -17,6 +17,8 @@ public class ReportRequest {
     @NotBlank
     private String type;
 
+    private  String booking;
+
     @NotBlank
     private String reason;
 }

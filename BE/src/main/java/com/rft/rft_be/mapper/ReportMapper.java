@@ -8,10 +8,16 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface ReportMapper {
 
-
-    @BeanMapping(ignoreByDefault = true)
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "type", source = "type")
     @Mapping(target = "reason", source = "reason")
     @Mapping(target = "reportedId", source = "targetId")
+
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "booking", ignore = true)
+    @Mapping(target = "reporter", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+
     UserReport toEntity(ReportRequest request);
 }

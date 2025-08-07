@@ -41,6 +41,10 @@ public class UserReport {
     @Column(name = "reason", nullable = false)
     private String reason;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

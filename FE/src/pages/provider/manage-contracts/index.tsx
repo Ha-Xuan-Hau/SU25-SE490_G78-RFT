@@ -13,8 +13,19 @@ import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
 } from "@ant-design/icons";
-import { Button, Input, Table, Tooltip, Card, Tag, Spin, Tabs } from "antd";
+import {
+  Button,
+  Input,
+  Table,
+  Tooltip,
+  Card,
+  Tag,
+  Spin,
+  Tabs,
+  Modal,
+} from "antd";
 import type { ColumnType } from "antd/es/table";
+import ReportButton from "@/components/ReportComponent";
 
 // Define TypeScript interfaces
 interface ContractData {
@@ -72,10 +83,15 @@ export default function ManageContracts() {
   const [providerLoading, setProviderLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [searchText, setSearchText] = useState<string>("");
-  // ✅ Thêm state để lưu thông tin contract hiện tại
+  //Thêm state để lưu thông tin contract hiện tại
   // const [currentContract, setCurrentContract] = useState<ContractData | null>(
   //   null
   // );
+  //state report
+  const [reportGuideVisible, setReportGuideVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedContractForReport, setSelectedContractForReport] =
+    useState<ContractData | null>(null);
 
   // Ref to track if we've already fetched data for current provider
   const hasFetchedRef = useRef<string | null>(null);
@@ -341,6 +357,29 @@ export default function ManageContracts() {
     }
   };
 
+  // Kiểm tra có thể báo cáo không
+  const canReport = (contract: ContractData) => {
+    return contract.status === "CANCELLED";
+  };
+
+  // Handler cho nút báo cáo
+  const handleReportClick = (contract: ContractData) => {
+    setSelectedContractForReport(contract);
+    setReportGuideVisible(true);
+  };
+
+  // Handler khi đồng ý báo cáo
+  const handleAgreeReport = () => {
+    setReportGuideVisible(false);
+    setReportModalVisible(true);
+  };
+
+  // Handler khi đóng modal báo cáo
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
+    setSelectedContractForReport(null);
+  };
+
   const columns: ColumnType<ContractData>[] = [
     {
       title: "Thông tin xe",
@@ -408,17 +447,33 @@ export default function ManageContracts() {
       title: "Thao tác",
       key: "action",
       fixed: "right",
-      width: 120,
+      width: 180, // Đặt width cố định vì có thể có nút báo cáo
       render: (_, contract) => (
-        <Tooltip title="Xem chi tiết đơn hàng">
-          <Button
-            size="small"
-            onClick={() => handleViewDetail(contract)}
-            icon={<SearchOutlined />}
-          >
-            Chi tiết
-          </Button>
-        </Tooltip>
+        <div className="flex gap-2">
+          <Tooltip title="Xem chi tiết đơn hàng">
+            <Button
+              size="small"
+              onClick={() => handleViewDetail(contract)}
+              icon={<SearchOutlined />}
+            >
+              Chi tiết
+            </Button>
+          </Tooltip>
+
+          {/* Nút báo cáo cho đơn bị hủy */}
+          {canReport(contract) && (
+            <Tooltip title="Báo cáo khách hàng">
+              <Button
+                size="small"
+                onClick={() => handleReportClick(contract)}
+                className="border-red-400 text-red-600 hover:bg-red-50"
+                icon={<ExclamationCircleOutlined />}
+              >
+                Báo cáo
+              </Button>
+            </Tooltip>
+          )}
+        </div>
       ),
     },
   ];
@@ -573,12 +628,23 @@ export default function ManageContracts() {
                     <div className="flex gap-2">
                       <Button
                         size="small"
-                        // onClick={() => showModal(contract)}
                         onClick={() => handleViewDetail(contract)}
                         className="flex-1"
                       >
                         Xem chi tiết
                       </Button>
+
+                      {/* Nút báo cáo cho mobile */}
+                      {canReport(contract) && (
+                        <Button
+                          size="small"
+                          onClick={() => handleReportClick(contract)}
+                          className="border-red-400 text-red-600 hover:bg-red-50"
+                          icon={<ExclamationCircleOutlined />}
+                        >
+                          Báo cáo
+                        </Button>
+                      )}
                     </div>
                   </Card>
                 ))}
@@ -609,6 +675,124 @@ export default function ManageContracts() {
           />
         )}
       </Card>
+
+      {/* Modal hướng dẫn báo cáo */}
+      <Modal
+        title={
+          <div className="flex items-center gap-3">
+            <ExclamationCircleOutlined className="text-red-500" />
+            <span>Hướng dẫn báo cáo đơn bị hủy</span>
+          </div>
+        }
+        open={reportGuideVisible}
+        onCancel={() => setReportGuideVisible(false)}
+        width={600}
+        footer={[
+          <Button key="cancel" onClick={() => setReportGuideVisible(false)}>
+            Hủy
+          </Button>,
+          <Button key="agree" type="primary" danger onClick={handleAgreeReport}>
+            Đồng ý báo cáo
+          </Button>,
+        ]}
+      >
+        {selectedContractForReport && (
+          <div className="py-4">
+            {/* Thông báo cảnh báo */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <ExclamationCircleOutlined className="text-yellow-600 mt-1" />
+                <div className="text-sm text-yellow-800">
+                  <div className="font-medium mb-1">Lưu ý quan trọng:</div>
+                  <p>
+                    Vui lòng chỉ báo cáo khi thực sự gặp vấn đề với khách hàng.
+                    Báo cáo sai sự thật có thể dẫn đến việc tài khoản bị hạn
+                    chế.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Nội dung hướng dẫn */}
+            <div className="mb-6">
+              <h4 className="font-semibold text-lg mb-3">
+                Hướng dẫn báo cáo đơn đặt xe bị hủy
+              </h4>
+              <p className="text-gray-600 mb-4">
+                Đơn đặt xe đã bị hủy. Các vấn đề có thể báo cáo:
+              </p>
+
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm">
+                    📱 Khách cố tình hủy liên tục để phá hoại hệ thống
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Thông tin đơn hàng */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <SearchOutlined className="text-blue-600" />
+                <span className="font-medium">Thông tin đơn báo cáo:</span>
+              </div>
+              <div className="text-sm text-gray-700">
+                <div>
+                  <strong>Mã đặt xe:</strong>{" "}
+                  {selectedContractForReport.bookingId}
+                </div>
+                <div>
+                  <strong>Khách hàng:</strong>{" "}
+                  {selectedContractForReport.userName}
+                </div>
+                <div>
+                  <strong>Điện thoại:</strong>{" "}
+                  {selectedContractForReport.userPhone}
+                </div>
+                <div>
+                  <strong>Xe:</strong> {selectedContractForReport.vehicleThumb}
+                </div>
+                <div>
+                  <strong>Trạng thái:</strong>{" "}
+                  {getStatusTag(selectedContractForReport.status)}
+                </div>
+              </div>
+            </div>
+
+            {/* Quy trình xử lý */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="text-sm text-gray-700">
+                <div className="font-medium mb-2">Quy trình xử lý báo cáo:</div>
+                <ol className="list-decimal list-inside space-y-1 text-xs">
+                  <li>Báo cáo sẽ được gửi đến bộ phận hỗ trợ khách hàng</li>
+                  <li>
+                    Chúng tôi sẽ liên hệ xác minh thông tin trong thời gian sớm
+                    nhất
+                  </li>
+                  <li>
+                    Khách hàng có hành vi gian lận có thể bị hạn chế tài khoản
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ReportButton Modal - Chỉ render khi cần */}
+      {reportModalVisible && selectedContractForReport && (
+        <ReportButton
+          targetId={selectedContractForReport.userId} // Báo cáo user
+          reportType="FAKE_ORDER" // Chỉ có 1 loại báo cáo cho đơn bị hủy
+          buttonText=""
+          size="small"
+          type="text"
+          icon={false}
+          autoOpen={true}
+          onModalClose={handleReportModalClose}
+        />
+      )}
 
       {/* ✅ Modal đã được cập nhật */}
       {/* <Modal

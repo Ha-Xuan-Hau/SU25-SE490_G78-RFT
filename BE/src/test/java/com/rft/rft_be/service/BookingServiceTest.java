@@ -21,6 +21,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -31,10 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static java.util.Collections.emptyList;
 import static org.mockito.Mockito.*;
@@ -62,6 +62,8 @@ public class BookingServiceTest {
     @Mock private BookingMapper bookingMapper;
     @Mock private JwtUtil jwtUtil;
     @Mock private FinalContractService finalContractService;
+    @Mock private PenaltyRepository penaltyRepository;
+    @Mock private FinalContractRepository finalContractRepository;
 
     private BookingRequestDTO request;
     private User renter;
@@ -107,6 +109,12 @@ public class BookingServiceTest {
                 .minCancelHour(24)
                 .pickupMethod("pickup")
                 .build();
+
+        request.setPenaltyId("penalty_001");
+        when(penaltyRepository.findById("penalty_001")).thenReturn(Optional.of(Penalty.builder()
+                .penaltyType(Penalty.PenaltyType.PERCENT)
+                .penaltyValue(BigDecimal.valueOf(10))
+                .build()));
     }
 
 
@@ -472,7 +480,33 @@ public class BookingServiceTest {
 
     @Test
     void getBookingById_existingId_shouldReturnDTO() {
-        Booking booking = Booking.builder().id("B001").build();
+        // 👇 Giả lập token
+        Map<String, Object> headers = Map.of("alg", "none");
+        Map<String, Object> claims = Map.of("userId", "user_001");
+        Jwt jwt = new Jwt("mock-token", null, null, headers, claims);
+        JwtAuthenticationToken token = mock(JwtAuthenticationToken.class);
+        when(token.getToken()).thenReturn(jwt);
+        SecurityContextHolder.getContext().setAuthentication(token);
+
+        //  User
+        User user = new User();
+        user.setId("user_001");
+
+        //  Vehicle
+        Vehicle vehicle = new Vehicle();
+        vehicle.setUser(user);
+
+        //  BookingDetail
+        BookingDetail detail = new BookingDetail();
+        detail.setVehicle(vehicle);
+
+        //  Booking
+        Booking booking = Booking.builder()
+                .id("B001")
+                .user(user)
+                .bookingDetails(List.of(detail)) //  fix lỗi ở đây
+                .build();
+
         BookingResponseDTO dto = new BookingResponseDTO();
 
         when(bookingRepository.findByIdWithUserAndVehicle("B001")).thenReturn(Optional.of(booking));
@@ -482,10 +516,22 @@ public class BookingServiceTest {
 
         Assertions.assertThat(result).isEqualTo(dto);
         verify(bookingRepository).findByIdWithUserAndVehicle("B001");
+
+        SecurityContextHolder.clearContext();
     }
 
     @Test
     void getBookingById_notFound_shouldThrow() {
+        // 👇 Giả lập token trong SecurityContextHolder
+        Map<String, Object> headers = Map.of("alg", "none"); // 🔧 Sửa chỗ này
+        Map<String, Object> claims = Map.of("userId", "user_001");
+
+        Jwt jwt = new Jwt("mock-token", null, null, headers, claims);
+        JwtAuthenticationToken mockToken = mock(JwtAuthenticationToken.class);
+        when(mockToken.getToken()).thenReturn(jwt);
+
+        SecurityContextHolder.getContext().setAuthentication(mockToken);
+
         when(bookingRepository.findByIdWithUserAndVehicle("B999")).thenReturn(Optional.empty());
 
         Assertions.assertThatThrownBy(() -> bookingService.getBookingById("B999"))
@@ -493,8 +539,10 @@ public class BookingServiceTest {
                 .hasMessageContaining("Không tìm thấy Booking với ID");
 
         verify(bookingRepository).findByIdWithUserAndVehicle("B999");
-    }
 
+        // ✅ Dọn context sau test
+        SecurityContextHolder.clearContext();
+    }
     @Test
     void getBookingsByStatus_validStatus_shouldReturnList() {
         Booking booking = Booking.builder().status(Booking.Status.PENDING).build();
@@ -1010,7 +1058,7 @@ public class BookingServiceTest {
 
         bookingService.payBookingWithWallet("booking123", "token");
 
-        assertEquals(Booking.Status.PENDING, booking.getStatus());
+        assertEquals(Booking.Status.CONFIRMED, booking.getStatus());
         verify(notificationService).notifyPaymentCompleted("renter123", "booking123", 500.0);
     }
 
@@ -1057,11 +1105,14 @@ public class BookingServiceTest {
                 bookingService.payBookingWithWallet("booking123", "token"));
     }
 
-    private Booking mockCancelableBooking(String renterId, String providerId, int hoursSincePayment, boolean tooLate) {
+    private Booking mockCancelableBooking(String renterId, String providerId, int hoursUntilStart, boolean lateCancel) {
         User renter = new User(); renter.setId(renterId);
         User provider = new User(); provider.setId(providerId);
         Vehicle vehicle = new Vehicle(); vehicle.setUser(provider);
         BookingDetail detail = new BookingDetail(); detail.setVehicle(vehicle);
+
+        LocalDateTime startTime = LocalDateTime.now().plusHours(hoursUntilStart);
+        Integer minCancelHour = 5;
 
         return Booking.builder()
                 .id("booking123")
@@ -1071,10 +1122,10 @@ public class BookingServiceTest {
                 .totalCost(BigDecimal.valueOf(100_000))
                 .penaltyType(Booking.PenaltyType.PERCENT)
                 .penaltyValue(BigDecimal.valueOf(10))
-                .timeTransaction(LocalDateTime.now().minusHours(hoursSincePayment))
-                .minCancelHour(2)
-                .timeBookingStart(LocalDateTime.now().plusDays(1))
-                .timeBookingEnd(LocalDateTime.now().plusDays(2))
+                .timeTransaction(LocalDateTime.now().minusHours(1))
+                .minCancelHour(minCancelHour)
+                .timeBookingStart(startTime)
+                .timeBookingEnd(startTime.plusDays(1))
                 .build();
     }
 
@@ -1190,12 +1241,15 @@ public class BookingServiceTest {
 
     @Test
     void cancelBooking_byRenter_withinAllowedTime_shouldRefundWithoutPenalty() {
-        Booking booking = mockCancelableBooking("renter123", "provider123", 1, false); // giờ huỷ < minCancelHour
+        Booking booking = mockCancelableBooking("renter123", "provider123", 1, false);
+        booking.setTimeBookingStart(LocalDateTime.now().plusHours(10)); // ✅ đủ xa
+        booking.setMinCancelHour(5); // ✅ không bị phạt
 
         when(jwtUtil.extractUserIdFromToken("token")).thenReturn("renter123");
         when(bookingRepository.findById("booking123")).thenReturn(Optional.of(booking));
 
         mockWalletFor("renter123");
+        mockWalletFor("provider123");
 
         CancelBookingRequestDTO request = CancelBookingRequestDTO.builder()
                 .createFinalContract(false)
@@ -1205,15 +1259,16 @@ public class BookingServiceTest {
         CancelBookingResponseDTO response = bookingService.cancelBooking("booking123", "token", request);
 
         assertEquals(Booking.Status.CANCELLED.name(), response.getStatus());
-        assertEquals(BigDecimal.ZERO, response.getPenaltyAmount());
-        verify(walletTransactionRepository).save(any());
+        assertEquals(BigDecimal.ZERO, response.getPenaltyAmount()); // ✅ không bị phạt
+        verify(walletTransactionRepository).save(any()); // refund only
     }
 
     @Test
     void cancelBooking_byRenter_lateCancellation_shouldApplyPenalty() {
         mockExtractUserId("renter123"); // 👈 THÊM DÒNG NÀY
 
-        Booking booking = mockCancelableBooking("renter123", "provider123", 10, true); // giờ huỷ > minCancelHour, có penalty
+        Booking booking = mockCancelableBooking("renter123", "provider123", 1, true);
+
         when(bookingRepository.findById("booking123")).thenReturn(Optional.of(booking));
 
         mockWalletFor("renter123");

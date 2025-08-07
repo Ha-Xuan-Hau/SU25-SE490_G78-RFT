@@ -9,4 +9,9 @@ public class ReportedUserDTO {
     private String id;
     private String fullName;
     private String email;
+
+    // Trường dùng khi report xe
+    private String vehicleId;
+    private String vehicleName;
+    private String vehicleImage;
 }
