@@ -417,7 +417,29 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
         <Row gutter={16}>
           <Col span={12}>
-            <Form.Item label="Họ và tên" name="fullName">
+            <Form.Item
+              label="Họ và tên"
+              name="fullName"
+              required
+              rules={[
+                {
+                  required: true,
+                  message: "Vui lòng nhập họ và tên!",
+                },
+                {
+                  min: 2,
+                  message: "Họ tên phải có ít nhất 2 ký tự!",
+                },
+                {
+                  max: 50,
+                  message: "Họ tên không được vượt quá 50 ký tự!",
+                },
+                {
+                  pattern: /^[a-zA-ZÀ-ỹ\s]+$/,
+                  message: "Họ tên chỉ được chứa chữ cái và khoảng trắng!",
+                },
+              ]}
+            >
               <Input placeholder="Nhập họ tên của bạn" />
             </Form.Item>
           </Col>
@@ -426,7 +448,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <Form.Item
               label="Email"
               name="email"
+              required
               rules={[
+                {
+                  required: true,
+                  message: "Vui lòng nhập email!",
+                },
                 {
                   type: "email",
                   message: "Email không hợp lệ!",
@@ -437,16 +464,20 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </Form.Item>
           </Col>
         </Row>
-
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
               label="Số điện thoại"
               name="phone"
+              required
               rules={[
                 {
+                  required: true,
+                  message: "Vui lòng nhập số điện thoại!",
+                },
+                {
                   pattern: /^[0-9]{10}$/,
-                  message: "Số điện thoại phải có 10 chữ số!",
+                  message: "Độ dài số điện thoại không đúng hoặc sai định dạng (vd: 0987654321)",
                 },
               ]}
             >
@@ -458,7 +489,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <Form.Item
               label="Ngày sinh"
               name="dateOfBirth"
+              required
               rules={[
+                {
+                  required: true,
+                  message: "Vui lòng nhập ngày sinh!",
+                },
                 {
                   validator: validateDateOfBirth,
                 },
@@ -468,11 +504,27 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </Form.Item>
           </Col>
         </Row>
-
-        <Form.Item label="Địa chỉ" name="address">
+        <Form.Item
+          label="Địa chỉ"
+          name="address"
+          required
+          rules={[
+            {
+              required: true,
+              message: "Vui lòng nhập địa chỉ!",
+            },
+            {
+              min: 10,
+              message: "Địa chỉ phải có ít nhất 10 ký tự!",
+            },
+            {
+              max: 200,
+              message: "Địa chỉ không được vượt quá 200 ký tự!",
+            },
+          ]}
+        >
           <Input.TextArea placeholder="Nhập địa chỉ của bạn" rows={3} />
         </Form.Item>
-
         <div className="flex justify-end gap-3 mt-6">
           <Button onClick={handleCancleEditModal}>Hủy</Button>
           <Button

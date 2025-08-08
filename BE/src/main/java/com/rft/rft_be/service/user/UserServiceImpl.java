@@ -1,5 +1,6 @@
 package com.rft.rft_be.service.user;
 
+import java.math.BigDecimal;
 import java.text.ParseException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -71,6 +72,7 @@ public class UserServiceImpl implements UserService {
         //tạo ví cho người dùng
         Wallet userWallet = Wallet.builder()
                 .user(savedUser)
+                .balance(BigDecimal.ZERO)
                 .build();
         walletRepository.save(userWallet);
 

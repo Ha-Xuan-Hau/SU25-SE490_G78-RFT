@@ -47,6 +47,13 @@ export const viDictionary: Record<string, string> = {
   "ABS Braking": "Hệ thống phanh ABS",
   TPMS: "Cảm biến áp suất lốp",
 
+  // Bổ sung features mới cho ô tô
+  "Back Camera": "Camera lùi",
+  "USB Port": "Khe cắm USB",
+  "DVD Screen": "Màn hình DVD",
+  "Safety Airbag": "Túi khí an toàn",
+  "Speed Alert": "Cảnh báo tốc độ",
+
   //Features cho xe máy
   "Remote Lock": "Khóa từ xa",
   "Anti-theft Alarm": "Báo động chống trộm",
@@ -56,6 +63,19 @@ export const viDictionary: Record<string, string> = {
   "USB Charging": "Sạc điện thoại USB",
   "Digital Dashboard": "Đồng hồ kỹ thuật số",
   "GPS Tracking": "Hệ thống định vị",
+
+  // Bổ sung features mới cho xe máy
+  Windshield: "Kính chắn gió",
+  "Comfort Seat": "Yên xe êm ái",
+  "Traction Control": "Hệ thống chống trượt",
+  "Advanced Suspension": "Hệ thống treo cải tiến",
+  "Front Wheel Lock": "Khóa bánh trước",
+  "Passenger Footrest": "Gác chân cho người ngồi sau",
+  "Tubeless Tires": "Lốp không săm",
+  "Steering Lock": "Khóa cổ",
+  "Auto Side Stand": "Chống nghiêng tự động",
+  "Fuel-saving System": "Hệ thống tiết kiệm nhiên liệu",
+  "Cooling System": "Hệ thống làm mát",
 
   //Features cho xe đạp
   "Anti-theft Lock": "Khóa chống trộm",

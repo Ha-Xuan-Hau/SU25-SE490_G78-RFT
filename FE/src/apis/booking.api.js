@@ -442,3 +442,18 @@ export const upUserRating = async (payload) => {
         throw new Error(error.response?.data?.message || error.message);
     }
 };
+
+/**
+ * Hủy booking do khách không xuất hiện (Provider)
+ * @param {string} bookingId - ID đơn đặt xe
+ * @returns {Promise<Object>} Kết quả hủy booking
+ */
+export const cancelBookingByProviderDueToNoShow = async (bookingId) => {
+    try {
+        const response = await apiClient.post(`/bookings/${bookingId}/cancel/no-show`);
+        return response.data;
+    } catch (error) {
+        console.error('Error canceling booking due to no-show:', error);
+        throw new Error(`Lỗi hủy đơn do khách không xuất hiện: ${error.response?.data?.message || error.message}`);
+    }
+};

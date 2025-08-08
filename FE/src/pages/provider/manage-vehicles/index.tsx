@@ -230,41 +230,45 @@ export default function UserRegisterVehicle() {
                     );
                   },
                 },
-                {
-                  title: "Thông số",
-                  key: "specs",
-                  render: (_: unknown, record: VehicleGroup) => {
-                    const v = record.vehicle[0];
-                    return (
-                      <div className="text-sm">
-                        {v.numberSeat && (
-                          <div>
-                            Nhiên liệu:{" "}
-                            <span className="font-medium">
-                              {translateENtoVI(v.fuelType)}
-                            </span>
-                          </div>
-                        )}
-                        {v.transmission && (
-                          <div>
-                            Truyền động:{" "}
-                            <span className="font-medium">
-                              {translateENtoVI(v.transmission)}
-                            </span>
-                          </div>
-                        )}
-                        {v.licensePlate && record.vehicleNumber === 1 && (
-                          <div>
-                            Biển số:{" "}
-                            <span className="font-medium">
-                              {v.licensePlate}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  },
-                },
+                ...(activeType !== "BICYCLE"
+                  ? [
+                      {
+                        title: "Thông số",
+                        key: "specs",
+                        render: (_: unknown, record: VehicleGroup) => {
+                          const v = record.vehicle[0];
+                          return (
+                            <div className="text-sm">
+                              {v.numberSeat && (
+                                <div>
+                                  Nhiên liệu:{" "}
+                                  <span className="font-medium">
+                                    {translateENtoVI(v.fuelType)}
+                                  </span>
+                                </div>
+                              )}
+                              {v.transmission && (
+                                <div>
+                                  Truyền động:{" "}
+                                  <span className="font-medium">
+                                    {translateENtoVI(v.transmission)}
+                                  </span>
+                                </div>
+                              )}
+                              {v.licensePlate && record.vehicleNumber === 1 && (
+                                <div>
+                                  Biển số:{" "}
+                                  <span className="font-medium">
+                                    {v.licensePlate}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        },
+                      },
+                    ]
+                  : []),
                 {
                   title: "Số lượng",
                   dataIndex: "vehicleNumber",
@@ -735,7 +739,8 @@ export default function UserRegisterVehicle() {
                   rõ ràng, dễ đọc
                 </li>
                 <li>
-                  <strong>Vị trí đặt decal:</strong> Gắn ở thiết bị định vị trên xe
+                  <strong>Vị trí đặt decal:</strong> Gắn ở thiết bị định vị trên
+                  xe
                 </li>
                 <li>
                   <strong>Thông tin liên hệ:</strong> Decal phải có số điện
@@ -772,7 +777,8 @@ export default function UserRegisterVehicle() {
                 <li>Không tuân thủ cam kết sẽ ảnh hưởng đến uy tín</li>
                 <li>
                   <strong className="text-red-600">
-                   Trường hợp xe không gắn định vị chúng tôi sẽ từ chối hỗ trợ khi có tranh chấp xảy ra                  
+                    Trường hợp xe không gắn định vị chúng tôi sẽ từ chối hỗ trợ
+                    khi có tranh chấp xảy ra
                   </strong>
                 </li>
                 <li>Tái phạm nhiều lần có thể bị cấm vĩnh viễn</li>
