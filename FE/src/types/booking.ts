@@ -31,6 +31,7 @@ export interface BookingDetail {
   codeTransaction: string;
   totalCost: number;
   status: string;
+  note: string;
   createdAt: number[];
   updatedAt: number[];
   driverFee?: number;

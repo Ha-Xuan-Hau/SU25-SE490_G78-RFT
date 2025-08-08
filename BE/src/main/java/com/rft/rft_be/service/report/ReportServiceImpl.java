@@ -24,43 +24,43 @@ import static com.rft.rft_be.util.PaginationUtils.paginate;
 @Service
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
+
     private final UserReportRepository reportRepo;
     private final UserRepository userRepo;
     private final VehicleRepository vehicleRepo;
     private final ReportMapper reportMapper;
     private final BookingRepository bookingRepository;
 
-
     private final List<String> seriousReport = List.of(
             "DAMAGED_VEHICLE", // khách làm hư hỏng xe
-            "FRAUD",                      // Gian lận
-            "MISLEADING_INFO",            // Xe khác với mô tả
-            "OWNER_NO_SHOW",              // Chủ xe không giao xe
-            "OWNER_CANCEL_UNREASONABLY",  // Chủ xe huỷ đơn không lý do
-            "DOCUMENT_ISSUE",             // Giấy tờ sai/mất
-            "TECHNICAL_ISSUE",            // Xe bị lỗi kỹ thuật
-            "UNSAFE_VEHICLE",             // Xe không an toàn
-            "FUEL_LEVEL_INCORRECT",       // Mức nhiên liệu không đúng như cam kết`
-            "NO_INSURANCE",               // Không có bảo hiểm
-            "EXPIRED_INSURANCE",          // Bảo hiểm hết hạn
-            "FAKE_DOCUMENT",              // Khách cung cấp giấy tờ giả
-            "FAKE_ORDER",                 // Khách đặt đơn giả
-            "DISPUTE_REFUND",             // Tranh chấp hoàn tiền/phạt
-            "LATE_RETURN_NO_CONTACT"      // Không trả xe đúng hạn và mất liên lạc
+            "FRAUD", // Gian lận
+            "MISLEADING_INFO", // Xe khác với mô tả
+            "OWNER_NO_SHOW", // Chủ xe không giao xe
+            "OWNER_CANCEL_UNREASONABLY", // Chủ xe huỷ đơn không lý do
+            "DOCUMENT_ISSUE", // Giấy tờ sai/mất
+            "TECHNICAL_ISSUE", // Xe bị lỗi kỹ thuật
+            "UNSAFE_VEHICLE", // Xe không an toàn
+            "FUEL_LEVEL_INCORRECT", // Mức nhiên liệu không đúng như cam kết`
+            "NO_INSURANCE", // Không có bảo hiểm
+            "EXPIRED_INSURANCE", // Bảo hiểm hết hạn
+            "FAKE_DOCUMENT", // Khách cung cấp giấy tờ giả
+            "FAKE_ORDER", // Khách đặt đơn giả
+            "DISPUTE_REFUND", // Tranh chấp hoàn tiền/phạt
+            "LATE_RETURN_NO_CONTACT" // Không trả xe đúng hạn và mất liên lạc
     );
     private final List<String> nonSeriousReport = List.of(
-            "INAPPROPRIATE",      // Ngôn từ không phù hợp
-            "VIOLENCE",           // Bạo lực
-            "SPAM",               // Spam
-            "OTHERS",             // Khác
-            "DIRTY_CAR",          // Xe bẩn
-            "MISLEADING_LISTING"  // Thông tin sai trong bài đăng
+            "INAPPROPRIATE", // Ngôn từ không phù hợp
+            "VIOLENCE", // Bạo lực
+            "SPAM", // Spam
+            "OTHERS", // Khác
+            "DIRTY_CAR", // Xe bẩn
+            "MISLEADING_LISTING" // Thông tin sai trong bài đăng
     );
     private final List<String> staffReport = List.of("STAFF_REPORT");
 
     /**
-     * Tạo mới một báo cáo dựa trên thông tin từ người báo cáo và yêu cầu.
-     * Gán loại `generalType` theo type cụ thể ("Lừa đảo" → "SERIOUS_ERROR", ...)
+     * Tạo mới một báo cáo dựa trên thông tin từ người báo cáo và yêu cầu. Gán
+     * loại `generalType` theo type cụ thể ("Lừa đảo" → "SERIOUS_ERROR", ...)
      * Sau đó map từ DTO sang entity và lưu vào database.
      */
     @Override
@@ -84,24 +84,29 @@ public class ReportServiceImpl implements ReportService {
         if (request.getBooking() != null) {
             Booking booking = bookingRepository.findById(request.getBooking())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy booking với id: " + request.getBooking()));
+            System.out.println(">>> Đã tìm thấy booking: " + booking.getId());
             report.setBooking(booking);
         }
+        reportRepo.save(report);
     }
+
     /**
-     * Trả về tên của đối tượng bị báo cáo, có thể là tên người dùng hoặc biển số xe.
-     * Ưu tiên lấy từ User nếu tồn tại, nếu không thì tìm từ Vehicle.
+     * Trả về tên của đối tượng bị báo cáo, có thể là tên người dùng hoặc biển
+     * số xe. Ưu tiên lấy từ User nếu tồn tại, nếu không thì tìm từ Vehicle.
      */
     private String resolveReportedName(String targetId) {
         return userRepo.findById(targetId).map(User::getFullName)
                 .orElse(vehicleRepo.findById(targetId).map(Vehicle::getLicensePlate).orElse("N/A"));
     }
+
     private String resolveReportedEmail(String targetId) {
         return userRepo.findById(targetId).map(User::getEmail).orElse("");
     }
+
     /**
      * Lọc tất cả các báo cáo theo `generalType` (SERIOUS, NON_SERIOUS, STAFF),
-     * sắp xếp theo thời gian giảm dần và gom nhóm theo `reportedId`.
-     * Trả về danh sách `ReportGroupedByTargetDTO` chứa loại lỗi và số lần bị báo.
+     * sắp xếp theo thời gian giảm dần và gom nhóm theo `reportedId`. Trả về
+     * danh sách `ReportGroupedByTargetDTO` chứa loại lỗi và số lần bị báo.
      */
     @Override
     public List<ReportGroupedByTargetDTO> getReportsByType(String generalType, int page, int size) {
@@ -115,9 +120,11 @@ public class ReportServiceImpl implements ReportService {
 
         return paginate(grouped, page, size);
     }
+
     /**
-     * Tìm kiếm báo cáo theo `generalType`, từ khóa (keyword) và loại lỗi cụ thể (type).
-     * Kết quả được gom nhóm theo `reportedId` và trả về danh sách `ReportGroupedByTargetDTO`.
+     * Tìm kiếm báo cáo theo `generalType`, từ khóa (keyword) và loại lỗi cụ thể
+     * (type). Kết quả được gom nhóm theo `reportedId` và trả về danh sách
+     * `ReportGroupedByTargetDTO`.
      */
     @Override
     public List<ReportGroupedByTargetDTO> searchReports(String generalType, String keyword, String type, int page, int size) {
@@ -132,14 +139,15 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private boolean matchGeneralType(String type, String generalType) {
-        return ("SERIOUS_ERROR".equals(generalType) && seriousReport.contains(type)) ||
-                ("NON_SERIOUS_ERROR".equals(generalType) && nonSeriousReport.contains(type)) ||
-                ("STAFF_ERROR".equals(generalType) && staffReport.contains(type));
+        return ("SERIOUS_ERROR".equals(generalType) && seriousReport.contains(type))
+                || ("NON_SERIOUS_ERROR".equals(generalType) && nonSeriousReport.contains(type))
+                || ("STAFF_ERROR".equals(generalType) && staffReport.contains(type));
     }
+
     /**
      * Gom nhóm danh sách báo cáo theo `reportedId`, sau đó xây dựng danh sách
-     * `ReportGroupedByTargetDTO` để dùng cho các API list/search.
-     * Mỗi nhóm gồm tên đối tượng bị báo cáo và các loại lỗi kèm số lần bị báo.
+     * `ReportGroupedByTargetDTO` để dùng cho các API list/search. Mỗi nhóm gồm
+     * tên đối tượng bị báo cáo và các loại lỗi kèm số lần bị báo.
      */
     private List<ReportGroupedByTargetDTO> buildGroupedDTOList(List<UserReport> reports) {
         return reports.stream()
@@ -154,31 +162,31 @@ public class ReportServiceImpl implements ReportService {
                     Map<String, Long> typeCounts = grouped.stream()
                             .collect(Collectors.groupingBy(UserReport::getType, Collectors.counting()));
 
-                    return typeCounts.entrySet().stream().map(e ->
-                            new ReportGroupedByTargetDTO(
+                    return typeCounts.entrySet().stream().map(e
+                            -> new ReportGroupedByTargetDTO(
                                     targetId,
                                     name,
                                     email,
-                                    e.getKey(),      // type
-                                    e.getValue()     // count
+                                    e.getKey(), // type
+                                    e.getValue() // count
                             )
                     );
                 })
                 .collect(Collectors.toList());
     }
 
-
     /**
      * Trả về chi tiết báo cáo của một đối tượng bị báo cáo (user hoặc vehicle).
-     * Bao gồm:
-     * - Thông tin tổng quan báo cáo (id, type)
-     * - Thông tin người bị báo cáo (id, tên, email)
-     * - Danh sách người báo cáo (id, tên, email, lý do, thời gian)
+     * Bao gồm: - Thông tin tổng quan báo cáo (id, type) - Thông tin người bị
+     * báo cáo (id, tên, email) - Danh sách người báo cáo (id, tên, email, lý
+     * do, thời gian)
      */
     @Override
     public ReportDetailDTO getReportDetailByTargetAndType(String targetId, String type) {
         List<UserReport> reports = reportRepo.findByReportedIdAndType(targetId, type);
-        if (reports.isEmpty()) return null;
+        if (reports.isEmpty()) {
+            return null;
+        }
 
         UserReport sample = reports.get(0);
 
@@ -186,9 +194,12 @@ public class ReportServiceImpl implements ReportService {
         ReportSummaryDTO summary = new ReportSummaryDTO();
         summary.setReportId(sample.getId());
         summary.setType(sample.getType());
-        summary.setBooking(sample.getId());
         if (sample.getBooking() != null) {
             summary.setBooking(sample.getBooking().getId());
+            System.out.println(">>> Đã tìm thấy booking: " + sample.getBooking().getId());
+        } else {
+            summary.setBooking(null);
+            System.out.println(">>> Không tìm thấy booking: ");
         }
 
         // Thông tin đối tượng bị báo cáo
@@ -198,11 +209,12 @@ public class ReportServiceImpl implements ReportService {
             // Đối tượng là xe
             vehicleRepo.findById(targetId).ifPresent(vehicle -> {
                 reportedUser.setVehicleId(vehicle.getId());
-                reportedUser.setVehicleName(vehicle.getDescription());
+                reportedUser.setVehicleName(vehicle.getThumb());
 
                 try {
                     ObjectMapper mapper = new ObjectMapper();
-                    List<String> images = mapper.readValue(vehicle.getVehicleImages(), new TypeReference<List<String>>() {});
+                    List<String> images = mapper.readValue(vehicle.getVehicleImages(), new TypeReference<List<String>>() {
+                    });
                     if (!images.isEmpty()) {
                         reportedUser.setVehicleImage(images.get(0));
                     }
