@@ -88,3 +88,16 @@ export const updateMultipleVehicleStatuses = async (requests) => {
     return response.data;
 };
 
+// Thêm API mới cho Vehicle Management
+export const getAllVehicles = async (params) => {
+    const { type, ...otherParams } = params;
+    const response = await apiClient.get(`/vehicles/vehicle-type/${type}`, {
+        params: otherParams
+    });
+    return response.data;
+};
+
+export const getVehicleDetailAll = async (vehicleId) => {
+    const response = await apiClient.get(`/vehicles/detail/${vehicleId}`);
+    return response.data;
+};

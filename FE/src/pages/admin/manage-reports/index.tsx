@@ -51,6 +51,7 @@ import {
 const { Title } = Typography;
 const { Search } = Input;
 import ReportButton from "@/components/ReportComponent";
+import Link from "next/link";
 
 type ReportType =
   // Serious Reports
@@ -255,13 +256,24 @@ export default function UserReportsPage() {
     setReportModalVisible(true);
   };
 
-  // Handler khi đóng modal báo cáo
+  // Handler khi đóng modal báo cáo - không cần refresh
   const handleReportModalClose = () => {
     setReportModalVisible(false);
     setSelectedTargetForReport(null);
-    // Refresh data sau khi báo cáo thành công
-    loadReports();
+    // Data sẽ tự động refresh khi cần thiết
   };
+
+  // Effect để reset modal states khi chuyển tab
+  useEffect(() => {
+    // Reset tất cả modal states khi chuyển tab
+    setReportModalVisible(false);
+    setSelectedTargetForReport(null);
+    setReportReporterModalVisible(false);
+    setSelectedReporterForReport(null);
+    setIsModalVisible(false);
+    setSelectedReportDetail(null);
+    setDrawerVisible(false);
+  }, [activeTab]);
 
   // Handler báo cáo người báo cáo (spam)
   const handleReportReporter = (reporterId: string) => {
@@ -270,12 +282,11 @@ export default function UserReportsPage() {
     setReportReporterModalVisible(true);
   };
 
-  // Handler khi đóng modal báo cáo người báo cáo
+  // Handler khi đóng modal báo cáo người báo cáo - không cần refresh
   const handleReportReporterModalClose = () => {
     setReportReporterModalVisible(false);
     setSelectedReporterForReport(null);
-    // Refresh data sau khi báo cáo thành công
-    loadReports();
+    // Data sẽ tự động refresh khi cần thiết
   };
 
   // Safe getter functions
@@ -626,6 +637,39 @@ export default function UserReportsPage() {
                   </div>
                 </Card>
               </Col>
+
+              {/* Thêm phần Mã đơn hàng cho SERIOUS_ERROR và STAFF_ERROR - chỉ khi có booking */}
+              {(getGeneralTypeByTab(activeTab) === "SERIOUS_ERROR" ||
+                getGeneralTypeByTab(activeTab) === "STAFF_ERROR") &&
+                selectedReportDetail.reportSummary.booking && ( // Thêm điều kiện này
+                  <Col xs={24} sm={12}>
+                    <Card size="small" className="bg-blue-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-500">
+                            Mã đơn hàng
+                          </div>
+                          <div className="text-lg font-semibold text-blue-600">
+                            {selectedReportDetail.reportSummary.booking}
+                          </div>
+                        </div>
+                        <Link
+                          href={`/booking-detail/${selectedReportDetail.reportSummary.booking}`} // Sửa từ reportId thành booking
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button
+                            type="primary"
+                            size="small"
+                            className="bg-blue-500 hover:bg-blue-600"
+                          >
+                            Xem chi tiết
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  </Col>
+                )}
             </Row>
           </div>
 
@@ -1079,6 +1123,7 @@ export default function UserReportsPage() {
         <ReportButton
           targetId={selectedTargetForReport}
           reportType="STAFF_REPORT" // Báo cáo loại STAFF_REPORT
+          booking={selectedReportDetail?.reportSummary.booking}
           buttonText=""
           size="small"
           type="text"
@@ -1094,6 +1139,7 @@ export default function UserReportsPage() {
           key={`reporter-spam-${selectedReporterForReport}-${Date.now()}`}
           targetId={selectedReporterForReport}
           reportType="STAFF_REPORT"
+          booking={selectedReportDetail?.reportSummary.booking}
           buttonText=""
           size="small"
           type="text"
