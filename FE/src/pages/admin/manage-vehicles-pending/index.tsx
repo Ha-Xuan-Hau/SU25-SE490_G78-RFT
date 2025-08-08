@@ -842,7 +842,7 @@ const VehicleDetailModal: React.FC<{
                   Truyền động
                 </label>
                 <div className="p-2 bg-gray-50 rounded text-gray-900 text-sm">
-                  {vehicle.transmission}
+                  {translateENtoVI(vehicle.transmission)}
                 </div>
               </div>
 
@@ -851,7 +851,7 @@ const VehicleDetailModal: React.FC<{
                   Nhiên liệu
                 </label>
                 <div className="p-2 bg-gray-50 rounded text-gray-900 text-sm">
-                  {vehicle.fuelType}
+                  {translateENtoVI(vehicle.fuelType)}
                 </div>
               </div>
 
@@ -1058,6 +1058,37 @@ const VehicleDetailModal: React.FC<{
                   </div>
                 </div>
               </div>
+
+              {/* Thêm phí sạc pin cho xe điện */}
+              {vehicle.fuelType === "ELECTRIC" &&
+                vehicle.extraFeeRule.apply_batteryChargeFee && (
+                  <div className="space-y-3 sm:col-span-2 lg:col-span-3">
+                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <span className="text-yellow-700">
+                          ⚡ Phí sạc pin (Xe điện)
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <span className="text-sm text-gray-600">
+                            Phí sạc:
+                          </span>
+                          <span className="ml-2 font-semibold text-yellow-700">
+                            {vehicle.extraFeeRule.batteryChargeFeePerPercent?.toLocaleString(
+                              "vi-VN"
+                            ) || 0}{" "}
+                            VNĐ/% pin
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Khách thuê thanh toán phí sạc pin theo % pin đã sử
+                          dụng trong quá trình thuê xe
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
 
             {vehicle.extraFeeRule.hasDriverOption && (

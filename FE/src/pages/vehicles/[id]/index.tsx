@@ -915,37 +915,45 @@ export default function VehicleDetail() {
                 )}
             </div>
 
-            {/* Vehicle features */}
-            <div className="py-6 sm:py-10 my-6 sm:my-10 border-y border-dark/10 dark:border-white/20 flex flex-col gap-6 sm:gap-10">
-              <h3 className="text-2xl sm:text-3xl font-semibold">Đặc điểm</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 sm:flex sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon icon={"mdi:car-shift-pattern"} width={20} height={20} />
-                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
-                    {vehicle?.transmission
-                      ? translateENtoVI(vehicle.transmission)
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon icon={"mdi:car-seat"} width={20} height={20} />
-                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
-                    {vehicle?.numberSeat
-                      ? `${vehicle.numberSeat} Ghế ngồi`
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon icon={"mdi:fuel"} width={20} height={20} />
-                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
-                    {vehicle?.fuelType ? translateENtoVI(vehicle.fuelType) : ""}
-                  </p>
+            {/* Vehicle features - Chỉ hiển thị khi không phải xe đạp */}
+            {vehicle?.vehicleType !== "BICYCLE" && (
+              <div className="py-6 sm:py-10 my-6 sm:my-10 border-t border-dark/10 dark:border-white/20 flex flex-col gap-6 sm:gap-10">
+                <h3 className="text-2xl sm:text-3xl font-semibold">Đặc điểm</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 sm:flex sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon
+                      icon={"mdi:car-shift-pattern"}
+                      width={20}
+                      height={20}
+                    />
+                    <p className="text-base sm:text-xl font-normal text-black dark:text-white">
+                      {vehicle?.transmission
+                        ? translateENtoVI(vehicle.transmission)
+                        : ""}
+                    </p>
+                  </div>
+                  {vehicle?.numberSeat && (
+                    <div className="flex items-center gap-2">
+                      <Icon icon={"mdi:car-seat"} width={20} height={20} />
+                      <p className="text-base sm:text-xl font-normal text-black dark:text-white">
+                        {vehicle.numberSeat} Ghế ngồi
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Icon icon={"mdi:fuel"} width={20} height={20} />
+                    <p className="text-base sm:text-xl font-normal text-black dark:text-white">
+                      {vehicle?.fuelType
+                        ? translateENtoVI(vehicle.fuelType)
+                        : ""}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Vehicle description */}
-            <div className="flex flex-col gap-4 sm:gap-6">
+            <div className="py-6 sm:py-10 my-6 sm:my-10 border-t border-dark/10 dark:border-white/20 flex flex-col gap-6 sm:gap-10">
               <h3 className="text-2xl sm:text-3xl font-semibold">Mô tả</h3>
               <div
                 className="text-dark dark:text-white text-base sm:text-lg leading-relaxed"
@@ -1251,7 +1259,7 @@ export default function VehicleDetail() {
                     </div>
                     <div className="text-gray-600 text-xs sm:text-sm mt-1">
                       Phụ phí phát sinh khi xe hoàn trả không đảm bảo vệ sinh
-                      (như vết bẩn, bụi, cát, sinh lầy...)
+                      (như vết bẩn, bụi, cát, sình lầy...)
                     </div>
                   </li>
                   <li>
@@ -1270,6 +1278,27 @@ export default function VehicleDetail() {
                       thuốc lá, thực phẩm nặng mùi...)
                     </div>
                   </li>
+
+                  {/* Thêm phí sạc pin cho xe điện */}
+                  {vehicle?.fuelType === "ELECTRIC" &&
+                    vehicle?.extraFeeRule?.apply_batteryChargeFee && (
+                      <li>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800 text-sm sm:text-base">
+                            Phí sạc pin
+                          </span>
+                          <span className="text-primary font-bold text-sm sm:text-base">
+                            {vehicle?.extraFeeRule?.batteryChargeFeePerPercent?.toLocaleString() ||
+                              "-"}
+                            đ/%
+                          </span>
+                        </div>
+                        <div className="text-gray-600 text-xs sm:text-sm mt-1">
+                          Khách thuê thanh toán phí sạc pin theo thực tế sử
+                          dụng. Phí tính theo % pin đã sử dụng
+                        </div>
+                      </li>
+                    )}
                 </ul>
               </div>
             )}
@@ -1529,7 +1558,7 @@ export default function VehicleDetail() {
                     </div>
                     <div className="text-gray-600 text-sm mt-1">
                       Phụ phí phát sinh khi xe hoàn trả không đảm bảo vệ sinh
-                      (như vết bẩn, bụi, cát, sinh lầy...)
+                      (như vết bẩn, bụi, cát, sình lầy...)
                     </div>
                   </li>
                   <li>
@@ -1548,6 +1577,27 @@ export default function VehicleDetail() {
                       thuốc lá, thực phẩm nặng mùi...)
                     </div>
                   </li>
+
+                  {/* Thêm phí sạc pin cho xe điện */}
+                  {vehicle?.fuelType === "ELECTRIC" &&
+                    vehicle?.extraFeeRule?.apply_batteryChargeFee && (
+                      <li>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800">
+                            Phí sạc pin
+                          </span>
+                          <span className="text-primary font-bold">
+                            {vehicle?.extraFeeRule?.batteryChargeFeePerPercent?.toLocaleString() ||
+                              "-"}
+                            đ/%
+                          </span>
+                        </div>
+                        <div className="text-gray-600 text-sm mt-1">
+                          Khách thuê thanh toán phí sạc pin theo thực tế sử
+                          dụng. Phí tính theo % pin đã sử dụng
+                        </div>
+                      </li>
+                    )}
                 </ul>
               </div>
             )}
