@@ -52,8 +52,16 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
 // Ant Design Components
-import { Modal, message, Button as AntButton } from "antd";
+import { Modal, message, Button as AntButton, Button } from "antd";
 import ReportButton from "@/components/ReportComponent";
+
+import {
+  InfoCircleOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  FileTextOutlined,
+  ClockCircleOutlined,
+} from "@ant-design/icons";
 
 // --- Type definitions ---
 type RangeValue = [Dayjs | null, Dayjs | null] | null;
@@ -105,6 +113,8 @@ export default function VehicleDetail() {
   const [showMultiBooking, setShowMultiBooking] = useState(false);
   const [isMultiModalOpen, setIsMultiModalOpen] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
+
+  const [documentsModalVisible, setDocumentsModalVisible] = useState(false);
 
   // Hàm xử lý đặt nhiều xe
   const handleMultiBook = () => {
@@ -960,20 +970,45 @@ export default function VehicleDetail() {
             {/* Required documents */}
             <div className="py-6 sm:py-10 mt-6 sm:mt-10 border-t border-gray-200 dark:border-white/15">
               <div className="mt-6 sm:mt-10">
-                <h2 className="text-xl sm:text-2xl font-medium">
-                  Giấy tờ thuê xe
-                </h2>
-                <div className="bg-amber-100 border-transparent rounded-md p-4 border-solid border-l-4 border-l-amber-600 mt-4">
-                  <h4 className="flex items-center gap-1 text-gray-800 m-0 font-medium text-lg sm:text-xl">
-                    <span>Chọn 1 trong 2 hình thức</span>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl sm:text-2xl font-medium">
+                    Giấy tờ thuê xe
+                  </h2>
+                  <Button
+                    type="link"
+                    onClick={() => setDocumentsModalVisible(true)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Xem chi tiết
+                  </Button>
+                </div>
+
+                <div className="bg-blue-50 border-transparent rounded-md p-4 border-solid border-l-4 border-l-blue-600 mt-4">
+                  <h4 className="flex items-center gap-2 text-gray-800 m-0 font-medium text-lg sm:text-xl">
+                    <InfoCircleOutlined className="text-blue-600" />
+                    <span>Yêu cầu giấy tờ thuê xe</span>
                   </h4>
-                  <div className="mt-4 font-bold flex flex-col gap-3 text-sm sm:text-base">
-                    <div className="flex gap-2 items-center">
-                      <span>GPLX & CCCD gắn chip (đối chiếu)</span>
+                  <div className="mt-4 text-sm sm:text-base text-gray-700">
+                    <p className="mb-3">
+                      <strong>Bắt buộc mang theo BẢN GỐC:</strong>
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <CheckCircleOutlined className="text-green-600 mt-1 flex-shrink-0" />
+                        <span>Bằng lái xe (chủ xe đối chiếu & trả lại)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircleOutlined className="text-green-600 mt-1 flex-shrink-0" />
+                        <span>
+                          CCCD gắn chip HOẶC Passport (chủ xe giữ lại & trả khi
+                          hoàn xe)
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex gap-2 items-center">
-                      <span>GPLX (đối chiếu) & Hộ chiếu (giữ lại)</span>
-                    </div>
+                    <p className="mt-3 text-amber-700 bg-amber-50 p-2 rounded text-sm">
+                      <ExclamationCircleOutlined className="mr-1" />
+                      Thiếu giấy tờ sẽ không thể nhận xe
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1712,6 +1747,169 @@ export default function VehicleDetail() {
               <p>Không có xe khả dụng trong khoảng thời gian này.</p>
             </div>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <FileTextOutlined className="text-blue-600" />
+            <span>Chi tiết yêu cầu giấy tờ thuê xe</span>
+          </div>
+        }
+        open={documentsModalVisible}
+        onCancel={() => setDocumentsModalVisible(false)}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => setDocumentsModalVisible(false)}
+          >
+            Đã hiểu
+          </Button>,
+        ]}
+        width={700}
+        className="documents-modal"
+      >
+        <div className="py-4 space-y-6">
+          {/* Trường hợp có CCCD gắn chip */}
+          <div className="border border-gray-200 rounded-lg p-4 bg-white">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircleOutlined className="text-green-600" />
+              <h3 className="font-semibold text-gray-900 text-lg m-0">
+                Bạn đã có CCCD gắn chip
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-gray-900 font-medium">
+                Giấy tờ thuê xe bao gồm:
+              </p>
+
+              <div className="space-y-3 ml-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-medium text-gray-900">Bằng lái xe</p>
+                    <p className="text-sm text-gray-600">
+                      Chủ xe đối chiếu bản gốc với thông tin BLX đã xác thực
+                      trên web RTF & trả lại bạn
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-medium text-gray-900">CCCD gắn chip</p>
+                    <p className="text-sm text-gray-600">
+                      Chủ xe đối chiếu bản gốc với thông tin cá nhân trên VNeID,
+                      giữ lại và hoàn trả khi bạn trả xe
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Trường hợp chưa có CCCD gắn chip */}
+          <div className="border border-gray-200 rounded-lg p-4 bg-white">
+            <div className="flex items-center gap-2 mb-3">
+              <ExclamationCircleOutlined className="text-amber-600" />
+              <h3 className="font-semibold text-gray-900 text-lg m-0">
+                Bạn chưa có CCCD gắn chip
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-gray-900 font-medium">
+                Giấy tờ thuê xe bao gồm:
+              </p>
+
+              <div className="space-y-3 ml-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-amber-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-medium text-gray-900">Bằng lái xe</p>
+                    <p className="text-sm text-gray-600">
+                      Chủ xe đối chiếu bản gốc với thông tin BLX đã xác thực
+                      trên web RTF & trả lại bạn
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-amber-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="font-medium text-gray-900">Passport</p>
+                    <p className="text-sm text-gray-600">
+                      Chủ xe kiểm tra bản gốc, giữ lại và hoàn trả khi bạn trả
+                      xe
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lưu ý quan trọng - giữ nguyên màu */}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <ExclamationCircleOutlined className="text-red-600 mt-1 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-red-800 mb-2">
+                  Lưu ý quan trọng:
+                </h4>
+                <ul className="space-y-1 text-sm text-red-700">
+                  <li>
+                    • Khách thuê vui lòng chuẩn bị đầy đủ{" "}
+                    <strong>BẢN GỐC</strong> tất cả giấy tờ thuê xe
+                  </li>
+                  <li>• Giấy tờ phải còn hiệu lực và thông tin rõ ràng</li>
+                  <li>• Thiếu hoặc không đúng giấy tờ sẽ không thể nhận xe</li>
+                  <li>
+                    • Thông tin trên giấy tờ phải khớp với thông tin đặt xe
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Quy trình nhận xe */}
+          <div className="border border-gray-200 rounded-lg p-4 bg-white">
+            <div className="flex items-center gap-2 mb-3">
+              <ClockCircleOutlined className="text-blue-600" />
+              <h4 className="font-semibold text-gray-900 m-0">
+                Quy trình nhận xe:
+              </h4>
+            </div>
+            <div className="space-y-2 text-sm text-gray-700">
+              <div className="flex items-center gap-2">
+                <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  1
+                </span>
+                <span>Chủ xe kiểm tra và đối chiếu giấy tờ</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  2
+                </span>
+                <span>Bằng lái xe được trả lại ngay</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  3
+                </span>
+                <span>CCCD/Passport được giữ lại đến khi trả xe</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  4
+                </span>
+                <span>Kiểm tra xe và bàn giao</span>
+              </div>
+            </div>
+          </div>
         </div>
       </Modal>
 

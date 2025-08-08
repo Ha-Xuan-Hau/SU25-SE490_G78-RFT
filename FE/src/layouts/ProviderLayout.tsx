@@ -83,12 +83,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
     {
       title: "Quản lý thuê xe",
       items: [
-        {
-          key: "bookings",
-          path: "/provider/manage-bookings",
-          icon: "mdi:calendar-clock",
-          label: "Đơn đặt thuê xe",
-        },
+        // {
+        //   key: "bookings",
+        //   path: "/provider/manage-bookings",
+        //   icon: "mdi:calendar-clock",
+        //   label: "Đơn đặt thuê xe",
+        // },
         {
           key: "orders",
           path: "/provider/manage-accepted-bookings",

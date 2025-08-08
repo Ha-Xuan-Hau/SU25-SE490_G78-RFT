@@ -17,6 +17,7 @@ export interface ReporterDetailDTO {
 export interface ReportSummaryDTO {
   reportId: string;
   type: string;
+  booking: string;
 }
 
 export interface ReportedUserDTO {
