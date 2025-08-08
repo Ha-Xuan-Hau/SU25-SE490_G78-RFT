@@ -1,11 +1,12 @@
 // @/app/vehicles/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import VehicleFilter from "./_components/VehicleFilter";
 import VehicleListing from "./_components/VehicleList";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle";
-import { Filter, X } from "lucide-react"; // Thêm import cho Filter và X
+import { Filter, ChevronUp } from "lucide-react";
+import { Drawer } from "antd";
 
 interface PaginationInfo {
   totalElements: number;
@@ -49,87 +50,107 @@ const ListVehiclePage = () => {
       searchParams: {},
     });
 
-  // Mobile filter state
-  const [showMobileFilter, setShowMobileFilter] = useState(false); // Đảm bảo biến này được định nghĩa
+  const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
-  const handleSearchResults = (
-    searchResults: Vehicle[],
-    loading: boolean,
-    error: string | null,
-    pagination?: PaginationInfo,
-    isAdvanced?: boolean,
-    searchParams?: Record<string, unknown>
-  ) => {
-    setVehicles(searchResults);
-    setIsLoadingVehicles(loading);
-    setErrorVehicles(error);
+  // Handle scroll to top button visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
 
-    if (pagination) {
-      setPaginationInfo(pagination);
-      setCurrentPage(pagination.currentPage + 1);
-    }
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-    if (isAdvanced !== undefined && searchParams !== undefined) {
-      setAdvancedSearchState({
-        isAdvancedSearch: isAdvanced,
-        searchParams: searchParams,
-      });
-    }
-
-    // Đóng mobile filter sau khi search
-    setShowMobileFilter(false); // Đảm bảo biến này được sử dụng đúng
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handlePageChange = async (page: number) => {
-    setCurrentPage(page);
-    setIsLoadingVehicles(true);
-    setErrorVehicles(null);
+  const handleSearchResults = useCallback(
+    (
+      searchResults: Vehicle[],
+      loading: boolean,
+      error: string | null,
+      pagination?: PaginationInfo,
+      isAdvanced?: boolean,
+      searchParams?: Record<string, unknown>
+    ) => {
+      setVehicles(searchResults);
+      setIsLoadingVehicles(loading);
+      setErrorVehicles(error);
 
-    try {
-      let result;
-
-      if (advancedSearchState.isAdvancedSearch) {
-        const { advancedSearchVehicles } = await import("@/apis/vehicle.api");
-
-        const searchParams = {
-          ...advancedSearchState.searchParams,
-          page: page - 1,
-          size: 12,
-        };
-
-        result = await advancedSearchVehicles(searchParams);
-      } else {
-        const { basicSearchVehicles } = await import("@/apis/vehicle.api");
-
-        const searchParams = {
-          address: filters.city,
-          vehicleType: filters.vehicleType,
-          page: page - 1,
-          size: 12,
-        };
-
-        result = await basicSearchVehicles(searchParams);
+      if (pagination) {
+        setPaginationInfo(pagination);
+        setCurrentPage(pagination.currentPage + 1);
       }
 
-      setVehicles(result.content || []);
+      if (isAdvanced !== undefined && searchParams !== undefined) {
+        setAdvancedSearchState({
+          isAdvancedSearch: isAdvanced,
+          searchParams: searchParams,
+        });
+      }
 
-      const newPagination: PaginationInfo = {
-        totalElements: result.totalElements || 0,
-        totalPages: result.totalPages || 1,
-        currentPage: result.number || 0,
-        size: result.size || 12,
-      };
+      setShowMobileFilter(false);
+    },
+    []
+  );
 
-      setPaginationInfo(newPagination);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err) {
-      console.error("Page change error:", err);
-      setErrorVehicles((err as Error).message || "Không thể tải trang mới.");
-    } finally {
-      setIsLoadingVehicles(false);
-    }
-  };
+  const handlePageChange = useCallback(
+    async (page: number) => {
+      setCurrentPage(page);
+      setIsLoadingVehicles(true);
+      setErrorVehicles(null);
 
+      try {
+        let result;
+
+        if (advancedSearchState.isAdvancedSearch) {
+          const { advancedSearchVehicles } = await import("@/apis/vehicle.api");
+
+          const searchParams = {
+            ...advancedSearchState.searchParams,
+            page: page - 1,
+            size: 12,
+          };
+
+          result = await advancedSearchVehicles(searchParams);
+        } else {
+          const { basicSearchVehicles } = await import("@/apis/vehicle.api");
+
+          const searchParams = {
+            address: filters.city,
+            vehicleType: filters.vehicleType,
+            page: page - 1,
+            size: 12,
+          };
+
+          result = await basicSearchVehicles(searchParams);
+        }
+
+        setVehicles(result.content || []);
+
+        const newPagination: PaginationInfo = {
+          totalElements: result.totalElements || 0,
+          totalPages: result.totalPages || 1,
+          currentPage: result.number || 0,
+          size: result.size || 12,
+        };
+
+        setPaginationInfo(newPagination);
+        scrollToTop();
+      } catch (err) {
+        console.error("Page change error:", err);
+        setErrorVehicles((err as Error).message || "Không thể tải trang mới.");
+      } finally {
+        setIsLoadingVehicles(false);
+      }
+    },
+    [advancedSearchState, filters]
+  );
+
+  // Initial load
   useEffect(() => {
     const loadVehicles = async () => {
       setIsLoadingVehicles(true);
@@ -165,32 +186,49 @@ const ListVehiclePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-4 lg:py-6">
-        {/* Mobile Filter Button */}
-        <div className="lg:hidden mb-4">
-          <button
-            onClick={() => setShowMobileFilter(true)}
-            className="w-full flex items-center justify-center py-3 px-4 bg-blue-600 text-white rounded-lg font-medium"
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Bộ lọc tìm kiếm
-          </button>
-        </div>
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
+                Danh sách xe
+              </h1>
+              {/* {paginationInfo.totalElements > 0 && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Tìm thấy {paginationInfo.totalElements} xe phù hợp
+                </p>
+              )} */}
+            </div>
 
+            {/* Mobile Filter Button */}
+            <button
+              onClick={() => setShowMobileFilter(true)}
+              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              <span>Lọc</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-6">
         <div className="flex gap-6">
           {/* Desktop Filter Sidebar */}
-          <div className="hidden lg:block w-80 flex-shrink-0">
-            <div className="sticky top-6" data-filter-section>
+          <aside className="hidden lg:block w-80 flex-shrink-0">
+            <div className="sticky top-24" data-filter-section>
               <VehicleFilter
                 filters={filters}
                 setFilters={setFilters}
                 onSearchResults={handleSearchResults}
               />
             </div>
-          </div>
+          </aside>
 
           {/* Vehicle List */}
-          <div className="flex-1 w-full lg:w-auto">
+          <main className="flex-1 min-w-0">
             <VehicleListing
               vehicles={vehicles}
               isLoading={isLoadingVehicles}
@@ -200,49 +238,36 @@ const ListVehiclePage = () => {
               pageSize={paginationInfo.size}
               onPageChange={handlePageChange}
             />
-          </div>
+          </main>
         </div>
       </div>
 
-      {/* Mobile Filter Modal */}
-      {showMobileFilter && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-            onClick={() => setShowMobileFilter(false)}
-          />
-          <div className="fixed inset-0 z-50 flex items-end lg:hidden">
-            <div className="w-full bg-white rounded-t-2xl max-h-[90vh] overflow-hidden">
-              {/* Mobile Filter Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Bộ lọc tìm kiếm
-                </h2>
-                <button
-                  onClick={() => setShowMobileFilter(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      {/* Mobile Filter Drawer */}
+      <Drawer
+        title="Bộ lọc tìm kiếm"
+        placement="bottom"
+        height="90%"
+        open={showMobileFilter}
+        onClose={() => setShowMobileFilter(false)}
+        className="mobile-filter-drawer"
+      >
+        <VehicleFilter
+          filters={filters}
+          setFilters={setFilters}
+          onSearchResults={handleSearchResults}
+          isMobile={true}
+          onClose={() => setShowMobileFilter(false)}
+        />
+      </Drawer>
 
-              {/* Mobile Filter Content */}
-              <div
-                className="overflow-y-auto"
-                style={{ maxHeight: "calc(90vh - 80px)" }}
-              >
-                <div className="p-4">
-                  <VehicleFilter
-                    filters={filters}
-                    setFilters={setFilters}
-                    onSearchResults={handleSearchResults}
-                    isMobile={true}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-40 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all hover:scale-110"
+        >
+          <ChevronUp className="w-6 h-6" />
+        </button>
       )}
     </div>
   );

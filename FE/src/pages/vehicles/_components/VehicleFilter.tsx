@@ -1,7 +1,7 @@
 // @/app/vehicles/_components/VehicleFilter.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import {
   Car,
@@ -11,6 +11,7 @@ import {
   Search,
   RotateCcw,
   Settings,
+  Calendar,
 } from "lucide-react";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle";
 import {
@@ -43,6 +44,7 @@ interface VehicleFilterProps {
     searchParams?: Record<string, unknown>
   ) => void;
   isMobile?: boolean;
+  onClose?: () => void;
 }
 
 interface GeoUnit {
@@ -50,11 +52,14 @@ interface GeoUnit {
   name: string;
 }
 
+type VehicleType = "CAR" | "MOTORBIKE" | "BICYCLE";
+
 const VehicleFilter: React.FC<VehicleFilterProps> = ({
   filters,
   setFilters,
   onSearchResults,
   isMobile = false,
+  onClose,
 }) => {
   const [provinces, setProvinces] = useState<GeoUnit[]>([]);
   const [districts, setDistricts] = useState<GeoUnit[]>([]);
@@ -63,68 +68,80 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [pickupDateTime, setPickupDateTime] = useState<string>("");
   const [returnDateTime, setReturnDateTime] = useState<string>("");
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([
+    null,
+    null,
+  ]);
 
-  const handleFilterChange = (key: keyof VehicleFilters, value: unknown) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  const handleFilterChange = useCallback(
+    (key: keyof VehicleFilters, value: unknown) => {
+      setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [setFilters]
+  );
 
-  const handleDateChange: RangePickerProps["onChange"] = (values) => {
-    if (values && values[0] && values[1]) {
-      const [startDate, endDate] = values;
-      const pickup = startDate.format("YYYY-MM-DDTHH:mm:ss");
-      const returnTime = endDate.format("YYYY-MM-DDTHH:mm:ss");
+  const handleDateChange: RangePickerProps["onChange"] = useCallback(
+    (values: any) => {
+      if (values && values[0] && values[1]) {
+        const [startDate, endDate] = values;
+        const pickup = startDate.format("YYYY-MM-DDTHH:mm:ss");
+        const returnTime = endDate.format("YYYY-MM-DDTHH:mm:ss");
 
-      setPickupDateTime(pickup);
-      setReturnDateTime(returnTime);
-      handleFilterChange("pickupDateTime", pickup);
-      handleFilterChange("returnDateTime", returnTime);
-    } else {
-      setPickupDateTime("");
-      setReturnDateTime("");
-      handleFilterChange("pickupDateTime", undefined);
-      handleFilterChange("returnDateTime", undefined);
-    }
-  };
+        setPickupDateTime(pickup);
+        setReturnDateTime(returnTime);
+        setDateRange([startDate, endDate]);
+        handleFilterChange("pickupDateTime", pickup);
+        handleFilterChange("returnDateTime", returnTime);
+      } else {
+        setPickupDateTime("");
+        setReturnDateTime("");
+        setDateRange([null, null]);
+        handleFilterChange("pickupDateTime", undefined);
+        handleFilterChange("returnDateTime", undefined);
+      }
+    },
+    [handleFilterChange]
+  );
 
-  const disabledDate = (current: Dayjs | null): boolean => {
+  const disabledDate = useCallback((current: Dayjs | null): boolean => {
     if (!current) return false;
     return current.isBefore(dayjs().startOf("day"));
-  };
+  }, []);
 
-  const disabledRangeTime: RangePickerProps["disabledTime"] = (
-    current,
-    type
-  ) => {
-    if (!current) return {};
+  const disabledRangeTime: RangePickerProps["disabledTime"] = useCallback(
+    (current: any, type: string) => {
+      if (!current) return {};
 
-    const now = dayjs();
-    const isToday = current.isSame(now, "day");
-    const currentHour = now.hour();
+      const now = dayjs();
+      const isToday = current.isSame(now, "day");
+      const currentHour = now.hour();
 
-    const businessHours = Array.from({ length: 24 }, (_, i) => i).filter(
-      (hour) => hour < 7 || hour > 22
-    );
+      const businessHours = Array.from({ length: 24 }, (_, i) => i).filter(
+        (hour) => hour < 7 || hour > 22
+      );
 
-    if (isToday && type === "start") {
-      const disabledHours = [
-        ...businessHours,
-        ...Array.from({ length: currentHour + 1 }, (_, i) => i),
-      ];
+      if (isToday && type === "start") {
+        const disabledHours = [
+          ...businessHours,
+          ...Array.from({ length: currentHour + 1 }, (_, i) => i),
+        ];
+        return {
+          disabledHours: () => [...new Set(disabledHours)],
+          disabledMinutes: (selectedHour: number) => {
+            if (selectedHour === currentHour + 1) {
+              return Array.from({ length: now.minute() }, (_, i) => i);
+            }
+            return [];
+          },
+        };
+      }
+
       return {
-        disabledHours: () => [...new Set(disabledHours)],
-        disabledMinutes: (selectedHour) => {
-          if (selectedHour === currentHour + 1) {
-            return Array.from({ length: now.minute() }, (_, i) => i);
-          }
-          return [];
-        },
+        disabledHours: () => businessHours,
       };
-    }
-
-    return {
-      disabledHours: () => businessHours,
-    };
-  };
+    },
+    []
+  );
 
   const handleBasicSearch = async () => {
     if (isSearching) return;
@@ -143,6 +160,8 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         page: 0,
         size: 12,
       };
+
+      console.log("Basic search params:", searchParams);
 
       const result = await basicSearchVehicles(searchParams);
 
@@ -163,6 +182,10 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       );
 
       toast.success(`Tìm thấy ${result.totalElements} xe phù hợp!`);
+
+      if (isMobile && onClose) {
+        onClose();
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Lỗi tìm kiếm";
@@ -184,13 +207,26 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     try {
       const { advancedSearchVehicles } = await import("@/apis/vehicle.api");
 
+      // Build addresses array from current location filters
+      const addresses = [];
+      if (filters.city) {
+        let address = filters.city;
+        if (filters.district) address += `, ${filters.district}`;
+        if (filters.ward) address += `, ${filters.ward}`;
+        addresses.push(address);
+      }
+
+      // Merge with advanced filters and add addresses
       const searchParams = {
         ...advancedFilters,
+        addresses: addresses.length > 0 ? addresses : undefined,
         pickupDateTime: pickupDateTime || undefined,
         returnDateTime: returnDateTime || undefined,
         page: 0,
         size: 12,
       };
+
+      console.log("Advanced search params being sent:", searchParams);
 
       const result = await advancedSearchVehicles(searchParams);
 
@@ -210,8 +246,11 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         searchParams
       );
 
-      setShowAdvancedSearch(false);
       toast.success(`Tìm thấy ${result.totalElements} xe phù hợp!`);
+
+      if (isMobile && onClose) {
+        onClose();
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Lỗi tìm kiếm nâng cao";
@@ -222,7 +261,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     }
   };
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     setFilters({
       vehicleType: undefined,
       maxRating: undefined,
@@ -236,8 +275,9 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     });
     setPickupDateTime("");
     setReturnDateTime("");
+    setDateRange([null, null]);
     onSearchResults([], false, null, undefined, false, {});
-  };
+  }, [setFilters, onSearchResults]);
 
   // Load geographic data
   useEffect(() => {
@@ -298,16 +338,19 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
   return (
     <div className="space-y-4 lg:space-y-6">
       <div
-        className={`bg-white rounded-lg border border-gray-200 ${
+        className={`bg-white rounded-lg shadow-sm border border-gray-200 ${
           isMobile ? "p-4" : "p-6"
         }`}
       >
-        {/* Header - Hide on mobile since it's in modal header */}
+        {/* Header */}
         {!isMobile && (
           <div className="mb-6">
-            <h2 className="text-lg font-medium text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900">
               Bộ lọc tìm kiếm
             </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Tìm xe phù hợp với nhu cầu của bạn
+            </p>
           </div>
         )}
 
@@ -318,18 +361,22 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { type: "CAR" as const, icon: Car, label: "Ô tô" },
-              { type: "MOTORBIKE" as const, icon: Motorbike, label: "Xe máy" },
-              { type: "BICYCLE" as const, icon: Bike, label: "Xe đạp" },
+              { type: "CAR" as VehicleType, icon: Car, label: "Ô tô" },
+              {
+                type: "MOTORBIKE" as VehicleType,
+                icon: Motorbike,
+                label: "Xe máy",
+              },
+              { type: "BICYCLE" as VehicleType, icon: Bike, label: "Xe đạp" },
             ].map(({ type, icon: Icon, label }) => (
               <button
                 key={type}
                 className={`flex flex-col items-center justify-center ${
                   isMobile ? "p-2" : "p-3"
-                } border rounded-lg text-xs transition-colors ${
+                } border-2 rounded-lg text-xs transition-all ${
                   filters.vehicleType === type
                     ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-gray-200 hover:border-gray-300 text-gray-600"
+                    : "border-gray-200 hover:border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
                 onClick={() =>
                   handleFilterChange(
@@ -354,7 +401,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             {[
               {
                 key: "city" as const,
-                placeholder: "Chọn thành phố",
+                placeholder: "Chọn tỉnh/thành phố",
                 options: provinces,
                 disabled: false,
               },
@@ -374,7 +421,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
               <div key={key} className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <select
-                  className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm transition-colors ${
+                  className={`w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm transition-colors ${
                     disabled
                       ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
                       : "border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -409,11 +456,12 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             Thời gian thuê
           </label>
           <DateRangePicker
+            value={dateRange}
             showTime={{
               format: "HH:mm",
               minuteStep: 15,
             }}
-            format={isMobile ? "DD/MM/YY HH:mm" : "DD/MM/YYYY HH:mm"}
+            format={isMobile ? "DD/MM HH:mm" : "DD/MM/YYYY HH:mm"}
             disabledTime={disabledRangeTime}
             disabledDate={disabledDate}
             className="w-full"
@@ -426,13 +474,13 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         {/* Action Buttons */}
         <div className="space-y-3">
           <button
-            className="w-full bg-primary hover:bg-secondary text-white py-2.5 px-4 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
             onClick={handleBasicSearch}
             disabled={isSearching}
           >
             {isSearching ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
                 Đang tìm kiếm...
               </>
             ) : (
@@ -443,21 +491,23 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
             )}
           </button>
 
-          <button
-            className="w-full border border-primary text-primary hover:bg-blue-50 py-2.5 px-4 rounded-lg text-sm font-medium flex items-center justify-center transition-colors"
-            onClick={() => setShowAdvancedSearch(true)}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Tìm kiếm nâng cao
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              className="border border-blue-500 text-blue-600 hover:bg-blue-50 py-2.5 px-4 rounded-lg text-sm font-medium flex items-center justify-center transition-colors"
+              onClick={() => setShowAdvancedSearch(true)}
+            >
+              <Settings className="w-4 h-4 mr-1.5" />
+              Nâng cao
+            </button>
 
-          <button
-            className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 py-2.5 px-4 rounded-lg text-sm font-medium flex items-center justify-center transition-colors"
-            onClick={resetFilters}
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Đặt lại
-          </button>
+            <button
+              className="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2.5 px-4 rounded-lg text-sm font-medium flex items-center justify-center transition-colors"
+              onClick={resetFilters}
+            >
+              <RotateCcw className="w-4 h-4 mr-1.5" />
+              Đặt lại
+            </button>
+          </div>
         </div>
       </div>
 
@@ -466,9 +516,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
         isOpen={showAdvancedSearch}
         onClose={() => setShowAdvancedSearch(false)}
         onSearch={handleAdvancedSearch}
-        currentVehicleType={
-          filters.vehicleType as "CAR" | "MOTORBIKE" | "BICYCLE" | undefined
-        }
+        currentVehicleType={filters.vehicleType as VehicleType | undefined}
       />
     </div>
   );
