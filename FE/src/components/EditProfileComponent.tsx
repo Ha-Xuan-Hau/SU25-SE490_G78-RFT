@@ -477,7 +477,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 },
                 {
                   pattern: /^[0-9]{10}$/,
-                  message: "Số điện thoại phải có đúng 10 chữ số!",
+                  message: "Độ dài số điện thoại không đúng hoặc sai định dạng (vd: 0987654321)",
                 },
               ]}
             >

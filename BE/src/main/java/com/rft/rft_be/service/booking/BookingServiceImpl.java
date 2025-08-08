@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
+import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
 import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
@@ -211,6 +212,14 @@ public class BookingServiceImpl implements BookingService {
         response.setDiscountAmount(totalDiscount);
         response.setPriceType(calculation.getPriceType());
         response.setRentalDuration(BookingCalculationUtils.formatRentalDuration(calculation));
+
+        if (vehicles != null && !vehicles.isEmpty()) {
+            List<VehicleForBookingDTO> vehicleDTOs = vehicles.stream()
+                    .map(vehicleMapper::mapToVehicleForBookingDTO)
+                    .collect(Collectors.toList());
+            response.setVehicles(vehicleDTOs);
+        }
+
         return response;
     }
 
