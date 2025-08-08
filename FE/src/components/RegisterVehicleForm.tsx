@@ -188,8 +188,8 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           // Quan trọng: khởi tạo đúng giá trị cho phí sạc pin
           batteryChargeFeePerPercent:
             vehicle.extraFeeRule.batteryChargeFeePerPercent || 0,
-          apply_batteryChargeFee:
-            vehicle.extraFeeRule.apply_batteryChargeFee === true,
+          applyBatteryChargeFee:
+            vehicle.extraFeeRule.applyBatteryChargeFee === true,
           // Driver fees
           driverFeePerDay: vehicle.extraFeeRule.driverFeePerDay || 0,
           driverFeePerHour: vehicle.extraFeeRule.driverFeePerHour || 0,
@@ -580,10 +580,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             "Battery charge fee:",
             extraRule.batteryChargeFeePerPercent
           );
-          console.log(
-            "Apply battery charge:",
-            extraRule.apply_batteryChargeFee
-          );
+          console.log("Apply battery charge:", extraRule.applyBatteryChargeFee);
 
           if (vehicleType === VehicleType.CAR) {
             submitData = {
@@ -602,9 +599,9 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               smellRemovalFee: extraRule.smellRemovalFee || 0,
 
               // Phí sạc pin - đảm bảo lấy từ extraRule
-              apply_batteryChargeFee:
+              applyBatteryChargeFee:
                 values.fuelType === "ELECTRIC"
-                  ? Boolean(extraRule.apply_batteryChargeFee)
+                  ? Boolean(extraRule.applyBatteryChargeFee)
                   : false,
               batteryChargeFeePerPercent:
                 values.fuelType === "ELECTRIC"
@@ -1027,11 +1024,11 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                     className="md:col-span-1"
                   >
                     <Select
-                      value={extraRule.apply_batteryChargeFee}
+                      value={extraRule.applyBatteryChargeFee}
                       onChange={(v) =>
                         setExtraRule((prev) => ({
                           ...prev,
-                          apply_batteryChargeFee: v,
+                          applyBatteryChargeFee: v,
                         }))
                       }
                       options={[

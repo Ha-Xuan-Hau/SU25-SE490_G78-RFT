@@ -190,23 +190,30 @@ public class VehicleRentServiceImpl implements VehicleRentService {
 
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
 
-        ExtraFeeRule extraFeeRule = new ExtraFeeRule().builder()
-                .vehicle(savedVehicle)
-                .maxKmPerDay(request.getMaxKmPerDay())
-                .feePerExtraKm(request.getFeePerExtraKm())
-                .allowedHourLate(request.getAllowedHourLate())
-                .feePerExtraHour(request.getFeePerExtraHour())
-                .cleaningFee(request.getCleaningFee())
-                .smellRemovalFee(request.getSmellRemovalFee())
-                .applyBatteryChargeFee("ELECTRIC".equalsIgnoreCase(request.getFuelType()))
-                .batteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent())
-                .driverFeePerDay(request.getDriverFeePerDay())
-                .hasDriverOption(request.getHasDriverOption())
-                .driverFeePerHour(request.getDriverFeePerHour())
-                .hasHourlyRental(request.getHasHourlyRental())
-                .build();
+        // Tạo ExtraFeeRule chỉ cho xe ô tô
+        if (vehicleType == Vehicle.VehicleType.CAR) {
+            ExtraFeeRule extraFeeRule = new ExtraFeeRule().builder()
+                    .vehicle(savedVehicle)
+                    .maxKmPerDay(request.getMaxKmPerDay())
+                    .feePerExtraKm(request.getFeePerExtraKm())
+                    .allowedHourLate(request.getAllowedHourLate())
+                    .feePerExtraHour(request.getFeePerExtraHour())
+                    .cleaningFee(request.getCleaningFee())
+                    .smellRemovalFee(request.getSmellRemovalFee())
+                    .applyBatteryChargeFee(request.getApplyBatteryChargeFee())
+                    .batteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent())
+                    .driverFeePerDay(request.getDriverFeePerDay())
+                    .hasDriverOption(request.getHasDriverOption())
+                    .driverFeePerHour(request.getDriverFeePerHour())
+                    .hasHourlyRental(request.getHasHourlyRental())
+                    .build();
 
-        extraFeeRuleRepository.save(extraFeeRule);
+            extraFeeRuleRepository.save(extraFeeRule);
+            log.info("[DEBUG] Tạo ExtraFeeRule cho xe ô tô: {}", savedVehicle.getId());
+        } else {
+            log.info("[DEBUG] Bỏ qua tạo ExtraFeeRule cho xe {} (loại: {}). ExtraFeeRule chỉ áp dụng cho xe ô tô.",
+                    savedVehicle.getId(), vehicleType);
+        }
 
         // Fetch with brand and model for response
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(savedVehicle.getId())
@@ -426,9 +433,36 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             }
         }
 
+        // Update cost per day
+        if (request.getCostPerDay() != null) {
+            if (!Objects.equals(existingVehicle.getCostPerDay(), request.getCostPerDay())) {
+                log.info("[DEBUG] Thay đổi giá thuê từ {} sang {}", existingVehicle.getCostPerDay(), request.getCostPerDay());
+                existingVehicle.setCostPerDay(request.getCostPerDay());
+                isChanged = true;
+            }
+        }
+
+        // Update vehicle features
+        if (request.getVehicleFeatures() != null) {
+            if (!Objects.equals(existingVehicle.getVehicleFeatures(), request.getVehicleFeatures())) {
+                log.info("[DEBUG] Thay đổi tính năng xe từ {} sang {}", existingVehicle.getVehicleFeatures(), request.getVehicleFeatures());
+                existingVehicle.setVehicleFeatures(request.getVehicleFeatures());
+                isChanged = true;
+            }
+        }
+
+        // Update thumb
+        if (request.getThumb() != null) {
+            if (!Objects.equals(existingVehicle.getThumb(), request.getThumb())) {
+                log.info("[DEBUG] Thay đổi thumb từ {} sang {}", existingVehicle.getThumb(), request.getThumb());
+                existingVehicle.setThumb(request.getThumb());
+                isChanged = true;
+            }
+        }
+
         if (request.getPenaltyId() != null && !request.getPenaltyId().trim().isEmpty()) {
             Penalty penalty = penaltyRepository.findById(request.getPenaltyId())
-                    
+
                     .orElseThrow(() -> new RuntimeException("Phạt không tồn tại với id: " + request.getPenaltyId()));
             existingVehicle.setPenalty(penalty);
         }
@@ -497,6 +531,115 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 existingVehicle.setStatus(Vehicle.Status.valueOf(request.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
                 throw new RuntimeException("Trạng thái không hợp lệ: " + request.getStatus() + ". Giá trị hợp lệ: AVAILABLE, UNAVAILABLE");
+            }
+        }
+
+        // Update ExtraFeeRule if provided - CHỈ ÁP DỤNG CHO XE Ô TÔ
+        if (existingVehicle.getVehicleType() == Vehicle.VehicleType.CAR) {
+            if (extraFeeRule != null) {
+                boolean extraFeeRuleChanged = false;
+
+                if (request.getMaxKmPerDay() != null && !Objects.equals(extraFeeRule.getMaxKmPerDay(), request.getMaxKmPerDay())) {
+                    extraFeeRule.setMaxKmPerDay(request.getMaxKmPerDay());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getFeePerExtraKm() != null && !Objects.equals(extraFeeRule.getFeePerExtraKm(), request.getFeePerExtraKm())) {
+                    extraFeeRule.setFeePerExtraKm(request.getFeePerExtraKm());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getAllowedHourLate() != null && !Objects.equals(extraFeeRule.getAllowedHourLate(), request.getAllowedHourLate())) {
+                    extraFeeRule.setAllowedHourLate(request.getAllowedHourLate());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getFeePerExtraHour() != null && !Objects.equals(extraFeeRule.getFeePerExtraHour(), request.getFeePerExtraHour())) {
+                    extraFeeRule.setFeePerExtraHour(request.getFeePerExtraHour());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getCleaningFee() != null && !Objects.equals(extraFeeRule.getCleaningFee(), request.getCleaningFee())) {
+                    extraFeeRule.setCleaningFee(request.getCleaningFee());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getSmellRemovalFee() != null && !Objects.equals(extraFeeRule.getSmellRemovalFee(), request.getSmellRemovalFee())) {
+                    extraFeeRule.setSmellRemovalFee(request.getSmellRemovalFee());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getBatteryChargeFeePerPercent() != null && !Objects.equals(extraFeeRule.getBatteryChargeFeePerPercent(), request.getBatteryChargeFeePerPercent())) {
+                    extraFeeRule.setBatteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent());
+                    // Update applyBatteryChargeFee based on fuel type
+                    if (request.getFuelType() != null && request.getFuelType().trim().equalsIgnoreCase("ELECTRIC")) {
+                        extraFeeRule.setApplyBatteryChargeFee(request.getApplyBatteryChargeFee());
+                    }
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getDriverFeePerDay() != null && !Objects.equals(extraFeeRule.getDriverFeePerDay(), request.getDriverFeePerDay())) {
+                    extraFeeRule.setDriverFeePerDay(request.getDriverFeePerDay());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getHasDriverOption() != null && !Objects.equals(extraFeeRule.getHasDriverOption(), request.getHasDriverOption())) {
+                    extraFeeRule.setHasDriverOption(request.getHasDriverOption());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getDriverFeePerHour() != null && !Objects.equals(extraFeeRule.getDriverFeePerHour(), request.getDriverFeePerHour())) {
+                    extraFeeRule.setDriverFeePerHour(request.getDriverFeePerHour());
+                    extraFeeRuleChanged = true;
+                }
+
+                if (request.getHasHourlyRental() != null && !Objects.equals(extraFeeRule.getHasHourlyRental(), request.getHasHourlyRental())) {
+                    extraFeeRule.setHasHourlyRental(request.getHasHourlyRental());
+                    extraFeeRuleChanged = true;
+                }
+
+                // Save ExtraFeeRule if changed
+                if (extraFeeRuleChanged) {
+                    extraFeeRuleRepository.save(extraFeeRule);
+                    log.info("[DEBUG] Cập nhật ExtraFeeRule cho xe ô tô: {}", vehicleId);
+                }
+            } else if (request.getMaxKmPerDay() != null || request.getFeePerExtraKm() != null ||
+                    request.getAllowedHourLate() != null || request.getFeePerExtraHour() != null ||
+                    request.getCleaningFee() != null || request.getSmellRemovalFee() != null ||
+                    request.getBatteryChargeFeePerPercent() != null || request.getDriverFeePerDay() != null ||
+                    request.getHasDriverOption() != null || request.getDriverFeePerHour() != null ||
+                    request.getHasHourlyRental() != null) {
+
+                // Create new ExtraFeeRule if it doesn't exist but update data is provided - CHỈ CHO XE Ô TÔ
+                ExtraFeeRule newExtraFeeRule = ExtraFeeRule.builder()
+                        .vehicle(existingVehicle)
+                        .maxKmPerDay(request.getMaxKmPerDay())
+                        .feePerExtraKm(request.getFeePerExtraKm())
+                        .allowedHourLate(request.getAllowedHourLate())
+                        .feePerExtraHour(request.getFeePerExtraHour())
+                        .cleaningFee(request.getCleaningFee())
+                        .smellRemovalFee(request.getSmellRemovalFee())
+                        .applyBatteryChargeFee(request.getFuelType() != null && "ELECTRIC".equalsIgnoreCase(request.getFuelType()))
+                        .batteryChargeFeePerPercent(request.getBatteryChargeFeePerPercent())
+                        .driverFeePerDay(request.getDriverFeePerDay())
+                        .hasDriverOption(request.getHasDriverOption())
+                        .driverFeePerHour(request.getDriverFeePerHour())
+                        .hasHourlyRental(request.getHasHourlyRental())
+                        .build();
+
+                extraFeeRuleRepository.save(newExtraFeeRule);
+                log.info("[DEBUG] Tạo mới ExtraFeeRule cho xe ô tô: {}", vehicleId);
+            }
+        } else {
+            // Với xe máy và xe đạp, bỏ qua các trường ExtraFeeRule
+            if (request.getMaxKmPerDay() != null || request.getFeePerExtraKm() != null ||
+                    request.getAllowedHourLate() != null || request.getFeePerExtraHour() != null ||
+                    request.getCleaningFee() != null || request.getSmellRemovalFee() != null ||
+                    request.getBatteryChargeFeePerPercent() != null || request.getDriverFeePerDay() != null ||
+                    request.getHasDriverOption() != null || request.getDriverFeePerHour() != null ||
+                    request.getHasHourlyRental() != null) {
+                log.warn("[DEBUG] Bỏ qua cập nhật ExtraFeeRule cho xe {} (loại: {}). ExtraFeeRule chỉ áp dụng cho xe ô tô.",
+                        vehicleId, existingVehicle.getVehicleType());
             }
         }
 
