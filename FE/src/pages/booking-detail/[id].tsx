@@ -171,14 +171,14 @@ export default function BookingDetailPage() {
           description={error}
           type="error"
           showIcon
-          action={
-            <button
-              onClick={() => router.back()}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            >
-              Quay lại
-            </button>
-          }
+          // action={
+          //   <button
+          //     onClick={() => router.back()}
+          //     className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          //   >
+          //     Quay lại
+          //   </button>
+          // }
         />
       </div>
     );

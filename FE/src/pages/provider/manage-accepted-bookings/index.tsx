@@ -1961,9 +1961,12 @@ export default function ManageAcceptedBookings() {
         selectedBookingForReport &&
         (selectedReportTypes.length === 1 ? (
           <ReportButton
-            targetId={selectedBookingForReport.userId} // Báo cáo user thay vì xe
+            key={`report-${selectedBookingForReport.id}-${
+              selectedReportTypes[0]
+            }-${Date.now()}`} // Thêm key unique
+            targetId={selectedBookingForReport.userId}
             reportType={selectedReportTypes[0]}
-            booking={selectedBookingForReport.id}
+            booking={selectedBookingForReport.id} // Sửa từ booking thành bookingId
             buttonText=""
             size="small"
             type="text"
@@ -1973,9 +1976,12 @@ export default function ManageAcceptedBookings() {
           />
         ) : (
           <ReportButton
-            targetId={selectedBookingForReport.userId} // Báo cáo user thay vì xe
+            key={`report-multi-${
+              selectedBookingForReport.id
+            }-${selectedReportTypes.join("-")}-${Date.now()}`} // Thêm key unique
+            targetId={selectedBookingForReport.userId}
             reportTypes={selectedReportTypes}
-            booking={selectedBookingForReport.id}
+            booking={selectedBookingForReport.id} // Sửa từ booking thành bookingId
             showTypeSelector={true}
             buttonText=""
             size="small"

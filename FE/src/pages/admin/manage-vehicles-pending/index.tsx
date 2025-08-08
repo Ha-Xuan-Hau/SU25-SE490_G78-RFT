@@ -24,6 +24,7 @@ import {
 } from "@/apis/admin.api"; // Ensure this path is correct
 import AdminLayout from "@/layouts/AdminLayout";
 import { showApiError, showApiSuccess } from "@/utils/toast.utils";
+import { translateENtoVI } from "@/lib/viDictionary";
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
@@ -143,7 +144,7 @@ export default function VehiclePendingPage() {
   const loadPendingStats = async () => {
     try {
       const response = await getPendingStats();
-      setPendingStats(response); // Assuming response structure is { motorbike: 3, bicycle: 0, car: 1 }
+      setPendingStats(response);
     } catch (error) {
       console.error("Error fetching pending stats:", error);
       showApiError("Có lỗi xảy ra khi lấy thống kê xe chờ duyệt."); // Show error message
@@ -976,7 +977,7 @@ const VehicleDetailModal: React.FC<{
                 <div className="flex flex-wrap gap-1 mt-2">
                   {features.map((feature, index) => (
                     <Tag key={index} color="blue" className="text-xs mb-1">
-                      {feature.name}
+                      {translateENtoVI(feature.name)}
                     </Tag>
                   ))}
                 </div>
@@ -1154,7 +1155,10 @@ const VehicleDetailModal: React.FC<{
 
         {/* Description */}
         <Card title="Mô tả xe" size="small">
-          <div className="p-3 bg-gray-50 rounded-lg text-gray-700 text-sm leading-relaxed break-words">
+          <div
+            className="p-3 bg-gray-50 rounded-lg text-gray-700 text-sm leading-relaxed break-words"
+            style={{ whiteSpace: "pre-line" }}
+          >
             {vehicle.description}
           </div>
         </Card>
