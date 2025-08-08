@@ -1544,11 +1544,12 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                     options={
                       vehicleType === VehicleType.CAR
                         ? [
-                            { value: "MANUAL", label: "Số sàn" },
-                            { value: "AUTOMATIC", label: "Số tự động" },
+                            { value: "MANUAL", label: "Xe số sàn" },
+                            { value: "AUTOMATIC", label: "Xe số tự động" },
                           ]
                         : [
-                            { value: "MANUAL", label: "Xe côn tay" },
+                            { value: "MANUAL", label: "Xe số sàn" },
+                            { value: "CLUTCH", label: "Xe côn tay" },
                             { value: "AUTOMATIC", label: "Xe ga" },
                           ]
                     }

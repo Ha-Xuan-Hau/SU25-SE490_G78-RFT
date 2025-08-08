@@ -434,7 +434,7 @@ export default function ManageAcceptedBookings() {
         "provider"
       )) as any;
       if (result.success) {
-        message.success("Hợp đồng đã được hủy thành công");
+        message.success("Đơn hàng đã được hủy thành công");
         setCancelModalVisible(false);
         setSelectedBookingId(null);
         await fetchBookings(true); // Force refresh data
@@ -1109,9 +1109,9 @@ export default function ManageAcceptedBookings() {
   ];
 
   const columns: ColumnType<BookingData>[] = [
-    // Column hợp đồng
+    // Column đơn hàng
     {
-      title: "Hợp đồng",
+      title: "Đơn hàng",
       key: "contract",
       width: 280,
       ...getColumnSearchProps("vehicleLicensePlate"),
@@ -1136,7 +1136,16 @@ export default function ManageAcceptedBookings() {
               />
             </Image.PreviewGroup>
             <div>
-              <div className="font-semibold">{record.id}</div>
+              <div className="font-semibold">
+                <a
+                  href={`/booking-detail/${record.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline text-blue-600"
+                >
+                  {record.id}
+                </a>
+              </div>
 
               <div className="text-sm text-gray-400">{record.vehicleThumb}</div>
 
@@ -1954,6 +1963,7 @@ export default function ManageAcceptedBookings() {
           <ReportButton
             targetId={selectedBookingForReport.userId} // Báo cáo user thay vì xe
             reportType={selectedReportTypes[0]}
+            booking={selectedBookingForReport.id}
             buttonText=""
             size="small"
             type="text"
@@ -1965,6 +1975,7 @@ export default function ManageAcceptedBookings() {
           <ReportButton
             targetId={selectedBookingForReport.userId} // Báo cáo user thay vì xe
             reportTypes={selectedReportTypes}
+            booking={selectedBookingForReport.id}
             showTypeSelector={true}
             buttonText=""
             size="small"

@@ -13,6 +13,7 @@ interface ReportButtonProps {
   targetId: string;
   reportType?: string;
   reportTypes?: string[];
+  booking?: string;
   showTypeSelector?: boolean;
   buttonText?: string;
   size?: "small" | "middle" | "large";
@@ -26,6 +27,7 @@ export default function ReportButton({
   targetId,
   reportType,
   reportTypes,
+  booking,
   showTypeSelector = false,
   buttonText,
   size = "small",
@@ -281,6 +283,11 @@ export default function ReportButton({
         generalType: config.generalType,
         type: config.type,
         reason: values.reason,
+        ...((config.generalType === "SERIOUS_ERROR" ||
+          config.generalType === "STAFF_ERROR") &&
+          booking && {
+            booking,
+          }),
       };
 
       await createReport(reportData);

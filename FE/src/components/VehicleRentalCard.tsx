@@ -914,6 +914,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           <ReportButton
             targetId={info.vehicleId._id}
             reportType={selectedReportTypes[0]}
+            booking={info._id}
             buttonText=""
             size="small"
             type="text"
@@ -925,6 +926,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           <ReportButton
             targetId={info.vehicleId._id}
             reportTypes={selectedReportTypes}
+            booking={info._id}
             showTypeSelector={true}
             buttonText=""
             size="small"

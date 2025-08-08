@@ -51,6 +51,7 @@ import {
 const { Title } = Typography;
 const { Search } = Input;
 import ReportButton from "@/components/ReportComponent";
+import Link from "next/link";
 
 type ReportType =
   // Serious Reports
@@ -626,6 +627,36 @@ export default function UserReportsPage() {
                   </div>
                 </Card>
               </Col>
+
+              {/* Thêm phần Mã đơn hàng cho SERIOUS_ERROR và STAFF_ERROR */}
+              {(getGeneralTypeByTab(activeTab) === "SERIOUS_ERROR" ||
+                getGeneralTypeByTab(activeTab) === "STAFF_ERROR") && (
+                <Col xs={24} sm={12}>
+                  <Card size="small" className="bg-blue-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-500">Mã đơn hàng</div>
+                        <div className="text-lg font-semibold text-blue-600">
+                          {selectedReportDetail.reportSummary.reportId}
+                        </div>
+                      </div>
+                      <Link
+                        href={`/booking-detail/${selectedReportDetail.reportSummary.reportId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button
+                          type="primary"
+                          size="small"
+                          className="bg-blue-500 hover:bg-blue-600"
+                        >
+                          Xem chi tiết
+                        </Button>
+                      </Link>
+                    </div>
+                  </Card>
+                </Col>
+              )}
             </Row>
           </div>
 
@@ -1079,6 +1110,7 @@ export default function UserReportsPage() {
         <ReportButton
           targetId={selectedTargetForReport}
           reportType="STAFF_REPORT" // Báo cáo loại STAFF_REPORT
+          booking={selectedReportDetail?.reportSummary.reportId}
           buttonText=""
           size="small"
           type="text"
@@ -1094,6 +1126,7 @@ export default function UserReportsPage() {
           key={`reporter-spam-${selectedReporterForReport}-${Date.now()}`}
           targetId={selectedReporterForReport}
           reportType="STAFF_REPORT"
+          booking={selectedReportDetail?.reportSummary.reportId}
           buttonText=""
           size="small"
           type="text"

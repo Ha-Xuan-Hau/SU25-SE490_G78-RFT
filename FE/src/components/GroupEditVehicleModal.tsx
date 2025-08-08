@@ -77,8 +77,9 @@ const deliveryOptions = [
 ];
 
 const transmissionOptions = [
-  { value: "MANUAL", label: "Số sàn" },
-  { value: "AUTOMATIC", label: "Số tự động" },
+  { value: "MANUAL", label: "Xe số sàn" },
+  { value: "CLUTCH", label: "Xe côn tay" },
+  { value: "AUTOMATIC", label: "Xe số tự động" },
 ];
 
 import { useState } from "react";
