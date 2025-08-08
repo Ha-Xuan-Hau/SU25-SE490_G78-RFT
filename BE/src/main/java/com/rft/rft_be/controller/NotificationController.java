@@ -1,6 +1,7 @@
 package com.rft.rft_be.controller;
 import com.rft.rft_be.dto.Notification.*;
 import com.rft.rft_be.service.Notification.NotificationService;
+import com.rft.rft_be.service.websocket.WebSocketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final WebSocketService webSocketService;
 
     // User APIs
     //người dùng get thông báo của mình

@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { queryClient } from "@/apis/client";
 import { UserWebLayout } from "@/layouts/UserLayout";
 import { AuthProvider } from "@/context/AuthContext";
+import { SimpleWebSocketProvider } from "@/context/WebSocketContext";
 import "react-toastify/dist/ReactToastify.css";
 import { RecoilRoot } from "recoil";
 import { ToastContainer } from "react-toastify";
@@ -36,9 +37,11 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
           defaultTheme="light"
         >
           <AuthProvider>
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
+            <SimpleWebSocketProvider>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </SimpleWebSocketProvider>
             <ReactQueryDevtools initialIsOpen={false} />
             <ToastContainer
               position="top-right"

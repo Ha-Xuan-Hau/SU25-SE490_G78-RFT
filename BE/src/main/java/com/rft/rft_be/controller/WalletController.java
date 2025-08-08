@@ -4,6 +4,7 @@ import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.wallet.WalletService;
+import com.rft.rft_be.service.websocket.WebSocketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/wallet")
@@ -26,6 +28,7 @@ import java.util.Map;
 public class WalletController {
     private final WalletService walletService;
     private final UserRepository userRepository;
+    private final WebSocketService webSocketService;
     @GetMapping("/account")
     public ResponseEntity<WalletDTO> getWallet(@RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -65,6 +68,10 @@ public class WalletController {
         }
         try {
             WalletTransactionDTO response = walletService.createWithdrawal(dto);
+            
+            // Send WebSocket refresh for wallet update
+            webSocketService.refreshWalletForUser(dto.getUserId());
+            
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -102,12 +109,17 @@ public class WalletController {
 
     @PutMapping("/staff/withdrawals/{id}/status")
     public ResponseEntity<Void> updateWithdrawalStatus(@PathVariable String id,
-                                                       @RequestParam String status) {
+                                                       @RequestParam String status,
+                                                       @RequestParam String userId) {
 
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String staffId = authentication.getToken().getClaim("userId");
 
         walletService.updateWithdrawalStatus(id, status, staffId);
+        
+        // Send WebSocket refresh to user when withdrawal status changes
+        webSocketService.refreshWalletForUser(userId);
+        
         return ResponseEntity.ok().build();
     }
 

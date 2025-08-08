@@ -9,6 +9,7 @@ import {
 import { createTopUpVNPay } from "@/apis/payment.api";
 import { showError, showSuccess, showWarning } from "@/utils/toast.utils";
 import { useUserState } from "@/recoils/user.state";
+import { useWalletRefresh } from "@/hooks/useWebSocketRefresh";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import {
   Button,
@@ -39,6 +40,9 @@ type WalletType = {
 };
 
 export default function UserWalletsPage() {
+  // Initialize WebSocket refresh for wallet data
+  useWalletRefresh();
+  
   const [user] = useUserState();
   const [wallet, setWallet] = useState<WalletType | null>(null);
 

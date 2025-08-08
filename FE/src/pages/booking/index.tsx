@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useBookingRefresh } from "@/hooks/useWebSocketRefresh";
 
 // Icons removed for cleaner UI
 import {
@@ -115,6 +116,9 @@ interface AvailabilityCheckResponse {
 
 // Component chính
 const BookingPage: React.FC = () => {
+  // Initialize WebSocket refresh for booking data
+  useBookingRefresh();
+  
   const router = useRouter();
   // Support both single and multiple vehicle booking via vehicleId param
   const { vehicleId, id } = router.query;
