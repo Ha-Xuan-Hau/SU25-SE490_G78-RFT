@@ -116,6 +116,25 @@ export default function VehicleDetail() {
 
   const [documentsModalVisible, setDocumentsModalVisible] = useState(false);
 
+  // Reset dates khi component mount hoặc vehicle ID thay đổi
+  useEffect(() => {
+    // ALWAYS reset all date-related states when entering the page
+    setPickupDateTime("");
+    setReturnDateTime("");
+    setDates([] as never[]);
+    setValidationMessage("");
+    setBufferConflictMessage("");
+    setRentalCalculation(null);
+    setTotalPrice(vehicle?.costPerDay || 0);
+    setRentalDurationDays(1);
+    setAvailableQuantity(1);
+    setShowMultiBooking(false);
+    setAvailableVehicles([]);
+    setSelectedVehicleIds([]);
+
+    // Don't read from URL params - force user to select dates
+  }, [id]); // Only depend on id change
+
   // Hàm xử lý đặt nhiều xe
   const handleMultiBook = () => {
     if (user === null) {
@@ -246,11 +265,8 @@ export default function VehicleDetail() {
             user.result.driverLicenses.length === 0))
       ) {
         setIsModalCheckOpen(true);
-      } else if (vehicle?.id) {
-        console.log(
-          "Navigating from useEffect to booking page with vehicle ID:",
-          vehicle.id
-        );
+      } else if (vehicle?.id && pickupDateTime && returnDateTime) {
+        // Only navigate if dates are selected by user
         router.push({
           pathname: `/booking/${vehicle.id}`,
           query: {
@@ -271,26 +287,19 @@ export default function VehicleDetail() {
 
   // Format dates for DateRangePicker
   const formattedDates = useMemo(() => {
-    if (!dates) {
+    // Only use dates from state, not from URL
+    if (!dates || !Array.isArray(dates) || dates.length !== 2) {
       return null;
     }
 
-    if (Array.isArray(dates)) {
-      if (dates.length === 0) {
-        return null;
-      }
+    const startDate = dates[0] ? dayjs(dates[0]) : null;
+    const endDate = dates[1] ? dayjs(dates[1]) : null;
 
-      if (dates.length === 2) {
-        const startDate = dates[0] ? dayjs(dates[0]) : null;
-        const endDate = dates[1] ? dayjs(dates[1]) : null;
-
-        return [startDate, endDate] as [Dayjs | null, Dayjs | null];
-      }
-
+    if (!startDate?.isValid() || !endDate?.isValid()) {
       return null;
     }
 
-    return null;
+    return [startDate, endDate] as [Dayjs, Dayjs];
   }, [dates]);
 
   // Tạo disabledTime và disabledDate functions
@@ -729,7 +738,9 @@ export default function VehicleDetail() {
                     onChange={handleDateChange}
                     value={formattedDates}
                     placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                    allowClear={true} // Cho phép clear dates
                   />
+
                   {validationMessage && (
                     <p className="text-red-500 text-sm mt-1">
                       {validationMessage}
