@@ -1,8 +1,7 @@
 package com.rft.rft_be.service.vehicle;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +9,7 @@ import com.rft.rft_be.dto.vehicle.*;
 import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.ExtraFeeRuleMapper;
 import com.rft.rft_be.repository.*;
+import jakarta.persistence.criteria.Expression;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -527,6 +527,25 @@ public class VehicleServiceImpl implements VehicleService {
             });
         }
 
+        if (req.getFeatures() != null && !req.getFeatures().isEmpty()) {
+            spec = spec.and((root, query, cb) -> {
+                // CAST CLOB -> String trước khi lower()
+                Expression<String> vf = root.get("vehicleFeatures").as(String.class);
+                Expression<String> lowered = cb.lower(vf);
+                Expression<String> noSpaces = cb.function("REPLACE", String.class, lowered, cb.literal(" "), cb.literal(""));
+                // concat "," + noSpaces + ","
+                Expression<String> wrapped = cb.concat(cb.concat(cb.literal(","), noSpaces), cb.literal(","));
+
+                Predicate p = cb.conjunction(); // AND all features. Nếu muốn match-any -> cb.disjunction()
+                for (String raw : req.getFeatures()) {
+                    String needle = (raw == null ? "" : raw.toLowerCase().replaceAll("\\s+", "")); // "Leather Seats" -> "leatherseats"
+                    p = cb.and(p, cb.like(wrapped, "%," + needle + ",%"));
+                    // match-any: p = cb.or(p, cb.like(wrapped, "%," + needle + ",%"));
+                }
+                return p;
+            });
+        }
+
         if (req.getHaveDriver() != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("haveDriver"), req.getHaveDriver()));
         }
@@ -584,6 +603,15 @@ public class VehicleServiceImpl implements VehicleService {
         Page<Vehicle> result = vehicleRepository.findAll(spec, pageable);
         return result.map(vehicle -> {
             Double avgRating = ratingRepository.findAverageByVehicleId(vehicle.getId());
+
+            List<String> features = Optional.ofNullable(vehicle.getVehicleFeatures())
+                    .map(s -> Arrays.stream(s.split(","))
+                            .map(String::trim)
+                            .filter(t -> !t.isEmpty())
+                            .distinct()
+                            .collect(Collectors.toList()))
+                    .orElse(Collections.emptyList());
+
             return VehicleSearchResultDTO.builder()
                     .id(vehicle.getId())
                     .licensePlate(vehicle.getLicensePlate())
@@ -597,6 +625,7 @@ public class VehicleServiceImpl implements VehicleService {
                     .rating(avgRating != null ? avgRating : 0.0)
                     .address(vehicle.getUser() != null ? vehicle.getUser().getAddress() : "")
                     .vehicleImages(VehicleMapper.jsonToImageList(vehicle.getVehicleImages()))
+                    .features(features)
                     .transmission(vehicle.getTransmission() != null ? vehicle.getTransmission().name() : null)
                     .fuelType(vehicle.getFuelType() != null ? vehicle.getFuelType().name() : null)
                     .build();
