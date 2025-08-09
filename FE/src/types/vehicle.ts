@@ -62,7 +62,7 @@ export interface Vehicle {
     cleaningFee?: number;
     smellRemovalFee?: number;
     batteryChargeFeePerPercent?: number;
-    apply_batteryChargeFee?: any;
+    applyBatteryChargeFee?: boolean;
     driverFeePerDay?: number;
     hasDriverOption?: boolean;
     driverFeePerHour?: number;

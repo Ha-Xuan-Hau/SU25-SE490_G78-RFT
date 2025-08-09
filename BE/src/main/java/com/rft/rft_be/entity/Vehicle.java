@@ -131,7 +131,7 @@ public class Vehicle {
         YES, NO
     }
     public enum Transmission {
-        MANUAL, AUTOMATIC
+        MANUAL, AUTOMATIC, CLUTCH
     }
     public enum FuelType {
         GASOLINE, ELECTRIC

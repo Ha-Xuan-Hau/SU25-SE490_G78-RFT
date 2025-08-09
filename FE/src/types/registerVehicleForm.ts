@@ -9,7 +9,7 @@ export interface ExtraRule {
   cleaningFee?: number;
   smellRemovalFee?: number;
   batteryChargeFeePerPercent?: number;
-  apply_batteryChargeFee?: boolean;
+  applyBatteryChargeFee?: boolean;
   driverFeePerDay?: number;
   hasDriverOption?: boolean;
   driverFeePerHour?: number;

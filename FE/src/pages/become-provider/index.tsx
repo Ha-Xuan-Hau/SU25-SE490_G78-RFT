@@ -63,6 +63,30 @@ const BecomeProviderPage = () => {
 
   const [user, setUser] = useUserState();
 
+  const [countdown, setCountdown] = useState(10);
+
+  useEffect(() => {
+    if (current === 3) {
+      // Bước hoàn tất
+      const interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            // Redirect
+            clearAccessToken();
+            setUser(null);
+            clearProfile();
+            window.location.href = "/";
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [current]);
+
   useEffect(() => {
     if (user) {
       form.setFieldsValue({
@@ -114,71 +138,6 @@ const BecomeProviderPage = () => {
       return;
     }
 
-    // if (current === 2) {
-    //   // Validate chọn dịch vụ
-    //   if (selectedServices.length === 0) {
-    //     showError(
-    //       "Cần chọn ít nhất một dịch vụ cho thuê xe bạn muốn cung cấp."
-    //     );
-    //     return;
-    //   }
-    //   if (!openTime || !closeTime) {
-    //     showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
-    //     return;
-    //   }
-    //   if (!openTime || !closeTime) {
-    //     showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
-    //     return;
-    //   }
-
-    //   // Chỉ cho phép mở 24/24 nếu cả hai đều là 00:00, còn lại phải openTime < closeTime
-    //   const isOpenAllDay =
-    //     openTime.format("HH:mm") === "00:00" &&
-    //     closeTime.format("HH:mm") === "00:00";
-
-    //   if (!isOpenAllDay && openTime.isSameOrAfter(closeTime)) {
-    //     showError(
-    //       "Giờ mở cửa phải trước giờ đóng cửa (trừ trường hợp mở 24/24 là 00:00 đến 00:00)."
-    //     );
-    //     return;
-    //   }
-
-    //   const formValues = form.getFieldsValue();
-    //   const openTimeStr = openTime ? openTime.format("HH:mm") : null;
-    //   const closeTimeStr = closeTime ? closeTime.format("HH:mm") : null;
-
-    //   const payload = {
-    //     ...formValues,
-    //     userId: user?.id,
-    //     vehicleTypes: selectedServices,
-    //     openTime: openTimeStr,
-    //     closeTime: closeTimeStr,
-    //   };
-
-    //   setLoading(true);
-    //   registerProvider(payload)
-    //     .then(() => {
-    //       setLoading(false);
-    //       setCurrent(current + 1);
-    //       showSuccess("Đăng ký thành công!");
-    //       // Sau khi chuyển sang bước hoàn tất, timeout 10s rồi logout
-    //       setTimeout(() => {
-    //         clearAccessToken();
-    //         setUser(null);
-    //         clearProfile();
-    //         window.location.href = "/";
-    //       }, 10000);
-    //     })
-    //     .catch((err) => {
-    //       setLoading(false);
-    //       showError(
-    //         err?.response?.data?.message ||
-    //           "Đăng ký thất bại. Vui lòng thử lại sau!"
-    //       );
-    //     });
-    //   return;
-    // }
-
     if (current === 2) {
       // Validate chọn dịch vụ
       if (selectedServices.length === 0) {
@@ -219,8 +178,35 @@ const BecomeProviderPage = () => {
     );
   };
 
+  const handleCloseModal = () => {
+    // Không cho đóng nếu đang loading
+    if (loading) {
+      return;
+    }
+    setShowConfirmModal(false);
+  };
+
   const handleConfirmRegistration = () => {
+    // Validate lại trước khi submit
+    if (!user?.id) {
+      showError("Không tìm thấy thông tin người dùng");
+      return;
+    }
+
     const formValues = form.getFieldsValue();
+
+    // Validate form values
+    if (
+      !formValues.fullname ||
+      !formValues.phone ||
+      !formValues.email ||
+      !formValues.address
+    ) {
+      showError("Vui lòng điền đầy đủ thông tin");
+      setShowConfirmModal(false);
+      setCurrent(1); // Quay lại bước nhập thông tin
+      return;
+    }
 
     // Set thời gian dựa trên option đã chọn
     let openTimeStr, closeTimeStr;
@@ -230,6 +216,12 @@ const BecomeProviderPage = () => {
     } else {
       openTimeStr = openTime ? openTime.format("HH:mm") : null;
       closeTimeStr = closeTime ? closeTime.format("HH:mm") : null;
+
+      // Validate custom time
+      if (!openTimeStr || !closeTimeStr) {
+        showError("Vui lòng chọn thời gian hoạt động");
+        return;
+      }
     }
 
     const payload = {
@@ -247,15 +239,21 @@ const BecomeProviderPage = () => {
         setShowConfirmModal(false);
         setCurrent(current + 1);
         showSuccess("Đăng ký thành công!");
-        setTimeout(() => {
+
+        // Clear timeout nếu component unmount
+        const timeoutId = setTimeout(() => {
           clearAccessToken();
           setUser(null);
           clearProfile();
           window.location.href = "/";
         }, 10000);
+
+        // Cleanup function
+        return () => clearTimeout(timeoutId);
       })
       .catch((err) => {
         setLoading(false);
+        setShowConfirmModal(false); // Đóng modal khi lỗi
         showError(
           err?.response?.data?.message ||
             "Đăng ký thất bại. Vui lòng thử lại sau!"
@@ -386,79 +384,6 @@ const BecomeProviderPage = () => {
     </div>
   );
 
-  // const renderServiceContent = () => (
-  //   <div className="p-6 bg-white rounded-lg shadow">
-  //     <Title level={4}>Chọn dịch vụ cho thuê</Title>
-  //     <Paragraph className="mb-4 text-gray-600">
-  //       Vui lòng chọn (các) dịch vụ cho thuê xe bạn muốn cung cấp trên nền tảng
-  //       RFT
-  //     </Paragraph>
-
-  //     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-8">
-  //       {rentalServices.map((service) => (
-  //         <Card
-  //           key={service.id}
-  //           className={`cursor-pointer transition-all ${
-  //             selectedServices.includes(service.id)
-  //               ? `border-2 border-[${token.colorPrimary}] shadow-md`
-  //               : "border border-gray-200"
-  //           }`}
-  //           onClick={() =>
-  //             onServiceChange(
-  //               service.id,
-  //               !selectedServices.includes(service.id)
-  //             )
-  //           }
-  //           style={{
-  //             borderColor: selectedServices.includes(service.id)
-  //               ? token.colorPrimary
-  //               : undefined,
-  //           }}
-  //         >
-  //           <div className="flex items-center">
-  //             <Checkbox
-  //               checked={selectedServices.includes(service.id)}
-  //               onChange={(e) => onServiceChange(service.id, e.target.checked)}
-  //             />
-  //             <div className="ml-4">
-  //               <Title level={5} className="mb-0">
-  //                 {service.name}
-  //               </Title>
-  //               <Text type="secondary">{service.description}</Text>
-  //             </div>
-  //           </div>
-  //         </Card>
-  //       ))}
-  //     </div>
-  //     <Title level={4}>Chọn thời gian hoạt động</Title>
-  //     <Paragraph className="mb-4 text-gray-600">
-  //       Vui lòng chọn giờ mở cửa và đóng cửa cho dịch vụ cho thuê xe của bạn.
-  //       <br />
-  //       Phải đảm bảo rằng bạn hoạt động trong khoảng thời gian này.
-  //     </Paragraph>
-  //     <Form layout="inline" className="mb-6 mt-8">
-  //       <Form.Item label="Giờ mở cửa">
-  //         <TimePicker
-  //           value={openTime}
-  //           onChange={setOpenTime}
-  //           format="HH:mm"
-  //           minuteStep={30}
-  //           placeholder="Giờ mở cửa"
-  //         />
-  //       </Form.Item>
-  //       <Form.Item label="Giờ đóng cửa">
-  //         <TimePicker
-  //           value={closeTime}
-  //           onChange={setCloseTime}
-  //           format="HH:mm"
-  //           minuteStep={30}
-  //           placeholder="Giờ đóng cửa"
-  //         />
-  //       </Form.Item>
-  //     </Form>
-  //   </div>
-  // );
-
   const renderServiceContent = () => (
     <div className="p-6 bg-white rounded-lg shadow">
       <Title level={4}>Chọn dịch vụ cho thuê</Title>
@@ -586,7 +511,7 @@ const BecomeProviderPage = () => {
         bạn có thể bắt đầu cung cấp dịch vụ cho thuê xe và kiếm thêm thu nhập.
       </Paragraph>
       <Paragraph className="text-gray-500">
-        Bạn sẽ được chuyển về trang chủ trong vòng 10 giây. Vui lòng đăng nhập lại.
+        Bạn sẽ được chuyển về trang chủ trong vòng {countdown} giây.
       </Paragraph>
     </div>
   );
@@ -647,9 +572,15 @@ const BecomeProviderPage = () => {
       <Modal
         title="Xác nhận thông tin đăng ký"
         open={showConfirmModal}
-        onCancel={() => setShowConfirmModal(false)}
+        onCancel={handleCloseModal}
+        maskClosable={!loading} // Không cho click outside khi loading
+        closable={!loading} // Ẩn nút X khi loading
         footer={[
-          <Button key="cancel" onClick={() => setShowConfirmModal(false)}>
+          <Button
+            key="cancel"
+            onClick={handleCloseModal}
+            disabled={loading} // Disable khi đang loading
+          >
             Quay lại chỉnh sửa
           </Button>,
           <Button

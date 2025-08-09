@@ -29,8 +29,12 @@ export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [platform, setPlatform] = useState<any>(null);
-  const [startSuggestions, setStartSuggestions] = useState<AutocompleteOption[]>([]);
-  const [endSuggestions, setEndSuggestions] = useState<AutocompleteOption[]>([]);
+  const [startSuggestions, setStartSuggestions] = useState<
+    AutocompleteOption[]
+  >([]);
+  const [endSuggestions, setEndSuggestions] = useState<AutocompleteOption[]>(
+    []
+  );
   const [startLocation, setStartLocation] = useState<Location | null>(null);
   const [endLocation, setEndLocation] = useState<Location | null>(null);
   const [distance, setDistance] = useState<string>("");
@@ -55,7 +59,9 @@ export default function MapPage() {
         if (window.H?.service?.Platform) {
           initMap();
         } else {
-          message.error("HERE Maps không thể khởi tạo. Vui lòng tải lại trang.");
+          message.error(
+            "HERE Maps không thể khởi tạo. Vui lòng tải lại trang."
+          );
         }
       } catch (error) {
         console.error("Error loading HERE Maps:", error);
@@ -104,15 +110,21 @@ export default function MapPage() {
         }
       );
 
-      const behavior = new window.H.mapevents.Behavior(new window.H.mapevents.MapEvents(mapInstance));
+      const behavior = new window.H.mapevents.Behavior(
+        new window.H.mapevents.MapEvents(mapInstance)
+      );
       const ui = window.H.ui.UI.createDefault(mapInstance, defaultLayers);
 
       setMap(mapInstance);
 
-      window.addEventListener("resize", () => mapInstance.getViewPort().resize());
+      window.addEventListener("resize", () =>
+        mapInstance.getViewPort().resize()
+      );
 
       return () => {
-        window.removeEventListener("resize", () => mapInstance.getViewPort().resize());
+        window.removeEventListener("resize", () =>
+          mapInstance.getViewPort().resize()
+        );
       };
     } catch (error) {
       console.error("Error initializing map:", error);
@@ -205,7 +217,11 @@ export default function MapPage() {
     }
 
     try {
-      map.removeObjects(map.getObjects().filter((obj: any) => !(obj instanceof window.H.map.Marker)));
+      map.removeObjects(
+        map
+          .getObjects()
+          .filter((obj: any) => !(obj instanceof window.H.map.Marker))
+      );
 
       const response = await fetch(
         `https://router.hereapi.com/v8/routes?` +
@@ -235,7 +251,9 @@ export default function MapPage() {
         throw new Error("Không tìm thấy dữ liệu tuyến đường");
       }
 
-      const lineString = window.H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
+      const lineString = window.H.geo.LineString.fromFlexiblePolyline(
+        route.sections[0].polyline
+      );
       const routeLine = new window.H.map.Polyline(lineString, {
         style: {
           strokeColor: "#00A8E8",

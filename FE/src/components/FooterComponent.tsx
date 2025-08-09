@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { Icon } from "@iconify/react";
-import { FooterLinks } from "@/apis/footerlinks";
 import Image from "next/image";
 
 const FooterComponent = () => {
@@ -9,7 +7,7 @@ const FooterComponent = () => {
       <div className="container mx-auto max-w-8xl pt-14 px-4 sm:px-6 lg:px-8">
         <div className="py-16 border-b border-white/10">
           <div className="grid grid-cols-12 sm:gap-10 gap-y-6">
-            {/* Column 1 - Logo & Contact */}
+            {/* Column 1 - Logo & Description */}
             <div className="md:col-span-3 sm:col-span-6 col-span-8">
               <div className="mb-6">
                 <Image
@@ -25,64 +23,40 @@ const FooterComponent = () => {
                 nhất đến cho khách du lịch sử dụng dịch vụ của chúng tôi.
               </p>
               <div className="flex space-x-4">
-                <Link
-                  href="https://facebook.com"
-                  className="text-white/40 hover:text-primary"
-                >
+                <div className="text-white/40">
                   <Icon icon="ri:facebook-fill" width={20} height={20} />
-                </Link>
-                <Link
-                  href="https://twitter.com"
-                  className="text-white/40 hover:text-primary"
-                >
+                </div>
+                <div className="text-white/40">
                   <Icon icon="ri:twitter-fill" width={20} height={20} />
-                </Link>
-                <Link
-                  href="https://instagram.com"
-                  className="text-white/40 hover:text-primary"
-                >
+                </div>
+                <div className="text-white/40">
                   <Icon icon="ri:instagram-fill" width={20} height={20} />
-                </Link>
+                </div>
               </div>
             </div>
 
-            {/* Column 2 - Quick Links */}
+            {/* Column 2 - Services Info */}
             <div className="md:col-span-3 sm:col-span-6 col-span-12">
               <h3 className="text-white text-xl font-medium mb-6">
                 Tra cứu nhanh
               </h3>
-              <div className="flex flex-col gap-4 w-fit">
-                {FooterLinks.slice(0, 3).map((item, index) => (
-                  <div key={index}>
-                    <Link
-                      href={item.href}
-                      className="text-white/40 text-base hover:text-white"
-                    >
-                      {item.label}
-                    </Link>
-                  </div>
-                ))}
+              <div className="flex flex-col gap-4">
+                <p className="text-white/40 text-base">Ô tô</p>
+                <p className="text-white/40 text-base">Xe máy</p>
+                <p className="text-white/40 text-base">Xe đạp</p>
               </div>
             </div>
 
-            {/* Column 3 - Services */}
+            {/* Column 3 - About */}
             <div className="md:col-span-3 sm:col-span-6 col-span-12">
               <h3 className="text-white text-xl font-medium mb-6">Dịch vụ</h3>
-              <div className="flex flex-col gap-4 w-fit">
-                {FooterLinks.slice(3, 5).map((item, index) => (
-                  <div key={index}>
-                    <Link
-                      href={item.href}
-                      className="text-white/40 text-base hover:text-white"
-                    >
-                      {item.label}
-                    </Link>
-                  </div>
-                ))}
+              <div className="flex flex-col gap-4">
+                <p className="text-white/40 text-base">Về Rent For Travel</p>
+                <p className="text-white/40 text-base">Đăng ký làm đối tác</p>
               </div>
             </div>
 
-            {/* Column 4 - Contact CTA */}
+            {/* Column 4 - Contact Info */}
             <div className="md:col-span-3 sm:col-span-6 col-span-12">
               <h3 className="text-white text-xl font-medium mb-6">
                 Thông tin liên hệ
@@ -96,7 +70,7 @@ const FooterComponent = () => {
                     height={18}
                   />
                   <span className="text-white/60 text-base">
-                    0944 495 583
+                    0947 495 583
                     <br />
                     Hỗ trợ: 7AM - 10PM
                   </span>
