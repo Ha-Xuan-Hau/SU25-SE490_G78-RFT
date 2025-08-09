@@ -586,7 +586,7 @@ const BecomeProviderPage = () => {
         bạn có thể bắt đầu cung cấp dịch vụ cho thuê xe và kiếm thêm thu nhập.
       </Paragraph>
       <Paragraph className="text-gray-500">
-        Bạn sẽ được chuyển về trang chủ trong vòng 10 giây.
+        Bạn sẽ được chuyển về trang chủ trong vòng 10 giây. Vui lòng đăng nhập lại.
       </Paragraph>
     </div>
   );
