@@ -24,6 +24,7 @@ public class VehicleSearchResultDTO {
     Double rating;
     String address;
     List<VehicleImageDTO> vehicleImages;
+    List<String> features;
     String transmission;
     String fuelType;
 }
