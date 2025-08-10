@@ -155,6 +155,7 @@ export async function advancedSearchVehicles(params) {
             numberSeat: params.numberSeat || undefined,
             costFrom: params.costFrom || undefined,
             costTo: params.costTo || undefined,
+            features: params.features || undefined,
             ratingFiveStarsOnly: params.ratingFiveStarsOnly || undefined,
             page: params.page || 0,
             size: params.size || 12,
