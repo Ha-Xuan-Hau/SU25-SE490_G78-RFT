@@ -35,7 +35,7 @@ public class VehicleSearchDTO {
      @Min(value = 0, message = "Giá phải là số dương.")
      Integer costTo;
 
-
+     List<String> features;
      Boolean ratingFiveStarsOnly;
 
      @Min(value = 0, message = "Số trang phải là số dương.")
