@@ -52,6 +52,69 @@ const FUEL_TYPES = [
   { value: "ELECTRIC", label: "Điện" },
 ];
 
+// THÊM FEATURES CHO TỪNG LOẠI XE
+const CAR_FEATURES = [
+  { label: "GPS", value: "GPS" },
+  { label: "Bluetooth", value: "Bluetooth" },
+  { label: "Điều hòa khí", value: "Air Conditioning" },
+  { label: "Ghế da", value: "Leather Seats" },
+  { label: "Cảm biến đỗ xe", value: "Parking Sensors" },
+  { label: "Camera hành trình", value: "Backup Camera" },
+  { label: "Kính chống nắng", value: "Sunroof" },
+  { label: "Ghế sưởi", value: "Heated Seats" },
+  { label: "Hệ thống âm thanh cao cấp", value: "Premium Audio" },
+  { label: "Cửa sổ trời", value: "Panoramic Roof" },
+  { label: "Hệ thống khởi động từ xa", value: "Remote Start" },
+  { label: "Cảnh báo điểm mù", value: "Blind Spot Monitor" },
+  { label: "Cruise Control", value: "Cruise Control" },
+  { label: "Hệ thống phanh ABS", value: "ABS Braking" },
+  { label: "Cảm biến áp suất lốp", value: "TPMS" },
+  { label: "Camera lùi", value: "Back Camera" },
+  { label: "Khe cắm USB", value: "USB Port" },
+  { label: "Màn hình DVD", value: "DVD Screen" },
+  { label: "Túi khí an toàn", value: "Safety Airbag" },
+  { label: "Cảnh báo tốc độ", value: "Speed Alert" },
+];
+
+const MOTORBIKE_FEATURES = [
+  { label: "GPS", value: "GPS" },
+  { label: "Bluetooth", value: "Bluetooth" },
+  { label: "Khóa từ xa", value: "Remote Lock" },
+  { label: "Báo động chống trộm", value: "Anti-theft Alarm" },
+  { label: "Đèn LED", value: "LED Lights" },
+  { label: "Cốp xe", value: "Storage Box" },
+  { label: "Phanh ABS", value: "ABS Braking" },
+  { label: "Khởi động điện", value: "Electric Start" },
+  { label: "Sạc điện thoại USB", value: "USB Charging" },
+  { label: "Đồng hồ kỹ thuật số", value: "Digital Dashboard" },
+  { label: "Hệ thống định vị", value: "GPS Tracking" },
+  { label: "Kính chắn gió", value: "Windshield" },
+  { label: "Yên xe êm ái", value: "Comfort Seat" },
+  { label: "Hệ thống chống trượt", value: "Traction Control" },
+  { label: "Hệ thống treo cải tiến", value: "Advanced Suspension" },
+  { label: "Khóa bánh trước", value: "Front Wheel Lock" },
+  { label: "Gác chân cho người ngồi sau", value: "Passenger Footrest" },
+  { label: "Lốp không săm", value: "Tubeless Tires" },
+  { label: "Khóa cổ", value: "Steering Lock" },
+  { label: "Chống nghiêng tự động", value: "Auto Side Stand" },
+  { label: "Hệ thống tiết kiệm nhiên liệu", value: "Fuel-saving System" },
+  { label: "Hệ thống làm mát", value: "Cooling System" },
+];
+
+const BICYCLE_FEATURES = [
+  { label: "Đèn LED", value: "LED Lights" },
+  { label: "Khóa chống trộm", value: "Anti-theft Lock" },
+  { label: "Giỏ xe", value: "Basket" },
+  { label: "Baga sau", value: "Rear Rack" },
+  { label: "Chuông xe", value: "Bell" },
+  { label: "Phanh đĩa", value: "Disc Brake" },
+  { label: "Bánh xe dự phòng", value: "Spare Tire" },
+  { label: "Bơm xe mini", value: "Mini Pump" },
+  { label: "Yên xe êm ái", value: "Comfortable Seat" },
+  { label: "Chắn bùn", value: "Mudguard" },
+  { label: "Gương chiếu hậu", value: "Mirror" },
+];
+
 const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   isOpen,
   onClose,
@@ -76,6 +139,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
 
   const [isSearching, setIsSearching] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
 
   // Check if mobile
   useEffect(() => {
@@ -99,6 +163,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
       features: [],
       numberSeat: undefined,
     }));
+    setShowAllFeatures(false);
   }, [activeVehicleType]);
 
   // Update active vehicle type when modal opens
@@ -108,6 +173,30 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
       setIsSearching(false);
     }
   }, [isOpen, currentVehicleType]);
+
+  // HÀM LẤY FEATURES THEO LOẠI XE
+  const getCurrentFeatures = () => {
+    switch (activeVehicleType) {
+      case "CAR":
+        return CAR_FEATURES;
+      case "MOTORBIKE":
+        return MOTORBIKE_FEATURES;
+      case "BICYCLE":
+        return BICYCLE_FEATURES;
+      default:
+        return [];
+    }
+  };
+
+  // HÀM TOGGLE FEATURE
+  const toggleFeature = (featureValue: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      features: prev.features.includes(featureValue)
+        ? prev.features.filter((f) => f !== featureValue)
+        : [...prev.features, featureValue],
+    }));
+  };
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -136,10 +225,14 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
     } else if (activeVehicleType === "MOTORBIKE") {
       // For motorbikes, transmission maps to different field
       if (filters.transmission) {
-        // Map motorbike transmission to correct field
         searchParams.transmission = filters.transmission;
       }
       if (filters.fuelType) searchParams.fuelType = filters.fuelType;
+    }
+
+    // THÊM FEATURES VÀO SEARCH PARAMS
+    if (filters.features.length > 0) {
+      searchParams.features = filters.features;
     }
 
     // Add common parameters
@@ -412,6 +505,71 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* FEATURES SECTION */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Tiện ích xe{" "}
+              {filters.features.length > 0 && `(${filters.features.length})`}
+            </label>
+            <div className="p-4 bg-white border border-gray-200 rounded-lg">
+              <div
+                className={`grid ${
+                  isMobile ? "grid-cols-2" : "grid-cols-3"
+                } gap-2`}
+              >
+                {getCurrentFeatures()
+                  // .slice(0, showAllFeatures ? undefined : 9)
+                  .map((feature) => (
+                    <label
+                      key={feature.value}
+                      className={`flex items-center space-x-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg border transition-all ${
+                        filters.features.includes(feature.value)
+                          ? "border-blue-200 bg-blue-50"
+                          : "border-transparent"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={filters.features.includes(feature.value)}
+                        onChange={() => toggleFeature(feature.value)}
+                        disabled={isSearching}
+                      />
+                      <span className="text-sm text-gray-700">
+                        {feature.label}
+                      </span>
+                    </label>
+                  ))}
+              </div>
+
+              {/* Show more/less button */}
+              {/* {getCurrentFeatures().length > 9 && (
+                <button
+                  className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => setShowAllFeatures(!showAllFeatures)}
+                  disabled={isSearching}
+                >
+                  {showAllFeatures
+                    ? "Thu gọn"
+                    : `Xem thêm ${
+                        getCurrentFeatures().length - 9
+                      } tiện ích khác`}
+                </button>
+              )} */}
+
+              {/* Clear all features button */}
+              {filters.features.length > 0 && (
+                <button
+                  className="mt-2 ml-4 text-sm text-red-600 hover:text-red-700"
+                  onClick={() =>
+                    setFilters((prev) => ({ ...prev, features: [] }))
+                  }
+                  disabled={isSearching}
+                >
+                  Xóa tất cả tiện ích
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   getUserWallet,
+  getWithdrawalHistory,
   updateUserWallet,
   withdrawFromWallet,
 } from "@/apis/wallet.api";
@@ -21,15 +22,20 @@ import {
   Spin,
   Row,
   Col,
+  Card,
+  Table,
+  Tag,
 } from "antd";
 import {
   EyeOutlined,
   UploadOutlined,
   DownloadOutlined,
   WalletOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { bankCard } from "@/types/bankCard";
 import RegisterBankCardModal from "@/components/RegisterBankCardModal";
+import moment from "moment";
 
 const { Title } = Typography;
 
@@ -38,6 +44,15 @@ type WalletType = {
   cards?: bankCard[];
 };
 
+type WithdrawalTransaction = {
+  id: string;
+  userId: string;
+  amount: number;
+  type: string;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+};
 export default function UserWalletsPage() {
   const [user] = useUserState();
   const [wallet, setWallet] = useState<WalletType | null>(null);
@@ -45,6 +60,12 @@ export default function UserWalletsPage() {
   // States for cards
   const [cards, setCards] = useState<bankCard[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  //state for withdrawal history
+  const [withdrawalHistory, setWithdrawalHistory] = useState<
+    WithdrawalTransaction[]
+  >([]);
+  const [withdrawalLoading, setWithdrawalLoading] = useState<boolean>(false);
 
   // States for modals
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
@@ -61,6 +82,39 @@ export default function UserWalletsPage() {
   const [depositForm] = Form.useForm();
   const [withdrawForm] = Form.useForm();
   const [topUpLoading, setTopUpLoading] = useState<boolean>(false);
+
+  const fetchWithdrawalHistory = async () => {
+    if (!user?.id) return;
+
+    setWithdrawalLoading(true);
+    try {
+      const data = await getWithdrawalHistory(user.id);
+      setWithdrawalHistory(data || []);
+    } catch (err: any) {
+      console.error("Error fetching withdrawal history:", err);
+      setWithdrawalHistory([]);
+    } finally {
+      setWithdrawalLoading(false);
+    }
+  };
+
+  const formatDateTime = (dateValue: string | number[]) => {
+    if (Array.isArray(dateValue)) {
+      return moment({
+        year: dateValue[0],
+        month: dateValue[1] - 1,
+        day: dateValue[2],
+        hour: dateValue[3],
+        minute: dateValue[4],
+        second: dateValue[5] || 0,
+      }).format("DD/MM/YYYY HH:mm");
+    }
+    return dateValue ? moment(dateValue).format("DD/MM/YYYY HH:mm") : "";
+  };
+
+  useEffect(() => {
+    fetchWithdrawalHistory();
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -219,6 +273,8 @@ export default function UserWalletsPage() {
           if (Array.isArray(data?.cards)) setCards(data.cards);
         })
         .catch((err: any) => showError(err.message));
+
+      fetchWithdrawalHistory();
     } catch (err: any) {
       showError(err.message || "Gửi yêu cầu rút tiền thất bại!");
     } finally {
@@ -249,6 +305,79 @@ export default function UserWalletsPage() {
     const parsed = Number(value.replace(/[₫\s.]/g, ""));
     return isNaN(parsed) ? 0 : parsed;
   };
+
+  const withdrawalColumns = [
+    {
+      title: "Mã giao dịch",
+      dataIndex: "id",
+      key: "id",
+      width: 150,
+      render: (id: string) => (
+        <span className="font-mono text-xs">{id?.slice(0, 8)}...</span>
+      ),
+    },
+    {
+      title: "Ngày rút",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      width: 180,
+      render: (date: string) => <span>{formatDateTime(date)}</span>,
+      sorter: (a: WithdrawalTransaction, b: WithdrawalTransaction) =>
+        moment(formatDateTime(a.createdAt), "DD/MM/YYYY HH:mm").unix() -
+        moment(formatDateTime(b.createdAt), "DD/MM/YYYY HH:mm").unix(),
+      defaultSortOrder: "descend" as const,
+    },
+    {
+      title: "Số tiền",
+      dataIndex: "amount",
+      key: "amount",
+      width: 150,
+      render: (amount: number) => (
+        <span className="font-semibold text-red-600">
+          {formatCurrency(amount)}
+        </span>
+      ),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      width: 120,
+      render: (status: string) => {
+        let color = "default";
+        let text = status;
+
+        switch (status?.toUpperCase()) {
+          case "SUCCESS":
+          case "APPROVED":
+            color = "success";
+            text = "Thành công";
+            break;
+          case "PENDING":
+            color = "processing";
+            text = "Đang xử lý";
+            break;
+          case "FAILED":
+          case "REJECTED":
+            color = "error";
+            text = "Bị từ chối";
+            break;
+          default:
+            color = "default";
+            text = status || "Không xác định";
+        }
+
+        return <Tag color={color}>{text}</Tag>;
+      },
+      filters: [
+        { text: "Thành công", value: "SUCCESS" },
+        { text: "Đang xử lý", value: "PENDING" },
+        { text: "Bị từ chối", value: "REJECTED" },
+      ],
+      onFilter: (value: any, record: WithdrawalTransaction) =>
+        record.status?.toUpperCase() === value,
+    },
+  ];
 
   if (loading) {
     return (
@@ -392,6 +521,42 @@ export default function UserWalletsPage() {
               />
             </div>
           )}
+        </div>
+        {/* THÊM PHẦN LỊCH SỬ RÚT TIỀN */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-6 overflow-hidden">
+          <div className="p-6 sm:p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <HistoryOutlined className="text-blue-600 text-lg" />
+              </div>
+              <Title level={4} className="m-0 text-gray-900">
+                Lịch Sử Rút Tiền
+              </Title>
+            </div>
+
+            <Table
+              columns={withdrawalColumns}
+              dataSource={withdrawalHistory}
+              loading={withdrawalLoading}
+              rowKey="id"
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total) => `Tổng cộng ${total} giao dịch`,
+                pageSizeOptions: ["10", "20", "50"],
+              }}
+              locale={{
+                emptyText: (
+                  <Empty
+                    description="Chưa có lịch sử rút tiền"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  />
+                ),
+              }}
+              scroll={{ x: 800 }}
+              className="withdrawal-history-table"
+            />
+          </div>
         </div>
       </div>
 
