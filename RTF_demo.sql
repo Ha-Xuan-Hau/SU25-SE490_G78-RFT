@@ -11,7 +11,7 @@ CREATE TABLE `users` (
   `date_of_birth` date DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` nvarchar(255) NOT NULL,
-  `status` enum('ACTIVE','INACTIVE') DEFAULT 'ACTIVE',
+  `status` enum('ACTIVE','INACTIVE','TEMP_BANNED') DEFAULT 'ACTIVE',
   `role` enum('USER', 'PROVIDER' ,'STAFF','ADMIN') DEFAULT 'USER',
   `open_time` datetime DEFAULT NULL,
   `close_time` datetime DEFAULT NULL,
