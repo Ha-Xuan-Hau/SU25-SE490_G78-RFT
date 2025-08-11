@@ -41,6 +41,9 @@ public class UserReport {
     @Column(name = "reason", nullable = false)
     private String reason;
 
+    @Column(name = "images")
+    private String images;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "booking_id")
     private Booking booking;
