@@ -216,6 +216,7 @@ CREATE TABLE `user_report` (
     `reported_id` varchar(255) NOT NULL, -- id(có thể là id người dùng, id xe) bị report
     `type` VARCHAR(50) NOT NULL,        -- Loại report (spam, lừa đảo, ngôn từ kích động,...)
     `reason` TEXT NOT NULL,             -- Mô tả lý do chi tiết
+    `images` TEXT DEFAULT NULL,         -- Ảnh bằng chứng
     `booking_id` varchar(225) DEFAULT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
 	
