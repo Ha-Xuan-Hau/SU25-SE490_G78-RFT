@@ -98,18 +98,29 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     """)
     List<Booking> findByProviderId(@Param("providerId") String providerId);
 
-    @Query("""
-    SELECT DISTINCT b FROM Booking b
-    JOIN b.bookingDetails bd
-    JOIN bd.vehicle v
-    JOIN v.user u
-    WHERE u.id = :providerId AND b.status = :status
-    ORDER BY COALESCE(b.updatedAt, b.createdAt) DESC
-""")
-    List<Booking> findByProviderIdAndStatus(
+    @Query(
+            value = """
+            SELECT DISTINCT b FROM Booking b
+            JOIN b.bookingDetails bd
+            JOIN bd.vehicle v
+            JOIN v.user u
+            WHERE u.id = :providerId AND b.status = :status
+            ORDER BY COALESCE(b.updatedAt, b.createdAt) DESC
+        """,
+            countQuery = """
+            SELECT COUNT(DISTINCT b) FROM Booking b
+            JOIN b.bookingDetails bd
+            JOIN bd.vehicle v
+            JOIN v.user u
+            WHERE u.id = :providerId AND b.status = :status
+        """
+    )
+    Page<Booking> findByProviderIdAndStatus(
             @Param("providerId") String providerId,
-            @Param("status") Booking.Status status
+            @Param("status") Booking.Status status,
+            Pageable pageable
     );
+
 
     @Query("""
         SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END

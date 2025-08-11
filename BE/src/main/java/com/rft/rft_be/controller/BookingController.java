@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -160,9 +161,13 @@ public class BookingController {
     }
 
     @GetMapping("/provider/{providerId}/status/{status}")
-    public ResponseEntity<?> getBookingsByProviderIdAndStatus(@PathVariable String providerId, @PathVariable String status) {
-        List<BookingDTO> bookings = bookingService.getBookingsByProviderIdAndStatus(providerId, status);
-        return ResponseEntity.ok(bookings);
+    public ResponseEntity<Page<BookingDTO>> getBookingsByProviderIdAndStatus(
+            @PathVariable String providerId,
+            @PathVariable String status,
+            @RequestParam(defaultValue = "0") int page) {
+
+        Page<BookingDTO> bookingsPage = bookingService.getBookingsByProviderIdAndStatus(providerId, status, page);
+        return ResponseEntity.ok(bookingsPage);
     }
 
     @PostMapping("/check-availability")

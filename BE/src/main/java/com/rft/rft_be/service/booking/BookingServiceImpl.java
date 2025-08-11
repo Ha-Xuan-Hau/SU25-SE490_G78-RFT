@@ -17,6 +17,9 @@ import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
 import com.rft.rft_be.service.Notification.NotificationService;
 import com.rft.rft_be.util.JwtUtil;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -413,13 +416,13 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public List<BookingDTO> getBookingsByProviderIdAndStatus(String providerId, String status) {
+    public Page<BookingDTO> getBookingsByProviderIdAndStatus(String providerId, String status, int page) {
+        if (page < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page must be >= 0");
         try {
             Booking.Status bookingStatus = Booking.Status.valueOf(status.toUpperCase());
-            List<Booking> bookings = bookingRepository.findByProviderIdAndStatus(providerId, bookingStatus);
-            return bookings.stream()
-                    .map(bookingMapper::toDTO)
-                    .collect(Collectors.toList());
+            Pageable pageable = PageRequest.of(page, 10);
+            Page<Booking> bookingsPage = bookingRepository.findByProviderIdAndStatus(providerId, bookingStatus, pageable);
+            return bookingsPage.map(bookingMapper::toDTO);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid booking status: " + status);
         }
