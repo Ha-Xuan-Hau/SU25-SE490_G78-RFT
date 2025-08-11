@@ -174,32 +174,39 @@ const BecomeProviderPage = () => {
     }
 
     if (current === 2) {
-      // Validate chọn dịch vụ
-      if (selectedServices.length === 0) {
-        showError(
-          "Cần chọn ít nhất một dịch vụ cho thuê xe bạn muốn cung cấp."
-        );
-        return;
-      }
+      // Validate form fields trước
+      form
+        .validateFields(["deliveryRadius"])
+        .then(() => {
+          // Validate chọn dịch vụ
+          if (selectedServices.length === 0) {
+            showError(
+              "Cần chọn ít nhất một dịch vụ cho thuê xe bạn muốn cung cấp."
+            );
+            return;
+          }
 
-      // Validate thời gian cho custom option
-      if (timeOption === "custom") {
-        if (!openTime || !closeTime) {
-          showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
-          return;
-        }
+          // Validate thời gian cho custom option
+          if (timeOption === "custom") {
+            if (!openTime || !closeTime) {
+              showError("Vui lòng chọn đầy đủ giờ mở cửa và giờ đóng cửa.");
+              return;
+            }
 
-        if (openTime.isSameOrAfter(closeTime)) {
-          showError("Giờ mở cửa phải trước giờ đóng cửa.");
-          return;
-        }
-      }
+            if (openTime.isSameOrAfter(closeTime)) {
+              showError("Giờ mở cửa phải trước giờ đóng cửa.");
+              return;
+            }
+          }
 
-      // Hiển thị modal xác nhận
-      setShowConfirmModal(true);
+          // Hiển thị modal xác nhận
+          setShowConfirmModal(true);
+        })
+        .catch(() => {
+          showError("Vui lòng điền đầy đủ thông tin!");
+        });
       return;
     }
-
     setCurrent(current + 1);
   };
 
@@ -228,6 +235,15 @@ const BecomeProviderPage = () => {
       return;
     }
 
+    // Lấy giá trị deliveryRadius từ form
+    const deliveryRadius = form.getFieldValue("deliveryRadius");
+
+    // Validate deliveryRadius
+    if (!deliveryRadius || deliveryRadius < 1 || deliveryRadius > 100) {
+      showError("Phạm vi giao xe không hợp lệ!");
+      return;
+    }
+
     // Set thời gian dựa trên option đã chọn
     let openTimeStr, closeTimeStr;
     if (timeOption === "fulltime") {
@@ -244,12 +260,13 @@ const BecomeProviderPage = () => {
       }
     }
 
-    // CHỈ GỬI THÔNG TIN DỊCH VỤ, KHÔNG GỬI THÔNG TIN CÁ NHÂN
+    // THÊM deliveryRadius VÀO PAYLOAD
     const payload = {
       userId: user?.id,
       vehicleTypes: selectedServices,
       openTime: openTimeStr,
       closeTime: closeTimeStr,
+      deliveryRadius: Number(deliveryRadius), // THÊM TRƯỜNG NÀY
     };
 
     console.log("Provider registration payload:", payload);
@@ -408,115 +425,164 @@ const BecomeProviderPage = () => {
 
   const renderServiceContent = () => (
     <div className="p-6 bg-white rounded-lg shadow">
-      <Title level={4}>Chọn dịch vụ cho thuê</Title>
-      <Paragraph className="mb-4 text-gray-600">
-        Vui lòng chọn (các) dịch vụ cho thuê xe bạn muốn cung cấp trên nền tảng
-        RFT
-      </Paragraph>
+      {/* Wrap tất cả trong một Form */}
+      <Form form={form} layout="vertical">
+        <Title level={4}>Chọn dịch vụ cho thuê</Title>
+        <Paragraph className="mb-4 text-gray-600">
+          Vui lòng chọn (các) dịch vụ cho thuê xe bạn muốn cung cấp trên nền
+          tảng RFT
+        </Paragraph>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-8">
-        {rentalServices.map((service) => (
-          <Card
-            key={service.id}
-            className={`cursor-pointer transition-all ${
-              selectedServices.includes(service.id)
-                ? `border-2 border-[${token.colorPrimary}] shadow-md`
-                : "border border-gray-200"
-            }`}
-            onClick={() =>
-              onServiceChange(
-                service.id,
-                !selectedServices.includes(service.id)
-              )
-            }
-            style={{
-              borderColor: selectedServices.includes(service.id)
-                ? token.colorPrimary
-                : undefined,
-            }}
-          >
-            <div className="flex items-center">
-              <Checkbox
-                checked={selectedServices.includes(service.id)}
-                onChange={(e) => onServiceChange(service.id, e.target.checked)}
-              />
-              <div className="ml-4">
-                <Title level={5} className="mb-0">
-                  {service.name}
-                </Title>
-                <Text type="secondary">{service.description}</Text>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-8">
+          {rentalServices.map((service) => (
+            <Card
+              key={service.id}
+              className={`cursor-pointer transition-all ${
+                selectedServices.includes(service.id)
+                  ? `border-2 border-[${token.colorPrimary}] shadow-md`
+                  : "border border-gray-200"
+              }`}
+              onClick={() =>
+                onServiceChange(
+                  service.id,
+                  !selectedServices.includes(service.id)
+                )
+              }
+              style={{
+                borderColor: selectedServices.includes(service.id)
+                  ? token.colorPrimary
+                  : undefined,
+              }}
+            >
+              <div className="flex items-center">
+                <Checkbox
+                  checked={selectedServices.includes(service.id)}
+                  onChange={(e) =>
+                    onServiceChange(service.id, e.target.checked)
+                  }
+                />
+                <div className="ml-4">
+                  <Title level={5} className="mb-0">
+                    {service.name}
+                  </Title>
+                  <Text type="secondary">{service.description}</Text>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <Title level={4}>Chọn thời gian hoạt động</Title>
-      <Paragraph className="mb-4 text-gray-600">
-        Vui lòng chọn thời gian hoạt động cho dịch vụ cho thuê xe của bạn.
-      </Paragraph>
-
-      <Radio.Group
-        value={timeOption}
-        onChange={(e) => {
-          setTimeOption(e.target.value);
-          if (e.target.value === "fulltime") {
-            setOpenTime(dayjs("00:00", "HH:mm"));
-            setCloseTime(dayjs("00:00", "HH:mm"));
-          } else {
-            setOpenTime(null);
-            setCloseTime(null);
-          }
-        }}
-        className="mb-6"
-      >
-        <Space direction="vertical" size="large">
-          <Radio value="fulltime">
-            <div>
-              <div className="font-medium">Hoạt động toàn thời gian (24/7)</div>
-              <div className="text-gray-500 text-sm">
-                Cung cấp dịch vụ 24 giờ/ngày, 7 ngày/tuần
-              </div>
-            </div>
-          </Radio>
-          <Radio value="custom">
-            <div>
-              <div className="font-medium">Chọn khung thời gian hoạt động</div>
-              <div className="text-gray-500 text-sm">
-                Tự chọn giờ mở cửa và đóng cửa
-              </div>
-            </div>
-          </Radio>
-        </Space>
-      </Radio.Group>
-
-      {timeOption === "custom" && (
-        <div className="ml-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-          <Form layout="inline" className="mb-4">
-            <Form.Item label="Giờ mở cửa">
-              <TimePicker
-                value={openTime}
-                onChange={setOpenTime}
-                format="HH:mm"
-                minuteStep={30}
-                placeholder="Giờ mở cửa"
-              />
-            </Form.Item>
-            <Form.Item label="Giờ đóng cửa">
-              <TimePicker
-                value={closeTime}
-                onChange={setCloseTime}
-                format="HH:mm"
-                minuteStep={30}
-                placeholder="Giờ đóng cửa"
-              />
-            </Form.Item>
-          </Form>
-          <Text type="secondary" className="text-sm">
-            Phải đảm bảo rằng bạn hoạt động trong khoảng thời gian này.
-          </Text>
+            </Card>
+          ))}
         </div>
-      )}
+
+        {/* PHẦN PHẠM VI GIAO XE - Đặt trong Form */}
+        <div className="mb-8">
+          <Title level={4}>Phạm vi giao xe tận nơi</Title>
+          <Paragraph className="mb-4 text-gray-600">
+            Xác định khoảng cách tối đa bạn có thể giao xe cho khách hàng
+          </Paragraph>
+          <Form.Item
+            name="deliveryRadius"
+            label="Phạm vi chấp nhận giao xe tận nơi"
+            rules={[
+              { required: true, message: "Vui lòng nhập phạm vi giao xe!" },
+              {
+                validator: (_, value) => {
+                  const num = Number(value);
+                  if (isNaN(num) || num < 1 || num > 100) {
+                    return Promise.reject("Phạm vi phải từ 1-100 km");
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+            initialValue={5}
+          >
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              addonAfter="km"
+              placeholder="Nhập phạm vi (km)"
+              style={{ width: 200 }}
+            />
+          </Form.Item>
+        </div>
+
+        <Title level={4}>Chọn thời gian hoạt động</Title>
+        <Paragraph className="mb-4 text-gray-600">
+          Vui lòng chọn thời gian hoạt động cho dịch vụ cho thuê xe của bạn.
+        </Paragraph>
+
+        <Radio.Group
+          value={timeOption}
+          onChange={(e) => {
+            setTimeOption(e.target.value);
+            if (e.target.value === "fulltime") {
+              setOpenTime(dayjs("00:00", "HH:mm"));
+              setCloseTime(dayjs("00:00", "HH:mm"));
+            } else {
+              setOpenTime(null);
+              setCloseTime(null);
+            }
+          }}
+          className="mb-6"
+        >
+          <Space direction="vertical" size="large">
+            <Radio value="fulltime">
+              <div>
+                <div className="font-medium">
+                  Hoạt động toàn thời gian (24/7)
+                </div>
+                <div className="text-gray-500 text-sm">
+                  Cung cấp dịch vụ 24 giờ/ngày, 7 ngày/tuần
+                </div>
+              </div>
+            </Radio>
+            <Radio value="custom">
+              <div>
+                <div className="font-medium">
+                  Chọn khung thời gian hoạt động
+                </div>
+                <div className="text-gray-500 text-sm">
+                  Tự chọn giờ mở cửa và đóng cửa
+                </div>
+              </div>
+            </Radio>
+          </Space>
+        </Radio.Group>
+
+        {timeOption === "custom" && (
+          <div className="ml-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <div className="flex gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giờ mở cửa
+                </label>
+                <TimePicker
+                  value={openTime}
+                  onChange={setOpenTime}
+                  format="HH:mm"
+                  minuteStep={30}
+                  placeholder="Giờ mở cửa"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giờ đóng cửa
+                </label>
+                <TimePicker
+                  value={closeTime}
+                  onChange={setCloseTime}
+                  format="HH:mm"
+                  minuteStep={30}
+                  placeholder="Giờ đóng cửa"
+                />
+              </div>
+            </div>
+            <Text type="secondary" className="text-sm">
+              Phải đảm bảo rằng bạn hoạt động trong khoảng thời gian này.
+            </Text>
+          </div>
+        )}
+      </Form>
     </div>
   );
 
@@ -646,6 +712,12 @@ const BecomeProviderPage = () => {
                 );
               })}
             </div>
+          </div>
+
+          {/* THÊM HIỂN THỊ PHẠM VI GIAO XE */}
+          <div>
+            <Title level={5}>Phạm vi giao xe:</Title>
+            <Text>{form.getFieldValue("deliveryRadius")} km</Text>
           </div>
 
           <div>

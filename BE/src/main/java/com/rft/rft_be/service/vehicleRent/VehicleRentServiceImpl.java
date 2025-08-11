@@ -38,10 +38,14 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final UserRepository userRepository;
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
+    private final BookingRepository bookingRepository;
+    private final ContractRepository contractRepository;
 
 
     private final ExtraFeeRuleRepository extraFeeRuleRepository;
     private final ExtraFeeRuleMapper extraFeeRuleMapper;
+    private final UserRegisterVehicleRepository userRegisterVehicleRepository;
+    private final FinalContractRepository finalContractRepository;
 
     @Override
     public PageResponseDTO<VehicleGetDTO> getProviderCar(int page, int size, String sortBy, String sortDir) {
@@ -721,6 +725,11 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe"));
 
+        // Không cho đổi trạng thái nếu có booking đang diễn ra hoặc trong tương lai
+        if (bookingRepository.existsActiveOrFutureByVehicleId(vehicleId, LocalDateTime.now())) {
+            throw new RuntimeException("Xe đang có booking hiện tại hoặc sắp tới, không thể đổi trạng thái");
+        }
+
         // Validate vehicle information before allowing status change to AVAILABLE
         if (vehicle.getStatus() == Vehicle.Status.UNAVAILABLE) {
             validateVehicleForAvailability(vehicle);
@@ -755,6 +764,11 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe"));
 
+        // Không cho đổi trạng thái nếu có booking đang diễn ra hoặc trong tương lai
+        if (bookingRepository.existsActiveOrFutureByVehicleId(vehicleId, LocalDateTime.now())) {
+            throw new RuntimeException("Xe đang có booking hiện tại hoặc sắp tới, không thể đổi trạng thái");
+        }
+
         Vehicle.Status current = vehicle.getStatus();
         Vehicle.Status newStatus;
         if (current == Vehicle.Status.SUSPENDED) {
@@ -773,6 +787,49 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle withRelations = vehicleRepository.findByIdWithBrandAndModel(updated.getId()).orElse(updated);
         log.info("[DEBUG] Đổi trạng thái AVAILABLE<->SUSPENDED thành công: {} -> {}", vehicleId, newStatus);
         return vehicleMapper.vehicleGet(withRelations);
+    }
+    @Override
+    @Transactional
+    public List<VehicleGetDTO> toggleVehicleSuspendedBulk(List<String> vehicleIds) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+
+        if (vehicleIds == null || vehicleIds.isEmpty()) {
+            throw new RuntimeException("Danh sách xe trống");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<VehicleGetDTO> result = new ArrayList<>();
+
+        for (String vehicleId : vehicleIds) {
+            Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe: " + vehicleId));
+
+            // Không cho đổi trạng thái nếu có booking đang diễn ra hoặc trong tương lai
+            if (bookingRepository.existsActiveOrFutureByVehicleId(vehicleId, now)) {
+                throw new RuntimeException("Xe " + vehicleId + " đang có booking hiện tại hoặc sắp tới, không thể đổi trạng thái");
+            }
+
+            Vehicle.Status current = vehicle.getStatus();
+            Vehicle.Status newStatus;
+            if (current == Vehicle.Status.SUSPENDED) {
+                validateVehicleForAvailability(vehicle);
+                newStatus = Vehicle.Status.AVAILABLE;
+            } else if (current == Vehicle.Status.AVAILABLE) {
+                newStatus = Vehicle.Status.SUSPENDED;
+            } else {
+                throw new RuntimeException("Chỉ có thể chuyển giữa AVAILABLE và SUSPENDED từ trạng thái hiện tại: " + current);
+            }
+
+            vehicle.setStatus(newStatus);
+            setUpdatedAt(vehicle, now);
+            Vehicle updated = vehicleRepository.save(vehicle);
+            Vehicle withRelations = vehicleRepository.findByIdWithBrandAndModel(updated.getId()).orElse(updated);
+            result.add(vehicleMapper.vehicleGet(withRelations));
+        }
+
+        log.info("[DEBUG] Bulk đổi trạng thái AVAILABLE<->SUSPENDED thành công cho {} xe", result.size());
+        return result;
     }
 
     @Override
@@ -1595,5 +1652,73 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             log.warn("Loại xe không hợp lệ: {}, đặt thành null", type);
             return null;
         }
+    }
+
+    @Override
+    public ProviderStatisticsDTO getProviderStatistics() {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+        log.info("Lấy thống kê cho provider: {}", userId);
+
+        // Lấy thông tin provider
+        User provider = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy provider với id: " + userId));
+
+        // Lấy các dịch vụ đã đăng ký
+        List<String> registeredServices = userRegisterVehicleRepository.findByUserId(userId)
+                .stream()
+                .map(UserRegisterVehicle::getVehicleType)
+                .collect(Collectors.toList());
+
+        // Đếm tổng số xe
+        Long totalVehicles = vehicleRepository.countByUserId(userId);
+
+        // Đếm contract theo trạng thái trong tháng hiện tại
+        Long totalRentingContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.RENTING);
+        Long totalFinishedContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.FINISHED);
+        Long totalCancelledContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.CANCELLED);
+
+        // Tính doanh thu từ final contract trong tháng hiện tại
+        BigDecimal totalRevenue = finalContractRepository.sumRevenueByProviderInCurrentMonth(userId);
+        Long totalFinalContracts = finalContractRepository.countFinalContractsByProviderInCurrentMonth(userId);
+
+        // Tạo dữ liệu thống kê theo tháng (12 tháng gần nhất)
+        List<ProviderStatisticsDTO.MonthlyRevenueDTO> monthlyRevenue = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        
+        for (int i = 11; i >= 0; i--) {
+            LocalDateTime targetDate = now.minusMonths(i);
+            int month = targetDate.getMonthValue();
+            int year = targetDate.getYear();
+            
+            BigDecimal monthRevenue = finalContractRepository.sumRevenueByProviderAndMonth(userId, month, year);
+            Long monthOrderCount = finalContractRepository.countFinalContractsByProviderAndMonth(userId, month, year);
+            
+            String monthName = targetDate.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH);
+            
+            monthlyRevenue.add(ProviderStatisticsDTO.MonthlyRevenueDTO.builder()
+                    .month(monthName)
+                    .orderCount(monthOrderCount)
+                    .revenue(monthRevenue)
+                    .build());
+        }
+
+        return ProviderStatisticsDTO.builder()
+                .providerId(provider.getId())
+                .providerName(provider.getFullName())
+                .providerEmail(provider.getEmail())
+                .providerPhone(provider.getPhone())
+                .providerAddress(provider.getAddress())
+                .openTime(provider.getOpenTime())
+                .closeTime(provider.getCloseTime())
+                .registeredServices(registeredServices)
+                .totalVehicles(totalVehicles)
+                .totalRentingContracts(totalRentingContracts)
+                .totalFinishedContracts(totalFinishedContracts)
+                .totalCancelledContracts(totalCancelledContracts)
+                .totalRevenue(totalRevenue)
+                .totalFinalContracts(totalFinalContracts)
+                .monthlyRevenue(monthlyRevenue)
+                .build();
     }
 }

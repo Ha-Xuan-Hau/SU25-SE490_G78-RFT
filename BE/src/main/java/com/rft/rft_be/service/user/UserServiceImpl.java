@@ -167,6 +167,8 @@ public class UserServiceImpl implements UserService {
                         .build())
                 .collect(Collectors.toList());
 
+        user.setDeliveryRadius(request.getDeliveryRadius());
+
         userRegisterVehicleRepository.saveAll(entities);
     }
 }

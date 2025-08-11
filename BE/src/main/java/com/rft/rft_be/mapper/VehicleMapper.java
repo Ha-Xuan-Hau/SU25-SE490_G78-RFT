@@ -47,6 +47,7 @@ public interface VehicleMapper {
     @Mapping(source = "penalty", target = "penalty")
     @Mapping(target = "openTime", expression = "java(vehicle.getUser() != null && vehicle.getUser().getOpenTime() != null ? vehicle.getUser().getOpenTime().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern(\"HH:mm:ss\")) : null)")
     @Mapping(target = "closeTime", expression = "java(vehicle.getUser() != null && vehicle.getUser().getCloseTime() != null ? vehicle.getUser().getCloseTime().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern(\"HH:mm:ss\")) : null)")
+    @Mapping(source = "user.deliveryRadius", target = "deliveryRadius")
     VehicleDetailDTO vehicleToVehicleDetail(Vehicle vehicle);
 
     @Mapping(source = "user.id", target = "userId")
