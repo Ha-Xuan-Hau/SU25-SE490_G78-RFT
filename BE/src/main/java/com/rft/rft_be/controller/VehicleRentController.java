@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/vehicle-rent")
@@ -300,4 +301,21 @@ public class VehicleRentController {
 //        }
 //    }
 
+    /**
+     * Lấy thống kê tổng quan cho provider hiện tại
+     * @return ProviderStatisticsDTO chứa thông tin thống kê
+     */
+    @GetMapping("/statistics")
+    public ResponseEntity<?> getProviderStatistics() {
+        try {
+            log.info("Nhận yêu cầu lấy thống kê provider");
+            ProviderStatisticsDTO statistics = vehicleRentService.getProviderStatistics();
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy thống kê provider: {}", e.getMessage(), e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy thống kê: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
 }

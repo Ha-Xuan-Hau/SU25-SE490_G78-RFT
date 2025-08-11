@@ -26,6 +26,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.security.test.context.support.WithMockUser;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.rft.rft_be.dto.vehicle.vehicleRent.ProviderStatisticsDTO;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -329,5 +336,47 @@ public class VehicleRentControllerTest {
         mockMvc.perform(MockMvcRequestBuilders.get("/api/vehicle-rent/my-bicycle")
                         .with(SecurityMockMvcRequestPostProcessors.authentication(buildJwtAuthToken("testuser", "USER"))))
                 .andExpect(MockMvcResultMatchers.status().isInternalServerError());
+    }
+
+    @Test
+    @WithMockUser(roles = "PROVIDER")
+    void getProviderStatistics_ShouldReturnStatistics() throws Exception {
+        // Given
+        ProviderStatisticsDTO expectedStatistics = ProviderStatisticsDTO.builder()
+                .providerId("provider-1")
+                .providerName("Test Provider")
+                .totalVehicles(5L)
+                .totalRentingContracts(2L)
+                .totalFinishedContracts(10L)
+                .totalCancelledContracts(1L)
+                .totalRevenue(new BigDecimal("1000000"))
+                .totalFinalContracts(10L)
+                .build();
+
+        when(vehicleRentService.getProviderStatistics()).thenReturn(expectedStatistics);
+
+        // When & Then
+        mockMvc.perform(get("/api/vehicle-rent/statistics")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.providerId").value("provider-1"))
+                .andExpect(jsonPath("$.providerName").value("Test Provider"))
+                .andExpect(jsonPath("$.totalVehicles").value(5))
+                .andExpect(jsonPath("$.totalRentingContracts").value(2))
+                .andExpect(jsonPath("$.totalFinishedContracts").value(10))
+                .andExpect(jsonPath("$.totalCancelledContracts").value(1))
+                .andExpect(jsonPath("$.totalRevenue").value(1000000))
+                .andExpect(jsonPath("$.totalFinalContracts").value(10));
+
+        verify(vehicleRentService).getProviderStatistics();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void getProviderStatistics_WithoutProviderRole_ShouldReturnForbidden() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/api/vehicle-rent/statistics")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
     }
 }

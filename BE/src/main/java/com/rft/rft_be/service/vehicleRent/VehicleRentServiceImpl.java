@@ -39,10 +39,13 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
     private final BookingRepository bookingRepository;
+    private final ContractRepository contractRepository;
 
 
     private final ExtraFeeRuleRepository extraFeeRuleRepository;
     private final ExtraFeeRuleMapper extraFeeRuleMapper;
+    private final UserRegisterVehicleRepository userRegisterVehicleRepository;
+    private final FinalContractRepository finalContractRepository;
 
     @Override
     public PageResponseDTO<VehicleGetDTO> getProviderCar(int page, int size, String sortBy, String sortDir) {
@@ -1649,5 +1652,73 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             log.warn("Loại xe không hợp lệ: {}, đặt thành null", type);
             return null;
         }
+    }
+
+    @Override
+    public ProviderStatisticsDTO getProviderStatistics() {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+        log.info("Lấy thống kê cho provider: {}", userId);
+
+        // Lấy thông tin provider
+        User provider = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy provider với id: " + userId));
+
+        // Lấy các dịch vụ đã đăng ký
+        List<String> registeredServices = userRegisterVehicleRepository.findByUserId(userId)
+                .stream()
+                .map(UserRegisterVehicle::getVehicleType)
+                .collect(Collectors.toList());
+
+        // Đếm tổng số xe
+        Long totalVehicles = vehicleRepository.countByUserId(userId);
+
+        // Đếm contract theo trạng thái trong tháng hiện tại
+        Long totalRentingContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.RENTING);
+        Long totalFinishedContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.FINISHED);
+        Long totalCancelledContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.CANCELLED);
+
+        // Tính doanh thu từ final contract trong tháng hiện tại
+        BigDecimal totalRevenue = finalContractRepository.sumRevenueByProviderInCurrentMonth(userId);
+        Long totalFinalContracts = finalContractRepository.countFinalContractsByProviderInCurrentMonth(userId);
+
+        // Tạo dữ liệu thống kê theo tháng (12 tháng gần nhất)
+        List<ProviderStatisticsDTO.MonthlyRevenueDTO> monthlyRevenue = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        
+        for (int i = 11; i >= 0; i--) {
+            LocalDateTime targetDate = now.minusMonths(i);
+            int month = targetDate.getMonthValue();
+            int year = targetDate.getYear();
+            
+            BigDecimal monthRevenue = finalContractRepository.sumRevenueByProviderAndMonth(userId, month, year);
+            Long monthOrderCount = finalContractRepository.countFinalContractsByProviderAndMonth(userId, month, year);
+            
+            String monthName = targetDate.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH);
+            
+            monthlyRevenue.add(ProviderStatisticsDTO.MonthlyRevenueDTO.builder()
+                    .month(monthName)
+                    .orderCount(monthOrderCount)
+                    .revenue(monthRevenue)
+                    .build());
+        }
+
+        return ProviderStatisticsDTO.builder()
+                .providerId(provider.getId())
+                .providerName(provider.getFullName())
+                .providerEmail(provider.getEmail())
+                .providerPhone(provider.getPhone())
+                .providerAddress(provider.getAddress())
+                .openTime(provider.getOpenTime())
+                .closeTime(provider.getCloseTime())
+                .registeredServices(registeredServices)
+                .totalVehicles(totalVehicles)
+                .totalRentingContracts(totalRentingContracts)
+                .totalFinishedContracts(totalFinishedContracts)
+                .totalCancelledContracts(totalCancelledContracts)
+                .totalRevenue(totalRevenue)
+                .totalFinalContracts(totalFinalContracts)
+                .monthlyRevenue(monthlyRevenue)
+                .build();
     }
 }
