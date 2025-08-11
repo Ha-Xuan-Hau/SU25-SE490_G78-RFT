@@ -1,8 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Modal, Form, Input, Select, notification } from "antd";
-import { FlagOutlined, CloseOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Modal,
+  Form,
+  Input,
+  Select,
+  notification,
+  Tooltip,
+} from "antd";
+import {
+  FlagOutlined,
+  CloseOutlined,
+  InfoCircleOutlined,
+  LinkOutlined,
+} from "@ant-design/icons";
 import { createReport } from "@/apis/report.api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -14,6 +27,7 @@ interface ReportButtonProps {
   reportType?: string;
   reportTypes?: string[];
   booking?: string;
+  evidenceUrl?: string; // Thêm trường này vào props
   showTypeSelector?: boolean;
   buttonText?: string;
   size?: "small" | "middle" | "large";
@@ -28,6 +42,7 @@ export default function ReportButton({
   reportType,
   reportTypes,
   booking,
+  evidenceUrl, // Nhận từ props
   showTypeSelector = false,
   buttonText,
   size = "small",
@@ -45,8 +60,12 @@ export default function ReportButton({
   useEffect(() => {
     if (autoOpen) {
       setIsModalVisible(true);
+      // Set giá trị mặc định cho evidenceUrl nếu được truyền từ props
+      if (evidenceUrl) {
+        form.setFieldsValue({ evidenceUrl: evidenceUrl });
+      }
     }
-  }, [autoOpen]);
+  }, [autoOpen, evidenceUrl, form]);
 
   // Cập nhật handleCancel
   const handleCancel = () => {
@@ -258,11 +277,16 @@ export default function ReportButton({
     }
 
     setIsModalVisible(true);
+    // Set giá trị mặc định cho evidenceUrl nếu được truyền từ props
+    if (evidenceUrl) {
+      form.setFieldsValue({ evidenceUrl: evidenceUrl });
+    }
   };
 
   const handleReport = async (values: {
     selectedReportType?: string;
     reason: string;
+    evidenceUrl?: string; // Lấy từ form
   }) => {
     try {
       setLoading(true);
@@ -278,11 +302,16 @@ export default function ReportButton({
 
       const config = getReportConfig(finalReportType);
 
+      // Sử dụng evidenceUrl từ form hoặc từ props (ưu tiên từ form)
+      const finalEvidenceUrl =
+        values.evidenceUrl?.trim() || evidenceUrl?.trim();
+
       const reportData = {
         targetId,
         generalType: config.generalType,
         type: config.type,
         reason: values.reason,
+        ...(finalEvidenceUrl && { evidenceUrl: finalEvidenceUrl }), // Chỉ thêm nếu có giá trị
         ...((config.generalType === "SERIOUS_ERROR" ||
           config.generalType === "STAFF_ERROR") &&
           booking && {
@@ -301,6 +330,7 @@ export default function ReportButton({
 
       setIsModalVisible(false);
       form.resetFields();
+      onModalClose?.();
     } catch (error) {
       console.error("Error creating report:", error);
 
@@ -345,96 +375,149 @@ export default function ReportButton({
     return "Vui lòng mô tả chi tiết...";
   };
 
+  // Modal content component để tránh duplicate code
+  const ModalContent = () => (
+    <>
+      {/* Header */}
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Báo cáo</h2>
+      </div>
+
+      <Form form={form} layout="vertical" onFinish={handleReport}>
+        {/* Type selector hoặc fixed display */}
+        {showTypeSelector && reportTypes ? (
+          <Form.Item
+            name="selectedReportType"
+            label="Vui lòng chọn lí do"
+            rules={[{ required: true, message: "Vui lòng chọn loại báo cáo" }]}
+          >
+            <Select placeholder="Chọn loại báo cáo">
+              {reportTypes.map((type) => {
+                const config = getReportConfig(type);
+                return (
+                  <Option key={type} value={type}>
+                    {config.displayText}
+                  </Option>
+                );
+              })}
+            </Select>
+          </Form.Item>
+        ) : (
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Vui lòng chọn lí do
+            </label>
+            <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
+              {reportType ? getReportConfig(reportType).displayText : ""}
+            </div>
+          </div>
+        )}
+
+        {/* Reason textarea với dynamic placeholder */}
+        <Form.Item
+          noStyle
+          shouldUpdate={(prevValues, currentValues) =>
+            prevValues.selectedReportType !== currentValues.selectedReportType
+          }
+        >
+          {({ getFieldValue }) => (
+            <Form.Item
+              name="reason"
+              label="Mô tả chi tiết"
+              rules={[
+                { required: true, message: "Vui lòng nhập lý do" },
+                { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
+                { max: 500, message: "Lý do không được vượt quá 500 ký tự" },
+              ]}
+            >
+              <TextArea
+                rows={4}
+                placeholder={getPlaceholderText(
+                  getFieldValue("selectedReportType")
+                )}
+                className="resize-none"
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          )}
+        </Form.Item>
+
+        {/* Link bằng chứng - Optional field */}
+        <Form.Item
+          name="evidenceUrl"
+          label={
+            <div className="flex items-center gap-2">
+              <LinkOutlined />
+              <span>Link bằng chứng (Tùy chọn)</span>
+            </div>
+          }
+          initialValue={evidenceUrl} // Set giá trị ban đầu từ props
+          rules={[
+            {
+              type: "url",
+              message: "Vui lòng nhập đúng định dạng URL",
+            },
+            {
+              pattern: /^https?:\/\/.+/,
+              message: "Link phải bắt đầu bằng http:// hoặc https://",
+            },
+          ]}
+        >
+          <Input
+            prefix={<LinkOutlined className="text-gray-400" />}
+            placeholder="https://drive.google.com/..."
+            className="w-full"
+          />
+        </Form.Item>
+
+        {/* Guide text */}
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+          <div className="flex items-start gap-2">
+            <InfoCircleOutlined className="text-blue-500 mt-0.5" />
+            <div className="text-sm text-blue-700">
+              <p className="font-medium mb-1">Hướng dẫn cung cấp bằng chứng:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li>Tải ảnh/video lên Google Drive, Imgur, hoặc YouTube</li>
+                <li>Đảm bảo link có thể truy cập công khai</li>
+                <li>Bằng chứng rõ ràng giúp xử lý báo cáo nhanh hơn</li>
+                <li>
+                  Không bắt buộc nhưng được khuyến khích cho báo cáo nghiêm
+                  trọng
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Submit button */}
+        <Form.Item className="mb-0 mt-6">
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            className="w-full h-12 bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600 rounded-md font-medium"
+          >
+            Gửi báo cáo
+          </Button>
+        </Form.Item>
+      </Form>
+    </>
+  );
+
   if (autoOpen) {
     return (
       <Modal
         open={isModalVisible}
         onCancel={handleCancel}
         footer={null}
-        width={400}
+        width={500}
         className="report-modal"
         closeIcon={
           <CloseOutlined className="text-gray-500 hover:text-gray-700" />
         }
       >
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Báo xấu</h2>
-        </div>
-
-        <Form form={form} layout="vertical" onFinish={handleReport}>
-          {/* Type selector hoặc fixed display */}
-          {showTypeSelector && reportTypes ? (
-            <Form.Item
-              name="selectedReportType"
-              label="Vui lòng chọn lí do"
-              rules={[
-                { required: true, message: "Vui lòng chọn loại báo cáo" },
-              ]}
-            >
-              <Select placeholder="Chọn loại báo cáo">
-                {reportTypes.map((type) => {
-                  const config = getReportConfig(type);
-                  return (
-                    <Option key={type} value={type}>
-                      {config.displayText}
-                    </Option>
-                  );
-                })}
-              </Select>
-            </Form.Item>
-          ) : (
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vui lòng chọn lí do
-              </label>
-
-              <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
-                {reportType ? getReportConfig(reportType).displayText : ""}
-              </div>
-            </div>
-          )}
-
-          {/* Reason textarea với dynamic placeholder */}
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) =>
-              prevValues.selectedReportType !== currentValues.selectedReportType
-            }
-          >
-            {({ getFieldValue }) => (
-              <Form.Item
-                name="reason"
-                rules={[
-                  { required: true, message: "Vui lòng nhập lý do" },
-                  { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
-                  { max: 255, message: "Lý do không được vượt quá 255 ký tự" },
-                ]}
-              >
-                <TextArea
-                  rows={4}
-                  placeholder={getPlaceholderText(
-                    getFieldValue("selectedReportType")
-                  )}
-                  className="resize-none"
-                  maxLength={500}
-                />
-              </Form.Item>
-            )}
-          </Form.Item>
-
-          {/* Submit button */}
-          <Form.Item className="mb-0 mt-6">
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              className="w-full h-12 bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600 rounded-md font-medium"
-            >
-              Báo cáo
-            </Button>
-          </Form.Item>
-        </Form>
+        <ModalContent />
       </Modal>
     );
   }
@@ -458,91 +541,13 @@ export default function ReportButton({
           form.resetFields();
         }}
         footer={null}
-        width={400}
+        width={500}
         className="report-modal"
         closeIcon={
           <CloseOutlined className="text-gray-500 hover:text-gray-700" />
         }
       >
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Báo xấu</h2>
-        </div>
-
-        <Form form={form} layout="vertical" onFinish={handleReport}>
-          {/* Type selector hoặc fixed display */}
-          {showTypeSelector && reportTypes ? (
-            <Form.Item
-              name="selectedReportType"
-              label="Vui lòng chọn lí do"
-              rules={[
-                { required: true, message: "Vui lòng chọn loại báo cáo" },
-              ]}
-            >
-              <Select placeholder="Chọn loại báo cáo">
-                {reportTypes.map((type) => {
-                  const config = getReportConfig(type);
-                  console.log(`Rendering option for ${type}:`, config); // Debug
-                  return (
-                    <Option key={type} value={type}>
-                      {config.displayText}
-                    </Option>
-                  );
-                })}
-              </Select>
-            </Form.Item>
-          ) : (
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vui lòng chọn lí do
-              </label>
-
-              <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed">
-                {reportType ? getReportConfig(reportType).displayText : ""}
-              </div>
-            </div>
-          )}
-
-          {/* Reason textarea với dynamic placeholder */}
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) =>
-              prevValues.selectedReportType !== currentValues.selectedReportType
-            }
-          >
-            {({ getFieldValue }) => (
-              <Form.Item
-                name="reason"
-                rules={[
-                  { required: true, message: "Vui lòng nhập lý do" },
-                  { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
-                  { max: 500, message: "Lý do không được vượt quá 500 ký tự" },
-                ]}
-              >
-                <TextArea
-                  rows={4}
-                  placeholder={getPlaceholderText(
-                    getFieldValue("selectedReportType")
-                  )}
-                  className="resize-none"
-                  maxLength={500}
-                />
-              </Form.Item>
-            )}
-          </Form.Item>
-
-          {/* Submit button */}
-          <Form.Item className="mb-0 mt-6">
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              className="w-full h-12 bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600 rounded-md font-medium"
-            >
-              Báo cáo
-            </Button>
-          </Form.Item>
-        </Form>
+        <ModalContent />
       </Modal>
     </>
   );

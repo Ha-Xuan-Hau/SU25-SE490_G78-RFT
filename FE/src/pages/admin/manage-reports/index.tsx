@@ -52,6 +52,7 @@ const { Title } = Typography;
 const { Search } = Input;
 import ReportButton from "@/components/ReportComponent";
 import Link from "next/link";
+import { useRouter } from "next/router";
 
 type ReportType =
   // Serious Reports
@@ -204,30 +205,39 @@ export default function UserReportsPage() {
   }, [searchText]);
 
   // Xử lý xem chi tiết - Sử dụng type cụ thể thay vì generalType
-  const handleViewDetails = async (report: ReportGroupedByTargetDTO) => {
-    try {
-      setModalLoading(true);
-      const reportDetail = await getReportDetail(report.targetId, report.type);
+  // const handleViewDetails = async (report: ReportGroupedByTargetDTO) => {
+  //   try {
+  //     setModalLoading(true);
+  //     const reportDetail = await getReportDetail(report.targetId, report.type);
 
-      // Validate response structure
-      if (
-        !reportDetail ||
-        !reportDetail.reportedUser ||
-        !reportDetail.reporters
-      ) {
-        throw new Error("Invalid response structure");
-      }
+  //     // Validate response structure
+  //     if (
+  //       !reportDetail ||
+  //       !reportDetail.reportedUser ||
+  //       !reportDetail.reporters
+  //     ) {
+  //       throw new Error("Invalid response structure");
+  //     }
 
-      setSelectedReportDetail(reportDetail);
-      setIsModalVisible(true);
-      if (isMobile) {
-        setDrawerVisible(true);
-      }
-    } catch (error) {
-      handleApiError(error, "Không thể tải chi tiết báo cáo");
-    } finally {
-      setModalLoading(false);
-    }
+  //     setSelectedReportDetail(reportDetail);
+  //     setIsModalVisible(true);
+  //     if (isMobile) {
+  //       setDrawerVisible(true);
+  //     }
+  //   } catch (error) {
+  //     handleApiError(error, "Không thể tải chi tiết báo cáo");
+  //   } finally {
+  //     setModalLoading(false);
+  //   }
+  // };
+
+  const handleViewDetails = (report: ReportGroupedByTargetDTO) => {
+    // Mở ở tab mới
+    window.open(
+      `/report-detail?targetId=${report.targetId}&type=${report.type}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   const handleCancel = () => {
@@ -455,7 +465,7 @@ export default function UserReportsPage() {
 
         // Serious Errors
         { text: "Khách làm hư hỏng xe", value: "DAMAGED_VEHICLE" },
-        { text: "Gian lận", value: "FRAUD" },
+        { text: "Lừa đảo", value: "FRAUD" },
         { text: "Xe khác với mô tả", value: "MISLEADING_INFO" },
         { text: "Chủ xe không giao xe", value: "OWNER_NO_SHOW" },
         {
@@ -498,7 +508,6 @@ export default function UserReportsPage() {
       key: "action",
       width: 120,
       render: (_, record) => {
-        // Tìm report gốc từ aggregatedReports để pass vào handleViewDetails
         const originalReport = aggregatedReports.find(
           (r) => r.targetId === record.id
         );
@@ -507,8 +516,13 @@ export default function UserReportsPage() {
             type="primary"
             icon={<EyeOutlined />}
             size="small"
-            loading={modalLoading}
-            onClick={() => originalReport && handleViewDetails(originalReport)}
+            onClick={() => {
+              window.open(
+                `/report-detail?targetId=${record.id}&type=${originalReport?.type}`,
+                "_blank",
+                "noopener,noreferrer"
+              );
+            }}
           >
             Chi tiết
           </Button>

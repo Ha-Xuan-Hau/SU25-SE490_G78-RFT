@@ -307,9 +307,9 @@ public class BookingServiceImpl implements BookingService {
         String providerId = bookingDetails.get(0).getVehicle().getUser().getId();
 
         // Cho phép nếu là renter hoặc provider
-        if (!userIdToken.trim().equals(renterId.trim()) && !userIdToken.trim().equals(providerId.trim())) {
-            throw new AccessDeniedException("Bạn không có quyền truy cập tài nguyên này");
-        }
+//        if (!userIdToken.trim().equals(renterId.trim()) && !userIdToken.trim().equals(providerId.trim())) {
+//            throw new AccessDeniedException("Bạn không có quyền truy cập tài nguyên này");
+//        }
 
         BookingResponseDTO dto = vehicleMapper.mapToBookingResponseDTO(booking);
         Optional<LocalDateTime> returnedAtOpt = finalContractRepository.findReturnedAtByBookingId(bookingId);

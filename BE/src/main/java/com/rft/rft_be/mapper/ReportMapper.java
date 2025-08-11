@@ -12,7 +12,7 @@ public interface ReportMapper {
     @Mapping(target = "type", source = "type")
     @Mapping(target = "reason", source = "reason")
     @Mapping(target = "reportedId", source = "targetId")
-
+    @Mapping(target = "evidenceUrl", source = "evidenceUrl")
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "booking", ignore = true)

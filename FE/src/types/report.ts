@@ -11,6 +11,7 @@ export interface ReporterDetailDTO {
   fullName: string;
   email: string;
   reason: string;
+  evidenceUrl?: string; // Optional, can be null if not provided
   createdAt: string;
 }
 
