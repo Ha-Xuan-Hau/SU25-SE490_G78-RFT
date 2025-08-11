@@ -20,6 +20,7 @@ import {
 } from "@/apis/auth.api";
 import { toast } from "react-toastify";
 import { useUserState } from "@/recoils/user.state";
+import { showError, showSuccess } from "@/utils/toast.utils";
 
 interface AuthPopupProps {
   isOpen: boolean;
@@ -265,20 +266,22 @@ export function AuthPopup({
           const userData = response.result || {};
           login(userData, response.access_token);
           setRecoilUser(userData);
-          toast.success("Đăng nhập thành công!");
+          showSuccess("Đăng nhập thành công!");
           onClose();
         } else {
           throw new Error("Định dạng phản hồi không hợp lệ");
         }
       }
     } catch (err: any) {
-      const errorMessage =
-        err.message ||
-        err.response?.data?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
-
-      setErrors({ submit: errorMessage });
-      toast.error(errorMessage);
+      let errorMessage = "Có lỗi xảy ra. Vui lòng thử lại.";
+      if (err.response?.status === 400) {
+        errorMessage = "Sai tài khoản hoặc mật khẩu!";
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }

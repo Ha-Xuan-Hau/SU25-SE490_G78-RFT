@@ -12,7 +12,7 @@ export async function getCoupons(userId) {
 
         return Array.isArray(data) ? data : data.content || data.items || data.data || [];
     } catch (error) {
-        console.error("Error fetching coupons:", error);
+        // console.error("Error fetching coupons:", error);
         throw error;
     }
 }
@@ -22,7 +22,7 @@ export const getAllCoupons = async () => {
         const { data } = await apiClient.get('/coupons'); // Lấy tất cả coupon
         return data;
     } catch (error) {
-        console.error("Error fetching coupons:", error);
+        // console.error("Error fetching coupons:", error);
         throw error;
     }
 };
@@ -36,7 +36,7 @@ export async function getCouponById(couponId) {
 
         return data;
     } catch (error) {
-        console.error("Error fetching coupon details:", error);
+        // console.error("Error fetching coupon details:", error);
         throw error;
     }
 }
@@ -46,7 +46,7 @@ export const updateCoupon = async (couponId, couponData) => {
         const { data } = await apiClient.put(`/coupons/${couponId}`, couponData); // Cập nhật coupon
         return data;
     } catch (error) {
-        console.error("Error updating coupon:", error);
+        // console.error("Error updating coupon:", error);
         throw error;
     }
 };
@@ -56,7 +56,7 @@ export const createCoupon = async (couponData) => {
         const { data } = await apiClient.post('/coupons/admin/create', couponData); // Tạo coupon mới
         return data;
     } catch (error) {
-        console.error("Error creating coupon:", error);
+        // console.error("Error creating coupon:", error);
         throw error;
     }
 };
