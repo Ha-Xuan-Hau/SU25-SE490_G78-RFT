@@ -66,8 +66,11 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "delivery_radius")
+    private Integer deliveryRadius;
+
     public enum Status {
-        ACTIVE, INACTIVE
+        ACTIVE, INACTIVE , TEMP_BANNED
     }
 
     public enum Role {

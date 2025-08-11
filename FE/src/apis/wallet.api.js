@@ -13,6 +13,17 @@ export const getUserWallet = async (userId) => {
     }
 };
 
+export const getWithdrawalHistory = async (userId) => {
+    try {
+        const url = `/wallet/withdrawals?userId=${userId}`;
+        const response = await apiClient.get(url);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching withdrawal history:', error);
+        throw new Error(`Lỗi lấy lịch sử rút tiền: ${error.response?.data?.message || error.message}`);
+    }
+};
+
 export const updateUserWallet = async (userId, card) => {
     try {
         // Use query parameter to match backend @RequestParam

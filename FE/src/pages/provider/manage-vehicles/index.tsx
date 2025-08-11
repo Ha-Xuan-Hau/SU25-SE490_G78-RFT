@@ -31,9 +31,9 @@ import type { Vehicle as VehicleType } from "@/types/vehicle";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import type { Vehicle } from "@/types/vehicle";
 
-import RegisterVehicleForm from "../../../components/RegisterVehicleForm";
-import EditSingleVehicleInGroupModal from "../../../components/EditSingleVehicleInGroupModal";
-import GroupEditVehicleModal from "../../../components/GroupEditVehicleModal";
+import RegisterVehicleForm from "../../../components/vehicleEdit/RegisterVehicleForm";
+import EditSingleVehicleInGroupModal from "../../../components/vehicleEdit/EditSingleVehicleInGroupModal";
+import GroupEditVehicleModal from "../../../components/vehicleEdit/GroupEditVehicleModal";
 import {
   updateSingleMotorbikeInGroup,
   updateCar,

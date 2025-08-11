@@ -13,24 +13,28 @@ import {
   Divider,
 } from "antd";
 import { CarFilled } from "@ant-design/icons";
-import { UploadMultipleImage } from "./UploadMultipleImage";
-import { VehicleType } from "../types/vehicle";
+import { UploadMultipleImage } from "../uploadImage/UploadMultipleImage";
+import { VehicleType } from "../../types/vehicle";
 import {
   RegisterVehicleFormProps,
   ExtraRule,
-} from "../types/registerVehicleForm";
-import { useUserState } from "../recoils/user.state";
-import useLocalStorage from "../hooks/useLocalStorage";
+} from "../../types/registerVehicleForm";
+import { useUserState } from "../../recoils/user.state";
+import useLocalStorage from "../../hooks/useLocalStorage";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createCar, updateCar, createWithQuantity } from "../apis/vehicle.api";
-import { getUserVehicleById } from "../apis/user-vehicles.api";
-import { getPenaltiesByUserId } from "../apis/provider.api";
-import { showError, showSuccess } from "../utils/toast.utils";
+import {
+  createCar,
+  updateCar,
+  createWithQuantity,
+} from "../../apis/vehicle.api";
+import { getUserVehicleById } from "../../apis/user-vehicles.api";
+import { getPenaltiesByUserId } from "../../apis/provider.api";
+import { showError, showSuccess } from "../../utils/toast.utils";
 
-import carBrands from "../data/car-brands.json";
-import carModels from "../data/car-models.json";
-import motorbikeBrands from "../data/motorbike-brand.json";
-import { UploadSingleImage } from "./UploadSingleImage";
+import carBrands from "../../data/car-brands.json";
+import carModels from "../../data/car-models.json";
+import motorbikeBrands from "../../data/motorbike-brand.json";
+import { UploadSingleImage } from "../uploadImage/UploadSingleImage";
 
 const { TabPane } = Tabs;
 
@@ -71,7 +75,6 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
   const apiCreateBicycle = useMutation({ mutationFn: createWithQuantity });
   const apiUpdateBicycle = useMutation({ mutationFn: updateCar });
 
-  const [isActive, setIsActive] = useState<boolean>(true);
   const brandOptions = useMemo(
     () =>
       vehicleType === VehicleType.CAR
@@ -104,38 +107,6 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
     }
     fetchRentalRules();
   }, [user]);
-
-  // useEffect(() => {
-  //   if (vehicleDetail.data?.data) {
-  //     const vehicle = vehicleDetail.data.data;
-  //     let type = VehicleType.CAR;
-  //     if (vehicle.vehicleType) {
-  //       if (
-  //         vehicle.vehicleType === "MOTORBIKE" ||
-  //         vehicle.vehicleType === "Motorbike"
-  //       ) {
-  //         type = VehicleType.MOTORBIKE;
-  //       } else if (
-  //         vehicle.vehicleType === "BICYCLE" ||
-  //         vehicle.vehicleType === "Bicycle"
-  //       ) {
-  //         type = VehicleType.BICYCLE;
-  //       }
-  //     } else {
-  //       if (!vehicle.numberSeat && !vehicle.licensePlate) {
-  //         type = VehicleType.BICYCLE;
-  //       } else if (!vehicle.numberSeat && vehicle.licensePlate) {
-  //         type = VehicleType.MOTORBIKE;
-  //       }
-  //     }
-  //     setVehicleType(type);
-  //     setIsActive(vehicle.status !== "UNAVAILABLE");
-  //     setIsMultipleVehicles(false);
-  //     if (type === VehicleType.CAR && vehicle.extraFeeRule) {
-  //       setExtraRule({ ...vehicle.extraFeeRule });
-  //     }
-  //   }
-  // }, [vehicleDetail.data, form]);
 
   useEffect(() => {
     if (vehicleDetail.data?.data) {
@@ -208,51 +179,30 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         shipToAddress: vehicle.shipToAddress || "NO",
       });
 
-      setIsActive(vehicle.status !== "UNAVAILABLE");
       setIsMultipleVehicles(false);
       if (type === VehicleType.CAR && vehicle.extraFeeRule) {
-        setExtraRule({ ...vehicle.extraFeeRule });
+        // setExtraRule({ ...vehicle.extraFeeRule });
+        setExtraRule({
+          maxKmPerDay: vehicle.extraFeeRule.maxKmPerDay || 0,
+          feePerExtraKm: vehicle.extraFeeRule.feePerExtraKm || 0,
+          allowedHourLate: vehicle.extraFeeRule.allowedHourLate || 0,
+          feePerExtraHour: vehicle.extraFeeRule.feePerExtraHour || 0,
+          cleaningFee: vehicle.extraFeeRule.cleaningFee || 0,
+          smellRemovalFee: vehicle.extraFeeRule.smellRemovalFee || 0,
+          // Quan trọng: khởi tạo đúng giá trị cho phí sạc pin
+          batteryChargeFeePerPercent:
+            vehicle.extraFeeRule.batteryChargeFeePerPercent || 0,
+          applyBatteryChargeFee:
+            vehicle.extraFeeRule.applyBatteryChargeFee === true,
+          // Driver fees
+          driverFeePerDay: vehicle.extraFeeRule.driverFeePerDay || 0,
+          driverFeePerHour: vehicle.extraFeeRule.driverFeePerHour || 0,
+          hasDriverOption: vehicle.extraFeeRule.hasDriverOption === true,
+          hasHourlyRental: vehicle.extraFeeRule.hasHourlyRental === true,
+        });
       }
     }
   }, [vehicleDetail.data, form]);
-
-  // useEffect(() => {
-  //   if (vehicleDetail.data?.data) {
-  //     const vehicle = vehicleDetail.data.data;
-  //     const imageUrls =
-  //       vehicle.vehicleImages?.map(
-  //         (img: { imageUrl: string }) => img.imageUrl
-  //       ) || [];
-  //     const featureNames =
-  //       vehicle.vehicleFeatures?.map(
-  //         (feature: { name: string }) => feature.name
-  //       ) || [];
-  //     form.setFieldsValue({
-  //       brandId: vehicle.brandId,
-  //       modelId: vehicle.modelId,
-  //       brandName: vehicle.brandName,
-  //       modelName: vehicle.modelName,
-  //       thumb: vehicle.thumb,
-  //       numberSeat: vehicle.numberSeat?.toString(),
-  //       transmission: vehicle.transmission,
-  //       licensePlate: vehicle.licensePlate,
-  //       yearOfManufacture: vehicle.yearManufacture,
-  //       costPerDay: vehicle.costPerDay,
-  //       description: vehicle.description,
-  //       images: imageUrls,
-  //       vehicleFeatures: featureNames,
-  //       fuelType: vehicle.fuelType,
-  //       rentalRule: vehicle.penalty?.id,
-  //       isMultipleVehicles: false,
-  //       haveDriver: vehicle.haveDriver || "NO",
-  //       insuranceStatus: vehicle.insuranceStatus || "NO",
-  //       shipToAddress: vehicle.shipToAddress || "NO",
-  //     });
-  //     if (vehicle.vehicleType === "CAR" && vehicle.extraFeeRule) {
-  //       setExtraRule({ ...vehicle.extraFeeRule });
-  //     }
-  //   }
-  // }, [vehicleType, vehicleDetail.data, form]);
 
   const rentalRuleOptions = rentalRules.map((rule) => ({
     value: rule.id,
@@ -475,125 +425,12 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         shipToAddress: vehicle.shipToAddress || "NO",
       });
 
-      setIsActive(vehicle.status !== "UNAVAILABLE");
       setIsMultipleVehicles(false);
       if (type === VehicleType.CAR && vehicle.extraFeeRule) {
         setExtraRule({ ...vehicle.extraFeeRule });
       }
     }
   }, [vehicleDetail.data, form, brandOptions, modelOptions]);
-
-  // useEffect(() => {
-  //   if (vehicleDetail.data?.data) {
-  //     const vehicle = vehicleDetail.data.data;
-  //     const imageUrls =
-  //       vehicle.vehicleImages?.map(
-  //         (img: { imageUrl: string }) => img.imageUrl
-  //       ) || [];
-  //     const featureNames =
-  //       vehicle.vehicleFeatures?.map(
-  //         (feature: { name: string }) => feature.name
-  //       ) || [];
-  //     const brand = brandOptions.find(
-  //       (b: any) => b.label === vehicle.brandName
-  //     );
-  //     const model = modelOptions.find(
-  //       (m: any) => m.label === vehicle.modelName
-  //     );
-  //     form.setFieldsValue({
-  //       brandId: brand?.value,
-  //       modelId: model?.value,
-  //       brandName: vehicle.brandName,
-  //       modelName: vehicle.modelName,
-  //       thumb: vehicle.thumb,
-  //       numberSeat: vehicle.numberSeat?.toString(),
-  //       transmission: vehicle.transmission,
-  //       licensePlate: vehicle.licensePlate,
-  //       yearOfManufacture: vehicle.yearManufacture,
-  //       costPerDay: vehicle.costPerDay,
-  //       description: vehicle.description,
-  //       images: imageUrls,
-  //       vehicleFeatures: featureNames,
-  //       fuelType: vehicle.fuelType,
-  //       rentalRule: vehicle.penalty?.id,
-  //       isMultipleVehicles: false,
-  //       haveDriver: vehicle.haveDriver || "NO",
-  //       insuranceStatus: vehicle.insuranceStatus || "NO",
-  //       shipToAddress: vehicle.shipToAddress || "NO",
-  //     });
-  //   }
-  // }, [vehicleType, vehicleDetail.data, form, brandOptions, modelOptions]);
-
-  // useEffect(() => {
-  //   if (vehicleDetail.data?.data) {
-  //     const vehicle = vehicleDetail.data.data;
-  //     const allImages =
-  //       vehicle.vehicleImages?.map(
-  //         (img: { imageUrl: string }) => img.imageUrl
-  //       ) || [];
-
-  //     // Tách ảnh xe và ảnh giấy tờ dựa trên loại xe
-  //     let vehicleImages, documentImage;
-
-  //     if (vehicleType === VehicleType.BICYCLE) {
-  //       // Xe đạp: tất cả ảnh đều là ảnh xe
-  //       vehicleImages = allImages.slice(0, 4);
-  //       documentImage = "";
-  //     } else {
-  //       // Ô tô/xe máy: 4 ảnh đầu là ảnh xe, ảnh thứ 5 là ảnh giấy tờ
-  //       vehicleImages = allImages.slice(0, 4);
-  //       documentImage = allImages[4] || "";
-  //     }
-
-  //     const featureNames =
-  //       vehicle.vehicleFeatures?.map(
-  //         (feature: { name: string }) => feature.name
-  //       ) || [];
-  //     const brand = brandOptions.find(
-  //       (b: any) => b.label === vehicle.brandName
-  //     );
-  //     const model = modelOptions.find(
-  //       (m: any) => m.label === vehicle.modelName
-  //     );
-  //     form.setFieldsValue({
-  //       brandId: brand?.value,
-  //       modelId: model?.value,
-  //       brandName: vehicle.brandName,
-  //       modelName: vehicle.modelName,
-  //       thumb: vehicle.thumb,
-  //       numberSeat: vehicle.numberSeat?.toString(),
-  //       transmission: vehicle.transmission,
-  //       licensePlate: vehicle.licensePlate,
-  //       yearOfManufacture: vehicle.yearManufacture,
-  //       costPerDay: vehicle.costPerDay,
-  //       description: vehicle.description,
-  //       images: vehicleImages,
-  //       documents: documentImage, // Sẽ là "" cho xe đạp
-  //       vehicleFeatures: featureNames,
-  //       fuelType: vehicle.fuelType,
-  //       rentalRule: vehicle.penalty?.id,
-  //       isMultipleVehicles: false,
-  //       haveDriver: vehicle.haveDriver || "NO",
-  //       insuranceStatus: vehicle.insuranceStatus || "NO",
-  //       shipToAddress: vehicle.shipToAddress || "NO",
-  //     });
-  //   }
-  // }, [vehicleType, vehicleDetail.data, form, brandOptions, modelOptions]);
-
-  // const handleVehicleTypeChange = (type: VehicleType) => {
-  //   setVehicleType(type);
-  //   if (type === VehicleType.MOTORBIKE) {
-  //     form.setFieldsValue({ numberSeat: undefined });
-  //   } else if (type === VehicleType.BICYCLE) {
-  //     form.setFieldsValue({
-  //       numberSeat: undefined,
-  //       licensePlate: undefined,
-  //       transmission: undefined,
-  //       vehicleFeatures: undefined,
-  //       fuelType: undefined,
-  //     });
-  //   }
-  // };
 
   const handleVehicleTypeChange = (type: VehicleType) => {
     setVehicleType(type);
@@ -741,8 +578,15 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
 
           let submitData;
 
+          // Log để kiểm tra extraRule trước khi submit
+          console.log("ExtraRule before submit:", extraRule);
+          console.log(
+            "Battery charge fee:",
+            extraRule.batteryChargeFeePerPercent
+          );
+          console.log("Apply battery charge:", extraRule.applyBatteryChargeFee);
+
           if (vehicleType === VehicleType.CAR) {
-            // Ô tô: có đầy đủ các field
             submitData = {
               ...baseSubmitData,
               brandId: values.brandId,
@@ -751,31 +595,37 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               haveDriver: values.haveDriver || "NO",
 
               // Extra fees cho ô tô
-              maxKmPerDay: extraRule.maxKmPerDay,
-              feePerExtraKm: extraRule.feePerExtraKm,
-              allowedHourLate: extraRule.allowedHourLate,
-              feePerExtraHour: extraRule.feePerExtraHour,
-              cleaningFee: extraRule.cleaningFee,
-              smellRemovalFee: extraRule.smellRemovalFee,
+              maxKmPerDay: extraRule.maxKmPerDay || 0,
+              feePerExtraKm: extraRule.feePerExtraKm || 0,
+              allowedHourLate: extraRule.allowedHourLate || 0,
+              feePerExtraHour: extraRule.feePerExtraHour || 0,
+              cleaningFee: extraRule.cleaningFee || 0,
+              smellRemovalFee: extraRule.smellRemovalFee || 0,
 
-              // Phí sạc pin cho xe điện
+              // Phí sạc pin - đảm bảo lấy từ extraRule
+              applyBatteryChargeFee:
+                values.fuelType === "ELECTRIC"
+                  ? Boolean(extraRule.applyBatteryChargeFee)
+                  : false,
               batteryChargeFeePerPercent:
                 values.fuelType === "ELECTRIC"
                   ? extraRule.batteryChargeFeePerPercent
-                  : null,
-              apply_batteryChargeFee:
-                values.fuelType === "ELECTRIC"
-                  ? extraRule.apply_batteryChargeFee
-                  : null,
+                  : 0,
 
               // Phí tài xế
               driverFeePerDay:
-                values.haveDriver === "YES" ? extraRule.driverFeePerDay : null,
+                values.haveDriver === "YES"
+                  ? extraRule.driverFeePerDay || 0
+                  : 0,
               driverFeePerHour:
-                values.haveDriver === "YES" ? extraRule.driverFeePerHour : null,
+                values.haveDriver === "YES"
+                  ? extraRule.driverFeePerHour || 0
+                  : 0,
               hasDriverOption: values.haveDriver === "YES",
               hasHourlyRental:
-                values.haveDriver === "YES" ? extraRule.hasHourlyRental : false,
+                values.haveDriver === "YES"
+                  ? Boolean(extraRule.hasHourlyRental)
+                  : false,
             };
           } else if (vehicleType === VehicleType.MOTORBIKE) {
             // Xe máy
@@ -1168,7 +1018,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                       onChange={(v) =>
                         setExtraRule((prev) => ({
                           ...prev,
-                          batteryChargeFeePerPercent: v ?? undefined,
+                          batteryChargeFeePerPercent: v ?? 0,
                         }))
                       }
                     />
@@ -1178,11 +1028,11 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                     className="md:col-span-1"
                   >
                     <Select
-                      value={extraRule.apply_batteryChargeFee}
+                      value={extraRule.applyBatteryChargeFee}
                       onChange={(v) =>
                         setExtraRule((prev) => ({
                           ...prev,
-                          apply_batteryChargeFee: v,
+                          applyBatteryChargeFee: v,
                         }))
                       }
                       options={[
@@ -1193,6 +1043,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                   </Form.Item>
                 </>
               )}
+
               {/* Only show driver fields if haveDriver is YES */}
               {form.getFieldValue("haveDriver") === "YES" && (
                 <>
@@ -1314,24 +1165,29 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         <div className="md:w-3/5">
           <Card
             title={
-              <div className="flex items-center gap-3 justify-between">
-                <div className="flex items-center gap-3">
-                  <span>Thông tin xe</span>
+              <div className="flex items-center gap-3">
+                <span>Thông tin xe</span>
+                {vehicleId && (
                   <Tag
-                    color={isActive ? "green" : "orange"}
+                    color={
+                      vehicleDetail.data?.data?.status === "PENDING"
+                        ? "orange"
+                        : vehicleDetail.data?.data?.status === "AVAILABLE"
+                        ? "green"
+                        : vehicleDetail.data?.data?.status === "SUSPENDED"
+                        ? "volcano"
+                        : "red"
+                    }
                     className="rounded-full px-3 py-1"
                   >
-                    {isActive ? "Đang hoạt động" : "Không hoạt động"}
+                    {vehicleDetail.data?.data?.status === "PENDING"
+                      ? "Chờ duyệt"
+                      : vehicleDetail.data?.data?.status === "AVAILABLE"
+                      ? "Đang hoạt động"
+                      : vehicleDetail.data?.data?.status === "SUSPENDED"
+                      ? "Tạm khóa"
+                      : "Không khả dụng"}
                   </Tag>
-                </div>
-                {vehicleId && (
-                  <Button
-                    danger={!isActive}
-                    onClick={() => setIsActive((prev) => !prev)}
-                    type="default"
-                  >
-                    {isActive ? "Ẩn xe" : "Hiện xe"}
-                  </Button>
                 )}
               </div>
             }

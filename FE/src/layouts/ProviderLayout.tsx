@@ -14,10 +14,49 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const currentPath = router.pathname;
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [providerProfile, , clearProviderProfile] = useLocalStorage(
     "user_profile",
     ""
   );
+
+  // User authentication storage hooks
+  useLocalStorage("access_token");
+  useLocalStorage("user_profile", "");
+
+  // Check role authorization
+  useEffect(() => {
+    const checkAuthorization = () => {
+      // Delay một chút để đảm bảo localStorage đã được update
+      setTimeout(() => {
+        const storedUser = localStorage.getItem("user_profile");
+
+        if (!storedUser) {
+          router.push("/");
+          return;
+        }
+
+        try {
+          const user = JSON.parse(storedUser);
+
+          if (user.role === "PROVIDER") {
+            setIsAuthorized(true);
+          } else {
+            router.push("/404");
+          }
+        } catch (error) {
+          console.error("Error parsing user profile:", error);
+          router.push("/404");
+        } finally {
+          setIsLoading(false);
+        }
+      }, 100); // Delay 100ms
+    };
+
+    checkAuthorization();
+  }, [router]);
 
   // Track screen size for mobile responsiveness
   const [isMobile, setIsMobile] = useState(false);
@@ -42,13 +81,26 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  // Show loading while checking authorization
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authorized, don't render anything (router will redirect)
+  if (!isAuthorized) {
+    return null;
+  }
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
-
-  // User authentication storage hooks
-  useLocalStorage("access_token");
-  useLocalStorage("user_profile", "");
 
   const menuGroups = [
     {

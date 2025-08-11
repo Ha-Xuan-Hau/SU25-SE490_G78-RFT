@@ -147,8 +147,28 @@ export function AuthPopup({
 
   const handleRegisterFlow = async () => {
     if (!isOtpSent) {
-      // Step 1: Send OTP
-      if (!validateForm(sendOtpSchema)) return;
+      // Step 1: Only validate email and send OTP
+      if (!formData.email) {
+        setErrors({ email: "Vui lòng nhập email" });
+        return;
+      }
+
+      // Validate only email
+      try {
+        sendOtpSchema.parse({ email: formData.email });
+        setErrors({});
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          const newErrors: Record<string, string> = {};
+          error.errors.forEach((err) => {
+            if (err.path) {
+              newErrors[err.path[0]] = err.message;
+            }
+          });
+          setErrors(newErrors);
+          return;
+        }
+      }
 
       setIsLoading(true);
       try {
@@ -165,36 +185,29 @@ export function AuthPopup({
       } finally {
         setIsLoading(false);
       }
-    } else if (!isOtpVerified) {
-      // Step 2: Verify OTP
+    } else {
+      // Step 2: Validate ALL fields and complete registration
       if (!formData.otp) {
         setErrors({ otp: "Vui lòng nhập mã OTP" });
         return;
       }
 
-      setIsLoading(true);
-      try {
-        const response = await verifyOtp(formData.email, formData.otp);
-        if (response === "OTP verified" || response.includes("verified")) {
-          setIsOtpVerified(true);
-          toast.success("Xác thực OTP thành công!");
-        } else {
-          throw new Error("OTP không hợp lệ");
-        }
-      } catch (err: any) {
-        const errorMessage =
-          err.response?.data?.message || "Mã OTP không hợp lệ";
-        setErrors({ otp: errorMessage });
-        toast.error(errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      // Step 3: Complete registration
+      // Now validate the entire form
       if (!validateForm(registerSchema)) return;
 
       setIsLoading(true);
       try {
+        // First verify OTP
+        const verifyResponse = await verifyOtp(formData.email, formData.otp);
+        if (
+          !verifyResponse ||
+          (!verifyResponse.includes("verified") &&
+            verifyResponse !== "OTP verified")
+        ) {
+          throw new Error("OTP không hợp lệ");
+        }
+
+        // Then complete registration
         const userData = {
           email: formData.email,
           password: formData.password,
@@ -226,7 +239,9 @@ export function AuthPopup({
         onClose();
       } catch (err: any) {
         const errorMessage =
-          err.response?.data?.message || "Có lỗi xảy ra khi đăng ký";
+          err.response?.data?.message ||
+          err.message ||
+          "Có lỗi xảy ra khi đăng ký";
         setErrors({ submit: errorMessage });
         toast.error(errorMessage);
       } finally {
@@ -351,7 +366,7 @@ export function AuthPopup({
   const renderRegisterForm = () => {
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Email field - always shown */}
+        {/* All registration fields */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Email <span className="text-red-500">*</span>
@@ -361,10 +376,9 @@ export function AuthPopup({
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            disabled={isOtpSent}
             className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
               errors.email ? "border-red-500" : "border-gray-300"
-            } ${isOtpSent ? "bg-gray-100" : ""}`}
+            }`}
             required
           />
           {errors.email && (
@@ -372,9 +386,118 @@ export function AuthPopup({
           )}
         </div>
 
-        {/* OTP field - shown after email is sent */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Số điện thoại <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={formData.phone}
+            onChange={handleInputChange}
+            className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+              errors.phone ? "border-red-500" : "border-gray-300"
+            }`}
+            required
+          />
+          {errors.phone && (
+            <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Địa chỉ <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="address"
+            value={formData.address}
+            onChange={handleInputChange}
+            className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+              errors.address ? "border-red-500" : "border-gray-300"
+            }`}
+            required
+          />
+          {errors.address && (
+            <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Mật khẩu <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
+                errors.password ? "border-red-500" : "border-gray-300"
+              }`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+          {errors.password && (
+            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+          )}
+          {!isOtpSent && (
+            <p className="mt-1 text-xs text-gray-500">
+              Mật khẩu phải có ít nhất 6 ký tự, bao gồm chữ hoa, chữ thường và
+              số
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Xác nhận mật khẩu <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
+                errors.confirmPassword ? "border-red-500" : "border-gray-300"
+              }`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+          {errors.confirmPassword && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.confirmPassword}
+            </p>
+          )}
+        </div>
+
+        {/* OTP field - shown after sending OTP */}
         {isOtpSent && (
-          <div>
+          <div className="border-t pt-4">
+            <div className="mb-2 p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-700 flex items-center">
+                <Mail size={16} className="mr-2" />
+                Mã OTP đã được gửi đến email {formData.email}
+              </p>
+            </div>
+
             <label className="block text-sm font-medium text-gray-700">
               Mã OTP <span className="text-red-500">*</span>
             </label>
@@ -390,141 +513,25 @@ export function AuthPopup({
                 }`}
                 placeholder="Nhập mã 6 số"
                 required
+                autoFocus
               />
               <button
                 type="button"
                 onClick={handleResendOtp}
                 disabled={!canResendOtp || isLoading}
-                className={`mt-1 px-3 py-2 text-sm rounded-md border ${
+                className={`mt-1 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
                   canResendOtp && !isLoading
                     ? "border-green-500 text-green-600 hover:bg-green-50"
-                    : "border-gray-300 text-gray-400 cursor-not-allowed"
+                    : "border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50"
                 }`}
               >
-                {otpTimer > 0 ? `${otpTimer}s` : "Gửi lại"}
+                {otpTimer > 0 ? `Gửi lại (${otpTimer}s)` : "Gửi lại OTP"}
               </button>
             </div>
             {errors.otp && (
               <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
             )}
-            <p className="mt-1 text-sm text-gray-500">
-              <Mail size={14} className="inline mr-1" />
-              Mã OTP đã được gửi đến email của bạn
-            </p>
           </div>
-        )}
-
-        {/* Other fields - shown after OTP is verified */}
-        {isOtpVerified && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Số điện thoại <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                  errors.phone ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Ví dụ: 0123456789"
-                required
-              />
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Địa chỉ <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                  errors.address ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Ví dụ: 123 Đường ABC, Quận XYZ, TP HCM"
-                required
-              />
-              {errors.address && (
-                <p className="mt-1 text-sm text-red-600">{errors.address}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Mật khẩu <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                    errors.password ? "border-red-500" : "border-gray-300"
-                  }`}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                Mật khẩu phải có ít nhất 6 ký tự, bao gồm chữ hoa, chữ thường và
-                số
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Xác nhận mật khẩu <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                    errors.confirmPassword
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={20} />
-                  ) : (
-                    <Eye size={20} />
-                  )}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
-          </>
         )}
 
         {errors.submit && (
@@ -536,21 +543,25 @@ export function AuthPopup({
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full rounded-md bg-primary py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-md bg-primary py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isLoading
             ? "Đang xử lý..."
             : !isOtpSent
             ? "Gửi mã OTP"
-            : !isOtpVerified
-            ? "Xác thực OTP"
             : "Hoàn tất đăng ký"}
         </button>
 
         <div className="text-center text-sm">
           <button
             type="button"
-            onClick={() => openAuthPopup("login")}
+            onClick={() => {
+              openAuthPopup("login");
+              // Reset states when switching to login
+              setIsOtpSent(false);
+              setOtpTimer(0);
+              setCanResendOtp(true);
+            }}
             className="text-dark hover:text-primary transition duration-300"
           >
             Đã có tài khoản? Đăng nhập

@@ -51,6 +51,7 @@ public class VehicleRentCreateDTO {
     private Integer cleaningFee;
     private Integer smellRemovalFee;
     private Integer batteryChargeFeePerPercent;
+    private Boolean applyBatteryChargeFee;
     private Integer driverFeePerDay;
     private Boolean hasDriverOption;
     private Integer driverFeePerHour;

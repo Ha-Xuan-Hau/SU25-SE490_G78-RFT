@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { debounce } from "lodash";
 
 // Icons removed for cleaner UI
 import {
@@ -15,6 +16,7 @@ import {
   Divider,
   Modal,
   Checkbox,
+  AutoComplete,
 } from "antd";
 import Image from "next/image";
 import dayjs, { Dayjs } from "dayjs";
@@ -191,6 +193,21 @@ const BookingPage: React.FC = () => {
   const [vehicleAvailabilityStatus, setVehicleAvailabilityStatus] = useState<{
     [key: string]: boolean;
   }>({});
+
+  // State cho tính khoảng cách
+  const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
+  const [isCalculatingDistance, setIsCalculatingDistance] =
+    useState<boolean>(false);
+  const [distanceError, setDistanceError] = useState<string>("");
+  const [addressSuggestions, setAddressSuggestions] = useState<
+    Array<{
+      value: string;
+      label: string;
+      position: { lat: number; lng: number };
+    }>
+  >([]);
+  const [addressInputValue, setAddressInputValue] = useState<string>("");
+  const deliveryRadius = vehicle?.deliveryRadius ?? 0;
 
   const user = useUserValue() as User;
 
@@ -803,7 +820,119 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  // NEW: Xử lý thay đổi thời gian
+  // Function tính khoảng cách giao xe
+  const calculateDeliveryDistance = async (customerAddress: string) => {
+    if (!customerAddress || costGetCar !== 1) {
+      setDeliveryDistance(null);
+      setDistanceError("");
+      return;
+    }
+
+    try {
+      setIsCalculatingDistance(true);
+      setDistanceError("");
+
+      const officeAddress =
+        vehicle?.address ||
+        (multiVehicles.length > 0 && multiVehicles[0].address) ||
+        "Thạch Hòa, Thạch Thất, Hà Nội";
+
+      // Lấy tọa độ từ HERE Geocoding API
+      const [officeCoords, customerCoords] = await Promise.all([
+        fetch(
+          `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(
+            officeAddress
+          )}&apiKey=${process.env.NEXT_PUBLIC_HERE_API_KEY}`
+        ).then((res) => res.json()),
+        fetch(
+          `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(
+            customerAddress
+          )}&apiKey=${process.env.NEXT_PUBLIC_HERE_API_KEY}`
+        ).then((res) => res.json()),
+      ]);
+
+      if (!officeCoords.items?.[0] || !customerCoords.items?.[0]) {
+        setDistanceError(
+          "Không thể xác định địa chỉ. Vui lòng nhập địa chỉ chi tiết hơn."
+        );
+        return;
+      }
+
+      const officeLat = officeCoords.items[0].position.lat;
+      const officeLng = officeCoords.items[0].position.lng;
+      const customerLat = customerCoords.items[0].position.lat;
+      const customerLng = customerCoords.items[0].position.lng;
+
+      // Tính khoảng cách thực tế qua HERE Routing API
+      const routeResponse = await fetch(
+        `https://router.hereapi.com/v8/routes?` +
+          new URLSearchParams({
+            transportMode: "car",
+            origin: `${officeLat},${officeLng}`,
+            destination: `${customerLat},${customerLng}`,
+            return: "summary",
+            apikey: process.env.NEXT_PUBLIC_HERE_API_KEY || "",
+          }).toString()
+      );
+
+      const routeData = await routeResponse.json();
+
+      if (routeData.routes?.[0]?.sections?.[0]?.summary?.length) {
+        const distanceInKm =
+          routeData.routes[0].sections[0].summary.length / 1000;
+        setDeliveryDistance(distanceInKm);
+
+        if (distanceInKm > deliveryRadius) {
+          setDistanceError(
+            `Khoảng cách giao xe ${distanceInKm.toFixed(
+              1
+            )}km. Chủ xe không hỗ trợ giao xe quá ${deliveryRadius}km.`
+          );
+        }
+      } else {
+        setDistanceError("Không thể tính khoảng cách. Vui lòng thử lại.");
+      }
+    } catch (error) {
+      console.error("Error calculating distance:", error);
+      setDistanceError("Lỗi khi tính khoảng cách. Vui lòng thử lại.");
+    } finally {
+      setIsCalculatingDistance(false);
+    }
+  };
+
+  // Function lấy gợi ý địa chỉ
+  const getAddressSuggestions = async (query: string) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://autocomplete.search.hereapi.com/v1/autocomplete?q=${encodeURIComponent(
+          query
+        )}&in=countryCode:VNM&apiKey=${process.env.NEXT_PUBLIC_HERE_API_KEY}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const suggestions = data.items.map((item: any) => ({
+        value: item.address.label,
+        label: item.address.label,
+        position: item.position,
+      }));
+
+      setAddressSuggestions(suggestions);
+    } catch (error) {
+      console.error("Error fetching address suggestions:", error);
+      setAddressSuggestions([]);
+    }
+  };
+
+  // Xử lý thay đổi thời gian
   const selectTimeSlots: RangePickerProps["onChange"] = async (value) => {
     if (value && value[0] && value[1]) {
       const startDate = value[0] as Dayjs;
@@ -875,31 +1004,6 @@ const BookingPage: React.FC = () => {
     // Tổng hợp giá cho nhiều xe (cộng từng xe)
     costPerDay = multiVehicles.reduce((sum, v) => sum + (v.costPerDay || 0), 0);
   }
-  // let subtotal = 0;
-  // if (rentalCalculation && hourlyRate > 0) {
-  //   if (vehicleIds.length === 1) {
-  //     subtotal =
-  //       calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay) *
-  //       selectedQuantity;
-  //   } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-  //     // Tính tổng giá cho từng xe
-  //     subtotal = multiVehicles.reduce((sum, v) => {
-  //       const rate = Math.round((v.costPerDay || 0) / 12);
-  //       return (
-  //         sum + calculateRentalPrice(rentalCalculation, rate, v.costPerDay || 0)
-  //       );
-  //     }, 0);
-  //   }
-  // } else {
-  //   if (vehicleIds.length === 1) {
-  //     subtotal = totalDays * costPerDay * selectedQuantity;
-  //   } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-  //     subtotal = multiVehicles.reduce(
-  //       (sum, v) => sum + totalDays * (v.costPerDay || 0),
-  //       0
-  //     );
-  //   }
-  // }
 
   let subtotal = 0;
   if (rentalCalculation && hourlyRate > 0) {
@@ -1104,6 +1208,40 @@ const BookingPage: React.FC = () => {
     vehicleIds.join(","),
   ]);
 
+  // Debounced version để tránh gọi API quá nhiều
+  const debouncedCalculateDistance = useMemo(
+    () => debounce(calculateDeliveryDistance, 1000), // Giảm từ 5000ms xuống 1000ms
+    [costGetCar, vehicle?.address, multiVehicles] // Thêm dependencies
+  );
+
+  // Debounced version
+  const debouncedGetAddressSuggestions = useMemo(
+    () => debounce(getAddressSuggestions, 500),
+    []
+  );
+
+  // Reset địa chỉ khi thay đổi costGetCar
+  useEffect(() => {
+    if (costGetCar === 0) {
+      setAddressInputValue("");
+      setAddressSuggestions([]);
+      setDeliveryDistance(null);
+      setDistanceError("");
+    }
+  }, [costGetCar]);
+
+  // Cleanup khi component unmount
+  useEffect(() => {
+    return () => {
+      if (debouncedCalculateDistance) {
+        debouncedCalculateDistance.cancel();
+      }
+      if (debouncedGetAddressSuggestions) {
+        debouncedGetAddressSuggestions.cancel();
+      }
+    };
+  }, [debouncedCalculateDistance, debouncedGetAddressSuggestions]);
+
   // Loading state
   if (loading) {
     return (
@@ -1161,7 +1299,13 @@ const BookingPage: React.FC = () => {
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 hover:border-blue-300"
                     }`}
-                    onClick={() => setCostGetCar(0)}
+                    onClick={() => {
+                      setCostGetCar(0);
+                      setDeliveryDistance(null);
+                      setDistanceError("");
+                      setAddressSuggestions([]); // Reset suggestions
+                      setAddressInputValue(""); // Reset input value
+                    }}
                   >
                     <div className="flex items-center mb-2">
                       <Radio checked={costGetCar === 0} />
@@ -1192,7 +1336,20 @@ const BookingPage: React.FC = () => {
                           ? "border-blue-500 bg-blue-50"
                           : "border-gray-200 hover:border-blue-300"
                       }`}
-                      onClick={() => setCostGetCar(1)}
+                      onClick={() => {
+                        setCostGetCar(1); // ĐÃ SỬA: Đổi từ 0 thành 1
+                        // Cancel pending calculations
+                        debouncedCalculateDistance.cancel();
+                        debouncedGetAddressSuggestions.cancel();
+                        // Reset all states
+                        setDeliveryDistance(null);
+                        setDistanceError("");
+                        setAddressSuggestions([]);
+                        setAddressInputValue("");
+                        setIsCalculatingDistance(false);
+                        // Clear form field
+                        form.setFieldValue("address", "");
+                      }}
                     >
                       <div className="flex items-center mb-2">
                         <Radio checked={costGetCar === 1} />
@@ -1228,13 +1385,101 @@ const BookingPage: React.FC = () => {
                           },
                         ]}
                       >
-                        <TextArea
-                          rows={3}
-                          placeholder="Nhập địa chỉ giao xe chi tiết (số nhà, tên đường, phường/xã, quận/huyện, thành phố)"
-                          className="resize-none text-base"
-                        />
+                        <AutoComplete
+                          value={addressInputValue}
+                          options={addressSuggestions}
+                          onSearch={(text) => {
+                            setAddressInputValue(text);
+                            debouncedGetAddressSuggestions(text);
+                            // Reset states khi đang search
+                            setDeliveryDistance(null);
+                            setDistanceError("");
+                          }}
+                          onSelect={(value) => {
+                            // Khi chọn từ gợi ý - tính ngay lập tức
+                            setAddressInputValue(value);
+                            form.setFieldsValue({ address: value });
+
+                            // Cancel debounced và tính ngay
+                            debouncedCalculateDistance.cancel();
+                            calculateDeliveryDistance(value); // Gọi trực tiếp, không qua debounce
+                          }}
+                          onChange={(value) => {
+                            setAddressInputValue(value);
+                            form.setFieldsValue({ address: value });
+
+                            if (!value || !value.trim()) {
+                              // Clear nếu empty
+                              debouncedCalculateDistance.cancel();
+                              setDeliveryDistance(null);
+                              setDistanceError("");
+                              setIsCalculatingDistance(false);
+                            } else {
+                              // THÊM DÒNG NÀY: Debounce tính toán khi user đang gõ
+                              debouncedCalculateDistance(value);
+                            }
+                          }}
+                          onBlur={() => {
+                            // Chỉ tính nếu chưa có kết quả và có giá trị
+                            const currentValue = addressInputValue;
+                            if (
+                              currentValue &&
+                              currentValue.trim() &&
+                              deliveryDistance === null &&
+                              !isCalculatingDistance
+                            ) {
+                              debouncedCalculateDistance.cancel();
+                              calculateDeliveryDistance(currentValue);
+                            }
+                          }}
+                        >
+                          <TextArea
+                            rows={3}
+                            placeholder="Nhập địa chỉ giao xe chi tiết (số nhà, tên đường, phường/xã, quận/huyện, thành phố)"
+                            className="resize-none text-base"
+                          />
+                        </AutoComplete>
                       </Form.Item>
                     </Form>
+
+                    {/* Hiển thị trạng thái tính khoảng cách */}
+                    {isCalculatingDistance && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="text-blue-600 text-sm flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span>Đang tính khoảng cách giao xe...</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hiển thị kết quả khoảng cách */}
+                    {deliveryDistance !== null &&
+                      !isCalculatingDistance &&
+                      deliveryDistance <= deliveryRadius && (
+                        <div className="mt-3 p-3 rounded-lg border bg-green-50 border-green-200">
+                          <div className="text-sm text-green-700">
+                            <div className="font-medium">
+                              Khoảng cách từ văn phòng:{" "}
+                              {deliveryDistance.toFixed(1)}km
+                            </div>
+                            <div className="text-xs mt-1">
+                              ✓ Hỗ trợ giao xe đến địa chỉ này
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Hiển thị lỗi */}
+                    {distanceError && !isCalculatingDistance && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="text-red-700 text-sm">
+                          <div className="font-medium flex items-start gap-2">
+                            <span className="text-red-500">⚠️</span>
+                            <span>{distanceError}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2095,23 +2340,52 @@ const BookingPage: React.FC = () => {
                     !!bufferConflictMessage ||
                     Object.values(vehicleAvailabilityStatus).some(
                       (available) => !available
-                    )
+                    ) ||
+                    (costGetCar === 1 && isCalculatingDistance) || // Disable khi đang tính
+                    (costGetCar === 1 &&
+                      (!addressInputValue ||
+                        addressInputValue.trim() === "")) || // Disable khi chưa nhập
+                    (costGetCar === 1 &&
+                      deliveryDistance === null &&
+                      addressInputValue.trim() !== "") || // Disable khi đã nhập nhưng chưa tính xong
+                    (costGetCar === 1 &&
+                      deliveryDistance !== null &&
+                      deliveryDistance > deliveryRadius) // Disable khi quá 10km
                   }
                 >
-                  {Object.values(vehicleAvailabilityStatus).some(
-                    (available) => !available
-                  )
+                  {isCalculatingDistance && costGetCar === 1
+                    ? "Đang kiểm tra khoảng cách..."
+                    : costGetCar === 1 &&
+                      (!addressInputValue || addressInputValue.trim() === "")
+                    ? "Vui lòng nhập địa chỉ giao xe"
+                    : costGetCar === 1 &&
+                      deliveryDistance === null &&
+                      addressInputValue.trim() !== ""
+                    ? "Đang xác định khoảng cách..." // Đã nhập nhưng chưa có kết quả
+                    : costGetCar === 1 &&
+                      deliveryDistance !== null &&
+                      deliveryDistance > deliveryRadius
+                    ? `Không hỗ trợ giao xe quá ${deliveryRadius}km`
+                    : Object.values(vehicleAvailabilityStatus).some(
+                        (available) => !available
+                      )
                     ? "Có xe đã được đặt"
+                    : bufferConflictMessage
+                    ? "Thời gian không khả dụng"
                     : "Đặt xe ngay"}
                 </Button>
 
+                {/* Hiển thị chi tiết lỗi bên dưới nút - chỉ khi có lỗi cụ thể */}
                 {(bufferConflictMessage ||
-                  Object.values(vehicleAvailabilityStatus).some(
-                    (available) => !available
-                  )) && (
+                  (costGetCar === 1 &&
+                    (!addressInputValue ||
+                      addressInputValue.trim() === ""))) && (
                   <div className="text-sm text-red-500 text-center mt-2">
                     {bufferConflictMessage ||
-                      "Vui lòng chọn lại xe hoặc thay đổi thời gian"}
+                      (costGetCar === 1 &&
+                      (!addressInputValue || addressInputValue.trim() === "")
+                        ? "Vui lòng nhập địa chỉ giao xe để tiếp tục"
+                        : "")}
                   </div>
                 )}
               </div>

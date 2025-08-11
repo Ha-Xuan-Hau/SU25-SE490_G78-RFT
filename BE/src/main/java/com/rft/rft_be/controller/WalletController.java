@@ -46,6 +46,7 @@ public class WalletController {
         return ResponseEntity.ok(walletService.updateWallet(dto));
     }
 
+    //sửa lại thành lấy biến động số dư
     @GetMapping("/withdrawals")
     public ResponseEntity<List<WalletTransactionDTO>> getWithdrawalsByUser(@RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -87,7 +88,6 @@ public class WalletController {
         walletService.cancelWithdrawalAsUser(id, userId);
         return ResponseEntity.ok().build();
     }
-
 
     //staff activities
     @GetMapping("/staff/withdrawals")

@@ -32,6 +32,7 @@ export interface Vehicle {
   minCancelHour?: number; // Minimum hours before cancellation allowed
   openTime?: string; // Opening time for the vehicle rental
   closeTime?: string; // Closing time for the vehicle rental
+  deliveryRadius?: number; // Delivery radius in kilometers
 
   penalty?: {
     id: string;
@@ -62,7 +63,7 @@ export interface Vehicle {
     cleaningFee?: number;
     smellRemovalFee?: number;
     batteryChargeFeePerPercent?: number;
-    apply_batteryChargeFee?: any;
+    applyBatteryChargeFee?: boolean;
     driverFeePerDay?: number;
     hasDriverOption?: boolean;
     driverFeePerHour?: number;

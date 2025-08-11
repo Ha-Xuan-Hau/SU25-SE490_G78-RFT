@@ -34,6 +34,25 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
     //          "WHERE v.user.id = :vehicleOwnerId AND c.status = :status")
     //   List<Contract> findByUserIdAndStatus(@Param("vehicleOwnerId") String vehicleOwnerId,
     //                                              @Param("status") Contract.Status status);
+    // Thêm các method mới cho thống kê
+    @Query("SELECT COUNT(c) FROM Contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId AND c.status = :status " +
+           "AND MONTH(c.createdAt) = MONTH(CURRENT_DATE) " +
+           "AND YEAR(c.createdAt) = YEAR(CURRENT_DATE)")
+    long countByProviderIdAndStatusInCurrentMonth(@Param("providerId") String providerId, 
+                                                 @Param("status") Contract.Status status);
+
+    @Query("SELECT COUNT(c) FROM Contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND MONTH(c.createdAt) = MONTH(CURRENT_DATE) " +
+           "AND YEAR(c.createdAt) = YEAR(CURRENT_DATE)")
+    long countByProviderIdInCurrentMonth(@Param("providerId") String providerId);
 
 //
 //    // Find all contracts by vehicle owner ID (all statuses)

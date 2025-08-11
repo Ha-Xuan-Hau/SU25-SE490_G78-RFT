@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
+import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
 import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
@@ -211,6 +212,14 @@ public class BookingServiceImpl implements BookingService {
         response.setDiscountAmount(totalDiscount);
         response.setPriceType(calculation.getPriceType());
         response.setRentalDuration(BookingCalculationUtils.formatRentalDuration(calculation));
+
+        if (vehicles != null && !vehicles.isEmpty()) {
+            List<VehicleForBookingDTO> vehicleDTOs = vehicles.stream()
+                    .map(vehicleMapper::mapToVehicleForBookingDTO)
+                    .collect(Collectors.toList());
+            response.setVehicles(vehicleDTOs);
+        }
+
         return response;
     }
 
@@ -520,6 +529,7 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
+    //tạo finalcontract
     @Override
     @Transactional
     public void returnVehicle(String bookingId, String token) {
@@ -543,6 +553,9 @@ public class BookingServiceImpl implements BookingService {
     public void completeBooking(String bookingId, String token,LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
         String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
+
+        //thoi gian tra xe: la luc nguoi dung tra xe
+        LocalDateTime returnedTime = booking.getUpdatedAt();
 
         if (booking.getStatus() != Booking.Status.RETURNED) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái RETURNED mới được hoàn tất.");
@@ -570,7 +583,7 @@ public class BookingServiceImpl implements BookingService {
             CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
                     .contractId(contract.getId())
 //                    .userId(currentUserId)
-                    .timeFinish(timeFinish)
+                    .timeFinish(returnedTime)
                     .costSettlement(costSettlement)
                     .note(note)
                     .build();

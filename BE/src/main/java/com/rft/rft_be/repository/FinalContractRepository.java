@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 public interface FinalContractRepository extends JpaRepository<FinalContract, String> {
 
@@ -55,4 +56,49 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
     LIMIT 1
 """)
     Optional<LocalDateTime> findReturnedAtByBookingId(@Param("bookingId") String bookingId);
+
+    // Thêm các method mới cho thống kê doanh thu
+    @Query("SELECT COALESCE(SUM(fc.costSettlement), 0) FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND MONTH(fc.timeFinish) = MONTH(CURRENT_DATE) " +
+           "AND YEAR(fc.timeFinish) = YEAR(CURRENT_DATE)")
+    BigDecimal sumRevenueByProviderInCurrentMonth(@Param("providerId") String providerId);
+
+    @Query("SELECT COUNT(fc) FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND MONTH(fc.timeFinish) = MONTH(CURRENT_DATE) " +
+           "AND YEAR(fc.timeFinish) = YEAR(CURRENT_DATE)")
+    long countFinalContractsByProviderInCurrentMonth(@Param("providerId") String providerId);
+
+    @Query("SELECT COALESCE(SUM(fc.costSettlement), 0) FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND MONTH(fc.timeFinish) = :month " +
+           "AND YEAR(fc.timeFinish) = :year")
+    BigDecimal sumRevenueByProviderAndMonth(@Param("providerId") String providerId, 
+                                           @Param("month") int month, 
+                                           @Param("year") int year);
+
+    @Query("SELECT COUNT(fc) FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND MONTH(fc.timeFinish) = :month " +
+           "AND YEAR(fc.timeFinish) = :year")
+    long countFinalContractsByProviderAndMonth(@Param("providerId") String providerId, 
+                                              @Param("month") int month, 
+                                              @Param("year") int year);
 }

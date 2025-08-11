@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
-import { VehicleRentalCard } from "@/components/VehicleRentalCard";
+import { VehicleRentalCard } from "@/components/vehicleRent/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { getUserBookings, getBookingDetail } from "@/apis/booking.api";
 import { getRatingByBookingAndUser, upUserRating } from "@/apis/booking.api";
@@ -10,7 +10,7 @@ import { BookingDetail } from "@/types/booking";
 import { showError, showSuccess } from "@/utils/toast.utils";
 import { Empty, Spin } from "antd";
 import RatingModal from "@/components/RatingModal";
-import VehicleSelectionModal from "@/components/VehicleSelectionModal";
+import VehicleSelectionModal from "@/components/vehicleRent/VehicleSelectionModal";
 
 // Vehicle type từ BookingDetail
 type Vehicle = BookingDetail["vehicles"][0];

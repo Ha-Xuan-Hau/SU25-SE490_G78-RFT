@@ -17,7 +17,7 @@ public class ExtraFeeRuleDTO {
     Integer cleaningFee;
     Integer smellRemovalFee;
     Integer batteryChargeFeePerPercent;
-    Boolean apply_batteryChargeFee;
+    Boolean applyBatteryChargeFee;
     Integer driverFeePerDay;
     Boolean hasDriverOption;
     Integer driverFeePerHour;

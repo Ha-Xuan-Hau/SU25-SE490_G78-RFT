@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUserState } from "@/recoils/user.state.js";
+import { useUserState } from "@/recoils/user.state";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
 import {
   Typography,

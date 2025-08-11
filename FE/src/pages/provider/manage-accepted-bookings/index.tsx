@@ -196,6 +196,37 @@ export default function ManageAcceptedBookings() {
   const isAllChecklistCompleted =
     Object.values(deliveryChecklist).every(Boolean);
 
+  const formatTimestamp = (
+    timestamp: number | string | number[] | undefined | null
+  ): string => {
+    if (!timestamp) return "";
+
+    if (Array.isArray(timestamp) && timestamp.length >= 5) {
+      const [year, month, day, hour, minute] = timestamp;
+      return `${day.toString().padStart(2, "0")}/${month
+        .toString()
+        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    if (typeof timestamp === "number" || typeof timestamp === "string") {
+      const date = new Date(
+        typeof timestamp === "number" ? timestamp * 1000 : timestamp
+      );
+      return `${date.getDate().toString().padStart(2, "0")}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${date.getFullYear()} ${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    return "";
+  };
+
   // Debug provider state and handle loading timeout
   useEffect(() => {
     console.log("Provider state:", provider);
@@ -771,7 +802,7 @@ export default function ManageAcceptedBookings() {
               onClick={() => showNoShowModal(booking.id)}
               className="w-full"
             >
-              Khách không xuất hiện?
+              Khách không nhận xe?
             </Button>
           );
         } else {
@@ -939,16 +970,16 @@ export default function ManageAcceptedBookings() {
       const payload = {
         costSettlement: values.costSettlement,
         note: values.note,
-        timeFinish: values.timeFinish
-          ? [
-              values.timeFinish.year(),
-              values.timeFinish.month() + 1,
-              values.timeFinish.date(),
-              values.timeFinish.hour(),
-              values.timeFinish.minute(),
-              values.timeFinish.second(),
-            ]
-          : undefined,
+        // timeFinish: values.timeFinish,
+        // ? [
+        //     values.timeFinish.year(),
+        //     values.timeFinish.month() + 1,
+        //     values.timeFinish.date(),
+        //     values.timeFinish.hour(),
+        //     values.timeFinish.minute(),
+        //     values.timeFinish.second(),
+        //   ]
+        // : undefined,
       };
       const res = (await updateBookingStatus(
         values.id,
@@ -993,11 +1024,11 @@ export default function ManageAcceptedBookings() {
       timeBookingStart: booking.timeBookingStart,
       timeBookingEnd: booking.timeBookingEnd,
       totalCost: booking.totalCost,
-      timeFinish: booking.updatedAt
-        ? dayjs(
-            `${booking.updatedAt[0]}-${booking.updatedAt[1]}-${booking.updatedAt[2]} ${booking.updatedAt[3]}:${booking.updatedAt[4]}:${booking.updatedAt[5]}`
-          )
-        : undefined,
+      timeFinish: formatTimestamp(booking.updatedAt),
+      // ? dayjs(
+      //     `${booking.updatedAt[0]}-${booking.updatedAt[1]}-${booking.updatedAt[2]} ${booking.updatedAt[3]}:${booking.updatedAt[4]}:${booking.updatedAt[5]}`
+      //   )
+      // : undefined,
       costSettlement: booking.totalCost,
     });
   };
@@ -1462,17 +1493,17 @@ export default function ManageAcceptedBookings() {
             <div className="col-span-2">
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item label="Tên khách hàng" name="userName">
-                  <Input disabled />
+                  <Input readOnly />
                 </Form.Item>
                 <Form.Item label="Số điện thoại" name="phoneNumber">
-                  <Input disabled />
+                  <Input readOnly />
                 </Form.Item>
                 <Form.Item label="Mã đặt xe" name="id">
-                  <Input disabled />
+                  <Input readOnly />
                 </Form.Item>
                 <Form.Item label="Tổng giá tiền thuê (VNĐ)" name="totalCost">
                   <InputNumber
-                    disabled
+                    readOnly
                     formatter={(value) =>
                       `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                     }
@@ -1481,36 +1512,29 @@ export default function ManageAcceptedBookings() {
                   />
                 </Form.Item>
                 <Form.Item label="Tên xe" name="vehicleThumb">
-                  <Input disabled />
+                  <Input readOnly />
                 </Form.Item>
                 <Form.Item label="Biển số xe" name="vehicleLicensePlate">
-                  <Input disabled />
+                  <Input readOnly />
                 </Form.Item>
               </div>
 
               <Form.Item label="Địa chỉ" name="address">
-                <Input.TextArea disabled rows={2} />
+                <Input.TextArea readOnly rows={2} />
               </Form.Item>
 
               <Divider>Thông tin tất toán</Divider>
 
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item label="Thời gian trả xe thực tế" name="timeFinish">
-                  <DatePicker
-                    format="DD-MM-YYYY HH:mm:ss"
-                    disabledDate={disabledDate}
-                    onChange={handleDays}
-                    className="w-full"
-                    placeholder="Chọn ngày trả xe"
-                    disabled
-                  />
+                  <Input readOnly value={form.getFieldValue("timeFinish")} />
                 </Form.Item>
                 <Form.Item
                   label="Giá trị kết toán hợp đồng (VNĐ)"
                   name="costSettlement"
                 >
                   <InputNumber
-                    disabled
+                    readOnly
                     formatter={(value) =>
                       `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                     }
@@ -1925,10 +1949,20 @@ export default function ManageAcceptedBookings() {
                       </div>
                       <div className="text-red-600">
                         <strong>Đã trễ:</strong>{" "}
-                        {Math.floor(
-                          (Date.now() - pickupTime.getTime()) / (1000 * 60)
-                        )}{" "}
-                        phút
+                        {(() => {
+                          const lateMs = Date.now() - pickupTime.getTime();
+                          const lateMinutes = Math.floor(lateMs / (1000 * 60));
+                          const days = Math.floor(lateMinutes / (60 * 24));
+                          const hours = Math.floor(
+                            (lateMinutes % (60 * 24)) / 60
+                          );
+                          const minutes = lateMinutes % 60;
+                          let result = "";
+                          if (days > 0) result += `${days} ngày `;
+                          if (hours > 0) result += `${hours} giờ `;
+                          result += `${minutes} phút`;
+                          return result.trim();
+                        })()}
                       </div>
                     </>
                   );

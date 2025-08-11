@@ -11,10 +11,11 @@ CREATE TABLE `users` (
   `date_of_birth` date DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` nvarchar(255) NOT NULL,
-  `status` enum('ACTIVE','INACTIVE') DEFAULT 'ACTIVE',
+  `status` enum('ACTIVE','INACTIVE','TEMP_BANNED') DEFAULT 'ACTIVE',
   `role` enum('USER', 'PROVIDER' ,'STAFF','ADMIN') DEFAULT 'USER',
   `open_time` datetime DEFAULT NULL,
   `close_time` datetime DEFAULT NULL,
+  `delivery_radius` INT DEFAULT NULL, -- km
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -339,16 +340,16 @@ CREATE TABLE `notifications` (
 USE demo_rent2;
 
 -- Insert sample users
-INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `profile_picture`, `date_of_birth`, `phone`, `address`, `status`, `role`, `created_at`, `updated_at`) VALUES
+INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `profile_picture`, `date_of_birth`, `phone`, `address`, `status`, `role`, `open_time`, `close_time`, `delivery_radius`, `created_at`, `updated_at`) VALUES
 -- Provider 1 (Car rental)
-('user_005', 'hauvs789@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Nguyễn Văn An', 'https://example.com/avatar1.jpg', '1985-03-15', '0912345678', '123 Đường Lê Lợi, Quận 1, TP.HCM', 'ACTIVE', 'ADMIN', '2024-01-15 09:30:00', '2025-07-01 14:20:00'),
+('user_005', 'hauvs789@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Nguyễn Văn An', 'https://example.com/avatar1.jpg', '1985-03-15', '0912345678', '123 Đường Lê Lợi, Quận 1, TP.HCM', 'ACTIVE', 'ADMIN', NULL, NULL, NULL, '2024-01-15 09:30:00', '2025-07-01 14:20:00'),
 -- Provider 1 (Car rental)
-('user_001', 'provider.cars@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Nguyễn Văn An', 'https://example.com/avatar1.jpg', '1985-03-15', '0912345678', '123 Đường Lê Lợi, Quận 1, TP.HCM', 'ACTIVE', 'PROVIDER', '2024-01-15 09:30:00', '2025-07-01 14:20:00'),
+('user_001', 'provider.cars@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Nguyễn Văn An', 'https://example.com/avatar1.jpg', '1985-03-15', '0912345678', '123 Đường Lê Lợi, Quận 1, TP.HCM', 'ACTIVE', 'PROVIDER','2024-01-15 00:00:00' ,'2024-01-15 20:30:00' , 10, '2024-01-15 09:30:00', '2025-07-01 14:20:00'),
 -- Provider 2 (Motorbike + Bicycle rental)
-('user_002', 'provider.bikes@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Trần Thị Bình', 'https://example.com/avatar2.jpg', '1990-07-22', '0987654321', '456 Đường Nguyễn Huệ, Quận 3, TP.HCM', 'ACTIVE', 'PROVIDER', '2024-02-20 10:45:00', '2025-07-02 16:30:00'),
+('user_002', 'provider.bikes@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Trần Thị Bình', 'https://example.com/avatar2.jpg', '1990-07-22', '0987654321', '456 Đường Nguyễn Huệ, Quận 3, TP.HCM', 'ACTIVE', 'PROVIDER', '2024-01-15 00:00:00' ,'2024-01-15 20:30:00', 5, '2024-02-20 10:45:00', '2025-07-02 16:30:00'),
 -- Regular user
-('user_003', 'customer@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Lê Văn Cường', 'https://example.com/avatar3.jpg', '1995-12-10', '0901234567', '789 Đường Võ Văn Tần, Quận 5, TP.HCM', 'ACTIVE', 'USER', '2024-05-10 13:15:00', '2025-07-03 11:45:00'),
-('user_004', 'customer2@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Lê Xuân Hường', 'https://example.com/avatar3.jpg', '1995-12-10', '0901234567', '789 Đường Võ Văn Tần, Quận 5, TP.HCM', 'ACTIVE', 'USER', '2024-05-10 13:15:00', '2025-07-03 11:45:00');
+('user_003', 'customer@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Lê Văn Cường', 'https://example.com/avatar3.jpg', '1995-12-10', '0901234567', '789 Đường Võ Văn Tần, Quận 5, TP.HCM', 'ACTIVE', 'USER', NULL, NULL, NULL, '2024-05-10 13:15:00', '2025-07-03 11:45:00'),
+('user_004', 'customer2@gmail.com', '$2a$10$MXEx0gn5RbPIJCvVFC0JPulYL08jqAWj3VSnRaJ08HyccxUheRB6e', 'Lê Xuân Hường', 'https://example.com/avatar3.jpg', '1995-12-10', '0901234567', '789 Đường Võ Văn Tần, Quận 5, TP.HCM', 'ACTIVE', 'USER', NULL, NULL, NULL, '2024-05-10 13:15:00', '2025-07-03 11:45:00');
 -- Insert user vehicle registrations
 INSERT INTO `user_register_vehicle` (`id`, `user_id`, `vehicle_type`) VALUES
 ('reg_001', 'user_001', 'CAR'),
@@ -967,81 +968,6 @@ INSERT INTO vehicles (
   1, 150000.00, 'PENDING',
   'Xe đạp trợ lực Yamaha', 0, 0,
   '2025-08-04 15:29:35', '2025-08-04 15:29:35'
-);
-
-
-
-INSERT INTO bookings (
-    id, user_id, phone_number, address,
-    time_booking_start, time_booking_end,
-    code_transaction, time_transaction,
-    total_cost, status,
-    penalty_type, penalty_value, min_cancel_hour,
-    coupon_id, created_at, updated_at
-) VALUES
--- Record 1
-('29a1ac50-1394-4489-aabe-d97b8e577e34', 'user_003', '0901234567', '456 Đường Nguyễn Huệ, Quận 3, Hồ Chí Minh',
- '2025-08-07 08:00:00', '2025-08-09 08:00:00',
- 'BOOK-EBE605AB', '2025-08-05 23:19:38',
- 120000.00, 'CANCELLED',
- 'FIXED', 0.00, 24,
- NULL, '2025-08-05 23:19:38', '2025-08-05 23:19:48'),
-
--- Record 2
-('b96814af-51f0-4355-a0e2-46b42fccd616', 'user_003', '0901234567', '456 Đường Nguyễn Huệ, Quận 3, Hồ Chí Minh',
- '2025-08-07 08:00:00', '2025-08-09 08:00:00',
- 'BOOK-AD25BB3C', '2025-08-05 23:19:14',
- 280000.00, 'CONFIRMED',
- 'FIXED', 50000.00, 24,
- NULL, '2025-08-05 23:19:14', '2025-08-05 23:19:15'),
-
--- Record 3
-('1fa47b37-9821-4e82-b63c-0602702e2f00', 'user_003', '0901234567', '456 Đường Nguyễn Huệ, Quận 3, Hồ Chí Minh',
- '2025-08-06 08:00:00', '2025-08-07 08:00:00',
- 'BOOK-C1E08FFC', '2025-08-05 23:05:28',
- 100000.00, 'CONFIRMED',
- 'FIXED', 50000.00, 24,
- NULL, '2025-08-05 23:05:28', '2025-08-05 23:05:34');
- 
- 
- 
- 
- INSERT INTO contracts (
-    id, booking_id, user_id, image,
-    status, cost_settlement,
-    created_at, updated_at
-) VALUES
--- Record 1
-('74c3081a-4185-4842-978e-3d54aa396fc5', '29a1ac50-1394-4489-aabe-d97b8e577e34', 'user_003', NULL,
- 'CANCELLED', NULL,
- '2025-08-05 23:19:39', '2025-08-05 23:19:48'),
-
--- Record 2
-('18a732fb-c587-4bc3-92fd-eeef748f30ac', 'b96814af-51f0-4355-a0e2-46b42fccd616', 'user_003', NULL,
- 'PROCESSING', NULL,
- '2025-08-05 23:19:15', '2025-08-05 23:19:15'),
-
--- Record 3
-('464eb474-2d93-4f7d-9d71-26dd3802201f', '1fa47b37-9821-4e82-b63c-0602702e2f00', 'user_003', NULL,
- 'PROCESSING', NULL,
- '2025-08-05 23:05:34', '2025-08-05 23:05:34');
- 
- 
- INSERT INTO final_contracts (
-    id, contract_id, user_id, image,
-    time_finish, cost_settlement, note,
-    created_at, updated_at
-) VALUES
-(
-    'eb815f40-823a-438f-953e-fe29aa29e8d2',
-    '74c3081a-4185-4842-978e-3d54aa396fc5',
-    NULL,
-    NULL,
-    '2025-08-05 23:19:48',
-    120000.00,
-    'Hủy bởi khách hàng. Lý do: Tôi muốn thêm/đổi mã giảm giá',
-    '2025-08-05 23:19:48',
-    '2025-08-05 23:19:48'
 );
 
 

@@ -116,6 +116,25 @@ export default function VehicleDetail() {
 
   const [documentsModalVisible, setDocumentsModalVisible] = useState(false);
 
+  // Reset dates khi component mount hoặc vehicle ID thay đổi
+  useEffect(() => {
+    // ALWAYS reset all date-related states when entering the page
+    setPickupDateTime("");
+    setReturnDateTime("");
+    setDates([] as never[]);
+    setValidationMessage("");
+    setBufferConflictMessage("");
+    setRentalCalculation(null);
+    setTotalPrice(vehicle?.costPerDay || 0);
+    setRentalDurationDays(1);
+    setAvailableQuantity(1);
+    setShowMultiBooking(false);
+    setAvailableVehicles([]);
+    setSelectedVehicleIds([]);
+
+    // Don't read from URL params - force user to select dates
+  }, [id]); // Only depend on id change
+
   // Hàm xử lý đặt nhiều xe
   const handleMultiBook = () => {
     if (user === null) {
@@ -246,11 +265,8 @@ export default function VehicleDetail() {
             user.result.driverLicenses.length === 0))
       ) {
         setIsModalCheckOpen(true);
-      } else if (vehicle?.id) {
-        console.log(
-          "Navigating from useEffect to booking page with vehicle ID:",
-          vehicle.id
-        );
+      } else if (vehicle?.id && pickupDateTime && returnDateTime) {
+        // Only navigate if dates are selected by user
         router.push({
           pathname: `/booking/${vehicle.id}`,
           query: {
@@ -271,26 +287,19 @@ export default function VehicleDetail() {
 
   // Format dates for DateRangePicker
   const formattedDates = useMemo(() => {
-    if (!dates) {
+    // Only use dates from state, not from URL
+    if (!dates || !Array.isArray(dates) || dates.length !== 2) {
       return null;
     }
 
-    if (Array.isArray(dates)) {
-      if (dates.length === 0) {
-        return null;
-      }
+    const startDate = dates[0] ? dayjs(dates[0]) : null;
+    const endDate = dates[1] ? dayjs(dates[1]) : null;
 
-      if (dates.length === 2) {
-        const startDate = dates[0] ? dayjs(dates[0]) : null;
-        const endDate = dates[1] ? dayjs(dates[1]) : null;
-
-        return [startDate, endDate] as [Dayjs | null, Dayjs | null];
-      }
-
+    if (!startDate?.isValid() || !endDate?.isValid()) {
       return null;
     }
 
-    return null;
+    return [startDate, endDate] as [Dayjs, Dayjs];
   }, [dates]);
 
   // Tạo disabledTime và disabledDate functions
@@ -729,7 +738,9 @@ export default function VehicleDetail() {
                     onChange={handleDateChange}
                     value={formattedDates}
                     placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                    allowClear={true} // Cho phép clear dates
                   />
+
                   {validationMessage && (
                     <p className="text-red-500 text-sm mt-1">
                       {validationMessage}
@@ -904,37 +915,45 @@ export default function VehicleDetail() {
                 )}
             </div>
 
-            {/* Vehicle features */}
-            <div className="py-6 sm:py-10 my-6 sm:my-10 border-y border-dark/10 dark:border-white/20 flex flex-col gap-6 sm:gap-10">
-              <h3 className="text-2xl sm:text-3xl font-semibold">Đặc điểm</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 sm:flex sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon icon={"mdi:car-shift-pattern"} width={20} height={20} />
-                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
-                    {vehicle?.transmission
-                      ? translateENtoVI(vehicle.transmission)
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon icon={"mdi:car-seat"} width={20} height={20} />
-                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
-                    {vehicle?.numberSeat
-                      ? `${vehicle.numberSeat} Ghế ngồi`
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon icon={"mdi:fuel"} width={20} height={20} />
-                  <p className="text-base sm:text-xl font-normal text-black dark:text-white">
-                    {vehicle?.fuelType ? translateENtoVI(vehicle.fuelType) : ""}
-                  </p>
+            {/* Vehicle features - Chỉ hiển thị khi không phải xe đạp */}
+            {vehicle?.vehicleType !== "BICYCLE" && (
+              <div className="py-6 sm:py-10 my-6 sm:my-10 border-t border-dark/10 dark:border-white/20 flex flex-col gap-6 sm:gap-10">
+                <h3 className="text-2xl sm:text-3xl font-semibold">Đặc điểm</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 sm:flex sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon
+                      icon={"mdi:car-shift-pattern"}
+                      width={20}
+                      height={20}
+                    />
+                    <p className="text-base sm:text-xl font-normal text-black dark:text-white">
+                      {vehicle?.transmission
+                        ? translateENtoVI(vehicle.transmission)
+                        : ""}
+                    </p>
+                  </div>
+                  {vehicle?.numberSeat && (
+                    <div className="flex items-center gap-2">
+                      <Icon icon={"mdi:car-seat"} width={20} height={20} />
+                      <p className="text-base sm:text-xl font-normal text-black dark:text-white">
+                        {vehicle.numberSeat} Ghế ngồi
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Icon icon={"mdi:fuel"} width={20} height={20} />
+                    <p className="text-base sm:text-xl font-normal text-black dark:text-white">
+                      {vehicle?.fuelType
+                        ? translateENtoVI(vehicle.fuelType)
+                        : ""}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Vehicle description */}
-            <div className="flex flex-col gap-4 sm:gap-6">
+            <div className="py-6 sm:py-10 my-6 sm:my-10 border-t border-dark/10 dark:border-white/20 flex flex-col gap-6 sm:gap-10">
               <h3 className="text-2xl sm:text-3xl font-semibold">Mô tả</h3>
               <div
                 className="text-dark dark:text-white text-base sm:text-lg leading-relaxed"
@@ -1240,7 +1259,7 @@ export default function VehicleDetail() {
                     </div>
                     <div className="text-gray-600 text-xs sm:text-sm mt-1">
                       Phụ phí phát sinh khi xe hoàn trả không đảm bảo vệ sinh
-                      (như vết bẩn, bụi, cát, sinh lầy...)
+                      (như vết bẩn, bụi, cát, sình lầy...)
                     </div>
                   </li>
                   <li>
@@ -1259,6 +1278,27 @@ export default function VehicleDetail() {
                       thuốc lá, thực phẩm nặng mùi...)
                     </div>
                   </li>
+
+                  {/* Thêm phí sạc pin cho xe điện */}
+                  {vehicle?.fuelType === "ELECTRIC" &&
+                    vehicle?.extraFeeRule?.apply_batteryChargeFee && (
+                      <li>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800 text-sm sm:text-base">
+                            Phí sạc pin
+                          </span>
+                          <span className="text-primary font-bold text-sm sm:text-base">
+                            {vehicle?.extraFeeRule?.batteryChargeFeePerPercent?.toLocaleString() ||
+                              "-"}
+                            đ/%
+                          </span>
+                        </div>
+                        <div className="text-gray-600 text-xs sm:text-sm mt-1">
+                          Khách thuê thanh toán phí sạc pin theo thực tế sử
+                          dụng. Phí tính theo % pin đã sử dụng
+                        </div>
+                      </li>
+                    )}
                 </ul>
               </div>
             )}
@@ -1518,7 +1558,7 @@ export default function VehicleDetail() {
                     </div>
                     <div className="text-gray-600 text-sm mt-1">
                       Phụ phí phát sinh khi xe hoàn trả không đảm bảo vệ sinh
-                      (như vết bẩn, bụi, cát, sinh lầy...)
+                      (như vết bẩn, bụi, cát, sình lầy...)
                     </div>
                   </li>
                   <li>
@@ -1537,6 +1577,27 @@ export default function VehicleDetail() {
                       thuốc lá, thực phẩm nặng mùi...)
                     </div>
                   </li>
+
+                  {/* Thêm phí sạc pin cho xe điện */}
+                  {vehicle?.fuelType === "ELECTRIC" &&
+                    vehicle?.extraFeeRule?.apply_batteryChargeFee && (
+                      <li>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800">
+                            Phí sạc pin
+                          </span>
+                          <span className="text-primary font-bold">
+                            {vehicle?.extraFeeRule?.batteryChargeFeePerPercent?.toLocaleString() ||
+                              "-"}
+                            đ/%
+                          </span>
+                        </div>
+                        <div className="text-gray-600 text-sm mt-1">
+                          Khách thuê thanh toán phí sạc pin theo thực tế sử
+                          dụng. Phí tính theo % pin đã sử dụng
+                        </div>
+                      </li>
+                    )}
                 </ul>
               </div>
             )}
