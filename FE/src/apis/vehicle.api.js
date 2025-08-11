@@ -12,7 +12,7 @@ export async function getAvailableVehicles() {
         const data = response.data;
         return Array.isArray(data) ? data : data.content || data.items || data.data || [];
     } catch (error) {
-        console.error("Error fetching vehicles:", error);
+        // console.error("Error fetching vehicles:", error);
         throw error;
     }
 }
@@ -27,7 +27,7 @@ export async function getVehiclesByTypeAndStatus(vehicleType, status) {
         const data = response.data;
         return Array.isArray(data) ? data : data.content || data.items || data.data || [];
     } catch (error) {
-        console.error(`Error fetching ${vehicleType} vehicles with status ${status}:`, error);
+        // console.error(`Error fetching ${vehicleType} vehicles with status ${status}:`, error);
         throw error;
     }
 }
@@ -42,7 +42,7 @@ export async function getVehicleById(vehicleId) {
 
         return data;
     } catch (error) {
-        console.error("Error fetching vehicle details:", error);
+        // console.error("Error fetching vehicle details:", error);
         throw error;
     }
 }
@@ -89,7 +89,7 @@ export async function createWithQuantity({ body, accessToken }) {
  */
 export async function basicSearchVehicles(params) {
     try {
-        console.log("Calling basic search API with params:", params);
+        // console.log("Calling basic search API with params:", params);
 
         const requestBody = {
             address: params.address || '',
@@ -116,10 +116,10 @@ export async function basicSearchVehicles(params) {
             data: requestBody,
         });
 
-        console.log("Basic search response:", data);
+        // console.log("Basic search response:", data);
         return data;
     } catch (error) {
-        console.error("Basic search error:", error);
+        // console.error("Basic search error:", error);
 
         if (error.response) {
             const errorMessage = error.response.data?.error || error.response.data?.message || "Lỗi từ server";
@@ -139,7 +139,7 @@ export async function basicSearchVehicles(params) {
  */
 export async function advancedSearchVehicles(params) {
     try {
-        console.log("Calling advanced search API with params:", params);
+        // console.log("Calling advanced search API with params:", params);
 
         const requestBody = {
             vehicleTypes: params.vehicleTypes || undefined,
@@ -177,10 +177,10 @@ export async function advancedSearchVehicles(params) {
             data: requestBody,
         });
 
-        console.log("Advanced search response:", data);
+        // console.log("Advanced search response:", data);
         return data;
     } catch (error) {
-        console.error("Advanced search error:", error);
+        // console.error("Advanced search error:", error);
 
         if (error.response) {
             const errorMessage = error.response.data?.error || error.response.data?.message || "Lỗi từ server";
@@ -257,7 +257,7 @@ export async function getBookedSlotById(vehicleId) {
             booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED'
         );
     } catch (error) {
-        console.error("Lỗi khi lấy booking data:", error);
+        // console.error("Lỗi khi lấy booking data:", error);
         // Fallback to old endpoint if new one fails
         try {
             const { data } = await apiClient.request({
@@ -274,7 +274,7 @@ export async function getBookedSlotById(vehicleId) {
                 status: 'CONFIRMED'
             }));
         } catch (fallbackError) {
-            console.error("Fallback cũng thất bại:", fallbackError);
+            // console.error("Fallback cũng thất bại:", fallbackError);
             return [];
         }
     }
@@ -295,7 +295,7 @@ export async function getAvailableThumbQuantity({ thumb, providerId, from, to })
         // data: { quantity: number }
         return data.quantity || 0;
     } catch (error) {
-        console.error("Error fetching available thumb quantity:", error);
+        // console.error("Error fetching available thumb quantity:", error);
         throw error;
     }
 }
@@ -316,7 +316,7 @@ export async function getAvailableThumbList({ thumb, providerId, from, to }) {
         // DTO
         return Array.isArray(data.vehicles) ? data.vehicles : data.content || data.items || data.data || [];
     } catch (error) {
-        console.error("Error fetching available thumb list:", error);
+        // console.error("Error fetching available thumb list:", error);
         throw error;
     }
 }

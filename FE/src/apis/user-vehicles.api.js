@@ -78,7 +78,7 @@ export async function getUserVehicleById(vehicleId) {
         });
         return response.data;
     } catch (error) {
-        console.error(`Lỗi khi lấy thông tin xe ${vehicleId}:`, error);
+        // console.error(`Lỗi khi lấy thông tin xe ${vehicleId}:`, error);
         throw error;
     }
 }
@@ -125,7 +125,7 @@ export async function getUserCars(
 
         return response.data;
     } catch (error) {
-        console.error("Lỗi khi lấy danh sách xe:", error);
+        // console.error("Lỗi khi lấy danh sách xe:", error);
         throw error;
     }
 }
@@ -173,7 +173,7 @@ export async function getUserMotorbike(
         // Response có cấu trúc ApiResponseDTO<PageResponseDTO<VehicleDTO>>
         return response.data;
     } catch (error) {
-        console.error("Lỗi khi lấy danh sách xe:", error);
+        // console.error("Lỗi khi lấy danh sách xe:", error);
         throw error;
     }
 }
@@ -220,7 +220,7 @@ export async function getUserBicycles(
         // Response có cấu trúc ApiResponseDTO<PageResponseDTO<VehicleDTO>>
         return response.data;
     } catch (error) {
-        console.error("Lỗi khi lấy danh sách xe:", error);
+        // console.error("Lỗi khi lấy danh sách xe:", error);
         throw error;
     }
 }
