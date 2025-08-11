@@ -1,8 +1,6 @@
 package com.rft.rft_be.repository;
 
 import com.rft.rft_be.entity.Booking;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -128,9 +126,21 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
             @Param("timeBookingEnd") LocalDateTime timeBookingEnd,
             @Param("statusList") List<Booking.Status> statusList
     );
-    
+
     // Admin methods
     Long countByUserId(String userId);
-    
+
     Long countByUserIdAndStatus(String userId, Booking.Status status);
+
+  @Query("""
+      SELECT COUNT(b) > 0 FROM Booking b
+      JOIN b.bookingDetails bd
+      WHERE bd.vehicle.id = :vehicleId
+        AND b.timeBookingEnd > :now
+        AND b.status IN ('UNPAID','PENDING','CONFIRMED','DELIVERED','RECEIVED_BY_CUSTOMER')
+      """)
+  boolean existsActiveOrFutureByVehicleId(
+          @Param("vehicleId") String vehicleId,
+          @Param("now") LocalDateTime now
+  );
 }
