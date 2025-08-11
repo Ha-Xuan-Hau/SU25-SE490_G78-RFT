@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
 import com.rft.rft_be.entity.*;
@@ -17,6 +18,9 @@ import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.*;
 import com.rft.rft_be.service.Notification.NotificationService;
 import com.rft.rft_be.util.JwtUtil;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -413,13 +417,13 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public List<BookingDTO> getBookingsByProviderIdAndStatus(String providerId, String status) {
+    public Page<BookingDTO> getBookingsByProviderIdAndStatus(String providerId, String status, int page) {
+        if (page < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page must be >= 0");
         try {
             Booking.Status bookingStatus = Booking.Status.valueOf(status.toUpperCase());
-            List<Booking> bookings = bookingRepository.findByProviderIdAndStatus(providerId, bookingStatus);
-            return bookings.stream()
-                    .map(bookingMapper::toDTO)
-                    .collect(Collectors.toList());
+            Pageable pageable = PageRequest.of(page, 10);
+            Page<Booking> bookingsPage = bookingRepository.findByProviderIdAndStatus(providerId, bookingStatus, pageable);
+            return bookingsPage.map(bookingMapper::toDTO);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid booking status: " + status);
         }
@@ -550,7 +554,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public void completeBooking(String bookingId, String token,LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
+    public void completeBooking(String bookingId, String token, LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
         String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
@@ -596,6 +600,30 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         notificationService.notifyBookingCompleted(booking.getUser().getId(), booking.getId());
+
+        // RENTER: unfinished từ bookings (≠ COMPLETED/CANCELLED)
+        User renter = booking.getUser();
+        if (renter != null && renter.getStatus() == User.Status.TEMP_BANNED) {
+            long renterUnfinished = bookingRepository.countUnfinishedByUserId(
+                    renter.getId(), Booking.Status.COMPLETED, Booking.Status.CANCELLED);
+            if (renterUnfinished == 0) {
+                renter.setStatus(User.Status.INACTIVE);
+                userRepository.save(renter);
+            }
+        }
+
+// PROVIDER: unfinished từ contracts (status = RENTING)
+        if (!booking.getBookingDetails().isEmpty()) {
+            User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
+            if (provider != null && provider.getStatus() == User.Status.TEMP_BANNED) {
+                long providerRenting = contractRepository.countByProviderIdAndStatus(
+                        provider.getId(), Contract.Status.RENTING);
+                if (providerRenting == 0) {
+                    provider.setStatus(User.Status.INACTIVE);
+                    userRepository.save(provider);
+                }
+            }
+        }
     }
 
     @Override
@@ -746,6 +774,51 @@ public class BookingServiceImpl implements BookingService {
                     : ""));
         }
 
+        User renter = booking.getUser();
+        if (renter != null) {
+            long renterUnfinished = bookingRepository.countUnfinishedByUserId(
+                    renter.getId(),
+                    Booking.Status.COMPLETED,
+                    Booking.Status.CANCELLED
+            );
+
+            if (renterUnfinished > 0) {
+                // Có đơn đang hoạt động -> bảo đảm TEMP_BANNED
+                if (renter.getStatus() != User.Status.TEMP_BANNED) {
+                    renter.setStatus(User.Status.TEMP_BANNED);
+                    userRepository.save(renter);
+                }
+            } else {
+                // Không còn đơn unfinished -> nếu đang TEMP_BANNED thì đưa về INACTIVE
+                if (renter.getStatus() == User.Status.TEMP_BANNED) {
+                    renter.setStatus(User.Status.INACTIVE);
+                    userRepository.save(renter);
+                }
+            }
+        }
+
+// PROVIDER: unfinished = các contract đang RENTING
+        if (!booking.getBookingDetails().isEmpty()) {
+            User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
+            if (provider != null) {
+                int rentingCount = contractRepository
+                        .findByProviderIdAndStatus(provider.getId(), Contract.Status.RENTING)
+                        .size();
+
+                if (rentingCount > 0) {
+                    if (provider.getStatus() != User.Status.TEMP_BANNED) {
+                        provider.setStatus(User.Status.TEMP_BANNED);
+                        userRepository.save(provider);
+                    }
+                } else {
+                    if (provider.getStatus() == User.Status.TEMP_BANNED) {
+                        provider.setStatus(User.Status.INACTIVE);
+                        userRepository.save(provider);
+                    }
+                }
+            }
+        }
+
         // 6. Trả về response
         return CancelBookingResponseDTO.builder()
                 .bookingId(bookingId)
@@ -758,7 +831,6 @@ public class BookingServiceImpl implements BookingService {
                 .message("Hủy đơn đặt xe thành công")
                 .build();
     }
-
 
 
     public CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason) {
@@ -898,13 +970,13 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found: " + bookingId));
     }
 
-   // public String extractUserIdFromToken(String token) {
-      //  try {
-      //      return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
-     //   } catch (ParseException e) {
-     //       throw new RuntimeException("Không thể lấy userId từ token", e);
+    // public String extractUserIdFromToken(String token) {
+    //  try {
+    //      return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
+    //   } catch (ParseException e) {
+    //       throw new RuntimeException("Không thể lấy userId từ token", e);
     //    }
-  //  }
+    //  }
 
     @Override
     @Transactional
@@ -947,10 +1019,11 @@ public class BookingServiceImpl implements BookingService {
         bookingRepository.save(booking);
         notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
 
+        User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
 
         Contract contract = Contract.builder()
                 .booking(booking)
-                .user(booking.getUser())
+                .user(provider)
                 .status(Contract.Status.PROCESSING)
                 .build();
         contractRepository.save(contract);
@@ -969,5 +1042,19 @@ public class BookingServiceImpl implements BookingService {
 
             return available;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countOverdueDeliveryByProvider(String providerId, List<Booking.Status> statuses) {
+        List<Booking.Status> effective = (statuses == null || statuses.isEmpty())
+                ? java.util.List.of(Booking.Status.CONFIRMED) // mặc định: chỉ CONFIRMED
+                : statuses;
+
+        return contractRepository.countProviderOverdueBookings(
+                providerId,
+                LocalDateTime.now(), // không dùng Clock
+                effective
+        );
     }
 }

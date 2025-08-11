@@ -1,7 +1,10 @@
 package com.rft.rft_be.repository;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
+import com.rft.rft_be.entity.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +29,19 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
 
     @Query("SELECT c FROM Contract c WHERE c.user.id = :userId AND c.status = :status")
     List<Contract> findByUserIdAndStatus(@Param("userId") String userId, @Param("status") Contract.Status status);
+
+    @Query("""
+        select count(b)
+        from Contract c
+        join c.booking b
+        where c.user.id = :providerId
+          and b.timeBookingStart is not null
+          and b.timeBookingStart < :now
+          and b.status in :statuses
+    """)
+    long countProviderOverdueBookings(@Param("providerId") String providerId,
+                                      @Param("now") LocalDateTime now,
+                                      @Param("statuses") Collection<Booking.Status> statuses);
 
 
     //   @Query("SELECT c FROM Contract c " +
@@ -105,5 +121,16 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
             """)
     List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId,
                                              @Param("status") Contract.Status status);
+
+    @Query("""
+    select count(distinct c)
+    from Contract c
+    join BookingDetail bd on bd.booking.id = c.booking.id
+    join Vehicle v on bd.vehicle.id = v.id
+    join User u on v.user.id = u.id
+    where u.id = :providerId and c.status = :status
+""")
+    long countByProviderIdAndStatus(@Param("providerId") String providerId,
+                                    @Param("status") Contract.Status status);
 }
 

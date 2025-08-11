@@ -96,18 +96,29 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     """)
     List<Booking> findByProviderId(@Param("providerId") String providerId);
 
-    @Query("""
-    SELECT DISTINCT b FROM Booking b
-    JOIN b.bookingDetails bd
-    JOIN bd.vehicle v
-    JOIN v.user u
-    WHERE u.id = :providerId AND b.status = :status
-    ORDER BY COALESCE(b.updatedAt, b.createdAt) DESC
-""")
-    List<Booking> findByProviderIdAndStatus(
+    @Query(
+            value = """
+            SELECT DISTINCT b FROM Booking b
+            JOIN b.bookingDetails bd
+            JOIN bd.vehicle v
+            JOIN v.user u
+            WHERE u.id = :providerId AND b.status = :status
+            ORDER BY COALESCE(b.updatedAt, b.createdAt) DESC
+        """,
+            countQuery = """
+            SELECT COUNT(DISTINCT b) FROM Booking b
+            JOIN b.bookingDetails bd
+            JOIN bd.vehicle v
+            JOIN v.user u
+            WHERE u.id = :providerId AND b.status = :status
+        """
+    )
+    Page<Booking> findByProviderIdAndStatus(
             @Param("providerId") String providerId,
-            @Param("status") Booking.Status status
+            @Param("status") Booking.Status status,
+            Pageable pageable
     );
+
 
     @Query("""
         SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
@@ -131,6 +142,19 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     Long countByUserId(String userId);
 
     Long countByUserIdAndStatus(String userId, Booking.Status status);
+
+
+    @Query("""
+    select count(b) from Booking b
+    where b.user.id = :userId
+      and b.status <> :completed
+      and b.status <> :cancelled
+""")
+    long countUnfinishedByUserId(@Param("userId") String userId,
+                                 @Param("completed") Booking.Status completed,
+                                 @Param("cancelled") Booking.Status cancelled);
+
+
 
   @Query("""
       SELECT COUNT(b) > 0 FROM Booking b
