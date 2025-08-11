@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { Modal, Form, Input, InputNumber, Button, Select, Card } from "antd";
 import type { Vehicle } from "@/types/vehicle";
-import motorbikeBrands from "../data/motorbike-brand.json";
+import motorbikeBrands from "../../data/motorbike-brand.json";
 
 type VehicleWithExtra = Vehicle & {
   insuranceStatus?: string;
@@ -84,7 +84,7 @@ const transmissionOptions = [
 
 import { useState } from "react";
 import { useUserState } from "@/recoils/user.state";
-import { getPenaltiesByUserId } from "../apis/provider.api";
+import { getPenaltiesByUserId } from "../../apis/provider.api";
 
 const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
   open,

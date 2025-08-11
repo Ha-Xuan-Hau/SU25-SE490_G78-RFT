@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Form, Input, Button, Card, Tag } from "antd";
-import { UploadMultipleImage } from "./UploadMultipleImage";
-import { UploadSingleImage } from "./UploadSingleImage";
+import { UploadMultipleImage } from "../uploadImage/UploadMultipleImage";
+import { UploadSingleImage } from "../uploadImage/UploadSingleImage";
 
 interface EditSingleVehicleInGroupModalProps {
   open: boolean;

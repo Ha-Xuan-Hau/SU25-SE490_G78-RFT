@@ -1,10 +1,10 @@
 // RegisterDriverModal.tsx
 import React, { useState } from "react";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { useUserState } from "@/recoils/user.state.js";
+import { useUserState } from "@/recoils/user.state";
 import { useMutation } from "@tanstack/react-query";
 import { toast, ToastPosition } from "react-toastify";
-import { UploadImage } from "@/components/UploadImage";
+import { UploadImage } from "@/components/uploadImage/UploadImage";
 import axios from "axios";
 import { Button, Form, notification, Modal, Input } from "antd";
 
@@ -19,7 +19,16 @@ interface DriverFormValues {
   licenseNumber: string | number;
   classField: string;
   image: string;
-  [key: string]: any; // Cho phép các trường khác nếu cần
+  [key: string]: any;
+}
+
+// Interface cho driver license
+interface DriverLicense {
+  _id?: string;
+  id?: string;
+  licenseNumber?: string;
+  classField?: string;
+  image?: string;
 }
 
 function RegisterDriverModal({
@@ -33,12 +42,17 @@ function RegisterDriverModal({
   const [accessToken, setAccessToken, clearAccessToken] =
     useLocalStorage("access_token");
 
+  // Lấy driver license từ user (không qua result)
+  const driverLicense = (user as any)?.driverLicenses;
+
   const onSubmit = async (values: DriverFormValues) => {
     setLoading(true);
-    const { licenseNumber, classField, image } = values; // lấy image từ values
+    const { licenseNumber, classField, image } = values;
 
     try {
-      const did = user?.result?.driverLicenses?._id;
+      // Lấy ID của driver license (nếu có)
+      const did = driverLicense?._id || driverLicense?.id;
+
       const response = await axios({
         method: did ? "put" : "post",
         url: did
@@ -47,28 +61,53 @@ function RegisterDriverModal({
         data: {
           licenseNumber,
           classField,
-          image, // gửi image lên backend
+          image,
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
-          withCredentials: true,
         },
       });
 
       console.log(response.data);
-      setProfile({ ...response.data });
+
+      // Update user state với driver license mới
+      if (response.data) {
+        setUser((prevUser) => {
+          if (!prevUser) return prevUser;
+          return {
+            ...prevUser,
+            driverLicenses: response.data,
+          };
+        });
+
+        // Update localStorage
+        const updatedUser = {
+          ...user,
+          driverLicenses: response.data,
+        };
+        localStorage.setItem("user_profile", JSON.stringify(updatedUser));
+      }
+
       notification.success({
-        message: user?.result?.driverLicenses
-          ? "Cập nhật thành công"
-          : "Đăng ký thành công",
+        message: driverLicense ? "Cập nhật thành công" : "Đăng ký thành công",
       });
+
       handleCancelRegisterDriver();
-      window.location.reload();
+
+      // Reload page sau một chút delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error: any) {
-      toast.error(error.response?.data?.errors?.[0]?.msg || "Đã xảy ra lỗi", {
-        position: "top-center" as ToastPosition,
-      });
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.errors?.[0]?.msg ||
+          "Đã xảy ra lỗi",
+        {
+          position: "top-center" as ToastPosition,
+        }
+      );
     } finally {
       setLoading(false);
     }
@@ -76,84 +115,97 @@ function RegisterDriverModal({
 
   const { mutate, isPending } = useMutation<void, Error, DriverFormValues>({
     mutationFn: onSubmit,
-    onMutate: () => {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-      }, 1000);
-    },
   });
 
   return (
     <Modal
+      title={
+        <p className="text-center text-2xl font-bold">
+          {driverLicense ? "Cập nhật GPLX" : "Đăng ký GPLX"}
+        </p>
+      }
       open={openRegisterDriver}
       onCancel={handleCancelRegisterDriver}
       footer={[
+        <Button key="cancel" onClick={handleCancelRegisterDriver}>
+          Hủy
+        </Button>,
         <Button
           key="submit"
           loading={loading || isPending}
-          htmlType="submit"
           type="primary"
           onClick={() => {
-            const values = form.getFieldsValue();
-            mutate(values);
+            form.validateFields().then((values) => {
+              mutate(values);
+            });
           }}
         >
-          {user?.result?.driverLicenses ? "Cập nhật" : " Đăng kí"}
+          {driverLicense ? "Cập nhật" : "Đăng ký"}
         </Button>,
       ]}
+      width={600}
     >
-      <p className="flex justify-center items-center w-full text-2xl font-bold">
-        {user?.result?.driverLicenses ? "Cập nhật GPLX" : "Đăng kí GPLX"}
-      </p>
-
       <Form
         form={form}
         layout="vertical"
-        name="basic"
+        name="driverLicenseForm"
         onFinish={(values: DriverFormValues) => {
           mutate(values);
         }}
         initialValues={{
-          ...(user?.result?.driverLicenses || {}),
+          licenseNumber: driverLicense?.licenseNumber || "",
+          classField: driverLicense?.classField || "",
+          image: driverLicense?.image || "",
         }}
         autoComplete="off"
-        className="flex gap-4 mt-10"
+        className="mt-6"
       >
-        <div className="w-2/3">
-          <Form.Item
-            label="Số GPLX"
-            name="licenseNumber"
-            rules={[
-              { required: true, message: "Số GPLX không được để trống!" },
-            ]}
-            hasFeedback
-          >
-            <Input className="w-full" readOnly />
-          </Form.Item>
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <Form.Item
+              label="Số GPLX"
+              name="licenseNumber"
+              rules={[
+                { required: true, message: "Số GPLX không được để trống!" },
+                {
+                  pattern: /^[0-9]{12}$/,
+                  message: "Số GPLX phải có 12 chữ số!",
+                },
+              ]}
+              hasFeedback
+            >
+              <Input
+                placeholder="Nhập số GPLX"
+                readOnly={!!driverLicense} // Readonly nếu đã có license
+              />
+            </Form.Item>
 
-          <Form.Item
-            label="Hạng"
-            name="classField"
-            rules={[{ required: true, message: "Hạng không được để trống!" }]}
-            hasFeedback
-          >
-            <Input className="w-full" readOnly />
-          </Form.Item>
-        </div>
+            <Form.Item
+              label="Hạng"
+              name="classField"
+              rules={[{ required: true, message: "Hạng không được để trống!" }]}
+              hasFeedback
+            >
+              <Input
+                placeholder="Nhập hạng GPLX (VD: B2, C, D...)"
+                readOnly={!!driverLicense} // Readonly nếu đã có license
+              />
+            </Form.Item>
+          </div>
 
-        <div className="grow w-1/3">
-          <Form.Item label="Hình ảnh" name="image" required>
-            <UploadImage
-              onChange={(licenseNumber, classField, imageUrl) => {
-                form.setFieldsValue({
-                  licenseNumber: licenseNumber,
-                  classField: classField,
-                  image: imageUrl, // set image url vào form
-                });
-              }}
-            />
-          </Form.Item>
+          <div className="w-1/3">
+            <Form.Item label="Hình ảnh" name="image" required>
+              <UploadImage
+                onChange={(licenseNumber, classField, imageUrl) => {
+                  form.setFieldsValue({
+                    licenseNumber: licenseNumber,
+                    classField: classField,
+                    image: imageUrl, // set image url vào form
+                  });
+                }}
+              />
+            </Form.Item>
+          </div>
         </div>
       </Form>
     </Modal>

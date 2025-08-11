@@ -93,7 +93,15 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public List<WalletTransactionDTO> getWithdrawalsByUser(String userId) {
-        return walletMapper.toTransactionDTOs(txRepository.findByUserIdOrderByCreatedAtDesc(userId));
+        // Lấy walletId của user
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
+        String walletId = wallet.getId();
+
+        // Lấy tất cả giao dịch liên quan đến walletId này
+        List<WalletTransaction> transactions = txRepository.findByWalletIdOrderByCreatedAtDesc(walletId);
+
+        return walletMapper.toTransactionDTOs(transactions);
     }
 
     private WalletDTO toDTO(Wallet wallet) {
@@ -306,6 +314,5 @@ public class WalletServiceImpl implements WalletService {
 
         txRepository.save(tx);
     }
-
 
 }

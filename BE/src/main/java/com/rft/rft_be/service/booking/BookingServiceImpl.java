@@ -529,6 +529,7 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
+    //tạo finalcontract
     @Override
     @Transactional
     public void returnVehicle(String bookingId, String token) {
@@ -552,6 +553,9 @@ public class BookingServiceImpl implements BookingService {
     public void completeBooking(String bookingId, String token,LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
         String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
+
+        //thoi gian tra xe: la luc nguoi dung tra xe
+        LocalDateTime returnedTime = booking.getUpdatedAt();
 
         if (booking.getStatus() != Booking.Status.RETURNED) {
             throw new IllegalStateException("Chỉ đơn đặt ở trạng thái RETURNED mới được hoàn tất.");
@@ -579,7 +583,7 @@ public class BookingServiceImpl implements BookingService {
             CreateFinalContractDTO finalContractDTO = CreateFinalContractDTO.builder()
                     .contractId(contract.getId())
 //                    .userId(currentUserId)
-                    .timeFinish(timeFinish)
+                    .timeFinish(returnedTime)
                     .costSettlement(costSettlement)
                     .note(note)
                     .build();

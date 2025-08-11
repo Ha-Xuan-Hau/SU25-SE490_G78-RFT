@@ -6,6 +6,8 @@ import { Typography, Spin, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import EditProfileModal from "@/components/EditProfileComponent";
+import type { User } from "@/types/user"; // Adjust the import path as needed
+import { showError } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 
@@ -86,6 +88,36 @@ export default function ProviderAccountPage() {
       </div>
     );
   }
+
+  const handleUserUpdate = async (updatedData: Partial<User>) => {
+    try {
+      // 1. Update Recoil state
+      setUser((prevUser) => {
+        if (!prevUser) return prevUser;
+
+        const newUser = {
+          ...prevUser,
+          ...updatedData,
+          id: prevUser.id, // QUAN TRỌNG: Giữ lại ID
+          role: prevUser.role, // QUAN TRỌNG: Giữ lại ROLE
+        };
+
+        // 2. Update localStorage NGAY LẬP TỨC
+        localStorage.setItem("user_profile", JSON.stringify(newUser));
+
+        return newUser;
+      });
+
+      // 3. Đợi một chút để đảm bảo state đã được lưu
+      setTimeout(() => {
+        // 4. Reload page
+        window.location.reload();
+      }, 500); // Đợi 500ms
+    } catch (error) {
+      console.error("Error updating user:", error);
+      showError("Cập nhật thất bại");
+    }
+  };
 
   return (
     <div>
@@ -216,8 +248,8 @@ export default function ProviderAccountPage() {
       <EditProfileModal
         openEditModal={openEditModal}
         handleCancleEditModal={handleCancleEditModal}
-        currentUser={user}
-        onUserUpdate={(updatedUser) => setUser({ ...user, ...updatedUser })}
+        currentUser={user || undefined}
+        onUserUpdate={handleUserUpdate} // Dùng function mới
       />
     </div>
   );

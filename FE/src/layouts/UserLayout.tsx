@@ -16,7 +16,8 @@ export function UserWebLayout({ children }: UserWebLayoutProps) {
   const { pathname, push } = useRouter();
 
   useEffect(() => {
-    const role = user?.result?.role;
+    // Sử dụng user?.role thay vì user?.result?.role
+    const role = user?.role;
 
     if (
       role === "STAFF" &&

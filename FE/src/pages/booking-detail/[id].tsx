@@ -90,7 +90,7 @@ export default function BookingDetailPage() {
             <div className="mt-4">
               <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
                 <InfoCircleOutlined className="text-blue-500" />
-                Ghi chú
+                Ghi chú từ chủ xe
               </h4>
               <div className="bg-blue-50 rounded-lg p-4">
                 <span className="text-gray-700">{data.note}</span>
@@ -138,7 +138,43 @@ export default function BookingDetailPage() {
     // Các trạng thái khác (PENDING, CONFIRMED, IN_PROGRESS)
     return (
       <>
+        {/* Địa điểm giao xe */}
+        <div>
+          <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
+            <EnvironmentOutlined className="text-green-500" />
+            Địa điểm giao xe
+          </h4>
+          <div className="bg-green-50 rounded-lg p-4">
+            <span className="text-gray-700">{data?.address}</span>
+          </div>
+        </div>
+
         <Divider />
+
+        {/* Chi tiết thời gian */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <span className="text-gray-600">Có thuê tài xế:</span>
+            <span className="font-mono font-medium">
+              {data?.driverFee ? "Có" : "Không"}
+            </span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <span className="text-gray-600">Ngày nhận xe:</span>
+            <span className="font-medium text-blue-600">
+              {formatDateTime(data?.timeBookingStart || "")}
+            </span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <span className="text-gray-600">Ngày trả xe dự kiến:</span>
+            <span className="font-medium text-blue-600">
+              {formatDateTime(data?.timeBookingEnd || "")}
+            </span>
+          </div>
+        </div>
+
+        <Divider />
+
         {/* Tổng giá thuê cho các trạng thái khác */}
         <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6">
           <div className="flex items-center justify-between">
@@ -313,20 +349,7 @@ export default function BookingDetailPage() {
 
               <Divider />
 
-              {/* Địa điểm giao xe */}
-              <div>
-                <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
-                  <EnvironmentOutlined className="text-green-500" />
-                  Địa điểm giao xe
-                </h4>
-                <div className="bg-green-50 rounded-lg p-4">
-                  <span className="text-gray-700">{data?.address}</span>
-                </div>
-              </div>
-
-              <Divider />
-
-              {/* Chi tiết đơn hàng */}
+              {/* Chi tiết đơn hàng cơ bản - luôn hiển thị */}
               <div>
                 <h4 className="flex items-center gap-2 font-semibold text-gray-800 mb-3">
                   <CalendarOutlined className="text-orange-500" />
@@ -343,28 +366,10 @@ export default function BookingDetailPage() {
                       {formatDateTime(data?.createdAt || "")}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Có thuê tài xế:</span>
-                    <span className="font-mono font-medium">
-                      {data?.driverFee ? "Có" : "Không"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Ngày nhận xe:</span>
-                    <span className="font-medium text-blue-600">
-                      {formatDateTime(data?.timeBookingStart || "")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Ngày trả xe dự kiến:</span>
-                    <span className="font-medium text-blue-600">
-                      {formatDateTime(data?.timeBookingEnd || "")}
-                    </span>
-                  </div>
                 </div>
               </div>
 
-              {/* Render thông tin theo trạng thái */}
+              {/* Render thông tin theo trạng thái (sẽ không hiển thị thêm gì nếu là CANCELLED) */}
               {renderStatusSpecificInfo()}
             </div>
           </Card>

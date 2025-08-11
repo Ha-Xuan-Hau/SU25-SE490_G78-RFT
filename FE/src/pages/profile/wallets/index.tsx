@@ -257,24 +257,31 @@ export default function UserWalletsPage() {
 
   // Rút tiền (API thật)
   const handleWithdraw = async (values: { amount: number }) => {
+    // Early return nếu không có user hoặc currentCard
+    if (!user?.id) {
+      showError("Vui lòng đăng nhập để thực hiện giao dịch");
+      return;
+    }
+
+    if (!currentCard) {
+      showError("Vui lòng chọn thẻ để rút tiền");
+      return;
+    }
+
     try {
-      if (!currentCard) return;
       setTopUpLoading(true);
       await withdrawFromWallet({
         userId: user.id,
         amount: values.amount,
       });
+
       showSuccess("Gửi yêu cầu rút tiền thành công!");
       setIsWithdrawModalVisible(false);
-      // Reload lại số dư ví và thẻ nếu cần
-      getUserWallet(user.id)
-        .then((data: WalletType) => {
-          setWallet(data);
-          if (Array.isArray(data?.cards)) setCards(data.cards);
-        })
-        .catch((err: any) => showError(err.message));
 
-      fetchWithdrawalHistory();
+      // Reload page sau khi rút tiền thành công
+      setTimeout(() => {
+        window.location.reload();
+      }, 500); // Đợi 500ms để user thấy thông báo thành công
     } catch (err: any) {
       showError(err.message || "Gửi yêu cầu rút tiền thất bại!");
     } finally {
@@ -317,7 +324,7 @@ export default function UserWalletsPage() {
       ),
     },
     {
-      title: "Ngày rút",
+      title: "Thời gian giao dịch",
       dataIndex: "createdAt",
       key: "createdAt",
       width: 180,
@@ -326,6 +333,38 @@ export default function UserWalletsPage() {
         moment(formatDateTime(a.createdAt), "DD/MM/YYYY HH:mm").unix() -
         moment(formatDateTime(b.createdAt), "DD/MM/YYYY HH:mm").unix(),
       defaultSortOrder: "descend" as const,
+    },
+    {
+      title: "Loại giao dịch",
+      key: "transactionType",
+      width: 150,
+      render: (record: any) => {
+        // Kiểm tra điều kiện để xác định loại giao dịch
+        const isWithdrawal =
+          (record.status === "PENDING" || record.status === "APPROVED") &&
+          record.userId;
+
+        return (
+          <Tag color={isWithdrawal ? "orange" : "blue"}>
+            {isWithdrawal ? "Rút tiền" : "Giao dịch hệ thống"}
+          </Tag>
+        );
+      },
+      filters: [
+        { text: "Rút tiền", value: "withdrawal" },
+        { text: "Giao dịch hệ thống", value: "system" },
+      ],
+      onFilter: (value: any, record: any) => {
+        const isWithdrawal =
+          (record.status === "PENDING" || record.status === "APPROVED") &&
+          record.userId;
+
+        if (value === "withdrawal") {
+          return isWithdrawal;
+        } else {
+          return !isWithdrawal;
+        }
+      },
     },
     {
       title: "Số tiền",
@@ -338,45 +377,45 @@ export default function UserWalletsPage() {
         </span>
       ),
     },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      width: 120,
-      render: (status: string) => {
-        let color = "default";
-        let text = status;
+    // {
+    //   title: "Trạng thái",
+    //   dataIndex: "status",
+    //   key: "status",
+    //   width: 120,
+    //   render: (status: string) => {
+    //     let color = "default";
+    //     let text = status;
 
-        switch (status?.toUpperCase()) {
-          case "SUCCESS":
-          case "APPROVED":
-            color = "success";
-            text = "Thành công";
-            break;
-          case "PENDING":
-            color = "processing";
-            text = "Đang xử lý";
-            break;
-          case "FAILED":
-          case "REJECTED":
-            color = "error";
-            text = "Bị từ chối";
-            break;
-          default:
-            color = "default";
-            text = status || "Không xác định";
-        }
+    //     switch (status?.toUpperCase()) {
+    //       case "SUCCESS":
+    //       case "APPROVED":
+    //         color = "success";
+    //         text = "Thành công";
+    //         break;
+    //       case "PENDING":
+    //         color = "processing";
+    //         text = "Đang xử lý";
+    //         break;
+    //       case "FAILED":
+    //       case "REJECTED":
+    //         color = "error";
+    //         text = "Bị từ chối";
+    //         break;
+    //       default:
+    //         color = "default";
+    //         text = status || "Không xác định";
+    //     }
 
-        return <Tag color={color}>{text}</Tag>;
-      },
-      filters: [
-        { text: "Thành công", value: "SUCCESS" },
-        { text: "Đang xử lý", value: "PENDING" },
-        { text: "Bị từ chối", value: "REJECTED" },
-      ],
-      onFilter: (value: any, record: WithdrawalTransaction) =>
-        record.status?.toUpperCase() === value,
-    },
+    //     return <Tag color={color}>{text}</Tag>;
+    //   },
+    //   filters: [
+    //     { text: "Thành công", value: "SUCCESS" },
+    //     { text: "Đang xử lý", value: "PENDING" },
+    //     { text: "Bị từ chối", value: "REJECTED" },
+    //   ],
+    //   onFilter: (value: any, record: WithdrawalTransaction) =>
+    //     record.status?.toUpperCase() === value,
+    // },
   ];
 
   if (loading) {
@@ -530,7 +569,7 @@ export default function UserWalletsPage() {
                 <HistoryOutlined className="text-blue-600 text-lg" />
               </div>
               <Title level={4} className="m-0 text-gray-900">
-                Lịch Sử Rút Tiền
+                Biến động số dư
               </Title>
             </div>
 
