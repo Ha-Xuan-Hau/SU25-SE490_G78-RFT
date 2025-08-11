@@ -63,6 +63,36 @@ public class VehicleRentController {
         }
     }
 
+    /**
+     * Chuyển trạng thái hàng loạt cho xe máy và xe đạp (endpoint thay thế)
+     * 
+     * @param vehicleIds Danh sách ID của các xe cần chuyển trạng thái
+     * @return Danh sách xe đã được cập nhật trạng thái
+     */
+    @PutMapping("/bulk-toggle-status")
+    public ResponseEntity<ApiResponseDTO<List<VehicleGetDTO>>> bulkToggleVehicleStatus(
+            @RequestBody List<String> vehicleIds) {
+        try {
+            // Validation cơ bản
+            if (vehicleIds == null || vehicleIds.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponseDTO.error("Danh sách xe không được để trống"));
+            }
+            
+            if (vehicleIds.size() > 50) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponseDTO.error("Chỉ được chọn tối đa 50 xe cùng lúc"));
+            }
+            
+            List<VehicleGetDTO> data = vehicleRentService.toggleVehicleSuspendedBulk(vehicleIds);
+            return ResponseEntity.ok(ApiResponseDTO.success("Chuyển trạng thái hàng loạt thành công cho " + data.size() + " xe", data));
+        } catch (Exception e) {
+            log.error("Lỗi bulk toggle status: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseDTO.error("Không thể chuyển trạng thái hàng loạt: " + e.getMessage()));
+        }
+    }
+
 
     @GetMapping("/{vehicleId}")
     public ResponseEntity<ApiResponseDTO<VehicleDetailDTO>> getVehicleById(

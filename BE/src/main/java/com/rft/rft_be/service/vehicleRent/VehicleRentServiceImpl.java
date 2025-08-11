@@ -38,6 +38,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final UserRepository userRepository;
     private final VehicleMapper vehicleMapper;
     private final PenaltyRepository penaltyRepository;
+    private final BookingRepository bookingRepository;
 
 
     private final ExtraFeeRuleRepository extraFeeRuleRepository;
@@ -721,6 +722,11 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe"));
 
+        // Không cho đổi trạng thái nếu có booking đang diễn ra hoặc trong tương lai
+        if (bookingRepository.existsActiveOrFutureByVehicleId(vehicleId, LocalDateTime.now())) {
+            throw new RuntimeException("Xe đang có booking hiện tại hoặc sắp tới, không thể đổi trạng thái");
+        }
+
         // Validate vehicle information before allowing status change to AVAILABLE
         if (vehicle.getStatus() == Vehicle.Status.UNAVAILABLE) {
             validateVehicleForAvailability(vehicle);
@@ -755,6 +761,11 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe"));
 
+        // Không cho đổi trạng thái nếu có booking đang diễn ra hoặc trong tương lai
+        if (bookingRepository.existsActiveOrFutureByVehicleId(vehicleId, LocalDateTime.now())) {
+            throw new RuntimeException("Xe đang có booking hiện tại hoặc sắp tới, không thể đổi trạng thái");
+        }
+
         Vehicle.Status current = vehicle.getStatus();
         Vehicle.Status newStatus;
         if (current == Vehicle.Status.SUSPENDED) {
@@ -773,6 +784,49 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle withRelations = vehicleRepository.findByIdWithBrandAndModel(updated.getId()).orElse(updated);
         log.info("[DEBUG] Đổi trạng thái AVAILABLE<->SUSPENDED thành công: {} -> {}", vehicleId, newStatus);
         return vehicleMapper.vehicleGet(withRelations);
+    }
+    @Override
+    @Transactional
+    public List<VehicleGetDTO> toggleVehicleSuspendedBulk(List<String> vehicleIds) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+
+        if (vehicleIds == null || vehicleIds.isEmpty()) {
+            throw new RuntimeException("Danh sách xe trống");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<VehicleGetDTO> result = new ArrayList<>();
+
+        for (String vehicleId : vehicleIds) {
+            Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe: " + vehicleId));
+
+            // Không cho đổi trạng thái nếu có booking đang diễn ra hoặc trong tương lai
+            if (bookingRepository.existsActiveOrFutureByVehicleId(vehicleId, now)) {
+                throw new RuntimeException("Xe " + vehicleId + " đang có booking hiện tại hoặc sắp tới, không thể đổi trạng thái");
+            }
+
+            Vehicle.Status current = vehicle.getStatus();
+            Vehicle.Status newStatus;
+            if (current == Vehicle.Status.SUSPENDED) {
+                validateVehicleForAvailability(vehicle);
+                newStatus = Vehicle.Status.AVAILABLE;
+            } else if (current == Vehicle.Status.AVAILABLE) {
+                newStatus = Vehicle.Status.SUSPENDED;
+            } else {
+                throw new RuntimeException("Chỉ có thể chuyển giữa AVAILABLE và SUSPENDED từ trạng thái hiện tại: " + current);
+            }
+
+            vehicle.setStatus(newStatus);
+            setUpdatedAt(vehicle, now);
+            Vehicle updated = vehicleRepository.save(vehicle);
+            Vehicle withRelations = vehicleRepository.findByIdWithBrandAndModel(updated.getId()).orElse(updated);
+            result.add(vehicleMapper.vehicleGet(withRelations));
+        }
+
+        log.info("[DEBUG] Bulk đổi trạng thái AVAILABLE<->SUSPENDED thành công cho {} xe", result.size());
+        return result;
     }
 
     @Override
