@@ -775,46 +775,31 @@ public class BookingServiceImpl implements BookingService {
         }
 
         User renter = booking.getUser();
-        if (renter != null) {
+        if (renter != null && renter.getStatus().equals(User.Status.TEMP_BANNED)) {
             long renterUnfinished = bookingRepository.countUnfinishedByUserId(
                     renter.getId(),
                     Booking.Status.COMPLETED,
                     Booking.Status.CANCELLED
             );
 
-            if (renterUnfinished > 0) {
-                // Có đơn đang hoạt động -> bảo đảm TEMP_BANNED
-                if (renter.getStatus() != User.Status.TEMP_BANNED) {
-                    renter.setStatus(User.Status.TEMP_BANNED);
-                    userRepository.save(renter);
-                }
-            } else {
-                // Không còn đơn unfinished -> nếu đang TEMP_BANNED thì đưa về INACTIVE
-                if (renter.getStatus() == User.Status.TEMP_BANNED) {
-                    renter.setStatus(User.Status.INACTIVE);
-                    userRepository.save(renter);
-                }
+            if (renterUnfinished == 0) {
+            // Không còn đơn unfinished -> nếu đang TEMP_BANNED thì đưa về INACTIVE
+                renter.setStatus(User.Status.INACTIVE);
+                userRepository.save(renter);
             }
         }
 
 // PROVIDER: unfinished = các contract đang RENTING
         if (!booking.getBookingDetails().isEmpty()) {
             User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
-            if (provider != null) {
+            if (provider != null && provider.getStatus().equals(User.Status.TEMP_BANNED)) {
                 int rentingCount = contractRepository
                         .findByProviderIdAndStatus(provider.getId(), Contract.Status.RENTING)
                         .size();
 
-                if (rentingCount > 0) {
-                    if (provider.getStatus() != User.Status.TEMP_BANNED) {
-                        provider.setStatus(User.Status.TEMP_BANNED);
-                        userRepository.save(provider);
-                    }
-                } else {
-                    if (provider.getStatus() == User.Status.TEMP_BANNED) {
-                        provider.setStatus(User.Status.INACTIVE);
-                        userRepository.save(provider);
-                    }
+                if (rentingCount == 0) {
+                    provider.setStatus(User.Status.INACTIVE);
+                    userRepository.save(provider);
                 }
             }
         }

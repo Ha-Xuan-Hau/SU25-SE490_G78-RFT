@@ -10,7 +10,7 @@ export const getBookingDetail = async (bookingId) => {
         const response = await apiClient.get(`/bookings/${bookingId}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching booking detail:', error);
+        // console.error('Error fetching booking detail:', error);
         throw new Error(`Lỗi lấy chi tiết booking: ${error.response?.data?.message || error.message}`);
     }
 };
@@ -22,7 +22,7 @@ export const getBookingDetail = async (bookingId) => {
  */
 export const createBooking = async (bookingData) => {
     try {
-        console.log('Sending booking request:', bookingData);
+        // console.log('Sending booking request:', bookingData);
 
         const response = await apiClient.post('/bookings', bookingData);
 
@@ -41,7 +41,7 @@ export const createBooking = async (bookingData) => {
             }
         };
     } catch (error) {
-        console.error('Error creating booking:', error);
+        // console.error('Error creating booking:', error);
 
         // Check for conflict errors (409 status or specific messages)
         const isConflictError =
@@ -68,7 +68,7 @@ export const createBooking = async (bookingData) => {
  */
 export const payWithWallet = async (bookingId) => {
     try {
-        console.log('Paying with wallet for booking:', bookingId);
+        // console.log('Paying with wallet for booking:', bookingId);
 
         const response = await apiClient.post(`/bookings/${bookingId}/pay-wallet`);
 
@@ -82,7 +82,7 @@ export const payWithWallet = async (bookingId) => {
             }
         };
     } catch (error) {
-        console.error('Error paying with wallet:', error);
+        // console.error('Error paying with wallet:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -97,7 +97,7 @@ export const payWithWallet = async (bookingId) => {
  */
 export const createVNPayPayment = async (bookingId, amount) => {
     try {
-        console.log('Creating VNPay payment for booking:', bookingId);
+        // console.log('Creating VNPay payment for booking:', bookingId);
 
         const response = await apiClient.post(`/payment/vn-pay`, {
             bookingId: bookingId, amount: amount
@@ -113,7 +113,7 @@ export const createVNPayPayment = async (bookingId, amount) => {
             }
         };
     } catch (error) {
-        console.error('Error creating VNPay payment:', error);
+        // console.error('Error creating VNPay payment:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -151,7 +151,7 @@ export const getUserBookings = async (userId, status = null) => {
         const response = await apiClient.get(url);
         return response.data;
     } catch (error) {
-        console.error('Error fetching user bookings:', error);
+        // // console.error('Error fetching user bookings:', error);
         throw new Error(`Lỗi lấy danh sách booking: ${error.response?.data?.message || error.message}`);
     }
 };
@@ -171,7 +171,7 @@ export const updateBookingStatus = async (bookingId, action, additionalData = {}
             data: response.data
         };
     } catch (error) {
-        console.error(`Error updating booking status (${action}):`, error);
+        // console.error(`Error updating booking status (${action}):`, error);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -213,7 +213,7 @@ export const cancelBooking = async (bookingId, reason = '', userType = 'USER') =
             }
         };
     } catch (error) {
-        console.error('Error canceling booking:', error);
+        // console.error('Error canceling booking:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -240,7 +240,7 @@ export const verifyVNPayPayment = async (vnpayParams) => {
             }
         };
     } catch (error) {
-        console.error('Error verifying VNPay payment:', error);
+        // console.error('Error verifying VNPay payment:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -257,7 +257,7 @@ export const verifyVNPayPayment = async (vnpayParams) => {
  */
 export const checkAvailability = async (vehicleId, startTime, endTime) => {
     try {
-        console.log('Checking availability for:', { vehicleId, startTime, endTime });
+        // console.log('Checking availability for:', { vehicleId, startTime, endTime });
 
         const response = await apiClient.post('/bookings/check-availability', {
             vehicleId,
@@ -273,7 +273,7 @@ export const checkAvailability = async (vehicleId, startTime, endTime) => {
             }
         };
     } catch (error) {
-        console.error('Error checking availability:', error);
+        // console.error('Error checking availability:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message,
@@ -297,7 +297,7 @@ export const getWalletBalance = async () => {
             }
         };
     } catch (error) {
-        console.error('Error getting wallet balance:', error);
+        // console.error('Error getting wallet balance:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message,
@@ -324,7 +324,7 @@ export const updateBookingStatusDirect = async (bookingId, status) => {
             message: 'Cập nhật trạng thái đơn đặt xe thành công'
         };
     } catch (error) {
-        console.error('Error updating booking status:', error);
+        // console.error('Error updating booking status:', error);
 
         return {
             success: false,
@@ -349,7 +349,7 @@ export const confirmBookingByProvider = async (bookingId) => {
             message: 'Xác nhận đơn đặt xe thành công'
         };
     } catch (error) {
-        console.error('Error confirming booking:', error);
+        // console.error('Error confirming booking:', error);
 
         return {
             success: false,
@@ -374,7 +374,7 @@ export const getBookingsByProviderAndStatus = async (providerId, status) => {
             data: response.data
         };
     } catch (error) {
-        console.error('Error fetching provider bookings:', error);
+        // console.error('Error fetching provider bookings:', error);
 
         return {
             success: false,
@@ -404,7 +404,7 @@ export const cancelBookingByProvider = async (bookingId, reason = '') => {
             message: 'Hủy đơn đặt xe thành công'
         };
     } catch (error) {
-        console.error('Error cancelling booking:', error);
+        // console.error('Error cancelling booking:', error);
 
         return {
             success: false,
@@ -453,7 +453,7 @@ export const cancelBookingByProviderDueToNoShow = async (bookingId) => {
         const response = await apiClient.post(`/bookings/${bookingId}/cancel/no-show`);
         return response.data;
     } catch (error) {
-        console.error('Error canceling booking due to no-show:', error);
+        // console.error('Error canceling booking due to no-show:', error);
         throw new Error(`Lỗi hủy đơn do khách không xuất hiện: ${error.response?.data?.message || error.message}`);
     }
 };

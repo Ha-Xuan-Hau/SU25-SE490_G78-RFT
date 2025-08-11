@@ -6,9 +6,9 @@ export const apiClient = axios.create({
     timeout: 10000,
 });
 
+// Request interceptor 
 apiClient.interceptors.request.use(function (config) {
     try {
-        // List of public endpoints that don't need authorization
         const publicEndpoints = [
             '/vehicles',
             '/vehicles/detail',
@@ -16,12 +16,10 @@ apiClient.interceptors.request.use(function (config) {
             '/bookedTimeSlot/vehicle'
         ];
 
-        // Check if the current request URL matches any public endpoint
         const isPublicEndpoint = publicEndpoints.some(endpoint =>
             config.url === endpoint || config.url?.startsWith(`${endpoint}/`)
         );
 
-        // Skip adding authorization header for public endpoints
         if (isPublicEndpoint) {
             return config;
         }
@@ -32,22 +30,29 @@ apiClient.interceptors.request.use(function (config) {
             return config;
         }
 
-        // Parse token nếu đã được stringify
         let token;
         try {
             token = JSON.parse(tokenStr);
         } catch {
-            token = tokenStr; // Nếu không parse được, sử dụng nguyên bản
+            token = tokenStr;
         }
 
         config.headers.Authorization = `Bearer ${token}`;
     } catch (error) {
-        console.error("Error adding auth token:", error);
+        // console.error("Error adding auth token:", error);
     }
 
-    // Make sure we always return the config object
     return config;
 });
+
+// Response Interceptor để xử lý lỗi im lặng
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // Chỉ reject error để component xử lý
+        return Promise.reject(error);
+    }
+);
 
 export const queryClient = new QueryClient({
     defaultOptions: {
@@ -57,7 +62,7 @@ export const queryClient = new QueryClient({
             refetchOnReconnect: false,
             retry: 1,
             staleTime: 0,
-            gcTime: 300000, // Thay thế cacheTime bằng gcTime trong v5
+            gcTime: 300000,
         },
     },
 });

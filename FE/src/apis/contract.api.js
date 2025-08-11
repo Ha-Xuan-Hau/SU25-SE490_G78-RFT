@@ -15,7 +15,7 @@ export const getContractsByProviderAndStatus = async (providerId, status) => {
             data: response.data
         };
     } catch (error) {
-        console.error('Error fetching contracts:', error);
+        // console.error('Error fetching contracts:', error);
 
         return {
             success: false,
@@ -38,7 +38,7 @@ export const getFinalContractsByProvider = async (providerId) => {
             data: response.data
         };
     } catch (error) {
-        console.error('Error fetching final contracts:', error);
+        // console.error('Error fetching final contracts:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message,
@@ -65,7 +65,7 @@ export const updateContractStatus = async (contractId, status) => {
             message: 'Cập nhật trạng thái hợp đồng thành công'
         };
     } catch (error) {
-        console.error('Error updating contract status:', error);
+        // console.error('Error updating contract status:', error);
 
         return {
             success: false,
@@ -89,7 +89,7 @@ export const getContractById = async (contractId) => {
             data: response.data
         };
     } catch (error) {
-        console.error('Error fetching contract details:', error);
+        // console.error('Error fetching contract details:', error);
 
         return {
             success: false,
@@ -113,7 +113,7 @@ export const createFinalContract = async (data) => {
             message: 'Tạo hợp đồng tất toán thành công'
         };
     } catch (error) {
-        console.error('Error creating final contract:', error);
+        // console.error('Error creating final contract:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message,
@@ -135,7 +135,7 @@ export const getFinalContractById = async (finalContractId) => {
             data: response.data
         };
     } catch (error) {
-        console.error('Error fetching final contract details:', error);
+        // console.error('Error fetching final contract details:', error);
         return {
             success: false,
             error: error.response?.data?.message || error.message,

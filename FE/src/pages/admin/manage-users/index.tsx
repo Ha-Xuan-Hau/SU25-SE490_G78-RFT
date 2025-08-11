@@ -401,11 +401,12 @@ export default function ManageUserPage() {
           <Button
             key="toggle"
             type="primary"
+            danger={selectedUser?.status === "ACTIVE"}
             size="large"
-            onClick={handleToggleUserStatus} // Hiển thị modal xác nhận
+            onClick={handleToggleUserStatus}
           >
             {selectedUser?.status === "ACTIVE"
-              ? "Ẩn người dùng"
+              ? "Vô hiệu hóa người dùng"
               : "Kích hoạt người dùng"}
           </Button>,
         ]}
@@ -552,7 +553,7 @@ export default function ManageUserPage() {
         onCancel={() => setIsConfirmModalVisible(false)}
         footer={[
           <Button key="cancel" onClick={() => setIsConfirmModalVisible(false)}>
-            Hủy
+            Quay lại
           </Button>,
           <Button
             key="confirm"
@@ -565,9 +566,16 @@ export default function ManageUserPage() {
       >
         <p>
           Bạn có chắc chắn muốn{" "}
-          {selectedUser?.status === "ACTIVE" ? "ẩn" : "kích hoạt"} người dùng{" "}
-          <strong>{selectedUser?.fullName}</strong>?
+          {selectedUser?.status === "ACTIVE" ? "vô hiệu hóa" : "kích hoạt"}{" "}
+          người dùng <strong>{selectedUser?.fullName}</strong>?
         </p>
+        {selectedUser?.status === "ACTIVE" && (
+          <div style={{ color: "#d4380d", marginTop: 12, fontWeight: 500 }}>
+            Hành động này sẽ vô hiệu hóa người dùng khỏi hệ thống ngay lập tức
+            và không thể đăng nhập, sử dụng các chức năng cho đến khi được kích
+            hoạt lại!
+          </div>
+        )}
       </Modal>
     </div>
   );
