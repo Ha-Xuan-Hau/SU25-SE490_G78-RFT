@@ -20,9 +20,9 @@ import {
   FileTextOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
-import NotificationBell from "@/components/NotificationBell";
-import NotificationDropdown from "@/components/NotificationDropdown";
-import SystemNotificationModal from "@/components/SystemNotificationModal";
+import NotificationBell from "@/components/notification/NotificationBell";
+import NotificationDropdown from "@/components/notification/NotificationDropdown";
+import SystemNotificationModal from "@/components/notification/SystemNotificationModal";
 
 const HeaderComponent: React.FC = () => {
   const [navbarOpen, setNavbarOpen] = useState(false);
@@ -531,9 +531,15 @@ const HeaderComponent: React.FC = () => {
 
                   <button
                     onClick={() => {
+                      // Clear all storage first
+                      localStorage.clear();
+                      sessionStorage.clear();
+
+                      // Call logout from context
                       logout();
-                      setNavbarOpen(false);
-                      router.push("/");
+
+                      // Hard refresh to clear all state
+                      window.location.href = "/";
                     }}
                     className="text-base font-medium text-red-600 hover:text-red-700 text-left flex items-center transition-colors"
                   >

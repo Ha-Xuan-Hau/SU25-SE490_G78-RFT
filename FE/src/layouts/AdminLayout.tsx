@@ -10,18 +10,70 @@ import { Icon } from "@iconify/react";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import useLocalStorage from "@/hooks/useLocalStorage";
 
+// Danh sách các trang chỉ Admin được truy cập
+const ADMIN_ONLY_PATHS = [
+  "/admin/manage-staffs",
+  "/admin/manage-approved-withdrawal-requests",
+  "/admin/manage-finalized-contracts",
+];
+
 export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const currentPath = router.pathname;
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // GỌI TẤT CẢ HOOKS TRƯỚC BẤT KỲ RETURN NÀO
   const [adminProfile, , clearAdminProfile] = useLocalStorage(
     "user_profile",
     ""
   );
 
-  // Track screen size for mobile responsiveness
-  const [isMobile, setIsMobile] = useState(false);
+  useLocalStorage("access_token");
 
+  const isAdmin = adminProfile?.role === "ADMIN";
+  const isStaff = adminProfile?.role === "STAFF";
+
+  // Check role authorization
+  useEffect(() => {
+    const checkAuthorization = () => {
+      const storedUser = localStorage.getItem("user_profile");
+
+      if (!storedUser) {
+        // Redirect về home với hard refresh để clear state
+        window.location.href = "/";
+        return;
+      }
+
+      try {
+        const user = JSON.parse(storedUser);
+
+        // Check if user is ADMIN or STAFF
+        if (user.role === "ADMIN" || user.role === "STAFF") {
+          // Check if STAFF is trying to access ADMIN-only pages
+          if (user.role === "STAFF" && ADMIN_ONLY_PATHS.includes(currentPath)) {
+            router.push("/404");
+            return;
+          }
+          setIsAuthorized(true);
+        } else {
+          // Not ADMIN or STAFF -> redirect to 404
+          router.push("/404");
+        }
+      } catch (error) {
+        console.error("Error parsing user profile:", error);
+        router.push("/404");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthorization();
+  }, [router, currentPath]);
+
+  // Track screen size for mobile responsiveness
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsMobile(window.innerWidth < 768);
@@ -46,19 +98,12 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // User authentication storage hooks
-  useLocalStorage("access_token");
-  useLocalStorage("user_profile", "");
-
-  // Kiểm tra role của user (giả sử role được lưu trong adminProfile)
-  const isAdmin = adminProfile?.role === "ADMIN";
-
   const menuGroups = [
     {
       title: "Tài khoản cá nhân",
       items: [
         {
-          key: "profile",
+          key: "dashboard",
           path: "/admin/dashboard",
           icon: "mdi:view-dashboard",
           label: "Bảng điều khiển",
@@ -109,7 +154,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           label: "Quản lý phương tiện",
         },
         {
-          key: "vehicles",
+          key: "vehicles-pending",
           path: "/admin/manage-vehicles-pending",
           icon: "mdi:car-multiple",
           label: "Duyệt đăng ký phương tiện",
@@ -137,6 +182,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:file-document-edit",
           label: "Tất toán hợp đồng",
         },
+        // Chỉ Admin mới thấy các menu này
         ...(isAdmin
           ? [
               {
@@ -146,7 +192,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                 label: "Quản lý giao dịch rút tiền",
               },
               {
-                key: "transactions",
+                key: "finalized-contracts",
                 path: "/admin/manage-finalized-contracts",
                 icon: "mdi:file-document-edit-outline",
                 label: "Quản lý hợp đồng tất toán",
@@ -184,6 +230,23 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       ],
     },
   ];
+
+  // Show loading while checking authorization
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authorized, don't render anything (router will redirect)
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -242,7 +305,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                   </div>
                   <ul className="space-y-1 px-3">
                     {group.items.map((item) => (
-                      <li key={item.key}>
+                      <li key={`${item.key}-${item.path}`}>
                         <Link
                           href={item.path}
                           className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${

@@ -13,24 +13,28 @@ import {
   Divider,
 } from "antd";
 import { CarFilled } from "@ant-design/icons";
-import { UploadMultipleImage } from "./UploadMultipleImage";
-import { VehicleType } from "../types/vehicle";
+import { UploadMultipleImage } from "../uploadImage/UploadMultipleImage";
+import { VehicleType } from "../../types/vehicle";
 import {
   RegisterVehicleFormProps,
   ExtraRule,
-} from "../types/registerVehicleForm";
-import { useUserState } from "../recoils/user.state";
-import useLocalStorage from "../hooks/useLocalStorage";
+} from "../../types/registerVehicleForm";
+import { useUserState } from "../../recoils/user.state";
+import useLocalStorage from "../../hooks/useLocalStorage";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createCar, updateCar, createWithQuantity } from "../apis/vehicle.api";
-import { getUserVehicleById } from "../apis/user-vehicles.api";
-import { getPenaltiesByUserId } from "../apis/provider.api";
-import { showError, showSuccess } from "../utils/toast.utils";
+import {
+  createCar,
+  updateCar,
+  createWithQuantity,
+} from "../../apis/vehicle.api";
+import { getUserVehicleById } from "../../apis/user-vehicles.api";
+import { getPenaltiesByUserId } from "../../apis/provider.api";
+import { showError, showSuccess } from "../../utils/toast.utils";
 
-import carBrands from "../data/car-brands.json";
-import carModels from "../data/car-models.json";
-import motorbikeBrands from "../data/motorbike-brand.json";
-import { UploadSingleImage } from "./UploadSingleImage";
+import carBrands from "../../data/car-brands.json";
+import carModels from "../../data/car-models.json";
+import motorbikeBrands from "../../data/motorbike-brand.json";
+import { UploadSingleImage } from "../uploadImage/UploadSingleImage";
 
 const { TabPane } = Tabs;
 

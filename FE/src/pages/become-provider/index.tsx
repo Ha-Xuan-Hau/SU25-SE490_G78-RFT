@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { useUserState } from "@/recoils/user.state";
+import { useUserState, useRefreshUser } from "@/recoils/user.state";
 import { useEffect } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -30,7 +30,7 @@ import {
   SaveOutlined,
 } from "@ant-design/icons";
 import { registerProvider } from "@/apis/provider.api";
-import { updateUserProfile } from "@/apis/user.api"; // THÊM IMPORT
+import { updateUserProfile } from "@/apis/user.api";
 import { showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title, Paragraph, Text } = Typography;
@@ -65,6 +65,8 @@ const BecomeProviderPage = () => {
   const [user, setUser] = useUserState();
 
   const [countdown, setCountdown] = useState(10);
+
+  const refreshUser = useRefreshUser();
 
   useEffect(() => {
     if (current === 3) {
@@ -130,16 +132,12 @@ const BecomeProviderPage = () => {
             fullName: values.fullname,
             phone: values.phone,
             address: values.address,
-            // email không update vì disabled
           };
 
           await updateUserProfile(user?.id, updateData);
 
-          // Update user state
-          setUser({
-            ...user,
-            ...updateData,
-          });
+          // Refresh user data
+          await refreshUser();
 
           showSuccess("Cập nhật thông tin thành công!");
         } catch (error) {
