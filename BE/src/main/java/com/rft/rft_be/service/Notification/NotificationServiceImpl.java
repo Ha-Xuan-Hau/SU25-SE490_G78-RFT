@@ -273,7 +273,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyProviderReceivedBooking(String providerId, String bookingId, String vehicleName) {
         String message = notificationMapper.formatProviderReceivedBookingMessage(vehicleName);
-        String redirectUrl = "/provider/manage-bookings";
+        String redirectUrl = "/provider/manage-accepted-bookings";
         createNotificationForUser(providerId, NotificationMapper.PROVIDER_RECEIVED_BOOKING, message, redirectUrl);
     }
 

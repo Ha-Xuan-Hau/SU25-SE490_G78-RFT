@@ -75,15 +75,37 @@ export default function BookingDetailPage() {
     if (status === "COMPLETED") {
       return (
         <>
-          {/* Thời gian trả xe thực tế */}
-          {data?.returnedAt && (
+          {/* Chi tiết thời gian - */}
+          <div className="space-y-3">
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600">Thời gian trả xe thực tế:</span>
-              <span className="font-medium text-green-600">
-                {formatDateTime(data.returnedAt)}
+              <span className="text-gray-600">Có thuê tài xế:</span>
+              <span className="font-mono font-medium">
+                {data?.driverFee ? "Có" : "Không"}
               </span>
             </div>
-          )}
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-gray-600">Ngày nhận xe:</span>
+              <span className="font-medium text-blue-600">
+                {formatDateTime(data?.timeBookingStart || "")}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-gray-600">Ngày trả xe:</span>
+              <span className="font-medium text-blue-600">
+                {formatDateTime(data?.timeBookingEnd || "")}
+              </span>
+            </div>
+
+            {/* Thời gian trả xe thực tế */}
+            {data?.returnedAt && (
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600">Thời gian trả xe thực tế:</span>
+                <span className="font-medium text-green-600">
+                  {formatDateTime(data.returnedAt)}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Ghi chú */}
           {data?.note && (
@@ -166,7 +188,7 @@ export default function BookingDetailPage() {
             </span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-600">Ngày trả xe dự kiến:</span>
+            <span className="text-gray-600">Ngày trả xe:</span>
             <span className="font-medium text-blue-600">
               {formatDateTime(data?.timeBookingEnd || "")}
             </span>
