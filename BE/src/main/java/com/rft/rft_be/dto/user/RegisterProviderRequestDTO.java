@@ -18,4 +18,5 @@ public class RegisterProviderRequestDTO {
      List<String> vehicleTypes;
      private String openTime;
      private String closeTime;
+     private Integer deliveryRadius;
 }
