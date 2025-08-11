@@ -9,7 +9,7 @@ export async function getAllDriverLicenses() {
         const { data } = await apiClient.get("/driver-licenses");
         return data; // Trả về danh sách giấy phép
     } catch (error) {
-        console.error("Lỗi khi lấy danh sách giấy phép:", error);
+        // console.error("Lỗi khi lấy danh sách giấy phép:", error);
         throw error;
     }
 }
@@ -24,7 +24,7 @@ export async function getDriverLicenseById(licenseId) {
         const { data } = await apiClient.get(`/driver-licenses/${licenseId}`);
         return data; // Trả về thông tin giấy phép
     } catch (error) {
-        console.error("Lỗi khi lấy thông tin giấy phép:", error);
+        // console.error("Lỗi khi lấy thông tin giấy phép:", error);
         throw error;
     }
 }
@@ -40,7 +40,7 @@ export async function updateDriverLicenseStatus(licenseId, driverLicenseDTO) {
         const { data } = await apiClient.put(`/driver-licenses/${licenseId}`, driverLicenseDTO);
         return data; // Trả về thông tin giấy phép đã cập nhật
     } catch (error) {
-        console.error("Lỗi khi cập nhật giấy phép lái xe:", error);
+        // console.error("Lỗi khi cập nhật giấy phép lái xe:", error);
         throw error;
     }
 }
@@ -83,7 +83,7 @@ export async function getUserDriverLicenses() {
 
         return data; // Trả về mảng các giấy phép
     } catch (error) {
-        console.error("Lỗi khi lấy thông tin giấy phép lái xe:", error);
+        // console.error("Lỗi khi lấy thông tin giấy phép lái xe:", error);
         throw error;
     }
 }

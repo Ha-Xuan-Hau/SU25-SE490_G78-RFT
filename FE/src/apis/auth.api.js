@@ -41,7 +41,7 @@ export async function login(credentials) {
                     userData = fullUserData.data;
                 }
             } catch (profileError) {
-                console.warn("Could not fetch complete profile:", profileError);
+                // console.warn("Could not fetch complete profile:", profileError);
                 // Tiếp tục với thông tin cơ bản từ token
             }
 
@@ -57,7 +57,7 @@ export async function login(credentials) {
 
         return data;
     } catch (error) {
-        console.error("Login error:", error);
+        // console.error("Login error:", error);
         throw error;
     }
 }
@@ -72,7 +72,7 @@ export async function sendOtpRegister(email) {
         });
         return data;
     } catch (error) {
-        console.error("Send OTP register error:", error);
+        // console.error("Send OTP register error:", error);
         throw error;
     }
 }
@@ -86,7 +86,7 @@ export async function verifyOtp(email, otp) {
         });
         return data;
     } catch (error) {
-        console.error("Verify OTP error:", error);
+        // console.error("Verify OTP error:", error);
         throw error;
     }
 }
@@ -100,7 +100,7 @@ export async function register(userData) {
         });
         return data;
     } catch (error) {
-        console.error("Register error:", error);
+        // console.error("Register error:", error);
         throw error;
     }
 }
