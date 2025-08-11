@@ -35,6 +35,9 @@ public class WalletServiceImpl implements WalletService {
     NotificationService notificationService;
     NotificationMapper notificationMapper;
 
+    /**
+     * Lấy thông tin ví theo userId
+     */
     @Override
     public WalletDTO getWalletByUserId(String userId) {
         Wallet wallet = walletRepository.findByUserId(userId)
@@ -43,6 +46,11 @@ public class WalletServiceImpl implements WalletService {
         return toDTO(wallet);
     }
 
+    /**
+     * Cập nhật thông tin tài khoản ngân hàng trong ví
+     * - Kiểm tra trùng số tài khoản & loại tài khoản
+     * - Không cho phép trùng với ví khác
+     */
     @Override
     public WalletDTO updateWallet(UpdateWalletRequestDTO dto) {
         Wallet wallet = walletRepository.findByUserId(dto.getUserId())
@@ -90,7 +98,9 @@ public class WalletServiceImpl implements WalletService {
         walletRepository.save(wallet);
         txRepository.save(walletTransaction);
     }
-
+    /**
+     * Lấy danh sách giao dịch rút tiền của 1 user
+     */
     @Override
     public List<WalletTransactionDTO> getWithdrawalsByUser(String userId) {
         // Lấy walletId của user
@@ -115,6 +125,11 @@ public class WalletServiceImpl implements WalletService {
         );
     }
 
+    /**
+     * Tạo yêu cầu rút tiền:
+     * - Trừ tiền ngay lập tức
+     * - Giao dịch ở trạng thái PENDING
+     */
     @Override
     public WalletTransactionDTO createWithdrawal(CreateWithdrawalRequestDTO dto) {
         Wallet wallet = walletRepository.findByUserId(dto.getUserId())
@@ -145,7 +160,9 @@ public class WalletServiceImpl implements WalletService {
         tx.setCreatedAt(LocalDateTime.now());
         return walletMapper.toTransactionDTO(txRepository.save(tx));
     }
-
+    /**
+     * Hủy giao dịch (ADMIN)
+     */
     @Override
     public void cancelWithdrawal(String transactionId) {
         WalletTransaction tx = txRepository.findById(transactionId)
@@ -156,7 +173,10 @@ public class WalletServiceImpl implements WalletService {
         tx.setStatus(WalletTransaction.Status.CANCELLED);
         txRepository.save(tx);
     }
-
+    /**
+     * Hủy giao dịch (USER)
+     * - Kiểm tra quyền sở hữu giao dịch
+     */
     @Override
     public void cancelWithdrawalAsUser(String transactionId, String userId) {
         WalletTransaction tx = txRepository.findById(transactionId)
@@ -174,7 +194,10 @@ public class WalletServiceImpl implements WalletService {
         tx.setStatus(WalletTransaction.Status.CANCELLED);
         txRepository.save(tx);
     }
-
+    /**
+     * Lấy danh sách giao dịch đã duyệt (APPROVED)
+     * - Kèm thông tin user & staff
+     */
     @Override
     public java.util.List<WalletTransactionDTO> getApprovedWithdrawals() {
         //get approved transaction and userid not null
@@ -217,7 +240,9 @@ public class WalletServiceImpl implements WalletService {
 
         return transactionDTOs;
     }
-
+    /**
+     * Lấy danh sách giao dịch theo trạng thái
+     */
     @Override
     public List<WalletTransactionDTO> getAllWithdrawals(WalletTransaction.Status status) {
         List<WalletTransaction> list = txRepository.findByStatus(status);
@@ -244,7 +269,9 @@ public class WalletServiceImpl implements WalletService {
         }
         return transactionDTOs;
     }
-
+    /**
+     * Lấy thông tin 1 giao dịch rút tiền theo ID
+     */
     @Override
     public WalletTransactionDTO getWithdrawalById(String id) {
         //get transaction by id
@@ -269,7 +296,11 @@ public class WalletServiceImpl implements WalletService {
 
         return dto;
     }
-
+    /**
+     * Cập nhật trạng thái rút tiền (duyệt / từ chối)
+     * - Nếu từ chối → Hoàn tiền
+     * - Gửi thông báo cho user
+     */
     @Override
     public void updateWithdrawalStatus(String id, String status, String staffId) {
         WalletTransaction tx = txRepository.findById(id)

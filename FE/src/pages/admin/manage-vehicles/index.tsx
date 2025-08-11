@@ -259,16 +259,21 @@ export default function VehicleManagementPage() {
         </div>
       ),
     },
-    // {
-    //   title: "Biển số",
-    //   dataIndex: "licensePlate",
-    //   key: "licensePlate",
-    //   render: (licensePlate) => (
-    //     <Tag color="blue" className="font-mono">
-    //       {licensePlate || "N/A"}
-    //     </Tag>
-    //   ),
-    // },
+    ...(activeTab !== "BICYCLE"
+      ? [
+          {
+            title: "Biển số",
+            dataIndex: "licensePlate",
+            key: "licensePlate",
+            render: (licensePlate: string) => (
+              <Tag color="blue" className="font-mono">
+                {licensePlate}
+              </Tag>
+            ),
+          },
+        ]
+      : []),
+
     {
       title: "Chủ xe",
       key: "owner",

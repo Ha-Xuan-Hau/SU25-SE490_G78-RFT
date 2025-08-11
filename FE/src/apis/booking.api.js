@@ -369,10 +369,14 @@ export const getBookingsByProviderAndStatus = async (providerId, status) => {
     try {
         const response = await apiClient.get(`/bookings/provider/${providerId}/status/${status}`);
 
-        return {
-            success: true,
-            data: response.data
-        };
+        // Kiểm tra và trả về data đúng format
+        if (response.data && response.data.content) {
+            // Nếu API trả về format phân trang
+            return response.data.content;
+        }
+
+        // Nếu API trả về array trực tiếp
+        return response.data;
     } catch (error) {
         // console.error('Error fetching provider bookings:', error);
 
@@ -383,6 +387,7 @@ export const getBookingsByProviderAndStatus = async (providerId, status) => {
         };
     }
 };
+
 
 /**
  * Hủy đơn đặt xe bởi provider
