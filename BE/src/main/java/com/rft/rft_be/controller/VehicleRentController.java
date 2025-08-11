@@ -141,6 +141,20 @@ public class VehicleRentController {
                     .body(ApiResponseDTO.error("Không thể chuyển đổi trạng thái xe: " + e.getMessage()));
         }
     }
+
+    @PutMapping("/{vehicleId}/toggle-suspended")
+    public ResponseEntity<ApiResponseDTO<VehicleGetDTO>> toggleVehicleSuspended(
+            @PathVariable String vehicleId) {
+
+        try {
+            VehicleGetDTO vehicle = vehicleRentService.toggleVehicleSuspended(vehicleId);
+            return ResponseEntity.ok(ApiResponseDTO.success("Đã chuyển đổi AVAILABLE <-> SUSPENDED thành công", vehicle));
+        } catch (Exception e) {
+            log.error("Lỗi khi chuyển AVAILABLE <-> SUSPENDED cho xe {}: {}", vehicleId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseDTO.error("Không thể chuyển AVAILABLE <-> SUSPENDED: " + e.getMessage()));
+        }
+    }
     @PostMapping("/registerBulk")
     public ResponseEntity<?> registerBulk(@Valid @RequestBody VehicleRentCreateDTO dto){
         try {
