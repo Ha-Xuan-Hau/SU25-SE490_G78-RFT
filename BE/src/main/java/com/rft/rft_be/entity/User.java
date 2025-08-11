@@ -70,7 +70,7 @@ public class User {
     private Integer deliveryRadius;
 
     public enum Status {
-        ACTIVE, INACTIVE
+        ACTIVE, INACTIVE , TEMP_BANNED
     }
 
     public enum Role {

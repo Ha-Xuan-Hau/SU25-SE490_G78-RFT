@@ -19,6 +19,7 @@ public interface VehicleRentService {
     VehicleDetailDTO getVehicleById( String vehicleId);
     long countUserVehicles(String userId);
     VehicleGetDTO toggleVehicleStatus(String vehicleId);
+  VehicleGetDTO toggleVehicleSuspended(String vehicleId);
    // List<VehicleThumbGroupDTO> getProviderMotorbikeAndBicycleGroupedByThumb();
    PageResponseDTO<VehicleThumbGroupDTO> getProviderCarGrouped(int page, int size, String sortBy, String sortDir);
     PageResponseDTO<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb(int page, int size, String sortBy, String sortDir);

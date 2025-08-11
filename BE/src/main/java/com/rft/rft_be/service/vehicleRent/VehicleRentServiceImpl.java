@@ -748,11 +748,44 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     }
 
     @Override
+    @Transactional
+    public VehicleGetDTO toggleVehicleSuspended(String vehicleId) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy xe hoặc bạn không có quyền cập nhật xe"));
+
+        Vehicle.Status current = vehicle.getStatus();
+        Vehicle.Status newStatus;
+        if (current == Vehicle.Status.SUSPENDED) {
+            validateVehicleForAvailability(vehicle);
+            newStatus = Vehicle.Status.AVAILABLE;
+        } else if (current == Vehicle.Status.AVAILABLE) {
+            // treo xe
+            newStatus = Vehicle.Status.SUSPENDED;
+        } else {
+            throw new RuntimeException("Chỉ có thể chuyển giữa AVAILABLE và SUSPENDED từ trạng thái hiện tại: " + current);
+        }
+
+        vehicle.setStatus(newStatus);
+        setUpdatedAt(vehicle, LocalDateTime.now());
+        Vehicle updated = vehicleRepository.save(vehicle);
+        Vehicle withRelations = vehicleRepository.findByIdWithBrandAndModel(updated.getId()).orElse(updated);
+        log.info("[DEBUG] Đổi trạng thái AVAILABLE<->SUSPENDED thành công: {} -> {}", vehicleId, newStatus);
+        return vehicleMapper.vehicleGet(withRelations);
+    }
+
+    @Override
     public PageResponseDTO<VehicleThumbGroupDTO> getProviderCarGrouped(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
 
-        List<Vehicle> carListAll = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR);
+        List<Vehicle> carListAll = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.CAR)
+                .stream()
+                .filter(v -> v.getStatus() == Vehicle.Status.SUSPENDED
+                        || v.getStatus() == Vehicle.Status.AVAILABLE
+                        || v.getStatus() == Vehicle.Status.PENDING)
+                .collect(Collectors.toList());
 
         // Ô tô không group theo thumb, mỗi xe là một nhóm riêng biệt
         List<VehicleThumbGroupDTO> groupList = carListAll.stream()
@@ -801,7 +834,12 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public PageResponseDTO<VehicleThumbGroupDTO> getProviderMotorbikeGroupedByThumb(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        List<Vehicle> motorbikes = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.MOTORBIKE);
+        List<Vehicle> motorbikes = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.MOTORBIKE)
+                .stream()
+                .filter(v -> v.getStatus() == Vehicle.Status.SUSPENDED
+                        || v.getStatus() == Vehicle.Status.AVAILABLE
+                        || v.getStatus() == Vehicle.Status.PENDING)
+                .collect(Collectors.toList());
 
         // Group by thumb and status
         Map<String, List<Vehicle>> grouped = motorbikes.stream()
@@ -862,7 +900,12 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     public PageResponseDTO<VehicleThumbGroupDTO> getProviderBicycleGroupedByThumb(int page, int size, String sortBy, String sortDir) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getToken().getClaim("userId");
-        List<Vehicle> bicycles = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.BICYCLE);
+        List<Vehicle> bicycles = vehicleRepository.findByUserIdAndVehicleType(userId, Vehicle.VehicleType.BICYCLE)
+                .stream()
+                .filter(v -> v.getStatus() == Vehicle.Status.SUSPENDED
+                        || v.getStatus() == Vehicle.Status.AVAILABLE
+                        || v.getStatus() == Vehicle.Status.PENDING)
+                .collect(Collectors.toList());
 
         // Group by thumb and status
         Map<String, List<Vehicle>> grouped = bicycles.stream()
