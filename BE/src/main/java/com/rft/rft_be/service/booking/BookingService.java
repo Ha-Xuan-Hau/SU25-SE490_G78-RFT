@@ -49,5 +49,6 @@ public interface BookingService {
 
     CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason);
 
+    long countOverdueDeliveryByProvider(String providerId, java.util.List<com.rft.rft_be.entity.Booking.Status> statuses);
 
 }

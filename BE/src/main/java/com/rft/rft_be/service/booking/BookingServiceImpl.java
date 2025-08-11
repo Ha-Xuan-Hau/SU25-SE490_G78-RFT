@@ -553,7 +553,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public void completeBooking(String bookingId, String token,LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
+    public void completeBooking(String bookingId, String token, LocalDateTime timeFinish, BigDecimal costSettlement, String note) {
         String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
 
@@ -763,7 +763,6 @@ public class BookingServiceImpl implements BookingService {
     }
 
 
-
     public CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason) {
         String currentUserId = jwtUtil.extractUserIdFromToken(token);
         Booking booking = getBookingOrThrow(bookingId);
@@ -901,13 +900,13 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found: " + bookingId));
     }
 
-   // public String extractUserIdFromToken(String token) {
-      //  try {
-      //      return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
-     //   } catch (ParseException e) {
-     //       throw new RuntimeException("Không thể lấy userId từ token", e);
+    // public String extractUserIdFromToken(String token) {
+    //  try {
+    //      return SignedJWT.parse(token).getJWTClaimsSet().getStringClaim("userId");
+    //   } catch (ParseException e) {
+    //       throw new RuntimeException("Không thể lấy userId từ token", e);
     //    }
-  //  }
+    //  }
 
     @Override
     @Transactional
@@ -950,10 +949,11 @@ public class BookingServiceImpl implements BookingService {
         bookingRepository.save(booking);
         notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
 
+        User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
 
         Contract contract = Contract.builder()
                 .booking(booking)
-                .user(booking.getUser())
+                .user(provider)
                 .status(Contract.Status.PROCESSING)
                 .build();
         contractRepository.save(contract);
@@ -972,5 +972,19 @@ public class BookingServiceImpl implements BookingService {
 
             return available;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countOverdueDeliveryByProvider(String providerId, List<Booking.Status> statuses) {
+        List<Booking.Status> effective = (statuses == null || statuses.isEmpty())
+                ? java.util.List.of(Booking.Status.CONFIRMED) // mặc định: chỉ CONFIRMED
+                : statuses;
+
+        return contractRepository.countProviderOverdueBookings(
+                providerId,
+                LocalDateTime.now(), // không dùng Clock
+                effective
+        );
     }
 }

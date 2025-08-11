@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.rft.rft_be.entity.Booking;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -199,5 +201,14 @@ public class BookingController {
         }
 
         return ResponseEntity.status(ex.getStatusCode()).body(error);
+    }
+
+    @GetMapping("/provider/{providerId}/overdue-delivery/count")
+    public ResponseEntity<Long> countOverdueDeliveryByProvider(
+            @PathVariable String providerId,
+            @RequestParam(value = "statuses", required = false) java.util.List<Booking.Status> statuses) {
+
+        long count = bookingService.countOverdueDeliveryByProvider(providerId, statuses);
+        return ResponseEntity.ok(count);
     }
 }
