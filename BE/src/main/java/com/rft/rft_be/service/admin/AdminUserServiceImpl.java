@@ -1,6 +1,7 @@
 package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.*;
+import com.rft.rft_be.entity.Contract;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Booking;
 import com.rft.rft_be.repository.*;
@@ -34,6 +35,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final DriverLicensRepository driverLicenseRepository;
     private final VehicleRepository vehicleRepository;
     private final FinalContractRepository finalContractRepository;
+    private final ContractRepository contractRepository;
 
 
     @Override
@@ -312,5 +314,31 @@ public class AdminUserServiceImpl implements AdminUserService {
                         .activities(getStaffActivities(staff.getId()))
                         .build()
         ).toList();
+    }
+
+    @Override
+    public AdminUserDetailDTO banUser(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Chỉ xử lý cho USER/PROVIDER
+        if (user.getRole() == User.Role.USER) {
+            long unfinished = bookingRepository.countUnfinishedByUserId(
+                    user.getId(),
+                    Booking.Status.COMPLETED,
+                    Booking.Status.CANCELLED
+            );
+            user.setStatus(unfinished > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
+        } else if (user.getRole() == User.Role.PROVIDER) {
+            long renting = contractRepository.countByProviderIdAndStatus(
+                    user.getId(),
+                    Contract.Status.RENTING
+            );
+            user.setStatus(renting > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
+        } // STAFF/ADMIN: giữ nguyên
+
+        userRepository.save(user);
+        // Trả về chi tiết để FE có đủ thông tin cập nhật
+        return getUserDetail(user.getId());
     }
 } 

@@ -9,6 +9,7 @@ import com.rft.rft_be.dto.booking.BookingRequestDTO;
 import com.rft.rft_be.dto.booking.BookingResponseDTO;
 import com.rft.rft_be.dto.booking.CancelBookingRequestDTO;
 import com.rft.rft_be.dto.booking.CancelBookingResponseDTO;
+import org.springframework.data.domain.Page;
 
 public interface BookingService {
 
@@ -40,7 +41,7 @@ public interface BookingService {
 
     List<BookingDTO> getBookingsByProviderId(String providerId);
 
-    List<BookingDTO> getBookingsByProviderIdAndStatus(String providerId, String status);
+    Page<BookingDTO> getBookingsByProviderIdAndStatus(String providerId, String status, int page);
 
     void payBookingWithWallet(String bookingId, String token);
 
@@ -48,5 +49,6 @@ public interface BookingService {
 
     CancelBookingResponseDTO cancelBookingByProviderDueToNoShow(String bookingId, String token, String reason);
 
+    long countOverdueDeliveryByProvider(String providerId, java.util.List<com.rft.rft_be.entity.Booking.Status> statuses);
 
 }
