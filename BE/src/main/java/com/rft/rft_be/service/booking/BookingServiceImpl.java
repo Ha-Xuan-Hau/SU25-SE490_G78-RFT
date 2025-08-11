@@ -41,6 +41,7 @@ import com.rft.rft_be.mapper.VehicleMapper;
 import com.rft.rft_be.service.Contract.FinalContractService;
 import com.rft.rft_be.util.BookingCalculationUtils;
 
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -992,7 +993,6 @@ public class BookingServiceImpl implements BookingService {
         // Ghi log giao dịch
         WalletTransaction tx = WalletTransaction.builder()
                 .wallet(wallet)
-                .user(booking.getUser())
                 .amount(totalCost)
                 .status(WalletTransaction.Status.APPROVED)
                 .build();

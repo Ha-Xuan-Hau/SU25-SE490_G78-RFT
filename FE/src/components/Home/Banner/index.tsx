@@ -44,11 +44,8 @@ const Banner: React.FC = () => {
             {/* Header - Giới thiệu dịch vụ */}
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Dịch Vụ Cho Thuê Xe
+                Bạn đang tìm xe?
               </h2>
-              <p className="text-gray-600 text-sm">
-                Lựa chọn phù hợp với nhu cầu của bạn
-              </p>
             </div>
 
             {/* Service Options - Showcase style */}
@@ -80,17 +77,6 @@ const Banner: React.FC = () => {
                       Tự do lái xe theo lịch trình của bạn
                     </p>
                   </div>
-                  <div
-                    className={`w-4 h-4 rounded-full border-2 ${
-                      activeService === "self-drive"
-                        ? "bg-blue-500 border-blue-500"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    {activeService === "self-drive" && (
-                      <div className="w-full h-full rounded-full bg-white scale-50"></div>
-                    )}
-                  </div>
                 </div>
               </div>
 
@@ -120,17 +106,6 @@ const Banner: React.FC = () => {
                     <p className="text-sm text-gray-600">
                       Thoải mái tận hưởng chuyến đi
                     </p>
-                  </div>
-                  <div
-                    className={`w-4 h-4 rounded-full border-2 ${
-                      activeService === "driver"
-                        ? "bg-blue-500 border-blue-500"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    {activeService === "driver" && (
-                      <div className="w-full h-full rounded-full bg-white scale-50"></div>
-                    )}
                   </div>
                 </div>
               </div>
