@@ -102,5 +102,16 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
             """)
     List<Contract> findByProviderIdAndStatus(@Param("providerId") String providerId,
                                              @Param("status") Contract.Status status);
+
+    @Query("""
+    select count(distinct c)
+    from Contract c
+    join BookingDetail bd on bd.booking.id = c.booking.id
+    join Vehicle v on bd.vehicle.id = v.id
+    join User u on v.user.id = u.id
+    where u.id = :providerId and c.status = :status
+""")
+    long countByProviderIdAndStatus(@Param("providerId") String providerId,
+                                    @Param("status") Contract.Status status);
 }
 

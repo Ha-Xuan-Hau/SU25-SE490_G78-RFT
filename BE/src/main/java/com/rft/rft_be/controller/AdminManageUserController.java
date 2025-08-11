@@ -222,4 +222,10 @@ public class AdminManageUserController {
         
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{id}/ban")
+    public ResponseEntity<AdminUserDetailDTO> banUser(@PathVariable("id") String userId) {
+        AdminUserDetailDTO result = adminUserService.banUser(userId);
+        return ResponseEntity.ok(result);
+    }
 } 

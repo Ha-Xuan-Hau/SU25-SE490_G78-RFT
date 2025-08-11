@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
 import com.rft.rft_be.entity.*;
@@ -599,6 +600,30 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         notificationService.notifyBookingCompleted(booking.getUser().getId(), booking.getId());
+
+        // RENTER: unfinished từ bookings (≠ COMPLETED/CANCELLED)
+        User renter = booking.getUser();
+        if (renter != null && renter.getStatus() == User.Status.TEMP_BANNED) {
+            long renterUnfinished = bookingRepository.countUnfinishedByUserId(
+                    renter.getId(), Booking.Status.COMPLETED, Booking.Status.CANCELLED);
+            if (renterUnfinished == 0) {
+                renter.setStatus(User.Status.INACTIVE);
+                userRepository.save(renter);
+            }
+        }
+
+// PROVIDER: unfinished từ contracts (status = RENTING)
+        if (!booking.getBookingDetails().isEmpty()) {
+            User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
+            if (provider != null && provider.getStatus() == User.Status.TEMP_BANNED) {
+                long providerRenting = contractRepository.countByProviderIdAndStatus(
+                        provider.getId(), Contract.Status.RENTING);
+                if (providerRenting == 0) {
+                    provider.setStatus(User.Status.INACTIVE);
+                    userRepository.save(provider);
+                }
+            }
+        }
     }
 
     @Override
@@ -747,6 +772,51 @@ public class BookingServiceImpl implements BookingService {
             notificationService.notifyOrderCanceled(booking.getUser().getId(), bookingId, "Chủ xe đã hủy đơn" + (cancelRequest.getReason() != null && !cancelRequest.getReason().isBlank()
                     ? ". Lý do: " + cancelRequest.getReason()
                     : ""));
+        }
+
+        User renter = booking.getUser();
+        if (renter != null) {
+            long renterUnfinished = bookingRepository.countUnfinishedByUserId(
+                    renter.getId(),
+                    Booking.Status.COMPLETED,
+                    Booking.Status.CANCELLED
+            );
+
+            if (renterUnfinished > 0) {
+                // Có đơn đang hoạt động -> bảo đảm TEMP_BANNED
+                if (renter.getStatus() != User.Status.TEMP_BANNED) {
+                    renter.setStatus(User.Status.TEMP_BANNED);
+                    userRepository.save(renter);
+                }
+            } else {
+                // Không còn đơn unfinished -> nếu đang TEMP_BANNED thì đưa về INACTIVE
+                if (renter.getStatus() == User.Status.TEMP_BANNED) {
+                    renter.setStatus(User.Status.INACTIVE);
+                    userRepository.save(renter);
+                }
+            }
+        }
+
+// PROVIDER: unfinished = các contract đang RENTING
+        if (!booking.getBookingDetails().isEmpty()) {
+            User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
+            if (provider != null) {
+                int rentingCount = contractRepository
+                        .findByProviderIdAndStatus(provider.getId(), Contract.Status.RENTING)
+                        .size();
+
+                if (rentingCount > 0) {
+                    if (provider.getStatus() != User.Status.TEMP_BANNED) {
+                        provider.setStatus(User.Status.TEMP_BANNED);
+                        userRepository.save(provider);
+                    }
+                } else {
+                    if (provider.getStatus() == User.Status.TEMP_BANNED) {
+                        provider.setStatus(User.Status.INACTIVE);
+                        userRepository.save(provider);
+                    }
+                }
+            }
         }
 
         // 6. Trả về response

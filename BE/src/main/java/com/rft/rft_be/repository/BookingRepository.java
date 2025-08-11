@@ -144,4 +144,16 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     Long countByUserId(String userId);
     
     Long countByUserIdAndStatus(String userId, Booking.Status status);
+
+    @Query("""
+    select count(b) from Booking b
+    where b.user.id = :userId
+      and b.status <> :completed
+      and b.status <> :cancelled
+""")
+    long countUnfinishedByUserId(@Param("userId") String userId,
+                                 @Param("completed") Booking.Status completed,
+                                 @Param("cancelled") Booking.Status cancelled);
+
+
 }
