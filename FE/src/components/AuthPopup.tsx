@@ -273,14 +273,20 @@ export function AuthPopup({
         }
       }
     } catch (err: any) {
+      // Lấy message từ backend trả về
       let errorMessage = "Có lỗi xảy ra. Vui lòng thử lại.";
+<<<<<<< HEAD
       if (err.response?.status === 400) {
         errorMessage = "Sai email hoặc mật khẩu!";
       } else if (err.response?.data?.message) {
+=======
+      if (err.response?.data?.message) {
+>>>>>>> develop
         errorMessage = err.response.data.message;
       } else if (err.message) {
         errorMessage = err.message;
       }
+      setErrors({ submit: errorMessage });
       showError(errorMessage);
     } finally {
       setIsLoading(false);

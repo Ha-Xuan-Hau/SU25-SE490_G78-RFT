@@ -29,18 +29,26 @@ import {
 } from "../../apis/vehicle.api";
 import { getUserVehicleById } from "../../apis/user-vehicles.api";
 import { getPenaltiesByUserId } from "../../apis/provider.api";
-import { showError, showSuccess } from "../../utils/toast.utils";
+import { showApiError, showError, showSuccess } from "../../utils/toast.utils";
 
 import carBrands from "../../data/car-brands.json";
 import carModels from "../../data/car-models.json";
 import motorbikeBrands from "../../data/motorbike-brand.json";
 import { UploadSingleImage } from "../uploadImage/UploadSingleImage";
+import {
+  ExclamationCircleOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import { toggleVehicleStatus } from "../../apis/vehicle.api";
+import { Modal } from "antd";
 
 const { TabPane } = Tabs;
 
 const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
   vehicleId,
   onOk,
+  onStatusChanged,
 }) => {
   const [user] = useUserState();
   const [accessToken] = useLocalStorage("access_token");
@@ -58,6 +66,9 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
       ? VehicleType.MOTORBIKE
       : VehicleType.BICYCLE
   );
+
+  // Thêm state cho toggle loading
+  const [toggleLoading, setToggleLoading] = useState(false);
 
   const vehicleDetail = useQuery({
     queryFn: () => getUserVehicleById(vehicleId),
@@ -96,6 +107,82 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
       minCancelHour: number;
     }[]
   >([]);
+
+  // Thêm hàm xử lý toggle status
+  const handleToggleStatus = async () => {
+    if (!vehicleId || !vehicleDetail.data?.data) return;
+
+    const vehicle = vehicleDetail.data.data;
+    const currentStatus = vehicle.status;
+
+    if (currentStatus !== "AVAILABLE" && currentStatus !== "SUSPENDED") {
+      showError(
+        "Chỉ có thể thay đổi trạng thái của xe đang hoạt động hoặc tạm dừng"
+      );
+      return;
+    }
+
+    const isSuspended = currentStatus === "SUSPENDED";
+    const actionText = isSuspended ? "đưa vào hoạt động" : "tạm dừng hoạt động";
+
+    Modal.confirm({
+      title: `Xác nhận ${actionText}`,
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>
+            Bạn có chắc chắn muốn {actionText} xe &quot;{vehicle.thumb}&quot;?
+          </p>
+          <p className="mt-2 text-gray-500">
+            Trạng thái hiện tại:{" "}
+            <Tag color={isSuspended ? "volcano" : "green"}>
+              {isSuspended ? "Tạm dừng" : "Đang hoạt động"}
+            </Tag>
+          </p>
+          <p className="text-gray-500">
+            Trạng thái mới:{" "}
+            <Tag color={isSuspended ? "green" : "volcano"}>
+              {isSuspended ? "Đang hoạt động" : "Tạm dừng"}
+            </Tag>
+          </p>
+        </div>
+      ),
+      okText: "Đồng ý",
+      cancelText: "Đóng",
+      onOk: async () => {
+        setToggleLoading(true);
+        try {
+          const result = await toggleVehicleStatus(vehicleId);
+
+          // Kiểm tra response từ backend
+          if (result.success === false) {
+            // showApiError sẽ tự động lấy message từ result
+            showApiError(result, `Không thể ${actionText}`);
+            return;
+          }
+
+          showSuccess(result.message || `Đã ${actionText} thành công`);
+
+          // Refresh data và đóng modal
+          if (onStatusChanged) {
+            onStatusChanged();
+          }
+
+          if (onOk) {
+            setTimeout(() => {
+              onOk();
+            }, 500);
+          }
+        } catch (error) {
+          console.error("Toggle error:", error);
+          // showApiError sẽ tự động extract message từ error
+          showApiError(error, `Không thể ${actionText}`);
+        } finally {
+          setToggleLoading(false);
+        }
+      },
+    });
+  };
 
   useEffect(() => {
     async function fetchRentalRules() {
@@ -572,7 +659,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
             costPerDay: values.costPerDay,
             //status: "PENDING",
             thumb: values.thumb,
-            userId: user?.id || user?.result?.id,
+            userId: user?.id || user?.id,
             isMultipleVehicles: isMultipleVehicles,
           };
 
@@ -839,7 +926,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           {vehicleType !== VehicleType.BICYCLE && (
             <>
               <Divider />
-              {/* Ẩn card giấy tờ khi tạo nhiều xe máy cùng loại */}
+              {/*   card giấy tờ khi tạo nhiều xe máy cùng loại */}
               {!(
                 vehicleType === VehicleType.MOTORBIKE &&
                 isMultipleVehicles &&
@@ -1166,29 +1253,58 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           <Card
             title={
               <div className="flex items-center gap-3">
-                <span>Thông tin xe</span>
-                {vehicleId && (
-                  <Tag
-                    color={
-                      vehicleDetail.data?.data?.status === "PENDING"
-                        ? "orange"
+                <div className="flex items-center gap-3">
+                  <span>Thông tin xe</span>
+                  {vehicleId && (
+                    <Tag
+                      color={
+                        vehicleDetail.data?.data?.status === "PENDING"
+                          ? "orange"
+                          : vehicleDetail.data?.data?.status === "AVAILABLE"
+                          ? "green"
+                          : vehicleDetail.data?.data?.status === "SUSPENDED"
+                          ? "volcano"
+                          : "red"
+                      }
+                      className="rounded-full px-3 py-1"
+                    >
+                      {vehicleDetail.data?.data?.status === "PENDING"
+                        ? "Chờ duyệt"
                         : vehicleDetail.data?.data?.status === "AVAILABLE"
-                        ? "green"
+                        ? "Đang hoạt động"
                         : vehicleDetail.data?.data?.status === "SUSPENDED"
-                        ? "volcano"
-                        : "red"
-                    }
-                    className="rounded-full px-3 py-1"
-                  >
-                    {vehicleDetail.data?.data?.status === "PENDING"
-                      ? "Chờ duyệt"
-                      : vehicleDetail.data?.data?.status === "AVAILABLE"
-                      ? "Đang hoạt động"
-                      : vehicleDetail.data?.data?.status === "SUSPENDED"
-                      ? "Tạm khóa"
-                      : "Không khả dụng"}
-                  </Tag>
-                )}
+                        ? "Tạm ẩn"
+                        : "Không khả dụng"}
+                    </Tag>
+                  )}
+                </div>
+                {/* Thêm nút ẩn/hiện xe */}
+                {vehicleId &&
+                  (vehicleDetail.data?.data?.status === "AVAILABLE" ||
+                    vehicleDetail.data?.data?.status === "SUSPENDED") && (
+                    <Button
+                      size="small"
+                      danger={vehicleDetail.data?.data?.status === "AVAILABLE"}
+                      type={
+                        vehicleDetail.data?.data?.status === "SUSPENDED"
+                          ? "primary"
+                          : "default"
+                      }
+                      loading={toggleLoading}
+                      onClick={handleToggleStatus}
+                      icon={
+                        vehicleDetail.data?.data?.status === "SUSPENDED" ? (
+                          <EyeOutlined />
+                        ) : (
+                          <EyeInvisibleOutlined />
+                        )
+                      }
+                    >
+                      {vehicleDetail.data?.data?.status === "SUSPENDED"
+                        ? "Đưa vào hoạt động"
+                        : "Tạm dừng hoạt động"}
+                    </Button>
+                  )}
               </div>
             }
             className="mb-4"

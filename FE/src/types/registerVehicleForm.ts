@@ -26,6 +26,7 @@ export interface RegisterVehicleFormProps {
   vehicleId?: string;
   onOk?: () => void;
   groupEdit?: VehicleGroup | null;
+  onStatusChanged?: () => void;
 }
 
 export interface RentalRuleOption {

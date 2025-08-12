@@ -23,4 +23,6 @@ public class ReportRequest {
 
     @NotBlank
     private String reason;
+
+    private String originalReportId;
 }

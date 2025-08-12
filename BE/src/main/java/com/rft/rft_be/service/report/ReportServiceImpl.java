@@ -58,6 +58,8 @@ public class ReportServiceImpl implements ReportService {
     );
     private final List<String> staffReport = List.of("STAFF_REPORT");
 
+    private final List<String> providerReport = List.of("APPEAL");
+
     /**
      * Tạo mới một báo cáo dựa trên thông tin từ người báo cáo và yêu cầu. Gán
      * loại `generalType` theo type cụ thể ("Lừa đảo" → "SERIOUS_ERROR", ...)
@@ -66,11 +68,19 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public void report(User reporter, ReportRequest request) {
         String type = request.getType();
+
+        // Xử lý đặc biệt cho APPEAL
+        if (providerReport.contains(type)) {
+            // Validate và xử lý kháng cáo
+            processAppeal(reporter, request);
+            return; // Kết thúc sớm vì appeal có logic riêng
+        }
+
         if (seriousReport.contains(type)) {
             request.setGeneralType("SERIOUS_ERROR");
         } else if (nonSeriousReport.contains(type)) {
             request.setGeneralType("NON_SERIOUS_ERROR");
-        } else if (staffReport.contains(type) || "Report by staff".equalsIgnoreCase(type)) {
+        } else if (staffReport.contains(type)) {
             request.setGeneralType("STAFF_ERROR");
         } else {
             request.setGeneralType("NON_SERIOUS_ERROR");
@@ -90,6 +100,58 @@ public class ReportServiceImpl implements ReportService {
 
         // Chỉ lưu MỘT LẦN sau khi đã set đầy đủ thông tin
         reportRepo.save(report);
+    }
+
+    // Validate quyền kháng cáo
+    private void processAppeal(User appellant, ReportRequest request) {
+        // 1. Validate originalReportId phải có
+        if (request.getOriginalReportId() == null || request.getOriginalReportId().isEmpty()) {
+            throw new IllegalArgumentException("Phải có ID báo cáo gốc để kháng cáo");
+        }
+
+        // 2. Tìm báo cáo gốc
+        UserReport originalReport = reportRepo.findById(request.getOriginalReportId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo gốc"));
+
+        // 3. Validate người kháng cáo phải là người bị báo cáo
+        if (!originalReport.getReportedId().equals(appellant.getId())) {
+            throw new IllegalArgumentException("Bạn không thể kháng cáo báo cáo này");
+        }
+
+        // 4. Kiểm tra thời hạn 24h
+        LocalDateTime reportTime = originalReport.getCreatedAt();
+        LocalDateTime deadline = reportTime.plusHours(24);
+        if (LocalDateTime.now().isAfter(deadline)) {
+            throw new IllegalArgumentException("Đã quá thời hạn kháng cáo (24 giờ)");
+        }
+
+        // 5. Kiểm tra đã kháng cáo báo cáo này chưa
+        boolean hasAppealed = reportRepo.existsByReporterIdAndOriginalReportId(
+                appellant.getId(),
+                request.getOriginalReportId()
+        );
+        if (hasAppealed) {
+            throw new IllegalArgumentException("Bạn đã kháng cáo báo cáo này rồi");
+        }
+
+        // 6. Tạo appeal report
+        UserReport appeal = new UserReport();
+        appeal.setReporter(appellant);
+        appeal.setReportedId(originalReport.getId()); // ReportedId = ID báo cáo gốc
+        appeal.setType("APPEAL");
+        appeal.setReason(request.getReason());
+        appeal.setEvidenceUrl(request.getEvidenceUrl());
+        appeal.setCreatedAt(LocalDateTime.now());
+
+        // Lưu booking từ báo cáo gốc
+        if (originalReport.getBooking() != null) {
+            appeal.setBooking(originalReport.getBooking());
+        }
+
+        // 7. Thêm field để track (cần thêm vào entity nếu muốn)
+        // appeal.setOriginalReportId(request.getOriginalReportId());
+
+        reportRepo.save(appeal);
     }
 
 
@@ -144,7 +206,8 @@ public class ReportServiceImpl implements ReportService {
     private boolean matchGeneralType(String type, String generalType) {
         return ("SERIOUS_ERROR".equals(generalType) && seriousReport.contains(type))
                 || ("NON_SERIOUS_ERROR".equals(generalType) && nonSeriousReport.contains(type))
-                || ("STAFF_ERROR".equals(generalType) && staffReport.contains(type));
+                || ("STAFF_ERROR".equals(generalType) && staffReport.contains(type))
+                || ("PROVIDER_APPEAL".equals(generalType) && providerReport.contains(type));
     }
 
     /**
