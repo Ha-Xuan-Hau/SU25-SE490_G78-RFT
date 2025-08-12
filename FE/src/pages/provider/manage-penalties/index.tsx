@@ -154,7 +154,7 @@ export default function ManagePenaltiesPage() {
         try {
           if (modalMode === "add") {
             await createPenalty({
-              userId: user.id,
+              userId: user?.id,
               penaltyType: values.penalty_type,
               penaltyValue: values.penalty_value,
               minCancelHour: values.min_cancel_hour,
@@ -163,7 +163,7 @@ export default function ManagePenaltiesPage() {
             showSuccess("Thêm quy định phạt mới thành công!");
           } else if (modalMode === "edit" && currentRule) {
             await updatePenalty(currentRule.id, {
-              userId: user.id,
+              userId: user?.id,
               penaltyType: values.penalty_type,
               penaltyValue: values.penalty_value,
               minCancelHour: values.min_cancel_hour,
@@ -173,7 +173,7 @@ export default function ManagePenaltiesPage() {
           }
           setModalVisible(false);
           // Reload list
-          const res = await getPenaltiesByUserId(user.id);
+          const res = await getPenaltiesByUserId(user?.id);
           setPenaltyRules(mapBackendPenalties(res.penalties));
         } catch (error) {
           showError("Lưu quy định phạt thất bại!");
@@ -191,7 +191,7 @@ export default function ManagePenaltiesPage() {
     try {
       await deletePenalty(id);
       showSuccess("Xóa quy định phạt thành công!");
-      const res = await getPenaltiesByUserId(user.id);
+      const res = await getPenaltiesByUserId(user?.id);
       setPenaltyRules(mapBackendPenalties(res.penalties));
     } catch (error) {
       showError("Xóa quy định phạt thất bại!");

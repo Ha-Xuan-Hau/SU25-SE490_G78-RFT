@@ -58,6 +58,8 @@ public class ReportServiceImpl implements ReportService {
     );
     private final List<String> staffReport = List.of("STAFF_REPORT");
 
+    private final List<String> providerReport = List.of("APPEAL");
+
     /**
      * Tạo mới một báo cáo dựa trên thông tin từ người báo cáo và yêu cầu. Gán
      * loại `generalType` theo type cụ thể ("Lừa đảo" → "SERIOUS_ERROR", ...)
@@ -66,11 +68,19 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public void report(User reporter, ReportRequest request) {
         String type = request.getType();
+
+        // Xử lý đặc biệt cho APPEAL
+        if (providerReport.contains(type)) {
+            // Validate và xử lý kháng cáo
+            processAppeal(reporter, request);
+            return; // Kết thúc sớm vì appeal có logic riêng
+        }
+
         if (seriousReport.contains(type)) {
             request.setGeneralType("SERIOUS_ERROR");
         } else if (nonSeriousReport.contains(type)) {
             request.setGeneralType("NON_SERIOUS_ERROR");
-        } else if (staffReport.contains(type) || "Report by staff".equalsIgnoreCase(type)) {
+        } else if (staffReport.contains(type)) {
             request.setGeneralType("STAFF_ERROR");
         } else {
             request.setGeneralType("NON_SERIOUS_ERROR");
@@ -78,17 +88,72 @@ public class ReportServiceImpl implements ReportService {
 
         UserReport report = reportMapper.toEntity(request);
         report.setReporter(reporter);
-        report.setCreatedAt(java.time.LocalDateTime.now());
-        reportRepo.save(report);
+        report.setCreatedAt(LocalDateTime.now());
 
+        // Set booking TRƯỚC KHI lưu lần đầu
         if (request.getBooking() != null) {
             Booking booking = bookingRepository.findById(request.getBooking())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy booking với id: " + request.getBooking()));
             System.out.println(">>> Đã tìm thấy booking: " + booking.getId());
             report.setBooking(booking);
         }
+
+        // Chỉ lưu MỘT LẦN sau khi đã set đầy đủ thông tin
         reportRepo.save(report);
     }
+
+    // Validate quyền kháng cáo
+    private void processAppeal(User appellant, ReportRequest request) {
+        // 1. Validate originalReportId phải có
+        if (request.getOriginalReportId() == null || request.getOriginalReportId().isEmpty()) {
+            throw new IllegalArgumentException("Phải có ID báo cáo gốc để kháng cáo");
+        }
+
+        // 2. Tìm báo cáo gốc
+        UserReport originalReport = reportRepo.findById(request.getOriginalReportId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo gốc"));
+
+        // 3. Validate người kháng cáo phải là người bị báo cáo
+        if (!originalReport.getReportedId().equals(appellant.getId())) {
+            throw new IllegalArgumentException("Bạn không thể kháng cáo báo cáo này");
+        }
+
+        // 4. Kiểm tra thời hạn 24h
+        LocalDateTime reportTime = originalReport.getCreatedAt();
+        LocalDateTime deadline = reportTime.plusHours(24);
+        if (LocalDateTime.now().isAfter(deadline)) {
+            throw new IllegalArgumentException("Đã quá thời hạn kháng cáo (24 giờ)");
+        }
+
+        // 5. Kiểm tra đã kháng cáo báo cáo này chưa
+        boolean hasAppealed = reportRepo.existsByReporterIdAndOriginalReportId(
+                appellant.getId(),
+                request.getOriginalReportId()
+        );
+        if (hasAppealed) {
+            throw new IllegalArgumentException("Bạn đã kháng cáo báo cáo này rồi");
+        }
+
+        // 6. Tạo appeal report
+        UserReport appeal = new UserReport();
+        appeal.setReporter(appellant);
+        appeal.setReportedId(originalReport.getId()); // ReportedId = ID báo cáo gốc
+        appeal.setType("APPEAL");
+        appeal.setReason(request.getReason());
+        appeal.setEvidenceUrl(request.getEvidenceUrl());
+        appeal.setCreatedAt(LocalDateTime.now());
+
+        // Lưu booking từ báo cáo gốc
+        if (originalReport.getBooking() != null) {
+            appeal.setBooking(originalReport.getBooking());
+        }
+
+        // 7. Thêm field để track (cần thêm vào entity nếu muốn)
+        // appeal.setOriginalReportId(request.getOriginalReportId());
+
+        reportRepo.save(appeal);
+    }
+
 
     /**
      * Trả về tên của đối tượng bị báo cáo, có thể là tên người dùng hoặc biển
@@ -141,7 +206,8 @@ public class ReportServiceImpl implements ReportService {
     private boolean matchGeneralType(String type, String generalType) {
         return ("SERIOUS_ERROR".equals(generalType) && seriousReport.contains(type))
                 || ("NON_SERIOUS_ERROR".equals(generalType) && nonSeriousReport.contains(type))
-                || ("STAFF_ERROR".equals(generalType) && staffReport.contains(type));
+                || ("STAFF_ERROR".equals(generalType) && staffReport.contains(type))
+                || ("PROVIDER_APPEAL".equals(generalType) && providerReport.contains(type));
     }
 
     /**
@@ -205,38 +271,49 @@ public class ReportServiceImpl implements ReportService {
         // Thông tin đối tượng bị báo cáo
         ReportedUserDTO reportedUser = new ReportedUserDTO();
 
-        if ("MISLEADING_LISTING".equalsIgnoreCase(type) || "MISLEADING_INFO".equalsIgnoreCase(type)) {
-            // Đối tượng là xe
-            vehicleRepo.findById(targetId).ifPresent(vehicle -> {
-                reportedUser.setVehicleId(vehicle.getId());
-                reportedUser.setVehicleName(vehicle.getThumb());
+        // Kiểm tra xem targetId là User hay Vehicle
+        Optional<User> userOpt = userRepo.findById(targetId);
+        Optional<Vehicle> vehicleOpt = vehicleRepo.findById(targetId);
 
-                try {
-                    ObjectMapper mapper = new ObjectMapper();
-                    List<String> images = mapper.readValue(vehicle.getVehicleImages(), new TypeReference<List<String>>() {
-                    });
-                    if (!images.isEmpty()) {
-                        reportedUser.setVehicleImage(images.get(0));
-                    }
-                } catch (Exception e) {
-                    reportedUser.setVehicleImage(null);
-                }
+        if (userOpt.isPresent()) {
+            // Target là User
+            User user = userOpt.get();
+            reportedUser.setId(user.getId());
+            reportedUser.setFullName(user.getFullName());
+            reportedUser.setEmail(user.getEmail());
+            System.out.println(">>> Found user: " + user.getId() + " - " + user.getFullName());
 
-                // Gán thêm thông tin chủ xe nếu cần
-                User owner = vehicle.getUser();
-                if (owner != null) {
-                    reportedUser.setId(owner.getId());
-                    reportedUser.setFullName(owner.getFullName());
-                    reportedUser.setEmail(owner.getEmail());
+        } else if (vehicleOpt.isPresent()) {
+            // Target là Vehicle
+            Vehicle vehicle = vehicleOpt.get();
+            reportedUser.setVehicleId(vehicle.getId());
+            reportedUser.setVehicleName(vehicle.getThumb());
+
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                List<String> images = mapper.readValue(vehicle.getVehicleImages(), new TypeReference<List<String>>() {});
+                if (!images.isEmpty()) {
+                    reportedUser.setVehicleImage(images.get(0));
                 }
-            });
+            } catch (Exception e) {
+                reportedUser.setVehicleImage(null);
+            }
+
+            // Gán thêm thông tin chủ xe nếu cần
+            User owner = vehicle.getUser();
+            if (owner != null) {
+                reportedUser.setId(owner.getId());
+                reportedUser.setFullName(owner.getFullName());
+                reportedUser.setEmail(owner.getEmail());
+            }
+            System.out.println(">>> Found vehicle: " + vehicle.getId());
+
         } else {
-            // Đối tượng là người dùng
-            userRepo.findById(targetId).ifPresent(user -> {
-                reportedUser.setId(user.getId());
-                reportedUser.setFullName(user.getFullName());
-                reportedUser.setEmail(user.getEmail());
-            });
+            // Không tìm thấy target (có thể đã bị xóa)
+            System.out.println(">>> Target not found with ID: " + targetId);
+            reportedUser.setId(targetId);
+            reportedUser.setFullName("Đối tượng không tồn tại");
+            reportedUser.setEmail("N/A");
         }
 
         // Danh sách người báo cáo
@@ -246,6 +323,7 @@ public class ReportServiceImpl implements ReportService {
             dto.setFullName(r.getReporter().getFullName());
             dto.setEmail(r.getReporter().getEmail());
             dto.setReason(r.getReason());
+            dto.setEvidenceUrl(r.getEvidenceUrl());
             dto.setCreatedAt(r.getCreatedAt().toString());
             return dto;
         }).toList();
@@ -257,5 +335,6 @@ public class ReportServiceImpl implements ReportService {
 
         return detail;
     }
+
 
 }

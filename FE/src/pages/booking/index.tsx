@@ -39,7 +39,7 @@ import {
 
 // Import component Coupon
 import Coupon from "@/components/Coupon";
-import { coupon as CouponType } from "@/types/coupon";
+import { coupon as CouponType } from "@/types/userCoupon";
 
 // Import API services
 import {

@@ -216,6 +216,9 @@ CREATE TABLE `user_report` (
     `reported_id` varchar(255) NOT NULL, -- id(có thể là id người dùng, id xe) bị report
     `type` VARCHAR(50) NOT NULL,        -- Loại report (spam, lừa đảo, ngôn từ kích động,...)
     `reason` TEXT NOT NULL,             -- Mô tả lý do chi tiết
+  
+    `evidence_url` text,                       -- URL cho ảnh/video bằng chứng nếu có
+
     `booking_id` varchar(225) DEFAULT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
 	
@@ -530,45 +533,11 @@ INSERT INTO `coupons` (`id`, `name`, `discount`, `description`, `time_expired`, 
 ('coupon_002', 'SUMMER20', 20.00, 'Giảm 20% dịp hè', '2025-08-31 23:59:59', 'VALID', '2024-06-01 00:00:00', '2024-06-01 00:00:00'),
 ('coupon_003', 'WEEKEND15', 15.00, 'Giảm 15% cuối tuần', '2025-07-31 23:59:59', 'VALID', '2024-07-01 00:00:00', '2024-07-01 00:00:00');
 
--- Insert sample bookings
-INSERT INTO `bookings` (`id`, `user_id`, `phone_number`, `address`, `time_booking_start`, `time_booking_end`, `code_transaction`, `time_transaction`, `total_cost`, `status`, `penalty_type`, `penalty_value`, `min_cancel_hour`, `coupon_id`, `created_at`, `updated_at`) VALUES
-('booking_001', 'user_003', '0901234567', '789 Đường Võ Văn Tần, Quận 5, TP.HCM', '2025-07-10 08:00:00', '2025-07-12 18:00:00', 'TXN001', '2025-07-08 10:30:00', 1600000.00, 'CONFIRMED', 'PERCENT', 10.00, 24, 'coupon_001', '2025-07-07 02:38:00', '2025-07-07 02:38:00'),
-('booking_002', 'user_003', '0901234567', '789 Đường Võ Văn Tần, Quận 5, TP.HCM', '2025-07-15 09:00:00', '2025-07-17 19:00:00', 'TXN002', '2025-07-09 14:20:00', 400000.00, 'PENDING', 'FIXED', 50000.00, 12, NULL, '2025-07-07 02:39:00', '2025-07-07 02:39:00');
-
--- Insert booking details
-INSERT INTO `booking_details` (`id`, `booking_id`, `vehicle_id`, `cost`, `driver_fee`) VALUES
-('bd_001', 'booking_001', 'vehicle_001', 1600000.00, 0.00),
-('bd_002', 'booking_002', 'vehicle_012', 400000.00, 0.00);
-
--- Insert sample contracts
-INSERT INTO `contracts` (`id`, `booking_id`, `user_id`, `image`, `status`, `cost_settlement`, `created_at`, `updated_at`) VALUES
-('contract_001', 'booking_001', 'user_003', 'https://example.com/contract1.jpg', 'PROCESSING', 1600000.00, '2025-07-07 02:40:00', '2025-07-07 02:40:00');
-
--- Insert sample ratings
-INSERT INTO `ratings` (`id`, `user_id`, `vehicle_id`, `booking_id`, `comment`, `star`, `created_at`, `updated_at`) VALUES
-('rating_001', 'user_003', 'vehicle_001', 'booking_001', 'Xe đẹp, chủ xe nhiệt tình, sẽ thuê lại', 5, '2025-07-07 02:41:00', '2025-07-07 02:41:00');
-
--- Insert booked time slots
-INSERT INTO `booked_time_slots` (`id`, `vehicle_id`, `time_from`, `time_to`, `created_at`, `updated_at`) VALUES
-('slot_001', 'vehicle_001', '2025-07-10 08:00:00', '2025-07-12 18:00:00', '2025-07-07 02:42:00', '2025-07-07 02:42:00'),
-('slot_002', 'vehicle_012', '2025-07-15 09:00:00', '2025-07-17 19:00:00', '2025-07-07 02:43:00', '2025-07-07 02:43:00');
-
--- Insert wallet transactions
-INSERT INTO `wallet_transactions` (`id`, `wallet_id`, `amount`, `status`, `user_id`, `created_at`, `updated_at`) VALUES
-('trans_001', 'wallet_001', 1600000.00, 'APPROVED', 'user_005', '2025-07-07 02:44:00', '2025-07-07 02:44:00'),
-('trans_002', 'wallet_002', 400000.00, 'PENDING', 'user_005', '2025-07-07 02:45:00', '2025-07-07 02:45:00'),
-('trans_003', 'wallet_003', -1600000.00, 'APPROVED', 'user_005', '2025-07-07 02:46:00', '2025-07-07 02:46:00');
 
 -- Insert sample notifications
 INSERT INTO `notifications` (`id`, `type`, `message`, `is_read`, `is_deleted`, `receiver_id`, `created_at`, `updated_at`) VALUES
-('notif_001', 'BOOKING', 'Đặt xe booking_001 của bạn đã được xác nhận!', FALSE, FALSE, 'user_003', '2025-07-07 02:38:00', '2025-07-07 02:38:00'),
-('notif_002', 'BOOKING', 'Đặt xe booking_002 của bạn đang chờ xử lý.', FALSE, FALSE, 'user_003', '2025-07-07 02:39:00', '2025-07-07 02:39:00'),
 ('notif_003', 'SYSTEM', 'Hệ thống sẽ bảo trì vào 2025-07-15 từ 1:00 AM đến 3:00 AM.', FALSE, FALSE, 'user_001', '2025-07-07 02:40:00', '2025-07-07 02:40:00'),
 ('notif_004', 'REPORT', 'Báo cáo của bạn về user_004 đã được gửi đi.', FALSE, FALSE, 'user_003', '2025-07-07 02:41:00', '2025-07-07 02:41:00');
-
--- Insert sample user reports
-INSERT INTO `user_report` (`id`, `reporter_id`, `reported_id`, `type`, `reason`, `created_at`) VALUES
-('report_001', 'user_003', 'user_004', 'SPAM', 'Người dùng gửi tin nhắn quảng cáo không liên quan.', '2025-07-07 02:41:00');
 
 
 INSERT INTO vehicles (
