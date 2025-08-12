@@ -1,7 +1,6 @@
 "use client";
 
 import { translateENtoVI } from "@/lib/viDictionary";
-
 import {
   getUserCars,
   getUserBicycles,
@@ -9,7 +8,13 @@ import {
 } from "@/apis/user-vehicles.api";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
 import { useUserState } from "@/recoils/user.state";
-import { EditOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  PlusOutlined,
+  ExclamationCircleOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
 import {
   Button,
   Image,
@@ -21,6 +26,7 @@ import {
   Empty,
   Tag,
   Tabs,
+  Checkbox,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
@@ -38,6 +44,7 @@ import {
   updateSingleMotorbikeInGroup,
   updateCar,
   updateCommon,
+  bulkToggleVehicleStatus,
 } from "@/apis/vehicle.api";
 import { showApiError, showApiSuccess } from "@/utils/toast.utils";
 
@@ -63,7 +70,6 @@ export default function UserRegisterVehicle() {
   const [groupDetail, setGroupDetail] = useState<VehicleGroup | null>(null);
   const [user] = useUserState();
   const registeredVehicles = user?.registeredVehicles || [];
-  // Set default activeType to the first registered vehicle type if any, else 'CAR'
   const [activeType, setActiveType] = useState<string>(
     registeredVehicles.length > 0 ? registeredVehicles[0] : "CAR"
   );
@@ -74,11 +80,33 @@ export default function UserRegisterVehicle() {
   const [isLoading, setIsLoading] = useState(false);
   const [accessToken] = useLocalStorage("access_token");
 
+  // State mới cho chọn nhiều xe
+  const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
+  const [toggleLoading, setToggleLoading] = useState(false);
+
   // modal nội quy
   const [rulesModal, setRulesModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<"create" | "edit" | null>(
     null
   );
+
+  // Hàm helper để lấy tất cả xe có thể chọn (chỉ AVAILABLE và SUSPENDED)
+  const getSelectableVehicles = () => {
+    return groupList.flatMap((group) =>
+      group.vehicle.filter(
+        (v) => v.status === "AVAILABLE" || v.status === "SUSPENDED"
+      )
+    );
+  };
+
+  // Hàm helper để lấy tất cả xe có thể chọn trong page hiện tại
+  const getSelectableVehiclesInPage = () => {
+    return groupList.flatMap((group) =>
+      group.vehicle.filter(
+        (v) => v.status === "AVAILABLE" || v.status === "SUSPENDED"
+      )
+    );
+  };
 
   // Fetch group vehicles by type
   const fetchGroupVehicles = async (type: string) => {
@@ -102,20 +130,18 @@ export default function UserRegisterVehicle() {
 
   useEffect(() => {
     if (registeredVehicles.length > 0) {
-      // If activeType is not in registeredVehicles, reset to first
       if (!registeredVehicles.includes(activeType)) {
         setActiveType(registeredVehicles[0]);
-        // fetchGroupVehicles will be called again due to activeType change
         return;
       }
       fetchGroupVehicles(activeType);
     }
-    // eslint-disable-next-line
   }, [activeType, page, size, registeredVehicles]);
 
   const handleTabChange = (key: string) => {
     setActiveType(key);
     setPage(0);
+    setSelectedVehicles([]); // Reset selection khi chuyển tab
   };
 
   const handleAddVehicle = () => {
@@ -125,12 +151,10 @@ export default function UserRegisterVehicle() {
 
   const handleAcceptRules = () => {
     setRulesModal(false);
-
     if (pendingAction === "create") {
       setEditVehicleId(null);
       setRegisterVehicleModal(true);
     }
-
     setPendingAction(null);
   };
 
@@ -144,6 +168,415 @@ export default function UserRegisterVehicle() {
     setRegisterVehicleModal(true);
   };
 
+  // Hàm xử lý bulk toggle
+  const handleBulkToggleStatus = async () => {
+    if (selectedVehicles.length === 0) {
+      showApiError("Vui lòng chọn ít nhất một xe");
+      return;
+    }
+
+    const selectedVehicleObjects = groupList.flatMap((group) =>
+      group.vehicle.filter((v) => selectedVehicles.includes(v.id))
+    );
+
+    const hasAvailable = selectedVehicleObjects.some(
+      (v) => v.status === "AVAILABLE"
+    );
+    const hasSuspended = selectedVehicleObjects.some(
+      (v) => v.status === "SUSPENDED"
+    );
+
+    let actionText = "thay đổi trạng thái";
+    if (hasAvailable && !hasSuspended) {
+      actionText = "tạm dừng hoạt động";
+    } else if (!hasAvailable && hasSuspended) {
+      actionText = "đưa vào hoạt động";
+    }
+
+    Modal.confirm({
+      title: `Xác nhận ${actionText} nhiều xe`,
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>
+            Bạn có chắc chắn muốn {actionText} {selectedVehicles.length} xe đã
+            chọn?
+          </p>
+          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+            <p className="text-sm text-yellow-800">
+              <strong>Lưu ý:</strong> Xe đang có lịch booking sẽ không thể thay
+              đổi trạng thái
+            </p>
+          </div>
+        </div>
+      ),
+      okText: "Đồng ý",
+      cancelText: "Quay lại",
+      onOk: async () => {
+        setToggleLoading(true);
+        try {
+          const result = await bulkToggleVehicleStatus(selectedVehicles);
+
+          // Kiểm tra response từ backend
+          if (result.success === false) {
+            // Sử dụng showApiError với message từ backend
+            showApiError(result, "Không thể thay đổi trạng thái xe");
+            return;
+          }
+
+          showApiSuccess(
+            result.message ||
+              `Đã ${actionText} ${selectedVehicles.length} xe thành công`
+          );
+          setSelectedVehicles([]);
+          fetchGroupVehicles(activeType);
+        } catch (error) {
+          console.error("Bulk toggle error:", error);
+          // Sử dụng showApiError - nó sẽ tự động extract message
+          showApiError(error, "Không thể thay đổi trạng thái xe");
+        } finally {
+          setToggleLoading(false);
+        }
+      },
+    });
+  };
+
+  // Hàm kiểm tra nút hiển thị Ẩn hay Hiện
+  const getBulkActionButton = () => {
+    if (selectedVehicles.length === 0) return null;
+
+    const selectedVehicleObjects = groupList.flatMap((group) =>
+      group.vehicle.filter((v) => selectedVehicles.includes(v.id))
+    );
+
+    const hasAvailable = selectedVehicleObjects.some(
+      (v) => v.status === "AVAILABLE"
+    );
+    const hasSuspended = selectedVehicleObjects.some(
+      (v) => v.status === "SUSPENDED"
+    );
+
+    if (hasAvailable && !hasSuspended) {
+      return (
+        <Button
+          danger
+          onClick={handleBulkToggleStatus}
+          loading={toggleLoading}
+          icon={<EyeInvisibleOutlined />}
+        >
+          Tạm dừng hoạt động {selectedVehicles.length} xe
+        </Button>
+      );
+    } else if (!hasAvailable && hasSuspended) {
+      return (
+        <Button
+          type="primary"
+          onClick={handleBulkToggleStatus}
+          loading={toggleLoading}
+          icon={<EyeOutlined />}
+          className="bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600"
+        >
+          Đưa vào hoạt động {selectedVehicles.length} xe
+        </Button>
+      );
+    } else {
+      return (
+        <Button onClick={handleBulkToggleStatus} loading={toggleLoading}>
+          Thay đổi trạng thái {selectedVehicles.length} xe
+        </Button>
+      );
+    }
+  };
+
+  // Columns với checkbox
+  const columns: ColumnsType<VehicleGroup> = [
+    {
+      title: (() => {
+        const selectableInPage = getSelectableVehiclesInPage();
+        const selectedInPage = selectableInPage.filter((v) =>
+          selectedVehicles.includes(v.id)
+        );
+
+        return (
+          <Checkbox
+            checked={
+              selectableInPage.length > 0 &&
+              selectedInPage.length === selectableInPage.length
+            }
+            indeterminate={
+              selectedInPage.length > 0 &&
+              selectedInPage.length < selectableInPage.length
+            }
+            onChange={(e) => {
+              if (e.target.checked) {
+                // Chỉ chọn các xe AVAILABLE và SUSPENDED trong trang hiện tại
+                const selectableIds = selectableInPage.map((v) => v.id);
+
+                // Giữ lại các xe đã chọn từ các trang khác
+                const otherPageSelections = selectedVehicles.filter(
+                  (id) =>
+                    !groupList
+                      .flatMap((g) => g.vehicle)
+                      .some((v) => v.id === id)
+                );
+
+                const newSelection = [...otherPageSelections, ...selectableIds];
+
+                if (newSelection.length > 50) {
+                  showApiError("Chỉ được chọn tối đa 50 xe");
+                  setSelectedVehicles(newSelection.slice(0, 50));
+                } else {
+                  setSelectedVehicles(newSelection);
+                }
+              } else {
+                // Bỏ chọn tất cả xe trong trang hiện tại
+                const pageVehicleIds = groupList.flatMap((g) =>
+                  g.vehicle.map((v) => v.id)
+                );
+                setSelectedVehicles((prev) =>
+                  prev.filter((id) => !pageVehicleIds.includes(id))
+                );
+              }
+            }}
+          />
+        );
+      })(),
+      key: "selection",
+      width: 50,
+      render: (_: unknown, record: VehicleGroup) => {
+        // Chỉ hiển thị checkbox cho các xe có thể chọn
+        const selectableVehicles = record.vehicle.filter(
+          (v) => v.status === "AVAILABLE" || v.status === "SUSPENDED"
+        );
+
+        if (selectableVehicles.length === 0) {
+          return null; // Không hiển thị checkbox nếu không có xe nào có thể chọn
+        }
+
+        const isChecked = selectableVehicles.some((v) =>
+          selectedVehicles.includes(v.id)
+        );
+        const isIndeterminate =
+          !isChecked &&
+          record.vehicle.some((v) => selectedVehicles.includes(v.id)) &&
+          !selectableVehicles.every((v) => selectedVehicles.includes(v.id));
+
+        return (
+          <Checkbox
+            checked={
+              isChecked &&
+              selectableVehicles.every((v) => selectedVehicles.includes(v.id))
+            }
+            indeterminate={isIndeterminate}
+            onChange={(e) => {
+              const selectableIds = selectableVehicles.map((v) => v.id);
+
+              if (e.target.checked) {
+                const newSelection = [...selectedVehicles, ...selectableIds];
+                if (newSelection.length > 50) {
+                  showApiError("Chỉ được chọn tối đa 50 xe");
+                  setSelectedVehicles(newSelection.slice(0, 50));
+                } else {
+                  setSelectedVehicles(newSelection);
+                }
+              } else {
+                setSelectedVehicles((prev) =>
+                  prev.filter((id) => !selectableIds.includes(id))
+                );
+              }
+            }}
+          />
+        );
+      },
+    },
+    {
+      title: "Hình ảnh",
+      dataIndex: "vehicleImages",
+      key: "vehicleImages",
+      width: 120,
+      render: (_: unknown, record: VehicleGroup) => {
+        const v = record.vehicle[0];
+        return (
+          <Image
+            className="w-20 h-14 rounded-lg object-cover"
+            src={
+              v.vehicleImages?.[0]?.imageUrl ||
+              "/placeholder.svg?height=56&width=80"
+            }
+            alt="Vehicle thumbnail"
+            fallback="/placeholder.svg?height=56&width=80"
+          />
+        );
+      },
+    },
+    {
+      title: "Thông tin xe",
+      key: "vehicleInfo",
+      render: (_: unknown, record: VehicleGroup) => {
+        const v = record.vehicle[0];
+        return (
+          <div>
+            <div className="font-medium text-gray-900">{v.thumb}</div>
+            <div className="text-sm text-gray-500">
+              {v.brandName} {v.modelName}
+            </div>
+          </div>
+        );
+      },
+    },
+    ...(activeType !== "BICYCLE"
+      ? [
+          {
+            title: "Thông số",
+            key: "specs",
+            render: (_: unknown, record: VehicleGroup) => {
+              const v = record.vehicle[0];
+              return (
+                <div className="text-sm">
+                  {v.numberSeat && (
+                    <div>
+                      Nhiên liệu:{" "}
+                      <span className="font-medium">
+                        {translateENtoVI(v.fuelType)}
+                      </span>
+                    </div>
+                  )}
+                  {v.transmission && (
+                    <div>
+                      Truyền động:{" "}
+                      <span className="font-medium">
+                        {translateENtoVI(v.transmission)}
+                      </span>
+                    </div>
+                  )}
+                  {v.licensePlate && record.vehicleNumber === 1 && (
+                    <div>
+                      Biển số:{" "}
+                      <span className="font-medium">{v.licensePlate}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
+    {
+      title: "Số lượng",
+      dataIndex: "vehicleNumber",
+      key: "vehicleNumber",
+      width: 90,
+      render: (num: number) => <span>{num}</span>,
+    },
+    {
+      title: "Giá thuê/ngày",
+      dataIndex: "costPerDay",
+      key: "costPerDay",
+      render: (_: unknown, record: VehicleGroup) => {
+        const v = record.vehicle[0];
+        return (
+          <div className="font-semibold text-green-600">
+            {v.costPerDay?.toLocaleString("vi-VN")} VNĐ
+          </div>
+        );
+      },
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      render: (_: unknown, record: VehicleGroup) => {
+        const v = record.vehicle[0];
+        const getStatusColor = () => {
+          switch (v.status) {
+            case "AVAILABLE":
+              return "green";
+            case "SUSPENDED":
+              return "volcano";
+            case "PENDING":
+              return "orange";
+            default:
+              return "red";
+          }
+        };
+        const getStatusText = () => {
+          switch (v.status) {
+            case "AVAILABLE":
+              return "Đang hoạt động";
+            case "SUSPENDED":
+              return "Tạm dừng hoạt động";
+            case "PENDING":
+              return "Chờ duyệt";
+            default:
+              return "Không khả dụng";
+          }
+        };
+        return (
+          <Tag color={getStatusColor()} className="rounded-full px-3 py-1">
+            {getStatusText()}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "Thao tác",
+      key: "action",
+      render: (_: unknown, record: VehicleGroup) => {
+        if (record.vehicleNumber === 1) {
+          const v = record.vehicle[0];
+          return (
+            <Button
+              type="primary"
+              size="small"
+              className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+              onClick={() => handleEditVehicle(v.id)}
+            >
+              <EditOutlined /> Chỉnh sửa
+            </Button>
+          );
+        }
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Button
+              type="default"
+              size="small"
+              className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+              style={{ width: 100 }}
+              onClick={() => setGroupDetail(record)}
+            >
+              Xem
+            </Button>
+            <Button
+              type="primary"
+              size="small"
+              className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+              style={{ width: 100 }}
+              onClick={() => {
+                setGroupEditModal({
+                  open: true,
+                  vehicle: record.vehicle[0],
+                  group: record,
+                });
+              }}
+            >
+              <EditOutlined />
+              Chỉnh sửa
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  // Hiển thị số xe đã chọn
+  const selectedCount = selectedVehicles.length;
+  const selectedInfo =
+    selectedCount > 0 ? (
+      <div className="text-sm text-gray-600 ml-4">
+        Đã chọn: <strong>{selectedCount}/50</strong> xe
+      </div>
+    ) : null;
+
   return (
     <div>
       {isLoading && (
@@ -152,24 +585,31 @@ export default function UserRegisterVehicle() {
 
       <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
         <div className="flex justify-between items-start">
-          <div>
-            <Title level={2} className="mb-2 text-gray-900">
-              Danh sách xe của tôi
-            </Title>
-            <Text className="text-gray-600">
-              Quản lý và theo dõi tình trạng các xe đã đăng ký
-            </Text>
+          <div className="flex items-center">
+            <div>
+              <Title level={2} className="mb-2 text-gray-900">
+                Danh sách xe của tôi
+              </Title>
+              <Text className="text-gray-600">
+                Quản lý và theo dõi tình trạng các xe đã đăng ký
+              </Text>
+            </div>
+            {selectedInfo}
           </div>
-          <Button
-            type="primary"
-            onClick={handleAddVehicle}
-            className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600 animate-pulse hover:animate-none"
-          >
-            <PlusOutlined /> Đăng ký xe mới
-          </Button>
+          <div className="flex gap-2">
+            {getBulkActionButton()}
+            <Button
+              type="primary"
+              onClick={handleAddVehicle}
+              className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600 animate-pulse hover:animate-none"
+            >
+              <PlusOutlined /> Đăng ký xe mới
+            </Button>
+          </div>
         </div>
       </div>
 
+      {/* Phần còn lại giữ nguyên */}
       <Tabs activeKey={activeType} onChange={handleTabChange} className="mb-4">
         {registeredVehicles.includes("CAR") && <TabPane tab="Ô tô" key="CAR" />}
         {registeredVehicles.includes("MOTORBIKE") && (
@@ -180,6 +620,7 @@ export default function UserRegisterVehicle() {
         )}
       </Tabs>
 
+      {/* Giữ nguyên phần còn lại của component */}
       {isLoading ? (
         <div className="bg-white rounded-lg shadow-sm p-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite] -translate-x-full"></div>
@@ -191,247 +632,7 @@ export default function UserRegisterVehicle() {
       ) : groupList.length > 0 ? (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <Table
-            columns={
-              [
-                {
-                  title: "Hình ảnh",
-                  dataIndex: "vehicleImages",
-                  key: "vehicleImages",
-                  width: 120,
-                  render: (_: unknown, record: VehicleGroup) => {
-                    const v = record.vehicle[0];
-                    return (
-                      <Image
-                        className="w-20 h-14 rounded-lg object-cover"
-                        src={
-                          v.vehicleImages?.[0]?.imageUrl ||
-                          "/placeholder.svg?height=56&width=80"
-                        }
-                        alt="Vehicle thumbnail"
-                        fallback="/placeholder.svg?height=56&width=80"
-                      />
-                    );
-                  },
-                },
-                {
-                  title: "Thông tin xe",
-                  key: "vehicleInfo",
-                  render: (_: unknown, record: VehicleGroup) => {
-                    const v = record.vehicle[0];
-                    return (
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {v.thumb}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {v.brandName} {v.modelName}
-                        </div>
-                      </div>
-                    );
-                  },
-                },
-                ...(activeType !== "BICYCLE"
-                  ? [
-                      {
-                        title: "Thông số",
-                        key: "specs",
-                        render: (_: unknown, record: VehicleGroup) => {
-                          const v = record.vehicle[0];
-                          return (
-                            <div className="text-sm">
-                              {v.numberSeat && (
-                                <div>
-                                  Nhiên liệu:{" "}
-                                  <span className="font-medium">
-                                    {translateENtoVI(v.fuelType)}
-                                  </span>
-                                </div>
-                              )}
-                              {v.transmission && (
-                                <div>
-                                  Truyền động:{" "}
-                                  <span className="font-medium">
-                                    {translateENtoVI(v.transmission)}
-                                  </span>
-                                </div>
-                              )}
-                              {v.licensePlate && record.vehicleNumber === 1 && (
-                                <div>
-                                  Biển số:{" "}
-                                  <span className="font-medium">
-                                    {v.licensePlate}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        },
-                      },
-                    ]
-                  : []),
-                {
-                  title: "Số lượng",
-                  dataIndex: "vehicleNumber",
-                  key: "vehicleNumber",
-                  width: 90,
-                  render: (num: number) => <span>{num}</span>,
-                },
-                {
-                  title: "Giá thuê/ngày",
-                  dataIndex: "costPerDay",
-                  key: "costPerDay",
-                  render: (_: unknown, record: VehicleGroup) => {
-                    const v = record.vehicle[0];
-                    return (
-                      <div className="font-semibold text-green-600">
-                        {v.costPerDay?.toLocaleString("vi-VN")} VNĐ
-                      </div>
-                    );
-                  },
-                },
-                {
-                  title: "Trạng thái",
-                  dataIndex: "status",
-                  key: "status",
-                  render: (_: unknown, record: VehicleGroup) => {
-                    const v = record.vehicle[0];
-                    return (
-                      <Tag
-                        color={v.status === "AVAILABLE" ? "green" : "orange"}
-                        className="rounded-full px-3 py-1"
-                      >
-                        {v.status === "AVAILABLE"
-                          ? "Đang hoạt động"
-                          : "Không hoạt động"}
-                      </Tag>
-                    );
-                  },
-                },
-                {
-                  title: "Thao tác",
-                  key: "action",
-                  render: (_: unknown, record: VehicleGroup) => {
-                    if (record.vehicleNumber === 1) {
-                      const v = record.vehicle[0];
-                      return (
-                        <Button
-                          type="primary"
-                          size="small"
-                          className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
-                          onClick={() => handleEditVehicle(v.id)}
-                        >
-                          <EditOutlined /> Chỉnh sửa
-                        </Button>
-                      );
-                    }
-                    return (
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                        }}
-                      >
-                        <Button
-                          type="default"
-                          size="small"
-                          className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
-                          style={{ width: 100 }}
-                          onClick={() => setGroupDetail(record)}
-                        >
-                          Xem
-                        </Button>
-                        {/* Nút chỉnh sửa toàn bộ nhóm xe máy */}
-                        <Button
-                          type="primary"
-                          size="small"
-                          className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
-                          style={{ width: 100 }}
-                          onClick={() => {
-                            // Lấy 1 xe đầu tiên trong nhóm để hiển thị dữ liệu
-                            setGroupEditModal({
-                              open: true,
-                              vehicle: record.vehicle[0],
-                              group: record,
-                            });
-                          }}
-                        >
-                          <EditOutlined />
-                          Chỉnh sửa
-                        </Button>
-                        {/* Modal chỉnh sửa nhóm xe */}
-                        <GroupEditVehicleModal
-                          open={groupEditModal.open}
-                          vehicle={groupEditModal.vehicle}
-                          loading={groupEditLoading}
-                          onCancel={() =>
-                            setGroupEditModal({
-                              open: false,
-                              vehicle: null,
-                              group: null,
-                            })
-                          }
-                          onOk={async (values) => {
-                            if (!groupEditModal.group) return;
-                            setGroupEditLoading(true);
-                            try {
-                              const currentVehicle = groupEditModal.vehicle; // Xe hiện tại được chỉnh sửa
-                              if (!currentVehicle) {
-                                showApiError("Không tìm thấy xe để cập nhật");
-                                setGroupEditLoading(false);
-                                return;
-                              }
-
-                              // Chuyển đổi vehicleFeatures thành chuỗi
-                              const updatedVehicleData = {
-                                ...currentVehicle,
-                                ...values,
-                                vehicleFeatures: (
-                                  values.vehicleFeatures as string[]
-                                ).join(", "), // Chuyển đổi mảng thành chuỗi
-                              };
-
-                              // Gọi API để cập nhật cho xe hiện tại
-                              await updateCommon({
-                                vehicleId: currentVehicle.id,
-                                body: updatedVehicleData,
-                                accessToken,
-                              });
-
-                              setGroupEditModal({
-                                open: false,
-                                vehicle: null,
-                                group: null,
-                              });
-
-                              // Cập nhật lại nhóm xe sau khi cập nhật
-                              // const updatedGroupVehicles =
-                              //   groupEditModal.group.vehicle.map((v) =>
-                              //     v.id === currentVehicle.id
-                              //       ? updatedVehicleData
-                              //       : v
-                              //   );
-
-                              // setGroupDetail({
-                              //   ...groupEditModal.group,
-                              //   vehicle: updatedGroupVehicles,
-                              // });
-                              fetchGroupVehicles(activeType); // Cập nhật lại danh sách nhóm xe
-                              showApiSuccess("Cập nhật nhóm xe thành công");
-                            } catch (error) {
-                              console.error("Cập nhật xe thất bại:", error);
-                              showApiError("Cập nhật xe thất bại");
-                            } finally {
-                              setGroupEditLoading(false);
-                            }
-                          }}
-                        />
-                      </div>
-                    );
-                  },
-                },
-              ] as ColumnsType<VehicleGroup>
-            }
+            columns={columns}
             dataSource={groupList}
             rowKey={(record) => record.thumb + "-" + record.vehicleNumber}
             scroll={{ x: 1200 }}
@@ -478,7 +679,6 @@ export default function UserRegisterVehicle() {
       )}
 
       {/* Modal hiển thị chi tiết các xe cùng thumb */}
-
       <Modal
         open={!!groupDetail}
         title={groupDetail?.thumb}
@@ -541,16 +741,40 @@ export default function UserRegisterVehicle() {
                   title: "Trạng thái",
                   dataIndex: "status",
                   key: "status",
-                  render: (status: string) => (
-                    <Tag
-                      color={status === "AVAILABLE" ? "green" : "orange"}
-                      className="rounded-full px-3 py-1"
-                    >
-                      {status === "AVAILABLE"
-                        ? "Đang hoạt động"
-                        : "Không hoạt động"}
-                    </Tag>
-                  ),
+                  render: (status: string) => {
+                    const getStatusColor = () => {
+                      switch (status) {
+                        case "AVAILABLE":
+                          return "green";
+                        case "SUSPENDED":
+                          return "volcano";
+                        case "PENDING":
+                          return "orange";
+                        default:
+                          return "red";
+                      }
+                    };
+                    const getStatusText = () => {
+                      switch (status) {
+                        case "AVAILABLE":
+                          return "Đang hoạt động";
+                        case "SUSPENDED":
+                          return "Tạm dừng hoạt động";
+                        case "PENDING":
+                          return "Chờ duyệt";
+                        default:
+                          return "Không khả dụng";
+                      }
+                    };
+                    return (
+                      <Tag
+                        color={getStatusColor()}
+                        className="rounded-full px-3 py-1"
+                      >
+                        {getStatusText()}
+                      </Tag>
+                    );
+                  },
                 },
                 {
                   title: "Thao tác",
@@ -576,7 +800,7 @@ export default function UserRegisterVehicle() {
             pagination={false}
           />
         )}
-        {/* Modal chỉnh sửa 1 xe máy trong nhóm */}
+        {/* Modal chỉnh sửa 1 xe máy trong nhóm - giữ nguyên như cũ */}
         <EditSingleVehicleInGroupModal
           open={editSingleModal.open}
           initialImages={
@@ -585,7 +809,6 @@ export default function UserRegisterVehicle() {
                   const allImages = editSingleModal.vehicle.vehicleImages.map(
                     (img: { imageUrl: string }) => img.imageUrl
                   );
-                  // Tách 4 ảnh xe đầu tiên
                   return allImages.slice(0, 4);
                 })()
               : []
@@ -596,45 +819,57 @@ export default function UserRegisterVehicle() {
                   const allImages = editSingleModal.vehicle.vehicleImages.map(
                     (img: { imageUrl: string }) => img.imageUrl
                   );
-                  // Lấy ảnh thứ 5 (ảnh giấy tờ)
                   return allImages[4] || "";
                 })()
               : ""
           }
           initialLicensePlate={editSingleModal.vehicle?.licensePlate || ""}
+          vehicleId={editSingleModal.vehicle?.id} // Thêm vehicleId
+          vehicleStatus={editSingleModal.vehicle?.status} // Thêm status
+          vehicleName={editSingleModal.vehicle?.thumb} // Thêm tên xe
           loading={editSingleLoading}
           onCancel={() => setEditSingleModal({ open: false, vehicle: null })}
+          onStatusChanged={() => {
+            // Thêm callback khi status thay đổi
+            // Cập nhật lại groupDetail nếu cần
+            if (groupDetail && editSingleModal.vehicle) {
+              const updatedVehicles = groupDetail.vehicle.map((v) =>
+                v.id === editSingleModal.vehicle!.id
+                  ? {
+                      ...v,
+                      status:
+                        v.status === "AVAILABLE" ? "SUSPENDED" : "AVAILABLE",
+                    }
+                  : v
+              );
+              setGroupDetail({ ...groupDetail, vehicle: updatedVehicles });
+            }
+            fetchGroupVehicles(activeType);
+          }}
           onOk={async ({ images, documents, licensePlate }) => {
             setEditSingleLoading(true);
             try {
               if (!editSingleModal.vehicle) return;
-
-              // Gộp ảnh xe và ảnh giấy tờ thành 1 array
               const allImages = [...images];
               if (documents) {
-                allImages.push(documents); // Thêm ảnh giấy tờ vào vị trí thứ 5
+                allImages.push(documents);
               }
-
-              // Chuyển đổi images thành định dạng mà backend yêu cầu
               const formattedImages = allImages.map((url: string) => ({
                 imageUrl: url,
               }));
-
               await updateSingleMotorbikeInGroup({
                 vehicleId: editSingleModal.vehicle.id,
-                images: formattedImages, // Gửi tất cả ảnh (bao gồm cả ảnh giấy tờ)
+                images: formattedImages,
                 licensePlate,
                 accessToken,
               });
               setEditSingleModal({ open: false, vehicle: null });
-
-              // Cập nhật lại groupDetail
               if (groupDetail) {
                 const updatedVehicles = groupDetail.vehicle.map((v) =>
                   v.id === editSingleModal.vehicle!.id
                     ? {
                         ...v,
-                        vehicleImages: formattedImages, // Cập nhật tất cả ảnh
+                        vehicleImages: formattedImages,
                         licensePlate,
                       }
                     : v
@@ -642,8 +877,6 @@ export default function UserRegisterVehicle() {
                 setGroupDetail({ ...groupDetail, vehicle: updatedVehicles });
                 showApiSuccess("Cập nhật xe thành công");
               }
-
-              // Cập nhật lại danh sách nhóm xe
               fetchGroupVehicles(activeType);
             } catch {
               showApiError("Cập nhật xe thất bại");
@@ -654,7 +887,7 @@ export default function UserRegisterVehicle() {
         />
       </Modal>
 
-      {/* Modal nội quy đăng ký xe */}
+      {/* Modal nội quy đăng ký xe - giữ nguyên */}
       <Modal
         open={rulesModal}
         title={
@@ -674,6 +907,7 @@ export default function UserRegisterVehicle() {
           </Button>,
         ]}
       >
+        {/* Nội dung modal nội quy - giữ nguyên như cũ */}
         <div className="space-y-4 max-h-[700px] overflow-y-auto">
           {" "}
           {/* ✅ Tăng height từ 96 lên 700px */}
@@ -829,6 +1063,7 @@ export default function UserRegisterVehicle() {
         </div>
       </Modal>
 
+      {/* Modal đăng ký xe */}
       <Modal
         open={registerVehicleModal}
         title={
@@ -871,11 +1106,63 @@ export default function UserRegisterVehicle() {
               fetchGroupVehicles(activeType);
               setTimeout(() => {
                 window.location.reload();
-              }, 1000); // Delay 1s để modal đóng trước
+              }, 1000);
+            }}
+            // Thêm callback mới cho việc thay đổi status
+            onStatusChanged={() => {
+              fetchGroupVehicles(activeType); // Refresh data ngay lập tức
             }}
           />
         </Spin>
       </Modal>
+
+      {/* Modal chỉnh sửa nhóm xe - giữ nguyên */}
+      <GroupEditVehicleModal
+        open={groupEditModal.open}
+        vehicle={groupEditModal.vehicle}
+        loading={groupEditLoading}
+        onCancel={() =>
+          setGroupEditModal({
+            open: false,
+            vehicle: null,
+            group: null,
+          })
+        }
+        onOk={async (values) => {
+          if (!groupEditModal.group) return;
+          setGroupEditLoading(true);
+          try {
+            const currentVehicle = groupEditModal.vehicle;
+            if (!currentVehicle) {
+              showApiError("Không tìm thấy xe để cập nhật");
+              setGroupEditLoading(false);
+              return;
+            }
+            const updatedVehicleData = {
+              ...currentVehicle,
+              ...values,
+              vehicleFeatures: (values.vehicleFeatures as string[]).join(", "),
+            };
+            await updateCommon({
+              vehicleId: currentVehicle.id,
+              body: updatedVehicleData,
+              accessToken,
+            });
+            setGroupEditModal({
+              open: false,
+              vehicle: null,
+              group: null,
+            });
+            fetchGroupVehicles(activeType);
+            showApiSuccess("Cập nhật nhóm xe thành công");
+          } catch (error) {
+            console.error("Cập nhật xe thất bại:", error);
+            showApiError("Cập nhật xe thất bại");
+          } finally {
+            setGroupEditLoading(false);
+          }
+        }}
+      />
     </div>
   );
 }
