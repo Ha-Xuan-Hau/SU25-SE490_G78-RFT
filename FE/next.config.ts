@@ -9,24 +9,8 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/dcakldjvc/**",
       },
-      {
-        protocol: "https",
-        hostname: "hips.hearstapps.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        port: "",
-        pathname: "/**",
-      },
     ],
-    domains: [
-      "res.cloudinary.com",
-      "hips.hearstapps.com",
-      "images.unsplash.com",
-    ],
+    domains: ["res.cloudinary.com"],
   },
   reactStrictMode: true,
   poweredByHeader: false,
@@ -51,6 +35,13 @@ const nextConfig: NextConfig = {
     ];
   },
   webpack: (config: any) => {
+    // Fix cho rc-util
+    // config.resolve.alias = {
+    //   ...config.resolve.alias,
+    //   "rc-util/es/React/isFragment": "rc-util/lib/React/isFragment",
+    //   "rc-util/es/Dom/canUseDom": "rc-util/lib/Dom/canUseDom",
+    // };
+
     const fileLoaderRule = config.module?.rules?.find((rule: any) =>
       rule.test?.test?.(".svg")
     );
@@ -78,6 +69,17 @@ const nextConfig: NextConfig = {
 
     return config;
   },
+  transpilePackages: [
+    "antd",
+    "@ant-design",
+    "rc-util",
+    "rc-pagination",
+    "rc-picker",
+    "rc-notification",
+    "rc-tooltip",
+    "rc-tree",
+    "rc-table",
+  ],
 };
 
 export default nextConfig;

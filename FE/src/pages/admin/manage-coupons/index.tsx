@@ -25,7 +25,7 @@ import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { showError, showSuccess } from "@/utils/toast.utils";
-import { coupon as Coupon, couponRequest } from "@/types/coupon";
+import { coupon as Coupon, couponRequest } from "@/types/userCoupon";
 import { getAllCoupons, updateCoupon, createCoupon } from "@/apis/coupon.api";
 import { translateENtoVI } from "@/lib/viDictionary";
 
