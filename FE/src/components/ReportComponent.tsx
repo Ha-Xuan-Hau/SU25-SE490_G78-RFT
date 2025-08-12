@@ -71,8 +71,8 @@ export default function ReportButton({
         return {
           generalType: "SERIOUS_ERROR",
           type: "FRAUD",
-          displayText: "Gian lận",
-          placeholder: "Vui lòng mô tả chi tiết về hành vi gian lận...",
+          displayText: "Lừa đảo",
+          placeholder: "Vui lòng mô tả chi tiết về hành vi lừa đảo...",
         };
       case "MISLEADING_INFO":
         return {

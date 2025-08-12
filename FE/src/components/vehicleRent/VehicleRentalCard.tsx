@@ -7,16 +7,16 @@ import Link from "next/link";
 import moment from "moment";
 import { formatCurrency } from "@/lib/format-currency";
 import { BookingDetail } from "@/types/booking"; // Import BookingDetail
-import ReportButton from "./ReportComponent";
+import ReportButton from "../ReportComponent";
 
 // Ant Design components
 import { Button, Card, Tag, Modal } from "antd";
 import { CarOutlined, WarningOutlined } from "@ant-design/icons";
 
 // Import modals
-import RatingModal from "./RatingModal";
-import PaymentModal from "./PaymentModal";
-import CancelBookingModal from "./CancelBookingModal";
+import RatingModal from "../RatingModal";
+import PaymentModal from "../PaymentModal";
+import CancelBookingModal from "../CancelBookingModal";
 import ReturnVehicleModal from "./ReturnVehicleModal";
 import VehicleSelectionModal from "./VehicleSelectionModal";
 
@@ -495,7 +495,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           "Bạn đang trong giai đoạn giao nhận xe. Các vấn đề có thể báo cáo:",
         issues: [
           "🚗 Xe khác với mô tả (biển số, màu sắc, mẫu xe không đúng)",
-          "⚠️ Chủ xe gian lận (thay đổi địa điểm, thời gian, không giao xe)",
+          "⚠️ Chủ xe lừa đảo (thay đổi địa điểm, thời gian, không giao xe)",
           "📄 Vấn đề về giấy tờ xe (thiếu hoặc không hợp lệ)",
         ],
       };

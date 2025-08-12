@@ -320,6 +320,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     const dateOfBirth = values.dateOfBirth
       ? values.dateOfBirth.format("YYYY-MM-DD")
       : undefined;
+
     try {
       const updated = await updateUserProfile(currentUser?.id, {
         fullName: values.fullName,
@@ -329,22 +330,19 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
         dateOfBirth,
         profilePicture: imageUrl,
       });
+
+      // CHỈ gọi callback, không tự update localStorage
       if (onUserUpdate) {
-        onUserUpdate(updated);
+        await onUserUpdate(updated);
       }
-      // notification.success({
-      //   message: "Cập nhật thành công",
-      //   description: "Thông tin của bạn đã được cập nhật",
-      // });
-      await refreshUser();
-      await refreshUserFromApi();
-      setUserProfile(updated);
+
       showSuccess("Cập nhật thành công");
       handleCancleEditModal();
     } catch (err) {
       showError("Cập nhật thất bại");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -477,7 +475,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 },
                 {
                   pattern: /^[0-9]{10}$/,
-                  message: "Độ dài số điện thoại không đúng hoặc sai định dạng (vd: 0987654321)",
+                  message:
+                    "Độ dài số điện thoại không đúng hoặc sai định dạng (vd: 0987654321)",
                 },
               ]}
             >

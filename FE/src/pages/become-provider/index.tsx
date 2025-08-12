@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { useUserState } from "@/recoils/user.state";
+import { useUserState, useRefreshUser } from "@/recoils/user.state";
 import { useEffect } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -25,12 +25,12 @@ import {
 import {
   PhoneOutlined,
   MailOutlined,
-  HomeOutlined,
-  CarOutlined,
   UserOutlined,
   CheckCircleOutlined,
+  SaveOutlined,
 } from "@ant-design/icons";
 import { registerProvider } from "@/apis/provider.api";
+import { updateUserProfile } from "@/apis/user.api";
 import { showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title, Paragraph, Text } = Typography;
@@ -54,6 +54,7 @@ const BecomeProviderPage = () => {
   const [openTime, setOpenTime] = useState<Dayjs | null>(null);
   const [closeTime, setCloseTime] = useState<Dayjs | null>(null);
   const [loading, setLoading] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false); // THÊM STATE
   const router = useRouter();
 
   const [timeOption, setTimeOption] = useState<"fulltime" | "custom">(
@@ -64,6 +65,8 @@ const BecomeProviderPage = () => {
   const [user, setUser] = useUserState();
 
   const [countdown, setCountdown] = useState(10);
+
+  const refreshUser = useRefreshUser();
 
   useEffect(() => {
     if (current === 3) {
@@ -116,6 +119,38 @@ const BecomeProviderPage = () => {
       content: "completed-content",
     },
   ];
+
+  // THÊM HÀM LƯU PROFILE
+  const handleSaveProfile = () => {
+    form
+      .validateFields()
+      .then(async (values) => {
+        setSavingProfile(true);
+        try {
+          // Gọi API update profile
+          const updateData = {
+            fullName: values.fullname,
+            phone: values.phone,
+            address: values.address,
+          };
+
+          await updateUserProfile(user?.id, updateData);
+
+          // Refresh user data
+          await refreshUser();
+
+          showSuccess("Cập nhật thông tin thành công!");
+        } catch (error) {
+          console.error("Error updating profile:", error);
+          showError("Cập nhật thông tin thất bại!");
+        } finally {
+          setSavingProfile(false);
+        }
+      })
+      .catch((info) => {
+        console.log("Validate Failed:", info);
+      });
+  };
 
   const next = () => {
     // Kiểm tra đã đồng ý điều khoản khi ở bước 0
@@ -193,21 +228,6 @@ const BecomeProviderPage = () => {
       return;
     }
 
-    const formValues = form.getFieldsValue();
-
-    // Validate form values
-    if (
-      !formValues.fullname ||
-      !formValues.phone ||
-      !formValues.email ||
-      !formValues.address
-    ) {
-      showError("Vui lòng điền đầy đủ thông tin");
-      setShowConfirmModal(false);
-      setCurrent(1); // Quay lại bước nhập thông tin
-      return;
-    }
-
     // Set thời gian dựa trên option đã chọn
     let openTimeStr, closeTimeStr;
     if (timeOption === "fulltime") {
@@ -224,13 +244,15 @@ const BecomeProviderPage = () => {
       }
     }
 
+    // CHỈ GỬI THÔNG TIN DỊCH VỤ, KHÔNG GỬI THÔNG TIN CÁ NHÂN
     const payload = {
-      ...formValues,
       userId: user?.id,
       vehicleTypes: selectedServices,
       openTime: openTimeStr,
       closeTime: closeTimeStr,
     };
+
+    console.log("Provider registration payload:", payload);
 
     setLoading(true);
     registerProvider(payload)
@@ -328,6 +350,9 @@ const BecomeProviderPage = () => {
   const renderInfoContent = () => (
     <div className="p-6 bg-white rounded-lg shadow">
       <Title level={4}>Xác nhận thông tin cá nhân</Title>
+      <Paragraph className="text-gray-600 mb-4">
+        Vui lòng kiểm tra và cập nhật thông tin cá nhân của bạn nếu cần thiết
+      </Paragraph>
       <Form form={form} layout="vertical" className="mt-4">
         <Form.Item
           name="fullname"
@@ -360,10 +385,7 @@ const BecomeProviderPage = () => {
         <Form.Item
           name="email"
           label="Email"
-          rules={[
-            { required: true, message: "Vui lòng nhập email!" },
-            { type: "email", message: "Email không hợp lệ!" },
-          ]}
+          rules={[{ type: "email", message: "Email không hợp lệ!" }]}
         >
           <Input
             prefix={<MailOutlined className="text-gray-400" />}
@@ -556,7 +578,25 @@ const BecomeProviderPage = () => {
             <Button onClick={prev}>Quay lại</Button>
           )}
           {current === 0 && <div></div>}
-          {current < steps.length - 1 && (
+
+          {/* SỬA LẠI PHẦN NÚT CHO BƯỚC 1 (THÔNG TIN) */}
+          {current === 1 && (
+            <div className="flex gap-3">
+              <Button
+                icon={<SaveOutlined />}
+                onClick={handleSaveProfile}
+                loading={savingProfile}
+              >
+                Lưu chỉnh sửa
+              </Button>
+              <Button type="primary" onClick={next}>
+                Tiếp theo
+              </Button>
+            </div>
+          )}
+
+          {/* CÁC BƯỚC KHÁC */}
+          {current < steps.length - 1 && current !== 1 && (
             <Button
               type="primary"
               onClick={next}
@@ -573,14 +613,10 @@ const BecomeProviderPage = () => {
         title="Xác nhận thông tin đăng ký"
         open={showConfirmModal}
         onCancel={handleCloseModal}
-        maskClosable={!loading} // Không cho click outside khi loading
-        closable={!loading} // Ẩn nút X khi loading
+        maskClosable={!loading}
+        closable={!loading}
         footer={[
-          <Button
-            key="cancel"
-            onClick={handleCloseModal}
-            disabled={loading} // Disable khi đang loading
-          >
+          <Button key="cancel" onClick={handleCloseModal} disabled={loading}>
             Quay lại chỉnh sửa
           </Button>,
           <Button
