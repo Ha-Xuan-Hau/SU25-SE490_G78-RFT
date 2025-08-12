@@ -15,24 +15,24 @@ export function UserWebLayout({ children }: UserWebLayoutProps) {
   const [user] = useUserState();
   const { pathname, push } = useRouter();
 
-  useEffect(() => {
-    // Sử dụng user?.role thay vì user?.result?.role
-    const role = user?.role;
+  // useEffect(() => {
+  //   // Sử dụng user?.role thay vì user?.result?.role
+  //   const role = user?.role;
 
-    if (
-      role === "STAFF" &&
-      !(pathname.includes("STAFF") || pathname.includes("_error"))
-    ) {
-      push("/admin/dashboard");
-    }
+  //   if (
+  //     role === "STAFF" &&
+  //     !(pathname.includes("STAFF") || pathname.includes("_error"))
+  //   ) {
+  //     push("/admin/dashboard");
+  //   }
 
-    if (
-      role === "ADMIN" &&
-      !(pathname.includes("ADMIN") || pathname.includes("_error"))
-    ) {
-      push("/admin/dashboard");
-    }
-  }, [user, pathname, push]);
+  //   if (
+  //     role === "ADMIN" &&
+  //     !(pathname.includes("ADMIN") || pathname.includes("_error"))
+  //   ) {
+  //     push("/admin/dashboard");
+  //   }
+  // }, [user, pathname, push]);
 
   return (
     <>
