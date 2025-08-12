@@ -275,7 +275,7 @@ export function AuthPopup({
     } catch (err: any) {
       let errorMessage = "Có lỗi xảy ra. Vui lòng thử lại.";
       if (err.response?.status === 400) {
-        errorMessage = "Sai tài khoản hoặc mật khẩu!";
+        errorMessage = "Sai email hoặc mật khẩu!";
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.message) {
