@@ -1,22 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Form, Input, Button, Card, Tag } from "antd";
+import {
+  ExclamationCircleOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
 import { UploadMultipleImage } from "../uploadImage/UploadMultipleImage";
 import { UploadSingleImage } from "../uploadImage/UploadSingleImage";
+import { toggleVehicleStatus } from "@/apis/vehicle.api";
+import { showApiError, showApiSuccess } from "@/utils/toast.utils";
 
 interface EditSingleVehicleInGroupModalProps {
   open: boolean;
   onCancel: () => void;
   onOk: (data: {
     images: string[];
-    documents: string; // Thêm field documents
+    documents: string;
     licensePlate: string;
-    status: string;
   }) => void;
   initialImages?: string[];
-  initialDocuments?: string; // Thêm prop cho ảnh giấy tờ
+  initialDocuments?: string;
   initialLicensePlate?: string;
-  initialStatus?: string;
   loading?: boolean;
+  vehicleId?: string; // Thêm vehicleId
+  vehicleStatus?: string; // Thêm status hiện tại
+  vehicleName?: string; // Thêm tên xe để hiển thị
+  onStatusChanged?: () => void; // Callback khi status thay đổi
 }
 
 const EditSingleVehicleInGroupModal: React.FC<
@@ -26,36 +35,122 @@ const EditSingleVehicleInGroupModal: React.FC<
   onCancel,
   onOk,
   initialImages = [],
-  initialDocuments = "", // Thêm prop mới
+  initialDocuments = "",
   initialLicensePlate = "",
-  initialStatus = "AVAILABLE",
   loading = false,
+  vehicleId,
+  vehicleStatus,
+  vehicleName,
+  onStatusChanged,
 }) => {
   const [form] = Form.useForm();
-  const [isActive, setIsActive] = useState(initialStatus !== "UNAVAILABLE");
+  const [toggleLoading, setToggleLoading] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(vehicleStatus);
 
   useEffect(() => {
     form.setFieldsValue({
       images: initialImages,
-      documents: initialDocuments, // Set ảnh giấy tờ
+      documents: initialDocuments,
       licensePlate: initialLicensePlate,
     });
-    setIsActive(initialStatus !== "UNAVAILABLE");
+    setCurrentStatus(vehicleStatus);
   }, [
     initialImages,
     initialDocuments,
     initialLicensePlate,
-    initialStatus,
+    vehicleStatus,
     open,
+    form,
   ]);
+
+  const handleToggleStatus = async () => {
+    if (!vehicleId) return;
+
+    const isSuspended = currentStatus === "SUSPENDED";
+    const actionText = isSuspended ? "đưa vào hoạt động" : "dừng hoạt động";
+
+    Modal.confirm({
+      title: `Xác nhận ${actionText}`,
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>
+            Bạn có chắc chắn muốn {actionText} xe &quot;{vehicleName || "này"}
+            &quot;?
+          </p>
+          {currentStatus === "AVAILABLE" && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-sm text-yellow-800">
+                <strong>Lưu ý:</strong> Xe đang có booking sẽ không thể dừng
+                hoạt động
+              </p>
+            </div>
+          )}
+        </div>
+      ),
+      okText: "Đồng ý",
+      cancelText: "Hủy",
+      onOk: async () => {
+        setToggleLoading(true);
+        try {
+          const result = await toggleVehicleStatus(vehicleId);
+
+          // Kiểm tra response từ backend
+          if (result.success === false) {
+            showApiError(result, `Không thể ${actionText}`);
+            return;
+          }
+
+          const newStatus = isSuspended ? "AVAILABLE" : "SUSPENDED";
+          setCurrentStatus(newStatus);
+          showApiSuccess(result.message || `Đã ${actionText} thành công`);
+
+          if (onStatusChanged) {
+            onStatusChanged();
+          }
+        } catch (error) {
+          console.error("Toggle error:", error);
+          showApiError(error, `Không thể ${actionText}`);
+        } finally {
+          setToggleLoading(false);
+        }
+      },
+    });
+  };
+
+  const getStatusTag = () => {
+    if (!currentStatus) return null;
+
+    const statusConfig = {
+      AVAILABLE: { color: "green", text: "Đang hoạt động" },
+      SUSPENDED: { color: "volcano", text: "Tạm dừng" },
+      PENDING: { color: "orange", text: "Chờ duyệt" },
+      UNAVAILABLE: { color: "red", text: "Không khả dụng" },
+    } as const;
+
+    const config = statusConfig[currentStatus as keyof typeof statusConfig] || {
+      color: "default",
+      text: currentStatus,
+    };
+
+    return (
+      <Tag color={config.color} className="rounded-full px-3 py-1">
+        {config.text}
+      </Tag>
+    );
+  };
+
+  const canToggleStatus =
+    currentStatus === "AVAILABLE" || currentStatus === "SUSPENDED";
 
   return (
     <Modal
       open={open}
-      title="Chỉnh sửa ảnh và biển số xe"
+      title="Chỉnh sửa thông tin xe"
       onCancel={onCancel}
       footer={null}
       destroyOnClose
+      width={600}
     >
       <Form
         form={form}
@@ -63,31 +158,38 @@ const EditSingleVehicleInGroupModal: React.FC<
         onFinish={(values) => {
           onOk({
             images: values.images,
-            documents: values.documents, // Trả về ảnh giấy tờ
+            documents: values.documents,
             licensePlate: values.licensePlate,
-            status: isActive ? "AVAILABLE" : "UNAVAILABLE",
           });
         }}
       >
         <Card
           title={
-            <div className="flex items-center gap-3 justify-between">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span>Thông tin xe</span>
-                <Tag
-                  color={isActive ? "green" : "orange"}
-                  className="rounded-full px-3 py-1"
-                >
-                  {isActive ? "Đang hoạt động" : "Không hoạt động"}
-                </Tag>
+                {getStatusTag()}
               </div>
-              <Button
-                danger={!isActive}
-                onClick={() => setIsActive((prev) => !prev)}
-                type="default"
-              >
-                {isActive ? "Ẩn xe" : "Hiện xe"}
-              </Button>
+              {canToggleStatus && vehicleId && (
+                <Button
+                  size="small"
+                  danger={currentStatus === "AVAILABLE"}
+                  type={currentStatus === "SUSPENDED" ? "primary" : "default"}
+                  loading={toggleLoading}
+                  onClick={handleToggleStatus}
+                  icon={
+                    currentStatus === "SUSPENDED" ? (
+                      <EyeOutlined />
+                    ) : (
+                      <EyeInvisibleOutlined />
+                    )
+                  }
+                >
+                  {currentStatus === "SUSPENDED"
+                    ? "Đưa vào hoạt động"
+                    : "Dừng hoạt động"}
+                </Button>
+              )}
             </div>
           }
           className="mb-4"
@@ -128,12 +230,13 @@ const EditSingleVehicleInGroupModal: React.FC<
             <Input placeholder="Ví dụ: 59P1-12345" />
           </Form.Item>
         </Card>
+
         <div className="flex justify-end">
           <Button onClick={onCancel} style={{ marginRight: 8 }}>
             Hủy
           </Button>
           <Button type="primary" htmlType="submit" loading={loading}>
-            Lưu
+            Lưu thay đổi
           </Button>
         </div>
       </Form>

@@ -272,9 +272,9 @@ export default function ReportDetailPage() {
             <p style={{ fontSize: "16px", marginBottom: "24px" }}>
               Không tìm thấy thông tin báo cáo
             </p>
-            <Button type="primary" onClick={() => router.back()}>
+            {/* <Button type="primary" onClick={() => router.back()}>
               Quay lại
-            </Button>
+            </Button> */}
           </Card>
         </Content>
       </Layout>
@@ -304,7 +304,7 @@ export default function ReportDetailPage() {
                     size={8}
                     style={{ width: "100%" }}
                   >
-                    <Space>
+                    {/* <Space>
                       <Button
                         icon={<ArrowLeftOutlined />}
                         onClick={() => router.back()}
@@ -312,7 +312,7 @@ export default function ReportDetailPage() {
                       >
                         Quay lại
                       </Button>
-                    </Space>
+                    </Space> */}
                     <Title level={3} style={{ margin: 0 }}>
                       Chi tiết báo cáo
                     </Title>
@@ -352,7 +352,6 @@ export default function ReportDetailPage() {
                   <span>Tổng quan báo cáo</span>
                 </Space>
               }
-              bordered={false}
               style={{
                 borderRadius: "12px",
                 boxShadow:
@@ -430,7 +429,6 @@ export default function ReportDetailPage() {
                     <span>Mức độ nghiêm trọng</span>
                   </Space>
                 }
-                bordered={false}
                 style={{
                   borderRadius: "12px",
                   boxShadow:
@@ -451,12 +449,21 @@ export default function ReportDetailPage() {
                     <Space direction="vertical" size={4}>
                       <Text
                         strong
-                        style={{ color: "#ff4d4f", fontSize: "16px" }}
+                        style={{ color: "#ff4d4f", fontSize: "18px" }}
                       >
                         Lỗi nghiêm trọng
                       </Text>
-                      <Text type="secondary">
-                        Có thể tạo báo cáo vi phạm ngay lập tức.
+                      <Text>
+                        Căn cứ vào bằng chứng và mức độ nghiêm trọng của báo
+                        cáo, có thể tạo báo cáo vi phạm cho chủ xe
+                      </Text>
+                      <Text>
+                        Khi chủ xe bị báo cáo bởi nhân viên 3 lần, họ sẽ bị khóa
+                        tài khoản
+                      </Text>
+                      <Text>
+                        Nếu bằng chứng từ chủ xe đủ thuyết phục, không thao tác
+                        gì thêm
                       </Text>
                     </Space>
                   </Space>
@@ -478,14 +485,14 @@ export default function ReportDetailPage() {
                         strong
                         style={{
                           color: canCreateStaffReport() ? "#ff4d4f" : "#faad14",
-                          fontSize: "16px",
+                          fontSize: "18px",
                         }}
                       >
                         {canCreateStaffReport()
-                          ? "Đã đạt ngưỡng nghiêm trọng"
-                          : "Chưa đạt ngưỡng nghiêm trọng"}
+                          ? "Lỗi nghiêm trọng"
+                          : "Lỗi nhẹ"}
                       </Text>
-                      <Text type="secondary">
+                      <Text>
                         {canCreateStaffReport()
                           ? "Đã có đủ 10 lượt báo cáo. Vui lòng xem xét để xử lý."
                           : `Đủ 10 lượt báo cáo sẽ phải xem xét để đưa ra quyết định phù hợp (hiện tại: ${reportDetail.reporters.length}/10)`}
@@ -557,14 +564,14 @@ export default function ReportDetailPage() {
                     <Text>{reportDetail.reportedUser.email || "N/A"}</Text>
                   </Space>
                 </Descriptions.Item>
-                <Descriptions.Item label="Số lượt bị báo cáo" span={2}>
+                {/* <Descriptions.Item label="Số lượt bị báo cáo" span={2}>
                   <Tag
                     color="error"
                     style={{ fontSize: "14px", padding: "4px 12px" }}
                   >
                     {reportDetail.reporters.length} báo cáo
                   </Tag>
-                </Descriptions.Item>
+                </Descriptions.Item> */}
               </Descriptions>
             </Card>
 
@@ -578,13 +585,29 @@ export default function ReportDetailPage() {
                   </span>
                 </Space>
               }
-              bordered={false}
               style={{
                 borderRadius: "12px",
                 boxShadow:
                   "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)",
               }}
             >
+              {/* Lưu ý báo cáo spam */}
+              <Card className="bg-yellow-50 border-yellow-200">
+                <div className="flex items-start gap-2">
+                  <WarningOutlined className="text-yellow-600 mt-1" />
+                  <div className="text-sm text-yellow-800">
+                    <div className="font-medium mb-1">
+                      Lưu ý về báo cáo spam:
+                    </div>
+                    <p>
+                      Bạn có thể báo cáo những người dùng có hành vi spam báo
+                      cáo (báo cáo không đúng sự thật, báo cáo quá nhiều lần
+                      không có căn cứ). Việc này giúp duy trì chất lượng hệ
+                      thống báo cáo.
+                    </p>
+                  </div>
+                </div>
+              </Card>
               <Table
                 dataSource={reportDetail.reporters}
                 columns={[

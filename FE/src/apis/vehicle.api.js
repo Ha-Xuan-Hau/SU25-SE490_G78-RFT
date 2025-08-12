@@ -383,3 +383,55 @@ export async function updateCommon({ vehicleId, body, accessToken }) {
 
     return data;
 }
+
+
+/**
+ * Chuyển đổi trạng thái của một xe (từ AVAILABLE sang SUSPENDED hoặc ngược lại)
+ * @param {string} vehicleId - ID của xe cần chuyển trạng thái
+ * @returns {Promise} Thông tin xe đã được cập nhật
+ */
+export async function toggleVehicleStatus(vehicleId) {
+    try {
+        const response = await apiClient.request({
+            method: 'PUT',
+            url: `/vehicle-rent/${vehicleId}/toggle-suspended`,
+        });
+        return response.data;
+    } catch (error) {
+        // Trả về error response từ backend
+        if (error.response?.data) {
+            throw error.response.data;
+        }
+        throw error;
+    }
+}
+
+/**
+ * Chuyển đổi trạng thái hàng loạt cho nhiều xe
+ * @param {string[]} vehicleIds - Mảng chứa các ID của xe cần chuyển trạng thái (tối đa 50 xe)
+ * @returns {Promise} Danh sách các xe đã được cập nhật trạng thái
+ */
+export async function bulkToggleVehicleStatus(vehicleIds) {
+    try {
+        if (!vehicleIds || vehicleIds.length === 0) {
+            throw new Error('Danh sách xe không được để trống');
+        }
+
+        if (vehicleIds.length > 50) {
+            throw new Error('Chỉ được chọn tối đa 50 xe cùng lúc');
+        }
+
+        const response = await apiClient.request({
+            method: 'PUT',
+            url: '/vehicle-rent/bulk-toggle-status',
+            data: vehicleIds,
+        });
+        return response.data;
+    } catch (error) {
+        // Trả về error response từ backend
+        if (error.response?.data) {
+            throw error.response.data;
+        }
+        throw error;
+    }
+}
