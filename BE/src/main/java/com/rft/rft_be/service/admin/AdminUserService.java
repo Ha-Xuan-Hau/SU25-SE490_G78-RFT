@@ -1,6 +1,7 @@
 package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.*;
+import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.entity.User;
 
 import java.util.List;
@@ -70,4 +71,6 @@ public interface AdminUserService {
     List<AdminStaffActivityDTO> getStaffActivities(String staffId);
 
      List<AdminStaffActivityGroupDTO> getAllStaffActivities();
+
+    UserDetailDTO createStaffAccount(AdminCreateStaffDTO request);
 } 
