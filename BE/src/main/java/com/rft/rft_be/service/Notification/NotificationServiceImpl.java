@@ -7,6 +7,7 @@ import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.NotificationRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.Notification.NotificationService;
+import com.rft.rft_be.service.websocket.WebSocketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final NotificationMapper notificationMapper;
+    private final WebSocketService webSocketService;
 
     @Override
     @Transactional
@@ -143,6 +145,10 @@ public class NotificationServiceImpl implements NotificationService {
         if (!notification.getIsRead()) {
             notification.setIsRead(true);
             notification = notificationRepository.save(notification);
+            
+            // 🔔 WebSocket: Refresh notification count cho user
+            webSocketService.refreshNotificationForUser(notification.getReceiver().getId());
+            log.debug("Refreshed notifications for user: {}", notification.getReceiver().getId());
         }
 
         return notificationMapper.toDetailDTO(notification);
@@ -156,6 +162,10 @@ public class NotificationServiceImpl implements NotificationService {
         if (!notification.getIsRead()) {
             notification.setIsRead(true);
             notification = notificationRepository.save(notification);
+            
+            // 🔔 WebSocket: Refresh notification count cho user
+            webSocketService.refreshNotificationForUser(notification.getReceiver().getId());
+            log.debug("Refreshed notifications for user: {}", notification.getReceiver().getId());
         }
 
         return notificationMapper.toResponseDTO(notification);
@@ -173,6 +183,10 @@ public class NotificationServiceImpl implements NotificationService {
             });
             notificationRepository.saveAll(unreadNotifications);
             log.info("Marked {} notifications as read for user: {}", unreadNotifications.size(), userId);
+            
+            // 🔔 WebSocket: Refresh notification count cho user
+            webSocketService.refreshNotificationForUser(userId);
+            log.debug("Refreshed notifications for user: {}", userId);
         }
     }
 
@@ -354,9 +368,69 @@ public class NotificationServiceImpl implements NotificationService {
 
             log.debug("Created {} notification (db type: {}) for user: {}",
                     applicationType, dbType, userId);
+
+            // 🔔 WebSocket: Refresh notification cho user
+            webSocketService.refreshNotificationForUser(userId);
+            
+            // 🔄 WebSocket: Refresh trang liên quan dựa vào notification type
+            refreshRelatedPages(userId, applicationType, redirectUrl);
+
         } catch (Exception e) {
             log.error("Failed to create notification for user: {}", userId, e);
             throw e;
+        }
+    }
+
+    /**
+     * Refresh các trang liên quan dựa vào loại notification
+     */
+    private void refreshRelatedPages(String userId, String applicationType, String redirectUrl) {
+        try {
+            switch (applicationType) {
+                // Wallet related notifications
+                case NotificationMapper.TOPUP_SUCCESSFUL:
+                case NotificationMapper.WITHDRAWAL_APPROVED:
+                case NotificationMapper.REFUND_AFTER_CANCELLATION:
+                case NotificationMapper.PENALTY_RECEIVED_AFTER_CANCELLATION:
+                    webSocketService.refreshWalletForUser(userId);
+                    log.debug("Refreshed wallet for user: {} (notification: {})", userId, applicationType);
+                    break;
+
+                // Booking related notifications  
+                case NotificationMapper.ORDER_PLACED:
+                case NotificationMapper.ORDER_APPROVED:
+                case NotificationMapper.ORDER_REJECTED:
+                case NotificationMapper.ORDER_CANCELED:
+                case NotificationMapper.PAYMENT_COMPLETED:
+                case NotificationMapper.BOOKING_COMPLETED:
+                case NotificationMapper.VEHICLE_HANDOVER:
+                case NotificationMapper.VEHICLE_PICKUP_CONFIRMED:
+                case NotificationMapper.VEHICLE_RETURN_CONFIRMED:
+                case NotificationMapper.USER_RETURN_VEHICLE:
+                case NotificationMapper.PROVIDER_RECEIVED_BOOKING:
+                    webSocketService.refreshBookingForUser(userId);
+                    log.debug("Refreshed booking for user: {} (notification: {})", userId, applicationType);
+                    break;
+
+                // Vehicle related notifications
+                case NotificationMapper.VEHICLE_APPROVED:
+                case NotificationMapper.VEHICLE_REJECTED:
+                    webSocketService.refreshVehicleForUser(userId);
+                    log.debug("Refreshed vehicle for user: {} (notification: {})", userId, applicationType);
+                    break;
+
+                // System notifications - no specific page refresh needed
+                case NotificationMapper.SYSTEM_ANNOUNCEMENT:
+                case NotificationMapper.MAINTENANCE_NOTICE:
+                    log.debug("System notification sent to user: {} (notification: {})", userId, applicationType);
+                    break;
+
+                default:
+                    log.debug("No specific page refresh for notification type: {}", applicationType);
+            }
+        } catch (Exception e) {
+            log.error("Error refreshing related pages for user {} (notification: {}): {}", 
+                    userId, applicationType, e.getMessage());
         }
     }
 

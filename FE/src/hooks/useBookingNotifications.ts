@@ -38,5 +38,38 @@ export const useVehicleRefresh = () => {
 };
 
 export const useNotificationRefresh = () => {
-  useWebSocketRefresh('notification', ['notifications', 'unread-count']);
+  const queryClient = useQueryClient();
+  
+  useEffect(() => {
+    const refreshHandler = async () => {
+      console.log('🔔 Refreshing notifications data');
+      
+      try {
+        // 1. Invalidate queries trước
+        await queryClient.invalidateQueries({ 
+          queryKey: ["notifications"],
+          refetchType: 'active'
+        });
+        
+        // 2. Force refetch với stale override
+        await queryClient.refetchQueries({ 
+          queryKey: ["notifications"], 
+          type: 'active',
+          stale: true // Force refetch ngay cả khi data chưa stale
+        });
+        
+        console.log('✅ Notification refresh completed');
+      } catch (error) {
+        console.error('❌ Error refreshing notifications:', error);
+      }
+    };
+
+    // Register refresh handler  
+    simpleWebSocketService.onRefresh('notification', refreshHandler);
+
+    // Cleanup on unmount
+    return () => {
+      simpleWebSocketService.offRefresh('notification', refreshHandler);
+    };
+  }, [queryClient]);
 };

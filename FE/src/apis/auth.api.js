@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import { jwtDecode } from "jwt-decode";
+import { simpleWebSocketService } from '@/services/websocket.service';
 
 export async function login(credentials) {
     try {
@@ -12,6 +13,8 @@ export async function login(credentials) {
         if (data.token) {
             // Lưu token
             localStorage.setItem("access_token", JSON.stringify(data.token));
+            simpleWebSocketService.reconnectWithToken();
+
 
             // Giải mã token để lấy thông tin user cơ bản
             const decodedToken = jwtDecode(data.token);

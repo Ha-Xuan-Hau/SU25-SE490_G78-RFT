@@ -12,6 +12,7 @@ import {
   cancelBookingByProvider,
   getBookingDetail, // Thêm import này
 } from "@/apis/booking.api";
+import { useBookingRefresh } from "@/hooks/useWebSocketRefresh";
 import { showApiError, showApiSuccess } from "@/utils/toast.utils";
 import {
   SearchOutlined,
@@ -77,6 +78,9 @@ interface ApiResponse<T> {
 }
 
 export default function ManagePendingBookings() {
+  // Initialize WebSocket refresh for bookings
+  useBookingRefresh();
+  
   // States
   const [form] = Form.useForm();
   const [open, setOpen] = useState<boolean>(false);

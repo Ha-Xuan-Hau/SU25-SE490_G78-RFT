@@ -7,11 +7,29 @@ import { apiClient } from './client';
  */
 export const getBookingDetail = async (bookingId) => {
     try {
+        console.log('Fetching booking detail for ID:', bookingId);
+        
+        if (!bookingId || bookingId === 'undefined' || bookingId === 'null') {
+            throw new Error('Booking ID không hợp lệ');
+        }
+
         const response = await apiClient.get(`/bookings/${bookingId}`);
+        console.log('Booking detail response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Error fetching booking detail:', error);
-        throw new Error(`Lỗi lấy chi tiết booking: ${error.response?.data?.message || error.message}`);
+        
+        // Handle specific error cases
+        if (error.response?.status === 404) {
+            throw new Error(`Không tìm thấy booking với ID: ${bookingId}. Vui lòng kiểm tra lại ID hoặc booking có thể đã bị xóa.`);
+        } else if (error.response?.status === 403) {
+            throw new Error('Bạn không có quyền truy cập booking này');
+        } else if (error.response?.status === 401) {
+            throw new Error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+        } else {
+            const errorMessage = error.response?.data?.message || error.message;
+            throw new Error(`Lỗi lấy chi tiết booking: ${errorMessage}`);
+        }
     }
 };
 

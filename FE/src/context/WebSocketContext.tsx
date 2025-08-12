@@ -15,48 +15,62 @@ interface SimpleWebSocketProviderProps {
 export const SimpleWebSocketProvider: React.FC<SimpleWebSocketProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [user] = useUserState();
+  const [connectionAttempted, setConnectionAttempted] = useState(false);
 
   useEffect(() => {
+    // Prevent multiple connection attempts
+    if (connectionAttempted) return;
+
     const initializeWebSocket = async () => {
       if (user && user.id) {
         try {
-          console.log('Connecting WebSocket...');
+          console.log('Connecting WebSocket for user:', user.id);
+          setConnectionAttempted(true);
           await simpleWebSocketService.connect();
           setIsConnected(true);
-          console.log('WebSocket connected');
+          console.log('WebSocket connected successfully');
         } catch (error) {
           console.error('WebSocket connection failed:', error);
           setIsConnected(false);
           
-          // Retry after 5 seconds
+          // Retry after 5 seconds (only once)
           setTimeout(() => {
+            setConnectionAttempted(false); // Allow retry
             initializeWebSocket();
           }, 5000);
         }
       }
     };
 
-    if (user && user.id) {
+    if (user && user.id && !connectionAttempted) {
       initializeWebSocket();
     }
 
     return () => {
-      simpleWebSocketService.disconnect();
-      setIsConnected(false);
+      // Clean up on unmount
+      if (connectionAttempted) {
+        console.log('Cleaning up WebSocket connection');
+        simpleWebSocketService.disconnect();
+        setIsConnected(false);
+        setConnectionAttempted(false);
+      }
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id
 
-  // Monitor connection status
+  // Monitor connection status with less frequent checks
   useEffect(() => {
+    if (!connectionAttempted) return;
+
     const interval = setInterval(() => {
       const connectionStatus = simpleWebSocketService.getConnectionStatus();
       if (connectionStatus !== isConnected) {
         setIsConnected(connectionStatus);
+        console.log('WebSocket status changed:', connectionStatus);
       }
-    }, 2000);
+    }, 5000); // Check every 5 seconds instead of 2
 
     return () => clearInterval(interval);
-  }, [isConnected]);
+  }, [isConnected, connectionAttempted]);
 
   const contextValue: SimpleWebSocketContextType = {
     isConnected,

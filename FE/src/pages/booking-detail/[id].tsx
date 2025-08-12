@@ -27,19 +27,31 @@ export default function BookingDetailPage() {
 
   useEffect(() => {
     if (!bookingId) return;
+    
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
+        
+        console.log('Fetching booking detail for:', bookingId);
         const res = await getBookingDetail(bookingId);
+        console.log('Booking detail result:', res);
+        
+        if (!res) {
+          throw new Error('Không nhận được dữ liệu từ server');
+        }
+        
         setData(res as BookingDetail);
       } catch (err) {
-        setError("Không thể tải thông tin đơn đặt xe");
+        console.error('Booking detail fetch error:', err);
+        const errorMessage = err instanceof Error ? err.message : "Không thể tải thông tin đơn đặt xe";
+        setError(errorMessage);
         setData(null);
       } finally {
         setLoading(false);
       }
     };
+    
     fetchData();
   }, [bookingId]);
 

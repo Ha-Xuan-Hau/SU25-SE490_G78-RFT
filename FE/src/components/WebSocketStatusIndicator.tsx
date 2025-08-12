@@ -1,8 +1,8 @@
 import React from 'react';
-import { useWebSocket } from '@/context/WebSocketContext';
+import { useSimpleWebSocket } from '@/context/WebSocketContext';
 
 const WebSocketStatusIndicator: React.FC = () => {
-  const { isConnected } = useWebSocket();
+  const { isConnected } = useSimpleWebSocket();
 
   return (
     <div className="fixed bottom-4 right-4 z-50">

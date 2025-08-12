@@ -5,6 +5,7 @@ import { VehicleRentalCard } from "@/components/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { getUserBookings, getBookingDetail } from "@/apis/booking.api";
 import { getRatingByBookingAndUser, upUserRating } from "@/apis/booking.api";
+import { useBookingRefresh } from "@/hooks/useWebSocketRefresh";
 import { BookingDetail } from "@/types/booking";
 
 import { showError, showSuccess } from "@/utils/toast.utils";
@@ -121,6 +122,9 @@ const getDisplayStatus = (booking: Booking): string => {
 };
 
 export default function BookingHistoryPage() {
+  // Initialize WebSocket refresh for bookings
+  useBookingRefresh();
+  
   const [accessToken] = useLocalStorage("access_token", null);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [visibleCount, setVisibleCount] = useState<number>(5);

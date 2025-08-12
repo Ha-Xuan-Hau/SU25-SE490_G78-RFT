@@ -7,21 +7,33 @@ export const useWebSocketRefresh = (target: string, queryKeys: string[]) => {
 
   useEffect(() => {
     const refreshHandler = () => {
-      console.log(`Refreshing data for: ${target}`);
+      console.log(`🔄 WebSocket refresh triggered for: ${target}`);
       // Invalidate all specified query keys
       queryKeys.forEach(key => {
-        queryClient.invalidateQueries({ queryKey: [key] });
+        console.log(`Invalidating queries with key: ${key}`);
+        queryClient.invalidateQueries({ 
+          queryKey: [key],
+          exact: false // This will invalidate all queries that start with this key
+        });
+      });
+      
+      // Also try to refetch queries that are currently active
+      queryClient.refetchQueries({
+        type: 'active',
+        stale: true
       });
     };
 
     // Register refresh handler
     simpleWebSocketService.onRefresh(target, refreshHandler);
+    console.log(`📝 Registered WebSocket refresh handler for: ${target}`);
 
     // Cleanup on unmount
     return () => {
+      console.log(`🗑️ Cleaning up WebSocket refresh handler for: ${target}`);
       simpleWebSocketService.offRefresh(target, refreshHandler);
     };
-  }, [target, queryKeys, queryClient]);
+  }, [target, queryKeys.join(','), queryClient]); // Use join for stable dependency
 };
 
 // Specific hooks for different features
@@ -38,5 +50,5 @@ export const useVehicleRefresh = () => {
 };
 
 export const useNotificationRefresh = () => {
-  useWebSocketRefresh('notification', ['notifications', 'unread-count']);
+  useWebSocketRefresh('notification', ['notifications', 'unread-count', 'unread-notifications']);
 };

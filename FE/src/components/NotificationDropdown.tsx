@@ -9,6 +9,7 @@ import "moment/locale/vi";
 moment.locale("vi");
 
 const NotificationDropdown: React.FC = () => {
+  // Hook tự handle WebSocket
   const {
     isDropdownOpen,
     notifications,
