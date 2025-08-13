@@ -275,13 +275,7 @@ export function AuthPopup({
     } catch (err: any) {
       // Lấy message từ backend trả về
       let errorMessage = "Có lỗi xảy ra. Vui lòng thử lại.";
-<<<<<<< HEAD
-      if (err.response?.status === 400) {
-        errorMessage = "Sai email hoặc mật khẩu!";
-      } else if (err.response?.data?.message) {
-=======
       if (err.response?.data?.message) {
->>>>>>> develop
         errorMessage = err.response.data.message;
       } else if (err.message) {
         errorMessage = err.message;
@@ -678,25 +672,7 @@ export function AuthPopup({
 
       case "forgot-password":
         return (
-          <form onSubmit={handleForgotPassword} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Số điện thoại
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
-                  errors.phone ? "border-red-500" : "border-gray-300"
-                }`}
-                required
-              />
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-              )}
-            </div>
+          <form onSubmit={handleForgotPassword} className="space-y-4">            
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Email
@@ -738,7 +714,7 @@ export function AuthPopup({
         return (
           <form onSubmit={handleVerifyOTP} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-mFedium text-gray-700">
                 Mã OTP
               </label>
               <input
