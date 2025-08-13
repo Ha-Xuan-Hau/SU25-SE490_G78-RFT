@@ -63,9 +63,9 @@ public class AuthenticationService {
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not exits"));
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống"));
         if(user.getStatus().name().equals("INACTIVE")){
-            throw new RuntimeException("User not active");
+            throw new RuntimeException("Tài khoản đã bị khóa");
         }
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
@@ -73,7 +73,7 @@ public class AuthenticationService {
                 user.getPassword());
 
         if(!authenticated) {
-            throw new RuntimeException("Invalid username or password");
+            throw new RuntimeException("Tài khoản hoặc mật khẩu không đúng");
         }
 
         var token= generateToken(user);
@@ -85,7 +85,7 @@ public class AuthenticationService {
 
     public void sendForgotPasswordOtpEmail(String email) {
         User user =userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("The email address doesn’t exist. Please try again."));
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống"));
 
 
         String otp = generateOtp();

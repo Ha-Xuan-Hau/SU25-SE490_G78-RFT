@@ -14,8 +14,9 @@ export const registerSchema = z
     phone: z
       .string()
       .min(1, "Số điện thoại là bắt buộc")
-      .regex(/^[0-9+\-\s()]+$/, "Số điện thoại không hợp lệ")
-      .min(10, "Số điện thoại phải có ít nhất 10 số"),
+      .regex(/^[0-9]+$/, "Số điện thoại chỉ được chứa số")
+      .min(10, "Số điện thoại phải có ít nhất 10 số")
+      .max(11, "Số điện thoại không được vượt quá 11 số"),
     password: z
       .string()
       .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")

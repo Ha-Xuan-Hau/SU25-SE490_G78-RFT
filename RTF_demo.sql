@@ -218,6 +218,7 @@ CREATE TABLE `user_report` (
     `reason` TEXT NOT NULL,             -- Mô tả lý do chi tiết
   
     `evidence_url` text,                       -- URL cho ảnh/video bằng chứng nếu có
+    `status` enum('PENDING','REJECTED','APPROVED') DEFAULT 'PENDING',
 
     `booking_id` varchar(225) DEFAULT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,

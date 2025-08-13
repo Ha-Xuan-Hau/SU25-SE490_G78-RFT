@@ -148,28 +148,8 @@ export function AuthPopup({
 
   const handleRegisterFlow = async () => {
     if (!isOtpSent) {
-      // Step 1: Only validate email and send OTP
-      if (!formData.email) {
-        setErrors({ email: "Vui lòng nhập email" });
-        return;
-      }
-
-      // Validate only email
-      try {
-        sendOtpSchema.parse({ email: formData.email });
-        setErrors({});
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          const newErrors: Record<string, string> = {};
-          error.errors.forEach((err) => {
-            if (err.path) {
-              newErrors[err.path[0]] = err.message;
-            }
-          });
-          setErrors(newErrors);
-          return;
-        }
-      }
+      // Step 1: Validate ALL fields before sending OTP
+      if (!validateForm(registerSchema)) return;
 
       setIsLoading(true);
       try {
@@ -187,14 +167,28 @@ export function AuthPopup({
         setIsLoading(false);
       }
     } else {
-      // Step 2: Validate ALL fields and complete registration
+      // Step 2: Verify OTP and complete registration
       if (!formData.otp) {
         setErrors({ otp: "Vui lòng nhập mã OTP" });
         return;
       }
 
-      // Now validate the entire form
-      if (!validateForm(registerSchema)) return;
+      // Validate OTP format
+      try {
+        verifyOTPSchema.parse({ otp: formData.otp });
+        setErrors({});
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          const newErrors: Record<string, string> = {};
+          error.errors.forEach((err) => {
+            if (err.path) {
+              newErrors[err.path[0]] = err.message;
+            }
+          });
+          setErrors(newErrors);
+          return;
+        }
+      }
 
       setIsLoading(true);
       try {
@@ -369,7 +363,7 @@ export function AuthPopup({
   const renderRegisterForm = () => {
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* All registration fields */}
+        {/* Email field */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Email <span className="text-red-500">*</span>
@@ -379,9 +373,10 @@ export function AuthPopup({
             name="email"
             value={formData.email}
             onChange={handleInputChange}
+            disabled={isOtpSent}
             className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
               errors.email ? "border-red-500" : "border-gray-300"
-            }`}
+            } ${isOtpSent ? "bg-gray-100" : ""}`}
             required
           />
           {errors.email && (
@@ -389,6 +384,7 @@ export function AuthPopup({
           )}
         </div>
 
+        {/* Phone field */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Số điện thoại <span className="text-red-500">*</span>
@@ -398,9 +394,10 @@ export function AuthPopup({
             name="phone"
             value={formData.phone}
             onChange={handleInputChange}
+            disabled={isOtpSent}
             className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
               errors.phone ? "border-red-500" : "border-gray-300"
-            }`}
+            } ${isOtpSent ? "bg-gray-100" : ""}`}
             required
           />
           {errors.phone && (
@@ -408,6 +405,7 @@ export function AuthPopup({
           )}
         </div>
 
+        {/* Address field */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Địa chỉ <span className="text-red-500">*</span>
@@ -417,9 +415,10 @@ export function AuthPopup({
             name="address"
             value={formData.address}
             onChange={handleInputChange}
+            disabled={isOtpSent}
             className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
               errors.address ? "border-red-500" : "border-gray-300"
-            }`}
+            } ${isOtpSent ? "bg-gray-100" : ""}`}
             required
           />
           {errors.address && (
@@ -427,6 +426,7 @@ export function AuthPopup({
           )}
         </div>
 
+        {/* Password field */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Mật khẩu <span className="text-red-500">*</span>
@@ -437,15 +437,17 @@ export function AuthPopup({
               name="password"
               value={formData.password}
               onChange={handleInputChange}
+              disabled={isOtpSent}
               className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
                 errors.password ? "border-red-500" : "border-gray-300"
-              }`}
+              } ${isOtpSent ? "bg-gray-100" : ""}`}
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={isOtpSent}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -461,6 +463,7 @@ export function AuthPopup({
           )}
         </div>
 
+        {/* Confirm Password field */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Xác nhận mật khẩu <span className="text-red-500">*</span>
@@ -471,15 +474,17 @@ export function AuthPopup({
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleInputChange}
+              disabled={isOtpSent}
               className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
                 errors.confirmPassword ? "border-red-500" : "border-gray-300"
-              }`}
+              } ${isOtpSent ? "bg-gray-100" : ""}`}
               required
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={isOtpSent}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
             >
               {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -491,7 +496,7 @@ export function AuthPopup({
           )}
         </div>
 
-        {/* OTP field - shown after sending OTP */}
+        {/* OTP section - shown after sending OTP */}
         {isOtpSent && (
           <div className="border-t pt-4">
             <div className="mb-2 p-3 bg-green-50 border border-green-200 rounded-md">
@@ -537,12 +542,14 @@ export function AuthPopup({
           </div>
         )}
 
+        {/* Error message */}
         {errors.submit && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-md">
             <p className="text-sm text-red-600">{errors.submit}</p>
           </div>
         )}
 
+        {/* Submit button */}
         <button
           type="submit"
           disabled={isLoading}
@@ -555,6 +562,7 @@ export function AuthPopup({
             : "Hoàn tất đăng ký"}
         </button>
 
+        {/* Back to login link */}
         <div className="text-center text-sm">
           <button
             type="button"
