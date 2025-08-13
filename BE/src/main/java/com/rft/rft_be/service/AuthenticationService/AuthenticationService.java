@@ -63,9 +63,9 @@ public class AuthenticationService {
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not exits"));
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống"));
         if(user.getStatus().name().equals("INACTIVE")){
-            throw new RuntimeException("User not active");
+            throw new RuntimeException("Tài khoản đã bị khóa");
         }
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
@@ -73,7 +73,7 @@ public class AuthenticationService {
                 user.getPassword());
 
         if(!authenticated) {
-            throw new RuntimeException("Invalid username or password");
+            throw new RuntimeException("Tài khoản hoặc mật khẩu không đúng");
         }
 
         var token= generateToken(user);
@@ -85,7 +85,7 @@ public class AuthenticationService {
 
     public void sendForgotPasswordOtpEmail(String email) {
         User user =userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("The email address doesn’t exist. Please try again."));
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống"));
 
 
         String otp = generateOtp();
@@ -118,6 +118,24 @@ public class AuthenticationService {
         String filled = template.replace("${otpCode}", otp);
 
         emailSenderService.sendHtmlEmail(email, subject, filled);
+    }
+
+    public void forgotPassword(ForgotPasswordRequest request){
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống"));
+        if(user.getStatus().name().equals("INACTIVE")){
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Mật khẩu và mật khẩu xác nhận lại không trùng nhau. Hãy thử lại");
+        }
+
+        if (!isPasswordValid(request.getNewPassword())) {
+            throw new IllegalArgumentException("Mật khẩu phải chứa ít nhất một số, một ký tự chữ, và bảy ký tự.");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     public void changePassword(ChangePasswordRequest request) {
