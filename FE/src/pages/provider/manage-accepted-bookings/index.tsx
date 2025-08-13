@@ -45,12 +45,7 @@ import {
   cancelBooking,
   cancelBookingByProviderDueToNoShow,
 } from "@/apis/booking.api";
-import {
-  showApiError,
-  showApiSuccess,
-  showError,
-  showSuccess,
-} from "@/utils/toast.utils";
+import { showApiError, showApiSuccess, showWarning } from "@/utils/toast.utils";
 import CancelBookingModal from "@/components/CancelBookingModal";
 import ReportButton from "@/components/ReportComponent";
 
@@ -255,111 +250,54 @@ export default function ManageAcceptedBookings() {
     async (forceRefresh = false) => {
       try {
         const providerId = getProviderIdFromState(provider);
-        console.log("Provider ID from state:", providerId);
-        console.log("Provider object:", provider);
 
         if (!providerId) {
-          // Don't show error if provider is still loading
           if (!providerLoading) {
-            showApiError("Vui lòng đăng nhập để xem danh sách booking");
+            // Không show error
           }
           return;
         }
 
-        // Check if we've already fetched for this provider (unless forced refresh)
+        // Fix duplicate calls - kiểm tra đã fetch chưa
         if (!forceRefresh && hasFetchedRef.current === providerId) {
-          console.log("Already fetched bookings for provider:", providerId);
+          console.log("Already fetched for this provider");
           return;
         }
 
         setLoading(true);
-        console.log("Fetching bookings for provider:", providerId);
 
-        // Fetch bookings with relevant statuses
         const statuses = [
           "CONFIRMED",
           "DELIVERED",
           "RECEIVED_BY_CUSTOMER",
           "RETURNED",
         ];
-        const allBookings: BookingData[] = [];
+
+        const allBookings = [];
 
         for (const status of statuses) {
           try {
-            console.log(`Fetching bookings for status: ${status}`);
-            console.log(
-              `API call: getBookingsByProviderAndStatus("${providerId}", "${status}")`
-            );
-
-            const response = (await getBookingsByProviderAndStatus(
+            // API giờ trả về trực tiếp array
+            const bookingData = await getBookingsByProviderAndStatus(
               providerId,
               status
-            )) as ApiResponse;
-
-            console.log(`Raw response for ${status}:`, response);
-            console.log(`Response type:`, typeof response);
-
-            if (response && response.success && response.data) {
-              console.log(`Response.data for ${status}:`, response.data);
-              console.log(
-                `Response.data is array:`,
-                Array.isArray(response.data)
-              );
-
-              if (Array.isArray(response.data)) {
-                console.log(
-                  `Found ${response.data.length} bookings with status ${status}`
-                );
-                if (response.data.length > 0) {
-                  console.log(
-                    `Sample booking for ${status}:`,
-                    response.data[0]
-                  );
-                }
-                allBookings.push(...response.data);
-              } else {
-                console.log(
-                  `Response.data is not an array for ${status}:`,
-                  typeof response.data
-                );
-              }
-            } else if (response && !response.success) {
-              console.error(
-                `API returned error for ${status}:`,
-                response.error
-              );
-            } else {
-              console.log(`No valid response received for status ${status}`);
-            }
-          } catch (statusError) {
-            console.error(
-              `Error fetching bookings for status ${status}:`,
-              statusError
             );
-            const error = statusError as Error;
-            console.error(`Error details:`, {
-              message: error?.message,
-              stack: error?.stack,
-              name: error?.name,
-            });
+
+            // bookingData giờ là array trực tiếp
+            if (Array.isArray(bookingData) && bookingData.length > 0) {
+              allBookings.push(...bookingData);
+            }
+          } catch (error) {
+            // Bỏ qua lỗi, không log
+            continue;
           }
         }
 
-        console.log("All fetched bookings:", allBookings);
+        console.log("Total bookings fetched:", allBookings.length);
         setBookings(allBookings);
-        hasFetchedRef.current = providerId; // Mark as fetched for this provider
-
-        if (allBookings.length === 0) {
-          console.log("No bookings found for provider:", providerId);
-        } else {
-          console.log(
-            `Total ${allBookings.length} bookings found for provider:`,
-            providerId
-          );
-        }
+        hasFetchedRef.current = providerId; // Đánh dấu đã fetch
       } catch (error) {
-        console.error("Error fetching bookings:", error);
-        showApiError(error, "Có lỗi xảy ra khi tải dữ liệu");
+        // Không log error
       } finally {
         setLoading(false);
       }
@@ -465,16 +403,16 @@ export default function ManageAcceptedBookings() {
         "provider"
       )) as any;
       if (result.success) {
-        message.success("Đơn hàng đã được hủy thành công");
+        showApiSuccess("Đơn hàng đã được hủy thành công");
         setCancelModalVisible(false);
         setSelectedBookingId(null);
         await fetchBookings(true); // Force refresh data
       } else {
-        message.error(result.error || "Lỗi khi hủy hợp đồng");
+        showApiError(result.error || "Lỗi khi hủy hợp đồng");
       }
     } catch (error) {
       console.error("Error canceling contract:", error);
-      message.error("Lỗi khi hủy hợp đồng");
+      showApiError("Lỗi khi hủy hợp đồng");
     } finally {
       setLoading(false);
     }
@@ -1009,7 +947,7 @@ export default function ManageAcceptedBookings() {
 
   const showModal = (booking: BookingData) => {
     if (booking.status !== ContractStatus.RETURNED) {
-      message.warning("Chỉ có thể tất toán hợp đồng khi xe đã được trả");
+      showWarning("Chỉ có thể tất toán hợp đồng khi xe đã được trả");
       return;
     }
 
@@ -1511,12 +1449,12 @@ export default function ManageAcceptedBookings() {
                     className="w-full"
                   />
                 </Form.Item>
-                <Form.Item label="Tên xe" name="vehicleThumb">
+                {/* <Form.Item label="Tên xe" name="vehicleThumb">
                   <Input readOnly />
                 </Form.Item>
                 <Form.Item label="Biển số xe" name="vehicleLicensePlate">
                   <Input readOnly />
-                </Form.Item>
+                </Form.Item> */}
               </div>
 
               <Form.Item label="Địa chỉ" name="address">
@@ -1696,7 +1634,7 @@ export default function ManageAcceptedBookings() {
             loading={loading}
             icon={<CheckCircleOutlined />}
           >
-            Tiếp tục tất toán
+            Sang bước tất toán
           </Button>,
         ]}
         width={500}
@@ -1749,8 +1687,11 @@ export default function ManageAcceptedBookings() {
 
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 text-sm font-medium text-center">
-              Sau khi xác nhận, bạn sẽ được chuyển đến màn hình tất toán hợp
-              đồng để điền thông tin chi tiết.
+              Hãy xác nhận lại thông tin trước khi tiếp tục.
+            </p>
+            <p className="text-blue-800 text-sm font-medium text-center">
+              Nếu bạn có thông tin gì cần khiếu nại, hãy quay lại và sử dụng
+              chức năng báo cáo.
             </p>
           </div>
         </div>

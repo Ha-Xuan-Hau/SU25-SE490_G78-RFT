@@ -19,6 +19,10 @@ public class ReportRequest {
 
     private  String booking;
 
+    private String evidenceUrl;
+
     @NotBlank
     private String reason;
+
+    private String originalReportId;
 }

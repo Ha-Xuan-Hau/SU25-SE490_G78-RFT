@@ -39,7 +39,7 @@ import {
 
 // Import component Coupon
 import Coupon from "@/components/Coupon";
-import { coupon as CouponType } from "@/types/coupon";
+import { coupon as CouponType } from "@/types/userCoupon";
 
 // Import API services
 import {
@@ -207,6 +207,7 @@ const BookingPage: React.FC = () => {
     }>
   >([]);
   const [addressInputValue, setAddressInputValue] = useState<string>("");
+  const deliveryRadius = vehicle?.deliveryRadius ?? 0;
 
   const user = useUserValue() as User;
 
@@ -881,11 +882,11 @@ const BookingPage: React.FC = () => {
           routeData.routes[0].sections[0].summary.length / 1000;
         setDeliveryDistance(distanceInKm);
 
-        if (distanceInKm > 10) {
+        if (distanceInKm > deliveryRadius) {
           setDistanceError(
             `Khoảng cách giao xe ${distanceInKm.toFixed(
               1
-            )}km. Chủ xe không hỗ trợ giao xe quá 10km.`
+            )}km. Chủ xe không hỗ trợ giao xe quá ${deliveryRadius}km.`
           );
         }
       } else {
@@ -1454,7 +1455,7 @@ const BookingPage: React.FC = () => {
                     {/* Hiển thị kết quả khoảng cách */}
                     {deliveryDistance !== null &&
                       !isCalculatingDistance &&
-                      deliveryDistance <= 10 && (
+                      deliveryDistance <= deliveryRadius && (
                         <div className="mt-3 p-3 rounded-lg border bg-green-50 border-green-200">
                           <div className="text-sm text-green-700">
                             <div className="font-medium">
@@ -2349,7 +2350,7 @@ const BookingPage: React.FC = () => {
                       addressInputValue.trim() !== "") || // Disable khi đã nhập nhưng chưa tính xong
                     (costGetCar === 1 &&
                       deliveryDistance !== null &&
-                      deliveryDistance > 10) // Disable khi quá 10km
+                      deliveryDistance > deliveryRadius) // Disable khi quá 10km
                   }
                 >
                   {isCalculatingDistance && costGetCar === 1
@@ -2363,8 +2364,8 @@ const BookingPage: React.FC = () => {
                     ? "Đang xác định khoảng cách..." // Đã nhập nhưng chưa có kết quả
                     : costGetCar === 1 &&
                       deliveryDistance !== null &&
-                      deliveryDistance > 10
-                    ? "Không hỗ trợ giao xe quá 10km"
+                      deliveryDistance > deliveryRadius
+                    ? `Không hỗ trợ giao xe quá ${deliveryRadius}km`
                     : Object.values(vehicleAvailabilityStatus).some(
                         (available) => !available
                       )

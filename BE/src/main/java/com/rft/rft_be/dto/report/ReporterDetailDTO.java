@@ -10,5 +10,6 @@ public class ReporterDetailDTO {
     private String fullName;
     private String email;
     private String reason;
+    private String evidenceUrl;
     private String createdAt;
 }

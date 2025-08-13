@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import { jwtDecode } from "jwt-decode";
 
+// Giữ nguyên function login của bạn
 export async function login(credentials) {
     try {
         const { data } = await apiClient.request({
@@ -41,7 +42,7 @@ export async function login(credentials) {
                     userData = fullUserData.data;
                 }
             } catch (profileError) {
-                console.warn("Could not fetch complete profile:", profileError);
+                // console.warn("Could not fetch complete profile:", profileError);
                 // Tiếp tục với thông tin cơ bản từ token
             }
 
@@ -57,12 +58,12 @@ export async function login(credentials) {
 
         return data;
     } catch (error) {
-        console.error("Login error:", error);
+        // console.error("Login error:", error);
         throw error;
     }
 }
 
-//Function cho register flow
+// Giữ nguyên function cho register flow
 export async function sendOtpRegister(email) {
     try {
         const { data } = await apiClient.request({
@@ -72,7 +73,7 @@ export async function sendOtpRegister(email) {
         });
         return data;
     } catch (error) {
-        console.error("Send OTP register error:", error);
+        // console.error("Send OTP register error:", error);
         throw error;
     }
 }
@@ -86,7 +87,7 @@ export async function verifyOtp(email, otp) {
         });
         return data;
     } catch (error) {
-        console.error("Verify OTP error:", error);
+        // console.error("Verify OTP error:", error);
         throw error;
     }
 }
@@ -100,7 +101,57 @@ export async function register(userData) {
         });
         return data;
     } catch (error) {
-        console.error("Register error:", error);
+        // console.error("Register error:", error);
+        throw error;
+    }
+}
+
+// Thêm các function mới cho forgot password flow
+export async function sendOtpForgotPassword(email) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/auth/send-otp",
+            data: { email },
+        });
+        return data;
+    } catch (error) {
+        // console.error("Send OTP forgot password error:", error);
+        throw error;
+    }
+}
+
+export async function forgotPassword(requestData) {
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/auth/forgot-password",
+            data: requestData,
+        });
+        return data;
+    } catch (error) {
+        // console.error("Forgot password error:", error);
+        throw error;
+    }
+}
+
+// Thêm function cho change password (khi đã login)
+export async function changePassword(requestData) {
+    const token = JSON.parse(localStorage.getItem("access_token") || '""');
+
+    try {
+        const { data } = await apiClient.request({
+            method: "POST",
+            url: "/auth/change-password",
+            data: requestData,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        return data;
+    } catch (error) {
+        // console.error("Change password error:", error);
         throw error;
     }
 }

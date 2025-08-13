@@ -1,18 +1,24 @@
 package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.*;
+import com.rft.rft_be.dto.user.UserDetailDTO;
+import com.rft.rft_be.entity.Contract;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.repository.*;
 import com.rft.rft_be.entity.WalletTransaction;
+import com.rft.rft_be.service.otp.OtpService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,8 +40,10 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final DriverLicensRepository driverLicenseRepository;
     private final VehicleRepository vehicleRepository;
     private final FinalContractRepository finalContractRepository;
-
-
+    private final ContractRepository contractRepository;
+    private final OtpService otpService;
+    private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
     @Override
     public AdminUserListResponseDTO getUsers(AdminUserSearchDTO searchDTO) {
         Pageable pageable = createPageable(searchDTO);
@@ -313,4 +321,63 @@ public class AdminUserServiceImpl implements AdminUserService {
                         .build()
         ).toList();
     }
+
+    @Override
+    public AdminUserDetailDTO banUser(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Chỉ xử lý cho USER/PROVIDER
+        if (user.getRole() == User.Role.USER) {
+            long unfinished = bookingRepository.countUnfinishedByUserId(
+                    user.getId(),
+                    Booking.Status.COMPLETED,
+                    Booking.Status.CANCELLED
+            );
+            user.setStatus(unfinished > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
+        } else if (user.getRole() == User.Role.PROVIDER) {
+            long renting = contractRepository.countByProviderIdAndStatus(
+                    user.getId(),
+                    Contract.Status.RENTING
+            );
+            user.setStatus(renting > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
+        } // STAFF/ADMIN: giữ nguyên
+
+        userRepository.save(user);
+        // Trả về chi tiết để FE có đủ thông tin cập nhật
+        return getUserDetail(user.getId());
+    }
+
+    // Create Staff by Admin
+    @Override
+    public UserDetailDTO createStaffAccount(AdminCreateStaffDTO request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email đã tồn tại");
+        }
+
+        if (!otpService.verifyOtp(request.getEmail(), request.getOtp())) {
+            throw new RuntimeException("OTP không hợp lệ hoặc đã hết hạn");
+        }
+
+        User staff = new User();
+        staff.setEmail(request.getEmail());
+        staff.setFullName(request.getFullName());
+        staff.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        staff.setAddress("N/A");
+        staff.setRole(User.Role.STAFF);
+        staff.setStatus(User.Status.ACTIVE);
+
+        staff.setCreatedAt(LocalDateTime.now());
+
+
+
+        User savedStaff = userRepository.save(staff);
+
+
+        otpService.deleteOtp(request.getEmail());
+
+        return userMapper.userToUserDetailDto(savedStaff);
+    }
+
 } 

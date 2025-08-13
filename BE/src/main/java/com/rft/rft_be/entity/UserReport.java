@@ -1,14 +1,17 @@
 package com.rft.rft_be.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.*;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
-
-import java.time.LocalDateTime;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "user_report")
@@ -18,6 +21,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class UserReport {
+
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -41,12 +45,22 @@ public class UserReport {
     @Column(name = "reason", nullable = false)
     private String reason;
 
+    @Column(name = "evidence_url")
+    private String evidenceUrl;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "booking_id")
     private Booking booking;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private UserReport.Status status = Status.PENDING;
 
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    public enum Status{
+        PENDING, REJECTED, APPROVED
+    }
 }

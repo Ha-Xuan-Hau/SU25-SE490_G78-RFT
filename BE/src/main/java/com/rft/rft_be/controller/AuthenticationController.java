@@ -63,6 +63,12 @@ public class AuthenticationController {
         return ResponseEntity.ok(isValid ? "OTP verified" : "OTP invalid");
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request){
+        authenticationService.forgotPassword(request);
+        return ResponseEntity.ok("Mật khẩu đã được đổi thành công");
+    }
+
     @PostMapping("/register")
     public ResponseEntity<UserDetailDTO> register(@Valid @RequestBody UserRegisterDTO request){
         UserDetailDTO createdUser =userService.register(request);

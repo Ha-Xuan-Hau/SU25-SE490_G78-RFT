@@ -8,7 +8,7 @@ export const getUserWallet = async (userId) => {
         const response = await apiClient.get(url);
         return response.data;
     } catch (error) {
-        console.error('Error fetching user wallet:', error);
+        // console.error('Error fetching user wallet:', error);
         throw new Error(`Lỗi lấy ví người dùng: ${error.response?.data?.message || error.message}`);
     }
 };
@@ -19,7 +19,7 @@ export const getWithdrawalHistory = async (userId) => {
         const response = await apiClient.get(url);
         return response.data;
     } catch (error) {
-        console.error('Error fetching withdrawal history:', error);
+        // console.error('Error fetching withdrawal history:', error);
         throw new Error(`Lỗi lấy lịch sử rút tiền: ${error.response?.data?.message || error.message}`);
     }
 };
@@ -62,7 +62,7 @@ export const getAllWithdrawals = async (status) => {
         });
         return response.data;
     } catch (error) {
-        console.error('Error fetching withdrawals:', error);
+        // console.error('Error fetching withdrawals:', error);
         throw new Error(`Lỗi lấy yêu cầu rút tiền: ${error.response?.data?.message || error.message}`);
     }
 };
@@ -77,7 +77,7 @@ export const getApprovedWithdrawals = async () => {
         const response = await apiClient.get(`/wallet/staff/withdrawals/approved`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching withdrawals:', error);
+        // console.error('Error fetching withdrawals:', error);
         throw new Error(`Lỗi lấy yêu cầu rút tiền: ${error.response?.data?.message || error.message}`);
     }
 };
@@ -92,7 +92,7 @@ export const getWithdrawalDetail = async (id) => {
         const response = await apiClient.get(`/wallet/staff/withdrawals/${id}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching withdrawal detail:', error);
+        // console.error('Error fetching withdrawal detail:', error);
         throw new Error(`Lỗi lấy thông tin yêu cầu rút tiền: ${error.response?.data?.message || error.message}`);
     }
 };
@@ -109,7 +109,7 @@ export const updateWithdrawalStatus = async (id, status) => {
             params: { status } // Send status as a query parameter
         });
     } catch (error) {
-        console.error('Error updating withdrawal status:', error);
+        // console.error('Error updating withdrawal status:', error);
         throw new Error(`Lỗi cập nhật trạng thái yêu cầu rút tiền: ${error.response?.data?.message || error.message}`);
     }
 };

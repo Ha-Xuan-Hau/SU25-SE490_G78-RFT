@@ -260,9 +260,9 @@ export default function VehicleDetail() {
       if (
         vehicle?.vehicleType &&
         vehicle.vehicleType.toUpperCase() === "CAR" &&
-        (!user.result?.driverLicenses ||
-          (Array.isArray(user.result.driverLicenses) &&
-            user.result.driverLicenses.length === 0))
+        (!user?.validLicenses ||
+          (Array.isArray(user.validLicenses) &&
+            user.validLicenses.length === 0))
       ) {
         setIsModalCheckOpen(true);
       } else if (vehicle?.id && pickupDateTime && returnDateTime) {
@@ -423,7 +423,7 @@ export default function VehicleDetail() {
       return;
     }
 
-    const userLicenses = user?.validLicenses || user?.result?.validLicenses;
+    const userLicenses = user?.validLicenses || user?.validLicenses;
 
     if (user === null) {
       setIsAuthPopupOpen(true);
@@ -718,202 +718,228 @@ export default function VehicleDetail() {
           {/* Left column - Vehicle details */}
           <div className="lg:col-span-8">
             {/* Booking widget - Mobile (moved to top) */}
-            <div className="lg:hidden bg-primary/10 p-4 sm:p-6 rounded-2xl mb-6">
-              {/* Date picker */}
-              <div>
-                <h3 className="text-base sm:text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
-                  Thời gian thuê
-                </h3>
+            {vehicle?.status === "AVAILABLE" ? (
+              <div className="lg:hidden bg-primary/10 p-4 sm:p-6 rounded-2xl mb-6">
+                {/* Date picker */}
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
+                    Thời gian thuê
+                  </h3>
 
-                <div className="w-full">
-                  <DateRangePicker
-                    showTime={{
-                      format: "HH:mm",
-                      minuteStep: 30,
-                    }}
-                    format="DD-MM-YYYY HH:mm"
-                    disabledTime={disabledRangeTime}
-                    disabledDate={disabledDateFunction}
-                    className="w-full"
-                    onChange={handleDateChange}
-                    value={formattedDates}
-                    placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
-                    allowClear={true} // Cho phép clear dates
-                  />
-
-                  {validationMessage && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {validationMessage}
-                    </p>
-                  )}
-                  {bufferConflictMessage && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2">
-                      <p className="text-red-600 text-sm">
-                        ⚠️ {bufferConflictMessage}
-                      </p>
-                      {vehicle?.vehicleType && (
-                        <p className="text-gray-600 text-xs mt-1">
-                          {
-                            BUFFER_TIME_RULES[
-                              vehicle.vehicleType.toUpperCase() as VehicleType
-                            ]?.description
-                          }
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Price details */}
-              <div className="mt-6">
-                <h3 className="text-base sm:text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
-                  Chi tiết giá
-                </h3>
-                <div className="space-y-3 text-gray-700 dark:text-gray-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm sm:text-base">
-                      {rentalCalculation?.isHourlyRate
-                        ? "Giá theo giờ"
-                        : "Giá theo ngày"}
-                    </span>
-                    <span className="text-sm sm:text-base font-medium">
-                      {rentalCalculation?.isHourlyRate
-                        ? `${hourlyRate.toLocaleString()}₫/giờ`
-                        : `${formatCurrency(unitPrice)}/ngày`}
-                    </span>
-                  </div>
-                  <hr className="border-gray-200 dark:border-gray-700" />
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm sm:text-base">Thời gian thuê</span>
-                    <span className="text-sm sm:text-base font-medium">
-                      {rentalCalculation
-                        ? formatRentalDuration(rentalCalculation)
-                        : `${rentalDurationDays} ngày`}
-                    </span>
-                  </div>
-                  <hr className="border-gray-200 dark:border-gray-700" />
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm sm:text-base">
-                      {rentalCalculation?.isHourlyRate
-                        ? "Giá theo thời gian"
-                        : "Giá cơ bản"}
-                    </span>
-                    <span className="text-sm sm:text-base font-medium">
-                      {formatCurrency(totalPrice)}
-                    </span>
-                  </div>
-
-                  {/* Hiển thị breakdown cho hourly rate */}
-                  {rentalCalculation?.isHourlyRate && (
-                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
-                      {rentalCalculation.billingHours > 0 && (
-                        <div>
-                          • {rentalCalculation.billingHours} giờ ×{" "}
-                          {hourlyRate.toLocaleString()}₫ ={" "}
-                          {(
-                            rentalCalculation.billingHours * hourlyRate
-                          ).toLocaleString()}
-                          ₫
-                        </div>
-                      )}
-                      {rentalCalculation.billingMinutes > 0 && (
-                        <div>
-                          • {rentalCalculation.billingMinutes} phút ×{" "}
-                          {Math.round(hourlyRate / 60).toLocaleString()}₫ ={" "}
-                          {Math.round(
-                            (rentalCalculation.billingMinutes / 60) * hourlyRate
-                          ).toLocaleString()}
-                          ₫
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <hr className="border-gray-200 dark:border-gray-700" />
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-lg sm:text-xl font-bold">Tổng</span>
-                    <span className="text-lg sm:text-xl font-bold text-primary">
-                      {formatCurrency(totalPrice)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Book button */}
-              <div className="space-y-3 mt-6">
-                <button
-                  className={`w-full text-base sm:text-lg py-3 rounded-lg font-semibold ${
-                    bufferConflictMessage || validationMessage
-                      ? "bg-gray-400 cursor-not-allowed text-gray-600"
-                      : "bg-teal-500 hover:bg-teal-600 text-white"
-                  }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    console.log("Book button clicked");
-
-                    if (bufferConflictMessage || validationMessage) {
-                      message.warning(
-                        "Vui lòng chọn thời gian khác để tiếp tục"
-                      );
-                      return;
-                    }
-
-                    handleRent();
-                  }}
-                  disabled={!!(bufferConflictMessage || validationMessage)}
-                  type="button"
-                >
-                  Đặt xe
-                </button>
-              </div>
-
-              {/* Multi-booking button for mobile */}
-              {availableQuantity > 1 &&
-                vehicle?.vehicleType &&
-                vehicle.vehicleType.toUpperCase() !== "CAR" && (
-                  <div className="mt-4">
-                    <button
-                      className="w-full text-base sm:text-lg py-3 rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 flex items-center justify-center gap-2"
-                      onClick={async () => {
-                        setShowMultiBooking(true);
-                        try {
-                          const thumb = vehicle?.thumb;
-                          const providerId = vehicle?.userId;
-                          const from = pickupDateTime
-                            ? dayjs(pickupDateTime, "YYYY-MM-DD HH:mm").format(
-                                "YYYY-MM-DDTHH:mm:ss"
-                              )
-                            : "";
-                          const to = returnDateTime
-                            ? dayjs(returnDateTime, "YYYY-MM-DD HH:mm").format(
-                                "YYYY-MM-DDTHH:mm:ss"
-                              )
-                            : "";
-                          const vehicles = await getAvailableThumbList({
-                            thumb,
-                            providerId,
-                            from,
-                            to,
-                          });
-                          setAvailableVehicles(vehicles);
-                          setIsMultiModalOpen(true);
-                        } catch (err) {
-                          setAvailableVehicles([]);
-                          setIsMultiModalOpen(true);
-                        }
+                  <div className="w-full">
+                    <DateRangePicker
+                      showTime={{
+                        format: "HH:mm",
+                        minuteStep: 30,
                       }}
-                    >
-                      <span>Đặt nhiều xe</span>
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 sm:px-3 py-1 text-sm sm:text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
-                        {availableQuantity}
-                      </span>
-                    </button>
+                      format="DD-MM-YYYY HH:mm"
+                      disabledTime={disabledRangeTime}
+                      disabledDate={disabledDateFunction}
+                      className="w-full"
+                      onChange={handleDateChange}
+                      value={formattedDates}
+                      placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                      allowClear={true}
+                    />
+
+                    {validationMessage && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {validationMessage}
+                      </p>
+                    )}
+                    {bufferConflictMessage && (
+                      <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2">
+                        <p className="text-red-600 text-sm">
+                          ⚠️ {bufferConflictMessage}
+                        </p>
+                        {vehicle?.vehicleType && (
+                          <p className="text-gray-600 text-xs mt-1">
+                            {
+                              BUFFER_TIME_RULES[
+                                vehicle.vehicleType.toUpperCase() as VehicleType
+                              ]?.description
+                            }
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-            </div>
+                </div>
+
+                {/* Price details */}
+                <div className="mt-6">
+                  <h3 className="text-base sm:text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
+                    Chi tiết giá
+                  </h3>
+                  <div className="space-y-3 text-gray-700 dark:text-gray-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm sm:text-base">
+                        {rentalCalculation?.isHourlyRate
+                          ? "Giá theo giờ"
+                          : "Giá theo ngày"}
+                      </span>
+                      <span className="text-sm sm:text-base font-medium">
+                        {rentalCalculation?.isHourlyRate
+                          ? `${hourlyRate.toLocaleString()}₫/giờ`
+                          : `${formatCurrency(unitPrice)}/ngày`}
+                      </span>
+                    </div>
+                    <hr className="border-gray-200 dark:border-gray-700" />
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm sm:text-base">
+                        Thời gian thuê
+                      </span>
+                      <span className="text-sm sm:text-base font-medium">
+                        {rentalCalculation
+                          ? formatRentalDuration(rentalCalculation)
+                          : `${rentalDurationDays} ngày`}
+                      </span>
+                    </div>
+                    <hr className="border-gray-200 dark:border-gray-700" />
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm sm:text-base">
+                        {rentalCalculation?.isHourlyRate
+                          ? "Giá theo thời gian"
+                          : "Giá cơ bản"}
+                      </span>
+                      <span className="text-sm sm:text-base font-medium">
+                        {formatCurrency(totalPrice)}
+                      </span>
+                    </div>
+
+                    {/* Hiển thị breakdown cho hourly rate */}
+                    {rentalCalculation?.isHourlyRate && (
+                      <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
+                        {rentalCalculation.billingHours > 0 && (
+                          <div>
+                            • {rentalCalculation.billingHours} giờ ×{" "}
+                            {hourlyRate.toLocaleString()}₫ ={" "}
+                            {(
+                              rentalCalculation.billingHours * hourlyRate
+                            ).toLocaleString()}
+                            ₫
+                          </div>
+                        )}
+                        {rentalCalculation.billingMinutes > 0 && (
+                          <div>
+                            • {rentalCalculation.billingMinutes} phút ×{" "}
+                            {Math.round(hourlyRate / 60).toLocaleString()}₫ ={" "}
+                            {Math.round(
+                              (rentalCalculation.billingMinutes / 60) *
+                                hourlyRate
+                            ).toLocaleString()}
+                            ₫
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <hr className="border-gray-200 dark:border-gray-700" />
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-lg sm:text-xl font-bold">Tổng</span>
+                      <span className="text-lg sm:text-xl font-bold text-primary">
+                        {formatCurrency(totalPrice)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Book button */}
+                <div className="space-y-3 mt-6">
+                  <button
+                    className={`w-full text-base sm:text-lg py-3 rounded-lg font-semibold ${
+                      bufferConflictMessage || validationMessage
+                        ? "bg-gray-400 cursor-not-allowed text-gray-600"
+                        : "bg-teal-500 hover:bg-teal-600 text-white"
+                    }`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      console.log("Book button clicked");
+
+                      if (bufferConflictMessage || validationMessage) {
+                        message.warning(
+                          "Vui lòng chọn thời gian khác để tiếp tục"
+                        );
+                        return;
+                      }
+
+                      handleRent();
+                    }}
+                    disabled={!!(bufferConflictMessage || validationMessage)}
+                    type="button"
+                  >
+                    Đặt xe
+                  </button>
+                </div>
+
+                {/* Multi-booking button for mobile */}
+                {availableQuantity > 1 &&
+                  vehicle?.vehicleType &&
+                  vehicle.vehicleType.toUpperCase() !== "CAR" && (
+                    <div className="mt-4">
+                      <button
+                        className="w-full text-base sm:text-lg py-3 rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 flex items-center justify-center gap-2"
+                        onClick={async () => {
+                          setShowMultiBooking(true);
+                          try {
+                            const thumb = vehicle?.thumb;
+                            const providerId = vehicle?.userId;
+                            const from = pickupDateTime
+                              ? dayjs(
+                                  pickupDateTime,
+                                  "YYYY-MM-DD HH:mm"
+                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              : "";
+                            const to = returnDateTime
+                              ? dayjs(
+                                  returnDateTime,
+                                  "YYYY-MM-DD HH:mm"
+                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              : "";
+                            const vehicles = await getAvailableThumbList({
+                              thumb,
+                              providerId,
+                              from,
+                              to,
+                            });
+                            setAvailableVehicles(vehicles);
+                            setIsMultiModalOpen(true);
+                          } catch (err) {
+                            setAvailableVehicles([]);
+                            setIsMultiModalOpen(true);
+                          }
+                        }}
+                      >
+                        <span>Đặt nhiều xe</span>
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 sm:px-3 py-1 text-sm sm:text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
+                          {availableQuantity}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+              </div>
+            ) : (
+              // Hiển thị thông báo xe không khả dụng cho mobile
+              <div className="lg:hidden bg-gray-100 p-4 sm:p-6 rounded-2xl mb-6">
+                <div className="text-center">
+                  <Icon
+                    icon="mdi:car-off"
+                    className="mx-auto mb-3 text-gray-400"
+                    width={48}
+                    height={48}
+                  />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                    Xe không khả dụng
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Xe này hiện không thể đặt. Vui lòng chọn xe khác hoặc liên
+                    hệ chủ xe để biết thêm thông tin.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Vehicle features - Chỉ hiển thị khi không phải xe đạp */}
             {vehicle?.vehicleType !== "BICYCLE" && (
@@ -1075,6 +1101,20 @@ export default function VehicleDetail() {
                     <b>Chính sách hủy:</b> {vehicle.penalty.description}
                   </div>
                 )}
+              </div>
+            </div>
+            <div className="lg:hidden mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Thông tin xe không chính xác?
+                </span>
+                <ReportButton
+                  targetId={vehicle.id}
+                  reportType="MISLEADING_LISTING"
+                  buttonText="Báo cáo"
+                  size="small"
+                  type="text"
+                />
               </div>
             </div>
 
@@ -1306,200 +1346,224 @@ export default function VehicleDetail() {
 
           {/* Right column - Booking widget (Desktop only) */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="bg-primary/10 p-10 rounded-2xl relative z-10 overflow-hidden top-6">
-              {/* Date picker */}
-              <div>
-                <h3 className="text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
-                  Thời gian thuê
-                </h3>
+            {vehicle?.status === "AVAILABLE" ? (
+              <div className="bg-primary/10 p-10 rounded-2xl relative z-10 overflow-hidden top-6">
+                {/* Date picker */}
+                <div>
+                  <h3 className="text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
+                    Thời gian thuê
+                  </h3>
 
-                <div className="mt-4 w-full">
-                  <DateRangePicker
-                    showTime={{
-                      format: "HH:mm",
-                      minuteStep: 30,
-                    }}
-                    format="DD-MM-YYYY HH:mm"
-                    disabledTime={disabledRangeTime}
-                    disabledDate={disabledDateFunction}
-                    className="w-full"
-                    onChange={handleDateChange}
-                    value={formattedDates}
-                    placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
-                  />
-                  {validationMessage && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {validationMessage}
-                    </p>
-                  )}
-                  {bufferConflictMessage && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2">
-                      <p className="text-red-600 text-sm">
-                        ⚠️ {bufferConflictMessage}
-                      </p>
-                      {vehicle?.vehicleType && (
-                        <p className="text-gray-600 text-xs mt-1">
-                          {
-                            BUFFER_TIME_RULES[
-                              vehicle.vehicleType.toUpperCase() as VehicleType
-                            ]?.description
-                          }
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Price details */}
-              <div className="mt-6">
-                <h3 className="text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
-                  Chi tiết giá
-                </h3>
-                <div className="space-y-3 text-gray-700 dark:text-gray-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-base">
-                      {rentalCalculation?.isHourlyRate
-                        ? "Giá theo giờ"
-                        : "Giá theo ngày"}
-                    </span>
-                    <span className="text-base font-medium">
-                      {rentalCalculation?.isHourlyRate
-                        ? `${hourlyRate.toLocaleString()}₫/giờ`
-                        : `${formatCurrency(unitPrice)}/ngày`}
-                    </span>
-                  </div>
-                  <hr className="border-gray-200 dark:border-gray-700" />
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-base">Thời gian thuê</span>
-                    <span className="text-base font-medium">
-                      {rentalCalculation
-                        ? formatRentalDuration(rentalCalculation)
-                        : `${rentalDurationDays} ngày`}
-                    </span>
-                  </div>
-                  <hr className="border-gray-200 dark:border-gray-700" />
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-base">
-                      {rentalCalculation?.isHourlyRate
-                        ? "Giá theo thời gian"
-                        : "Giá cơ bản"}
-                    </span>
-                    <span className="text-base font-medium">
-                      {formatCurrency(totalPrice)}
-                    </span>
-                  </div>
-
-                  {/* Hiển thị breakdown cho hourly rate */}
-                  {rentalCalculation?.isHourlyRate && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
-                      {rentalCalculation.billingHours > 0 && (
-                        <div>
-                          • {rentalCalculation.billingHours} giờ ×{" "}
-                          {hourlyRate.toLocaleString()}₫ ={" "}
-                          {(
-                            rentalCalculation.billingHours * hourlyRate
-                          ).toLocaleString()}
-                          ₫
-                        </div>
-                      )}
-                      {rentalCalculation.billingMinutes > 0 && (
-                        <div>
-                          • {rentalCalculation.billingMinutes} phút ×{" "}
-                          {Math.round(hourlyRate / 60).toLocaleString()}₫ ={" "}
-                          {Math.round(
-                            (rentalCalculation.billingMinutes / 60) * hourlyRate
-                          ).toLocaleString()}
-                          ₫
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <hr className="border-gray-200 dark:border-gray-700" />
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-xl font-bold">Tổng</span>
-                    <span className="text-xl font-bold text-primary">
-                      {formatCurrency(totalPrice)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Book button */}
-              <div className="space-y-3 mt-6">
-                <button
-                  className={`w-full text-lg py-3 rounded-lg font-semibold ${
-                    bufferConflictMessage || validationMessage
-                      ? "bg-gray-400 cursor-not-allowed text-gray-600"
-                      : "bg-teal-500 hover:bg-teal-600 text-white"
-                  }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    console.log("Book button clicked");
-
-                    if (bufferConflictMessage || validationMessage) {
-                      message.warning(
-                        "Vui lòng chọn thời gian khác để tiếp tục"
-                      );
-                      return;
-                    }
-
-                    handleRent();
-                  }}
-                  disabled={!!(bufferConflictMessage || validationMessage)}
-                  type="button"
-                >
-                  Đặt xe
-                </button>
-              </div>
-
-              {/* Multi-booking button */}
-              {availableQuantity > 1 &&
-                vehicle?.vehicleType &&
-                vehicle.vehicleType.toUpperCase() !== "CAR" && (
-                  <div className="mt-4">
-                    <button
-                      className="w-full text-lg py-3 rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 flex items-center justify-center gap-2"
-                      onClick={async () => {
-                        setShowMultiBooking(true);
-                        try {
-                          const thumb = vehicle?.thumb;
-                          const providerId = vehicle?.userId;
-                          const from = pickupDateTime
-                            ? dayjs(pickupDateTime, "YYYY-MM-DD HH:mm").format(
-                                "YYYY-MM-DDTHH:mm:ss"
-                              )
-                            : "";
-                          const to = returnDateTime
-                            ? dayjs(returnDateTime, "YYYY-MM-DD HH:mm").format(
-                                "YYYY-MM-DDTHH:mm:ss"
-                              )
-                            : "";
-                          const vehicles = await getAvailableThumbList({
-                            thumb,
-                            providerId,
-                            from,
-                            to,
-                          });
-                          setAvailableVehicles(vehicles);
-                          setIsMultiModalOpen(true);
-                        } catch (err) {
-                          setAvailableVehicles([]);
-                          setIsMultiModalOpen(true);
-                        }
+                  <div className="mt-4 w-full">
+                    <DateRangePicker
+                      showTime={{
+                        format: "HH:mm",
+                        minuteStep: 30,
                       }}
-                    >
-                      <span>Đặt nhiều xe</span>
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
-                        {availableQuantity}
-                      </span>
-                    </button>
+                      format="DD-MM-YYYY HH:mm"
+                      disabledTime={disabledRangeTime}
+                      disabledDate={disabledDateFunction}
+                      className="w-full"
+                      onChange={handleDateChange}
+                      value={formattedDates}
+                      placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                    />
+                    {validationMessage && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {validationMessage}
+                      </p>
+                    )}
+                    {bufferConflictMessage && (
+                      <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2">
+                        <p className="text-red-600 text-sm">
+                          ⚠️ {bufferConflictMessage}
+                        </p>
+                        {vehicle?.vehicleType && (
+                          <p className="text-gray-600 text-xs mt-1">
+                            {
+                              BUFFER_TIME_RULES[
+                                vehicle.vehicleType.toUpperCase() as VehicleType
+                              ]?.description
+                            }
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-            </div>
+                </div>
+
+                {/* Price details */}
+                <div className="mt-6">
+                  <h3 className="text-lg font-bold uppercase text-gray-700 dark:text-gray-200 mb-4">
+                    Chi tiết giá
+                  </h3>
+                  <div className="space-y-3 text-gray-700 dark:text-gray-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-base">
+                        {rentalCalculation?.isHourlyRate
+                          ? "Giá theo giờ"
+                          : "Giá theo ngày"}
+                      </span>
+                      <span className="text-base font-medium">
+                        {rentalCalculation?.isHourlyRate
+                          ? `${hourlyRate.toLocaleString()}₫/giờ`
+                          : `${formatCurrency(unitPrice)}/ngày`}
+                      </span>
+                    </div>
+                    <hr className="border-gray-200 dark:border-gray-700" />
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-base">Thời gian thuê</span>
+                      <span className="text-base font-medium">
+                        {rentalCalculation
+                          ? formatRentalDuration(rentalCalculation)
+                          : `${rentalDurationDays} ngày`}
+                      </span>
+                    </div>
+                    <hr className="border-gray-200 dark:border-gray-700" />
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-base">
+                        {rentalCalculation?.isHourlyRate
+                          ? "Giá theo thời gian"
+                          : "Giá cơ bản"}
+                      </span>
+                      <span className="text-base font-medium">
+                        {formatCurrency(totalPrice)}
+                      </span>
+                    </div>
+
+                    {/* Hiển thị breakdown cho hourly rate */}
+                    {rentalCalculation?.isHourlyRate && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 ml-4 space-y-1">
+                        {rentalCalculation.billingHours > 0 && (
+                          <div>
+                            • {rentalCalculation.billingHours} giờ ×{" "}
+                            {hourlyRate.toLocaleString()}₫ ={" "}
+                            {(
+                              rentalCalculation.billingHours * hourlyRate
+                            ).toLocaleString()}
+                            ₫
+                          </div>
+                        )}
+                        {rentalCalculation.billingMinutes > 0 && (
+                          <div>
+                            • {rentalCalculation.billingMinutes} phút ×{" "}
+                            {Math.round(hourlyRate / 60).toLocaleString()}₫ ={" "}
+                            {Math.round(
+                              (rentalCalculation.billingMinutes / 60) *
+                                hourlyRate
+                            ).toLocaleString()}
+                            ₫
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <hr className="border-gray-200 dark:border-gray-700" />
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-xl font-bold">Tổng</span>
+                      <span className="text-xl font-bold text-primary">
+                        {formatCurrency(totalPrice)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Book button */}
+                <div className="space-y-3 mt-6">
+                  <button
+                    className={`w-full text-lg py-3 rounded-lg font-semibold ${
+                      bufferConflictMessage || validationMessage
+                        ? "bg-gray-400 cursor-not-allowed text-gray-600"
+                        : "bg-teal-500 hover:bg-teal-600 text-white"
+                    }`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      console.log("Book button clicked");
+
+                      if (bufferConflictMessage || validationMessage) {
+                        message.warning(
+                          "Vui lòng chọn thời gian khác để tiếp tục"
+                        );
+                        return;
+                      }
+
+                      handleRent();
+                    }}
+                    disabled={!!(bufferConflictMessage || validationMessage)}
+                    type="button"
+                  >
+                    Đặt xe
+                  </button>
+                </div>
+
+                {/* Multi-booking button */}
+                {availableQuantity > 1 &&
+                  vehicle?.vehicleType &&
+                  vehicle.vehicleType.toUpperCase() !== "CAR" && (
+                    <div className="mt-4">
+                      <button
+                        className="w-full text-lg py-3 rounded-lg font-semibold bg-primary text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 flex items-center justify-center gap-2"
+                        onClick={async () => {
+                          setShowMultiBooking(true);
+                          try {
+                            const thumb = vehicle?.thumb;
+                            const providerId = vehicle?.userId;
+                            const from = pickupDateTime
+                              ? dayjs(
+                                  pickupDateTime,
+                                  "YYYY-MM-DD HH:mm"
+                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              : "";
+                            const to = returnDateTime
+                              ? dayjs(
+                                  returnDateTime,
+                                  "YYYY-MM-DD HH:mm"
+                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              : "";
+                            const vehicles = await getAvailableThumbList({
+                              thumb,
+                              providerId,
+                              from,
+                              to,
+                            });
+                            setAvailableVehicles(vehicles);
+                            setIsMultiModalOpen(true);
+                          } catch (err) {
+                            setAvailableVehicles([]);
+                            setIsMultiModalOpen(true);
+                          }
+                        }}
+                      >
+                        <span>Đặt nhiều xe</span>
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-base font-bold text-primary ring-1 ring-inset ring-blue-200">
+                          {availableQuantity}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+              </div>
+            ) : (
+              // Hiển thị thông báo xe không khả dụng
+              <div className="bg-gray-100 p-10 rounded-2xl relative z-10 overflow-hidden top-6">
+                <div className="text-center">
+                  <Icon
+                    icon="mdi:car-off"
+                    className="mx-auto mb-4 text-gray-400"
+                    width={64}
+                    height={64}
+                  />
+                  <h3 className="text-xl font-bold text-gray-700 mb-3">
+                    Xe không khả dụng
+                  </h3>
+                  <p className="text-gray-600">
+                    Xe này hiện không thể đặt. Vui lòng chọn xe khác hoặc liên
+                    hệ chủ xe để biết thêm thông tin.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Bảng phụ phí phát sinh - Desktop */}
             {vehicle?.vehicleType === "CAR" && (

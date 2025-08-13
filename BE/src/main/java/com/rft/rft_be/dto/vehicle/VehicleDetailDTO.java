@@ -50,6 +50,7 @@ public class VehicleDetailDTO {
     List<UserCommentDTO> userComments;
     String openTime;
     String closeTime;
+    Integer deliveryRadius;
     PenaltyDTO penalty;
     ExtraFeeRuleDTO extraFeeRule;
 }

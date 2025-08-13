@@ -179,11 +179,11 @@ public class VehicleRentController {
 
         try {
             VehicleGetDTO vehicle = vehicleRentService.toggleVehicleSuspended(vehicleId);
-            return ResponseEntity.ok(ApiResponseDTO.success("Đã chuyển đổi AVAILABLE <-> SUSPENDED thành công", vehicle));
+            return ResponseEntity.ok(ApiResponseDTO.success("Đã chuyển đổi trạng thái thành công", vehicle));
         } catch (Exception e) {
-            log.error("Lỗi khi chuyển AVAILABLE <-> SUSPENDED cho xe {}: {}", vehicleId, e.getMessage());
+            log.error("Lỗi khi chuyển trạng thái cho xe {}: {}", vehicleId, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponseDTO.error("Không thể chuyển AVAILABLE <-> SUSPENDED: " + e.getMessage()));
+                    .body(ApiResponseDTO.error("Không thể chuyển trạng thái: " + e.getMessage()));
         }
     }
     @PostMapping("/registerBulk")

@@ -1,10 +1,13 @@
 package com.rft.rft_be.controller;
 
 import com.rft.rft_be.dto.admin.*;
+import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Notification;
 import com.rft.rft_be.service.admin.AdminUserService;
 import com.rft.rft_be.repository.NotificationRepository;
+import com.rft.rft_be.service.admin.AdminUserServiceImpl;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +27,7 @@ public class AdminManageUserController {
 
     private final AdminUserService adminUserService;
     private final NotificationRepository notificationRepository;
+    private final AdminUserServiceImpl adminUserServiceImpl;
 
     // ==================== USER MANAGEMENT ENDPOINTS ====================
 
@@ -221,5 +225,18 @@ public class AdminManageUserController {
         response.put("readNotifications", totalNotifications - unreadNotifications);
         
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/ban")
+    public ResponseEntity<AdminUserDetailDTO> banUser(@PathVariable("id") String userId) {
+        AdminUserDetailDTO result = adminUserService.banUser(userId);
+        return ResponseEntity.ok(result);
+    }
+
+    // Create Staff by Admin
+    @PostMapping("/admin/staff")
+    public ResponseEntity<UserDetailDTO> createStaff(@Valid @RequestBody AdminCreateStaffDTO req) {
+
+        return ResponseEntity.ok(adminUserServiceImpl.createStaffAccount(req));
     }
 } 

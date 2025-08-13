@@ -1,6 +1,7 @@
 package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.*;
+import com.rft.rft_be.dto.user.UserDetailDTO;
 import com.rft.rft_be.entity.User;
 
 import java.util.List;
@@ -58,7 +59,18 @@ public interface AdminUserService {
      */
     AdminUserListResponseDTO searchUsersByStatus(User.Status status, int page, int size);
 
+
+    /**
+     * Ban người dùng:
+     * - Nếu USER có booking chưa hoàn thành (≠ COMPLETED/CANCELLED) -> TEMP_BANNED, ngược lại INACTIVE.
+     * - Nếu PROVIDER có contract đang RENTING -> TEMP_BANNED, ngược lại INACTIVE.
+     * Trả về chi tiết user sau khi cập nhật.
+     */
+    AdminUserDetailDTO banUser(String userId);
+
     List<AdminStaffActivityDTO> getStaffActivities(String staffId);
 
      List<AdminStaffActivityGroupDTO> getAllStaffActivities();
+
+    UserDetailDTO createStaffAccount(AdminCreateStaffDTO request);
 } 
