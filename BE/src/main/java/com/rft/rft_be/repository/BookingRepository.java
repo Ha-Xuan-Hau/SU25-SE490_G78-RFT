@@ -1,8 +1,6 @@
 package com.rft.rft_be.repository;
 
 import com.rft.rft_be.entity.Booking;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -146,6 +144,7 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     Long countByUserIdAndStatus(String userId, Booking.Status status);
 
 
+
     @Query("""
     select count(b) from Booking b
     where b.user.id = :userId
@@ -155,7 +154,6 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     long countUnfinishedByUserId(@Param("userId") String userId,
                                  @Param("completed") Booking.Status completed,
                                  @Param("cancelled") Booking.Status cancelled);
-
 
 
   @Query("""
