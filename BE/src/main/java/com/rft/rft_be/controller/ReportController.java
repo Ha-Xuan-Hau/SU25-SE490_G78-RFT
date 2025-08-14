@@ -7,8 +7,6 @@ import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.report.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.transaction.annotation.Transactional;
@@ -130,7 +128,7 @@ public class ReportController {
             @RequestParam(required = false) String targetId,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String reportId,
-            @RequestParam(required = false) String bookingId,
+            @RequestParam(required = false) String evidenceUrl,
             @RequestParam String reason) {
 
         JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -147,14 +145,18 @@ public class ReportController {
 
         String finalTargetId;
 
-        // 1. Approve reports hiện tại và lấy targetId
         if (reportId != null) {
-            // SERIOUS: approve single report
-            UserReport report = reportService.getReportById(reportId);
-            finalTargetId = report.getReportedId();
+            // SERIOUS: targetId đã được truyền từ frontend
+            if (targetId == null) {
+                // Fallback: lấy từ report nếu không có
+                UserReport report = reportService.getReportById(reportId);
+                finalTargetId = report.getReportedId();
+            } else {
+                finalTargetId = targetId;  // Dùng targetId từ frontend
+            }
             reportService.approveSingleReport(reportId);
         } else if (targetId != null && type != null) {
-            // NON_SERIOUS: approve all reports
+            // NON_SERIOUS
             finalTargetId = targetId;
             reportService.approveAllReports(targetId, type);
         } else {
@@ -166,10 +168,7 @@ public class ReportController {
         staffRequest.setTargetId(finalTargetId);
         staffRequest.setType("STAFF_REPORT");
         staffRequest.setReason(reason);
-        if(bookingId != null) {
-            staffRequest.setBooking(bookingId);
-        }
-
+        staffRequest.setEvidenceUrl(evidenceUrl);
 
         String staffReportId = reportService.createStaffReport(staff, staffRequest);
 
@@ -179,8 +178,6 @@ public class ReportController {
 
         return ResponseEntity.ok(response);
     }
-
-
 
     @PutMapping("/appeal/{id}/approve")
     public ResponseEntity<Void> approveAppeal(@PathVariable String id) {

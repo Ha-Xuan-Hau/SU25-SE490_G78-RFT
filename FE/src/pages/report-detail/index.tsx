@@ -17,6 +17,8 @@ import {
   Modal,
   Alert,
   Image,
+  Form,
+  Input,
 } from "antd";
 import {
   UserOutlined,
@@ -38,6 +40,7 @@ import {
   approveAppeal,
   rejectAppeal,
   approveAndCreateStaffReport,
+  createAppeal,
 } from "@/apis/report.api";
 import { ReportDetailDTO, ReporterDetailDTO } from "@/types/report";
 import ReportButton from "@/components/ReportComponent";
@@ -93,10 +96,14 @@ export default function ReportDetailPage() {
   const [selectedReporterForReport, setSelectedReporterForReport] = useState<
     string | null
   >(null);
+
+  // State cho Appeal Modal
   const [appealModalVisible, setAppealModalVisible] = useState(false);
-  const [selectedFlagForAppeal, setSelectedFlagForAppeal] = useState<
-    string | null
-  >(null);
+  const [appealForm] = Form.useForm();
+  const [submittingAppeal, setSubmittingAppeal] = useState(false);
+
+  const { href, origin } = window.location;
+  const trimmedUrl = href.replace(origin, "");
 
   const typeMapping = getReportTypeMapping();
 
@@ -274,7 +281,7 @@ export default function ReportDetailPage() {
           <ul>
             <li>1. Chấp nhận tất cả báo cáo hiện tại</li>
             <li>2. Tạo cờ cảnh báo đến người bị báo cáo</li>
-            <li>3. Bị cáo có 24h để kháng cáo</li>
+            <li>3. Bị cáo có 24h để khiếu nại</li>
           </ul>
           <p className="mt-2 font-semibold">Bạn chắc chắn?</p>
         </div>
@@ -288,22 +295,27 @@ export default function ReportDetailPage() {
             reportDetail.reportSummary.type
           )}. Yêu cầu cung cấp bằng chứng trong vòng 24h.`;
 
+          // Lấy current URL của trang report detail
+          const currentUrl = window.location.href;
+
           let response;
           if (mode === "grouped") {
-            // NON_SERIOUS
+            // NON_SERIOUS - targetId đã đúng (là ID của user/vehicle)
             response = await approveAndCreateStaffReport(
-              targetId as string,
+              targetId as string, // targetId từ URL
               type as string,
               undefined,
-              reason
+              reason,
+              currentUrl
             );
           } else if (mode === "single") {
-            // SERIOUS
+            // SERIOUS - cần lấy targetId từ reportedUser.id
             response = await approveAndCreateStaffReport(
-              undefined,
+              reportDetail.reportedUser.id, // SỬA: dùng reportedUser.id
               undefined,
               reportId as string,
-              reason
+              reason,
+              currentUrl
             );
           }
 
@@ -321,19 +333,6 @@ export default function ReportDetailPage() {
       },
     });
   };
-
-  // Trong JSX - thêm optional chaining
-  <Button
-    type="primary"
-    danger
-    icon={<WarningOutlined />}
-    onClick={() =>
-      handleCreateStaffReport(reportDetail?.reportedUser?.id || "")
-    }
-    disabled={!reportDetail?.reportedUser?.id} // Disable nếu không có id
-  >
-    Yêu cầu cung cấp bằng chứng
-  </Button>;
 
   const canShowActionButtons = () => {
     if (!reportDetail) return false;
@@ -375,25 +374,75 @@ export default function ReportDetailPage() {
     setReportReporterModalVisible(true);
   };
 
-  const handleAppeal = (flagId: string) => {
-    setSelectedFlagForAppeal(flagId);
+  // Handler mở modal khiếu nại
+  const handleOpenAppealModal = () => {
+    if (!reportDetail) return;
+
+    // Check điều kiện
+    if (
+      reportDetail.reportSummary.type !== "STAFF_REPORT" ||
+      !reportDetail.reportSummary.canAppeal ||
+      reportDetail.reportSummary.hasAppealed
+    ) {
+      showError("Không thể khiếu nại báo cáo này");
+      return;
+    }
+
     setAppealModalVisible(true);
+  };
+
+  // Handler submit appeal
+  interface AppealFormValues {
+    reason: string;
+    evidenceUrl?: string;
+  }
+
+  const handleSubmitAppeal = async (
+    values: AppealFormValues
+  ): Promise<void> => {
+    if (!reportDetail) return;
+
+    try {
+      setSubmittingAppeal(true);
+      const { reason, evidenceUrl } = values;
+
+      await createAppeal(
+        reportDetail.reportSummary.reportId,
+        reason,
+        evidenceUrl
+      );
+
+      showSuccess("Đã gửi khiếu nại thành công. Vui lòng chờ xử lý.");
+      setAppealModalVisible(false);
+      appealForm.resetFields();
+
+      // Reload để update UI
+      reloadReportDetail();
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        showError(error.response.data.message);
+      } else {
+        showError("Không thể gửi khiếu nại");
+      }
+    } finally {
+      setSubmittingAppeal(false);
+    }
   };
 
   const handleApproveAppeal = async (appealId: string) => {
     Modal.confirm({
-      title: "Xác nhận chấp nhận kháng cáo",
+      title: "Xác nhận chấp nhận khiếu nại",
       content:
-        "Bạn có chắc chắn muốn chấp nhận kháng cáo này? Staff flag sẽ bị hủy.",
+        "Bạn có chắc chắn muốn chấp nhận khiếu nại này? Staff flag sẽ bị hủy.",
       okText: "Chấp nhận",
       cancelText: "Hủy",
       onOk: async () => {
         try {
           const result = await approveAppeal(appealId);
-          showSuccess("Chấp nhận kháng cáo thành công");
+          showSuccess("Chấp nhận khiếu nại thành công");
           reloadReportDetail();
         } catch (error) {
-          showError("Không thể chấp nhận kháng cáo");
+          showError("Không thể chấp nhận khiếu nại");
         }
       },
     });
@@ -401,23 +450,101 @@ export default function ReportDetailPage() {
 
   const handleRejectAppeal = async (appealId: string) => {
     Modal.confirm({
-      title: "Xác nhận từ chối kháng cáo",
+      title: "Xác nhận từ chối khiếu nại",
       content:
-        "Bạn có chắc chắn muốn từ chối kháng cáo này? Staff flag sẽ được giữ nguyên.",
+        "Bạn có chắc chắn muốn từ chối khiếu nại này? Staff flag sẽ được giữ nguyên.",
       okText: "Từ chối",
       cancelText: "Hủy",
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
           const result = await rejectAppeal(appealId);
-          showSuccess("Từ chối kháng cáo thành công");
+          showSuccess("Từ chối khiếu nại thành công");
           reloadReportDetail();
         } catch (error) {
-          showError("Không thể từ chối kháng cáo");
+          showError("Không thể từ chối khiếu nại");
         }
       },
     });
   };
+
+  // Modal Appeal Component
+  const AppealModal = () => (
+    <Modal
+      title="Cung cấp bằng chứng khiếu nại"
+      open={appealModalVisible}
+      onCancel={() => {
+        setAppealModalVisible(false);
+        appealForm.resetFields();
+      }}
+      footer={null}
+      width={600}
+    >
+      <Alert
+        message="Lưu ý quan trọng"
+        description={
+          <ul className="text-sm mt-2">
+            <li>Bạn chỉ có thể khiếu nại 1 lần cho báo cáo này</li>
+            <li>
+              Thời hạn khiếu nại:{" "}
+              {reportDetail &&
+                dayjs(reportDetail.reportSummary.appealDeadline).format(
+                  "DD/MM/YYYY HH:mm"
+                )}
+            </li>
+            <li>
+              Vui lòng cung cấp bằng chứng rõ ràng để chứng minh báo cáo là sai
+            </li>
+          </ul>
+        }
+        type="warning"
+        showIcon
+        className="mb-4"
+      />
+
+      <Form form={appealForm} layout="vertical" onFinish={handleSubmitAppeal}>
+        <Form.Item
+          name="reason"
+          label="Lý do khiếu nại"
+          rules={[
+            { required: true, message: "Vui lòng nhập lý do khiếu nại" },
+            { min: 10, message: "Lý do phải ít nhất 10 ký tự" },
+          ]}
+        >
+          <Input.TextArea
+            rows={4}
+            placeholder="Giải thích chi tiết lý do bạn cho rằng báo cáo này không chính xác..."
+            maxLength={500}
+            showCount
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="evidenceUrl"
+          label="Link bằng chứng (không bắt buộc)"
+          rules={[{ type: "url", message: "Vui lòng nhập URL hợp lệ" }]}
+        >
+          <Input placeholder="https://drive.google.com/... hoặc link ảnh/video..." />
+        </Form.Item>
+
+        <Form.Item className="mb-0">
+          <Space className="w-full justify-end">
+            <Button
+              onClick={() => {
+                setAppealModalVisible(false);
+                appealForm.resetFields();
+              }}
+            >
+              Hủy
+            </Button>
+            <Button type="primary" htmlType="submit" loading={submittingAppeal}>
+              Gửi khiếu nại
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
 
   // Loading state
   if (loading) {
@@ -485,8 +612,8 @@ export default function ReportDetailPage() {
               <Alert
                 message={
                   reportDetail.reportSummary.status === "APPROVED"
-                    ? "✅ Báo cáo đã được chấp nhận"
-                    : "❌ Báo cáo đã bị từ chối"
+                    ? "Báo cáo đã được chấp nhận"
+                    : "Báo cáo đã bị từ chối"
                 }
                 description={
                   reportDetail.reportSummary.status === "APPROVED"
@@ -506,6 +633,68 @@ export default function ReportDetailPage() {
               />
             )}
 
+            {/* Card khiếu nại cho PROVIDER - ĐẶT Ở ĐẦU */}
+            {reportDetail.reportSummary.type === "STAFF_REPORT" &&
+              reportDetail.reportSummary.canAppeal &&
+              !reportDetail.reportSummary.hasAppealed &&
+              user?.role === "PROVIDER" &&
+              user?.id === reportDetail.reportedUser.id && (
+                <Card
+                  className="border-2 border-orange-400"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)",
+                    borderRadius: "12px",
+                  }}
+                >
+                  <div className="text-center">
+                    <WarningOutlined className="text-4xl text-orange-500 mb-4" />
+                    <Title level={3} className="!mb-2">
+                      Bạn đang bị báo cáo vi phạm
+                    </Title>
+                    <Text className="block text-base mb-4">
+                      Bạn có quyền khiếu nại nếu cho rằng báo cáo này không
+                      chính xác
+                    </Text>
+
+                    <Row justify="center" className="mb-4">
+                      <Col>
+                        <Alert
+                          message={
+                            <Space>
+                              <ClockCircleOutlined />
+                              <span>Thời hạn khiếu nại đến</span>
+                            </Space>
+                          }
+                          description={
+                            <div className="text-lg font-semibold">
+                              {dayjs(
+                                reportDetail.reportSummary.appealDeadline
+                              ).format("DD/MM/YYYY HH:mm")}
+                            </div>
+                          }
+                          type="error"
+                          style={{
+                            textAlign: "center",
+                          }}
+                        />
+                      </Col>
+                    </Row>
+
+                    <Button
+                      type="primary"
+                      size="large"
+                      danger
+                      icon={<FileTextOutlined />}
+                      onClick={handleOpenAppealModal}
+                      className="min-w-[200px]"
+                    >
+                      Gửi khiếu nại ngay
+                    </Button>
+                  </div>
+                </Card>
+              )}
+
             {/* Header Card với 2 nút xử lý - GIỮ NGUYÊN */}
             <Card bordered={false} style={{ borderRadius: "12px" }}>
               <Row gutter={[16, 16]} align="middle">
@@ -518,7 +707,7 @@ export default function ReportDetailPage() {
                     <Title level={3} style={{ margin: 0 }}>
                       Chi tiết báo cáo
                     </Title>
-                    <Text type="secondary" style={{ fontSize: "16px" }}>
+                    <Text style={{ fontSize: "16px" }}>
                       <UserOutlined style={{ marginRight: "8px" }} />
                       Người bị báo cáo: {reportDetail.reportedUser.fullName}
                     </Text>
@@ -582,7 +771,7 @@ export default function ReportDetailPage() {
                         <Text>
                           <strong>Yêu cầu cung cấp bằng chứng:</strong> Tạo cờ
                           cảnh báo (STAFF_REPORT), người bị báo cáo có 24h để
-                          kháng cáo. Tất cả báo cáo hiện tại sẽ được chấp nhận.
+                          khiếu nại. Tất cả báo cáo hiện tại sẽ được chấp nhận.
                         </Text>
                       </li>
                     </ul>
@@ -600,33 +789,6 @@ export default function ReportDetailPage() {
               }
             >
               <Row gutter={[24, 24]}>
-                {/* <Col xs={24} sm={12} lg={8}>
-                  <Space
-                    direction="vertical"
-                    size={4}
-                    style={{ width: "100%" }}
-                  >
-                    {mode === "grouped" ? (
-                      <>
-                        <Text type="secondary">Mã báo cáo</Text>
-                        <Text strong style={{ fontSize: "16px" }}>
-                          Đây là báo cáo tổng hợp
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text type="secondary">Mã báo cáo</Text>
-                        <Text
-                          strong
-                          style={{ fontSize: "16px", color: "#1890ff" }}
-                        >
-                          {reportDetail.reportSummary.reportId}
-                        </Text>
-                      </>
-                    )}
-                  </Space>
-                </Col> */}
-
                 <Col xs={24} sm={12} lg={8}>
                   <Space
                     direction="vertical"
@@ -645,7 +807,6 @@ export default function ReportDetailPage() {
               </Row>
             </Card>
 
-            {/* PHẦN CÒN LẠI GIỮ NGUYÊN HOÀN TOÀN */}
             {/* Card thông tin xử lý cho STAFF_REPORT */}
             {reportDetail.reportSummary.type === "STAFF_REPORT" && (
               <Card
@@ -663,7 +824,9 @@ export default function ReportDetailPage() {
                 <Row gutter={[24, 24]}>
                   <Col xs={24} sm={12}>
                     <Space direction="vertical" size={4}>
-                      <Text type="secondary">Số cờ hiện tại</Text>
+                      <Text>
+                        Số cờ hiện tại (Đủ 3 cờ sẽ bị ban khỏi hệ thống)
+                      </Text>
                       <Tag
                         color={
                           (reportDetail.reportSummary.currentFlagCount ?? 0) >=
@@ -684,7 +847,7 @@ export default function ReportDetailPage() {
 
                   <Col xs={24} sm={12}>
                     <Space direction="vertical" size={4}>
-                      <Text type="secondary">Thời hạn kháng cáo</Text>
+                      <Text>Thời hạn khiếu nại</Text>
                       {reportDetail.reportSummary.canAppeal ? (
                         <Space>
                           <Tag color="processing">
@@ -695,40 +858,21 @@ export default function ReportDetailPage() {
                           </Tag>
                         </Space>
                       ) : (
-                        <Tag color="default">Đã hết hạn kháng cáo</Tag>
+                        <Tag color="default">Đã hết hạn khiếu nại</Tag>
                       )}
                     </Space>
                   </Col>
                 </Row>
-
-                {/* Nút kháng cáo cho PROVIDER bị flag */}
-                {reportDetail.reportSummary.canAppeal &&
-                  !reportDetail.reportSummary.hasAppealed &&
-                  user?.role === "PROVIDER" &&
-                  user?.id === reportDetail.reportedUser.id && (
-                    <div style={{ marginTop: "24px" }}>
-                      <Button
-                        type="primary"
-                        icon={<FileTextOutlined />}
-                        onClick={() =>
-                          handleAppeal(reportDetail.reportSummary.reportId)
-                        }
-                        block
-                      >
-                        Cung cấp bằng chứng kháng cáo
-                      </Button>
-                    </div>
-                  )}
               </Card>
             )}
 
-            {/* Card hiển thị thông tin kháng cáo nếu có */}
+            {/* Card hiển thị thông tin khiếu nại nếu có */}
             {reportDetail.appealInfo && (
               <Card
                 title={
                   <Space>
                     <FileTextOutlined />
-                    <span>Thông tin kháng cáo</span>
+                    <span>Thông tin khiếu nại</span>
                     <Tag
                       color={
                         reportDetail.appealInfo.status === "APPROVED"
@@ -756,7 +900,7 @@ export default function ReportDetailPage() {
                   column={{ xs: 1, sm: 1, md: 2 }}
                   labelStyle={{ backgroundColor: "#fafafa" }}
                 >
-                  <Descriptions.Item label="Người kháng cáo">
+                  <Descriptions.Item label="Người khiếu nại">
                     <Space>
                       <Avatar icon={<UserOutlined />} size="small" />
                       <Text strong>
@@ -787,11 +931,11 @@ export default function ReportDetailPage() {
                         </Button>
                       </a>
                     ) : (
-                      <Text type="secondary">Không có</Text>
+                      <Text>Không có</Text>
                     )}
                   </Descriptions.Item>
 
-                  <Descriptions.Item label="Lý do kháng cáo" span={2}>
+                  <Descriptions.Item label="Lý do khiếu nại" span={2}>
                     <Text>{reportDetail.appealInfo.reason}</Text>
                   </Descriptions.Item>
                 </Descriptions>
@@ -810,7 +954,7 @@ export default function ReportDetailPage() {
                             )
                           }
                         >
-                          Chấp nhận kháng cáo
+                          Chấp nhận khiếu nại
                         </Button>
                         <Button
                           danger
@@ -820,7 +964,7 @@ export default function ReportDetailPage() {
                             )
                           }
                         >
-                          Từ chối kháng cáo
+                          Từ chối khiếu nại
                         </Button>
                       </Space>
                     </div>
@@ -828,7 +972,6 @@ export default function ReportDetailPage() {
               </Card>
             )}
 
-            {/* PHẦN CÒN LẠI GIỮ NGUYÊN HOÀN TOÀN NHƯ CODE CŨ */}
             {/* Trạng thái xử lý - Chỉ hiển thị cho STAFF và ADMIN */}
             {user?.role && ["STAFF", "ADMIN"].includes(user.role) && (
               <Card
@@ -924,9 +1067,7 @@ export default function ReportDetailPage() {
                       >
                         Báo cáo nội bộ
                       </Text>
-                      <Text type="secondary">
-                        Báo cáo do nhân viên hệ thống tạo.
-                      </Text>
+                      <Text>Báo cáo do nhân viên hệ thống tạo.</Text>
                     </Space>
                   </Space>
                 ) : null}
@@ -1017,7 +1158,7 @@ export default function ReportDetailPage() {
                           }
                         />
                       ) : (
-                        <Text type="secondary">Không có ảnh</Text>
+                        <Text>Không có ảnh</Text>
                       )}
                     </Descriptions.Item>
                   </>
@@ -1075,22 +1216,29 @@ export default function ReportDetailPage() {
               }}
             >
               {/* Lưu ý báo cáo spam */}
-              <Card className="bg-yellow-50 border-yellow-200">
-                <div className="flex items-start gap-2">
-                  <WarningOutlined className="text-yellow-600 mt-1" />
-                  <div className="text-sm text-yellow-800">
-                    <div className="font-medium mb-1">
-                      Lưu ý về báo cáo spam:
+              {user?.role &&
+                ["STAFF", "ADMIN"].includes(user.role) &&
+                generalType !== "STAFF_ERROR" && (
+                  <Card
+                    className="bg-yellow-50 border-yellow-200"
+                    style={{ marginBottom: 16 }}
+                  >
+                    <div className="flex items-start gap-2">
+                      <WarningOutlined className="text-yellow-600 mt-1" />
+                      <div className="text-sm text-yellow-800">
+                        <div className="font-medium mb-1">
+                          Lưu ý về báo cáo spam:
+                        </div>
+                        <p>
+                          Bạn có thể báo cáo những người dùng có hành vi spam
+                          báo cáo (báo cáo không đúng sự thật, báo cáo quá nhiều
+                          lần không có căn cứ). Việc này giúp duy trì chất lượng
+                          hệ thống báo cáo.
+                        </p>
+                      </div>
                     </div>
-                    <p>
-                      Bạn có thể báo cáo những người dùng có hành vi spam báo
-                      cáo (báo cáo không đúng sự thật, báo cáo quá nhiều lần
-                      không có căn cứ). Việc này giúp duy trì chất lượng hệ
-                      thống báo cáo.
-                    </p>
-                  </div>
-                </div>
-              </Card>
+                  </Card>
+                )}
               <Table
                 dataSource={reportDetail.reporters}
                 columns={[
@@ -1115,7 +1263,7 @@ export default function ReportDetailPage() {
                         />
                         <Space direction="vertical" size={0}>
                           <Text strong>{record.fullName}</Text>
-                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                          <Text style={{ fontSize: "12px" }}>
                             <MailOutlined style={{ marginRight: "4px" }} />
                             {record.email}
                           </Text>
@@ -1132,7 +1280,7 @@ export default function ReportDetailPage() {
                           width: 180,
                           render: (bookingId: string) => {
                             if (!bookingId) {
-                              return <Text type="secondary">Không có</Text>;
+                              return <Text>Không có</Text>;
                             }
 
                             return (
@@ -1179,9 +1327,7 @@ export default function ReportDetailPage() {
                     render: (_, record: ReporterDetailDTO) => {
                       if (!record.evidenceUrl) {
                         return (
-                          <Text type="secondary" style={{ fontSize: "13px" }}>
-                            Không có
-                          </Text>
+                          <Text style={{ fontSize: "13px" }}>Không có</Text>
                         );
                       }
 
@@ -1294,23 +1440,8 @@ export default function ReportDetailPage() {
             />
           )}
 
-          {/* Modal Appeal cho Provider */}
-          {appealModalVisible && selectedFlagForAppeal && (
-            <ReportButton
-              targetId={selectedFlagForAppeal}
-              reportType="APPEAL"
-              buttonText=""
-              size="small"
-              type="text"
-              icon={false}
-              autoOpen={true}
-              onModalClose={() => {
-                setAppealModalVisible(false);
-                setSelectedFlagForAppeal(null);
-                reloadReportDetail();
-              }}
-            />
-          )}
+          {/* Modal Appeal */}
+          <AppealModal />
         </div>
       </Content>
     </Layout>

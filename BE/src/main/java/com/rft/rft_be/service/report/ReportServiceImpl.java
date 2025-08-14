@@ -83,6 +83,7 @@ public class ReportServiceImpl implements ReportService {
 
 
     private void processAppeal(User appellant, ReportRequest request) {
+        // targetId hoặc originalReportId là ID của STAFF_REPORT cần kháng cáo
         String flagId = request.getOriginalReportId() != null ?
                 request.getOriginalReportId() : request.getTargetId();
 
@@ -93,6 +94,8 @@ public class ReportServiceImpl implements ReportService {
             throw new IllegalArgumentException("Báo cáo này không thể kháng cáo");
         }
 
+        // BUG Ở ĐÂY: flag.getReportedId() là ID của người bị flag, không phải ID của flag
+        // Cần check appellant.getId() == flag.getReportedId()
         if (!flag.getReportedId().equals(appellant.getId())) {
             throw new IllegalArgumentException("Bạn không thể kháng cáo báo cáo này");
         }
@@ -102,20 +105,27 @@ public class ReportServiceImpl implements ReportService {
             throw new IllegalArgumentException("Đã quá thời hạn kháng cáo (24 giờ)");
         }
 
-        boolean hasAppealed = reportRepo.existsAppealByReporterAndFlag(appellant.getId(), flagId);
+        // Check đã appeal chưa - LOGIC NÀY CŨNG CẦN SỬA
+        boolean hasAppealed = reportRepo.findAll().stream()
+                .anyMatch(r -> "APPEAL".equals(r.getType())
+                        && r.getReporter().getId().equals(appellant.getId())
+                        && r.getReportedId().equals(flagId));
+
         if (hasAppealed) {
             throw new IllegalArgumentException("Bạn đã kháng cáo báo cáo này rồi");
         }
 
+        // Tạo APPEAL
         request.setType("APPEAL");
         UserReport appeal = reportMapper.toEntity(request);
         appeal.setReporter(appellant);
-        appeal.setReportedId(flagId);
+        appeal.setReportedId(flagId); // reportedId của APPEAL = ID của STAFF_REPORT
         appeal.setCreatedAt(LocalDateTime.now());
         appeal.setStatus(UserReport.Status.PENDING);
 
         reportRepo.save(appeal);
     }
+
 
     @Transactional
     @Override

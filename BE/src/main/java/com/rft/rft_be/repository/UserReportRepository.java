@@ -18,8 +18,13 @@ import java.util.List;
         List<UserReport> findByTypeAndStatusAndCreatedAtBefore(String type, UserReport.Status status, LocalDateTime deadline);
 
         // Check user đã appeal flag này chưa
-        @Query("SELECT COUNT(ur) > 0 FROM UserReport ur WHERE ur.reporter.id = :reporterId AND ur.reportedId = :flagId AND ur.type = 'APPEAL'")
-        boolean existsAppealByReporterAndFlag(@Param("reporterId") String reporterId, @Param("flagId") String flagId);
+        @Query("SELECT COUNT(ur) > 0 FROM UserReport ur " +
+                "WHERE ur.reporter.id = :reporterId " +
+                "AND ur.reportedId = :flagId " +
+                "AND ur.type = 'APPEAL'")
+        boolean existsAppealByReporterAndFlag(@Param("reporterId") String reporterId,
+                                              @Param("flagId") String flagId);
+
 
 
 }

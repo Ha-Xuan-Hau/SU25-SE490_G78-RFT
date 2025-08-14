@@ -152,21 +152,28 @@ export const createReportByStaff = async (reportData) => {
     return response.data;
 };
 
+// report.api.js
 export const approveAndCreateStaffReport = async (
     targetId,
     type,
     reportId,
-    reason
+    reason,
+    evidenceUrl
 ) => {
     const params = { reason };
 
     if (reportId) {
-        // SERIOUS: chỉ cần reportId
+        // SERIOUS: truyền cả targetId và reportId
+        params.targetId = targetId;
         params.reportId = reportId;
     } else if (targetId && type) {
-        // NON_SERIOUS: cần targetId + type
+        // NON_SERIOUS: targetId và type
         params.targetId = targetId;
         params.type = type;
+    }
+
+    if (evidenceUrl) {
+        params.evidenceUrl = evidenceUrl;
     }
 
     const response = await apiClient.post('/reports/process/staff-approve-all', null, {
@@ -176,16 +183,19 @@ export const approveAndCreateStaffReport = async (
     return response.data;
 };
 
+
+// report.api.js
 export const createAppeal = async (flagId, reason, evidenceUrl) => {
     const response = await apiClient.post('/reports', {
-        targetId: flagId,  // ID của STAFF_REPORT cần kháng cáo
+        targetId: flagId,  // ID của STAFF_REPORT
         type: 'APPEAL',
         reason: reason,
-        evidenceUrl: evidenceUrl || '',
-        originalReportId: flagId  // Để backend biết đây là appeal
+        evidenceUrl: evidenceUrl || ''
+        // Không cần originalReportId
     });
     return response.data;
 };
+
 
 
 // Approve appeal
