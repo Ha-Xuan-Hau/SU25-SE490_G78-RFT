@@ -1002,7 +1002,6 @@ public class BookingServiceImpl implements BookingService {
 //        booking.setStatus(Booking.Status.PENDING);
         booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
-        notificationService.notifyPaymentCompleted(userId, booking.getId(), totalCost.doubleValue());
 
         User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
 
@@ -1012,6 +1011,8 @@ public class BookingServiceImpl implements BookingService {
                 .status(Contract.Status.PROCESSING)
                 .build();
         contractRepository.save(contract);
+
+        notificationService.notifyPaymentCompleted(userId, provider.getId(), booking.getId(), totalCost.doubleValue());
     }
 
     @Override

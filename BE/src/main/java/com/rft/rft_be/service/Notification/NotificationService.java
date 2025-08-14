@@ -94,7 +94,7 @@ public interface NotificationService {
      * Input: userId, bookingId, amount
      * Công dụng: Thông báo cho user biết đã thanh toán thành công
      */
-    void notifyPaymentCompleted(String userId, String bookingId, Double amount);
+    void notifyPaymentCompleted(String userId, String providerId, String bookingId, Double amount);
     
     /**
      * Thông báo đơn hàng được duyệt
