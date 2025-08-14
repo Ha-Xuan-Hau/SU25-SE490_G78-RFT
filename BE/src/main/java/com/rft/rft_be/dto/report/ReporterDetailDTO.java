@@ -12,4 +12,6 @@ public class ReporterDetailDTO {
     private String reason;
     private String evidenceUrl;
     private String createdAt;
+    private String reportStatus;
+    private String booking;
 }

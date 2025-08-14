@@ -204,7 +204,7 @@ export default function UserRegisterVehicle() {
           </p>
           <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
             <p className="text-sm text-yellow-800">
-              <strong>Lưu ý:</strong> Xe đang có lịch booking sẽ không thể thay
+              <strong>Lưu ý:</strong> Xe đang có đơn đặt xe sẽ không thể thay
               đổi trạng thái
             </p>
           </div>

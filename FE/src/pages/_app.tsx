@@ -12,6 +12,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import "react-toastify/dist/ReactToastify.css";
 import { RecoilRoot } from "recoil";
 import { ToastContainer } from "react-toastify";
+import { useRealtimeEvents } from "@/hooks/useRealtimeEvents";
 // Khai báo kiểu cho page có custom layout
 type NextPageWithLayout = NextPage & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -27,6 +28,12 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
   const Layout = Component.Layout || UserWebLayout;
   const title = Component.title || "RFT - Rent For Travel";
 
+  // Component wrapper để init realtime
+  const RealtimeWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    useRealtimeEvents({ autoInvalidateQueries: true });
+    return <>{children}</>;
+  };
+
   return (
     <RecoilRoot>
       <QueryClientProvider client={queryClient}>
@@ -36,6 +43,7 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
           defaultTheme="light"
         >
           <AuthProvider>
+            <RealtimeWrapper>
             <Layout>
               <Component {...pageProps} />
             </Layout>
@@ -52,6 +60,7 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
               pauseOnHover
               theme="light"
             />
+            </RealtimeWrapper>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

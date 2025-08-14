@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ProviderLayout } from "@/layouts/ProviderLayout";
+import { useRealtimeEvents } from '@/hooks/useRealtimeEvents'; // THÊM IMPORT NÀY
 import {
   useProviderState,
   getProviderIdFromState,
@@ -135,6 +136,7 @@ export default function ManageAcceptedBookings() {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null
   );
+  const { on, isConnected } = useRealtimeEvents();
 
   const [deliveryConfirmModal, setDeliveryConfirmModal] =
     useState<boolean>(false);
@@ -304,6 +306,122 @@ export default function ManageAcceptedBookings() {
     },
     [provider, providerLoading]
   );
+
+  // Thêm WebSocket listeners - ĐẶT SAU fetchBookings
+  useEffect(() => {
+    if (!provider) return;
+
+    console.log('WebSocket connected:', isConnected());
+
+    // Listen to booking status changes
+    const unsubscribeBookingStatus = on('BOOKING_STATUS_CHANGE', (event) => {
+      console.log('Provider - Booking status changed:', event);
+
+      // Gọi fetchBookings trực tiếp
+      fetchBookings(true);
+    });
+
+    // Listen to booking updates
+    const unsubscribeBookingUpdate = on('BOOKING_UPDATE', (event) => {
+      console.log('Provider - Booking updated:', event);
+
+      // Gọi fetchBookings trực tiếp
+      fetchBookings(true);
+    });
+
+    // Listen to payment updates
+    const unsubscribePayment = on('PAYMENT_UPDATE', (event) => {
+      console.log('Provider - Payment updated:', event);
+
+      if (event.payload?.status === 'COMPLETED') {
+        fetchBookings(true);
+      }
+    });
+
+    // Listen to notifications
+    const unsubscribeNotification = on('NOTIFICATION', (event) => {
+      console.log('Provider - New notification:', event);
+
+      const bookingRelatedTypes = [
+        'PROVIDER_RECEIVED_BOOKING',
+        'VEHICLE_PICKUP_CONFIRMED',
+        'USER_RETURN_VEHICLE',
+        'ORDER_CANCELED',
+        'PENALTY_RECEIVED_AFTER_CANCELLATION'
+      ];
+
+      if (event.payload?.type && bookingRelatedTypes.includes(event.payload.type)) {
+        fetchBookings(true);
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      unsubscribeBookingStatus();
+      unsubscribeBookingUpdate();
+      unsubscribePayment();
+      unsubscribeNotification();
+    };
+  }, [provider, on, isConnected, fetchBookings]); // Thêm fetchBookings vào dependencies
+
+  // Log WebSocket connection status
+  useEffect(() => {
+    const checkConnection = setInterval(() => {
+      console.log('WebSocket connection status:', isConnected());
+    }, 5000);
+
+    return () => clearInterval(checkConnection);
+  }, [isConnected]);
+
+  // Thêm log để debug
+  useEffect(() => {
+    if (!provider) return;
+
+    console.log('Setting up WebSocket listeners for provider:', provider);
+
+    const unsubscribeBookingStatus = on('BOOKING_STATUS_CHANGE', (event) => {
+      console.log('Provider - Booking status changed:', event);
+      console.log('Event payload:', event.payload);
+      console.log('Calling fetchBookings...');
+
+      // Gọi fetchBookings
+      fetchBookings(true).then(() => {
+        console.log('fetchBookings completed');
+      }).catch((error) => {
+        console.error('fetchBookings error:', error);
+      });
+    });
+
+    const unsubscribeBookingUpdate = on('BOOKING_UPDATE', (event) => {
+      console.log('Provider - Booking updated:', event);
+      console.log('Event payload:', event.payload);
+
+      fetchBookings(true).then(() => {
+        console.log('fetchBookings completed');
+      }).catch((error) => {
+        console.error('fetchBookings error:', error);
+      });
+    });
+
+    const unsubscribePayment = on('PAYMENT_UPDATE', (event) => {
+      console.log('Provider - Payment updated:', event);
+
+      if (event.payload?.status === 'COMPLETED') {
+        fetchBookings(true).then(() => {
+          console.log('fetchBookings completed after payment');
+        }).catch((error) => {
+          console.error('fetchBookings error:', error);
+        });
+      }
+    });
+
+    return () => {
+      console.log('Cleaning up WebSocket listeners');
+      unsubscribeBookingStatus();
+      unsubscribeBookingUpdate();
+      unsubscribePayment();
+    };
+  }, [provider, on, fetchBookings]);
 
   // Filter bookings based on active tab and search query
   const filterBookings = useCallback(() => {
