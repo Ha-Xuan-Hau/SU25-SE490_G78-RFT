@@ -6,19 +6,14 @@ export interface ReportGroupedByTargetDTO {
   count: number;
 }
 
-export interface ReporterDetailDTO {
-  id: string;
-  fullName: string;
-  email: string;
-  reason: string;
-  evidenceUrl?: string; // Optional, can be null if not provided
-  createdAt: string;
-}
-
 export interface ReportSummaryDTO {
   reportId: string;
   type: string;
-  booking: string;
+  reportStatus: string;
+  appealDeadline?: string;
+  canAppeal?: boolean;
+  hasAppealed?: boolean;
+  currentFlagCount?: number;
 }
 
 export interface ReportedUserDTO {
@@ -27,10 +22,22 @@ export interface ReportedUserDTO {
   email: string;
 }
 
+export interface ReporterDetailDTO {
+  id: string;
+  fullName: string;
+  email: string;
+  reason: string;
+  evidenceUrl?: string; // Optional, can be null if not provided
+  createdAt: string;
+  booking: string;
+  reportStatus: string;
+}
+
 export interface ReportDetailDTO {
   reportSummary: ReportSummaryDTO;
   reportedUser: ReportedUserDTO;
   reporters: ReporterDetailDTO[];
+  appealInfo?: AppealInfoDTO;
 }
 
 export interface AggregatedReport {
@@ -39,4 +46,14 @@ export interface AggregatedReport {
   reportedUserEmail: string;
   reportCount: number;
   types: Set<string>;
+}
+
+export interface AppealInfoDTO {
+  appealId: string;
+  appellantName: string;
+  appellantEmail: string;
+  reason: string;
+  evidenceUrl?: string;
+  createdAt: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
 }

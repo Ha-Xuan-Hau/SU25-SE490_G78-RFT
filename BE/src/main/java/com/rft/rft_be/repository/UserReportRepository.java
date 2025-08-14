@@ -5,39 +5,35 @@ import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
     public interface UserReportRepository extends JpaRepository<UserReport, String> {
         List<UserReport> findByReportedIdAndType(String reportedId, String type);
 
 
-        // Thêm methods mới cho appeal
-        List<UserReport> findByReportedId(String reportedId);
+        // Đếm số cờ APPROVED của user
+        long countByReportedIdAndTypeAndStatus(String reportedId, String type, UserReport.Status status);
 
-        @Query("SELECT ur FROM UserReport ur WHERE ur.reporter.id = :reporterId")
-        List<UserReport> findByReporterId(@Param("reporterId") String reporterId);
+        // Tìm STAFF_REPORT quá hạn để auto-approve
+        List<UserReport> findByTypeAndStatusAndCreatedAtBefore(String type, UserReport.Status status, LocalDateTime deadline);
 
-        // Optional: method để check nhanh
-        @Query("SELECT COUNT(ur) > 0 FROM UserReport ur " +
-                "WHERE ur.reporter.id = :reporterId " +
-                "AND ur.reportedId = :targetId")
-        boolean existsByReporterIdAndReportedId(
-                @Param("reporterId") String reporterId,
-                @Param("targetId") String targetId
-        );
+        // Check user đã appeal flag này chưa
+        @Query("SELECT COUNT(ur) > 0 FROM UserReport ur WHERE ur.reporter.id = :reporterId AND ur.reportedId = :flagId AND ur.type = 'APPEAL'")
+        boolean existsAppealByReporterAndFlag(@Param("reporterId") String reporterId, @Param("flagId") String flagId);
 
-        @Query("SELECT COUNT(ur) > 0 FROM UserReport ur " +
-                "WHERE ur.reporter.id = :reporterId " +
-                "AND ur.type = 'APPEAL' " +
-                "AND ur.reportedId = :originalReportId")
-        boolean existsByReporterIdAndOriginalReportId(
-                @Param("reporterId") String reporterId,
-                @Param("originalReportId") String originalReportId
-        );
+        // Đếm báo cáo non-serious cho escalation
+        @Query("SELECT COUNT(ur) FROM UserReport ur WHERE ur.reportedId = :targetId AND ur.type IN :types AND ur.status != :excludeStatus")
+        long countForEscalation(@Param("targetId") String targetId, @Param("types") List<String> types, @Param("excludeStatus") UserReport.Status excludeStatus);
 
-        // Tìm tất cả kháng cáo của một báo cáo
-        @Query("SELECT ur FROM UserReport ur " +
-                "WHERE ur.type = 'APPEAL' " +
-                "AND ur.reportedId = :originalReportId")
-        List<UserReport> findAppealsByOriginalReportId(@Param("originalReportId") String originalReportId);
+        // Tìm các báo cáo cần escalation
+        @Query("SELECT ur.reportedId, COUNT(ur) as reportCount FROM UserReport ur " +
+                "WHERE ur.type IN :types AND ur.status != 'REJECTED' " +
+                "GROUP BY ur.reportedId HAVING COUNT(ur) > :threshold")
+        List<Object[]> findEscalationTargets(@Param("types") List<String> types, @Param("threshold") long threshold);
+
+        // Tìm STAFF_REPORT còn trong thời hạn appeal
+        @Query("SELECT ur FROM UserReport ur WHERE ur.id = :flagId AND ur.type = 'STAFF_REPORT' " +
+                "AND ur.status = 'PENDING' AND ur.createdAt > :deadline")
+        UserReport findAppealableFlag(@Param("flagId") String flagId, @Param("deadline") LocalDateTime deadline);
 }

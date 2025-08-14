@@ -16,4 +16,14 @@ public interface ReportService {
     List<ReportGroupedByTargetDTO> searchReports(String generalType, String keyword, String type, int page, int size);
 
     ReportDetailDTO getReportDetailByTargetAndType(String targetId, String type);
+
+    //reject các report có trong 1 report detail
+    void rejectAllReports( String targetId, String type);
+
+    void rejectSeriousReports(String reportId);
+
+    //approve kháng cáo từ bị cáo
+    void processAppealDecision(String appealId, boolean approved);
+
+//    List<ReportGroupedByTargetDTO> getEscalationTargets();
 }

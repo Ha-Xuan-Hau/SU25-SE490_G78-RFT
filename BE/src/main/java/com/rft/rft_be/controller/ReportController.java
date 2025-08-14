@@ -64,6 +64,7 @@ public class ReportController {
         return ResponseEntity.ok(reportService.getReportDetailByTargetAndType(targetId, type));
     }
 
+    // SỬA endpoint /staff - dùng type STAFF_REPORT thay vì "Report by staff"
     @PostMapping("/staff")
     public ResponseEntity<Void> createReportByStaff(@RequestBody ReportRequest request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -77,8 +78,50 @@ public class ReportController {
 
         User staff = userRepo.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        request.setType("Report by staff"); // gán type mặc định
-        reportService.report(staff, request); // dùng lại service hiện tại
+        request.setType("STAFF_REPORT");
+        reportService.report(staff, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/process/reject-all")
+    public ResponseEntity<Void> rejectAllReports(
+            @RequestParam String targetId,
+            @RequestParam String type) {
+
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String role = auth.getToken().getClaimAsString("role");
+
+//        if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
+//            throw new AccessDeniedException("Chỉ staff hoặc admin mới có thể xử lý báo cáo");
+//        }
+
+        reportService.rejectAllReports(targetId, type);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/appeal/{id}/approve")
+    public ResponseEntity<Void> approveAppeal(@PathVariable String id) {
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String role = auth.getToken().getClaimAsString("role");
+
+//        if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
+//            throw new AccessDeniedException("Chỉ staff hoặc admin mới có thể xử lý kháng cáo");
+//        }
+
+        reportService.processAppealDecision(id, true);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/appeal/{id}/reject")
+    public ResponseEntity<Void> rejectAppeal(@PathVariable String id) {
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String role = auth.getToken().getClaimAsString("role");
+
+//        if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
+//            throw new AccessDeniedException("Chỉ staff hoặc admin mới có thể xử lý kháng cáo");
+//        }
+
+        reportService.processAppealDecision(id, false);
         return ResponseEntity.ok().build();
     }
 }

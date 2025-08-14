@@ -14,23 +14,37 @@ import {
   Col,
   Layout,
   Space,
+  Modal,
 } from "antd";
 import {
   UserOutlined,
   MailOutlined,
   WarningOutlined,
-  ArrowLeftOutlined,
   EyeOutlined,
   FileTextOutlined,
   ClockCircleOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { getReportDetail, getReportTypeMapping } from "@/apis/report.api";
+import {
+  getReportDetail,
+  getReportTypeMapping,
+  rejectAllReports,
+  approveAppeal,
+  rejectAppeal,
+} from "@/apis/report.api";
 import { ReportDetailDTO, ReporterDetailDTO } from "@/types/report";
 import ReportButton from "@/components/ReportComponent";
 import Link from "next/link";
 import { useUserState } from "@/recoils/user.state";
 import { translateENtoVI } from "@/lib/viDictionary";
+import {
+  showApiError,
+  showApiSuccess,
+  showError,
+  showSuccess,
+} from "@/utils/toast.utils";
 
 const { Title, Text } = Typography;
 const { Content } = Layout;
@@ -78,44 +92,12 @@ export default function ReportDetailPage() {
   const [selectedReporterForReport, setSelectedReporterForReport] = useState<
     string | null
   >(null);
+  const [appealModalVisible, setAppealModalVisible] = useState(false);
+  const [selectedFlagForAppeal, setSelectedFlagForAppeal] = useState<
+    string | null
+  >(null);
 
   const typeMapping = getReportTypeMapping();
-
-  // Check permission
-  // useEffect(() => {
-  //   // Skip nếu user chưa load
-  //   if (!user) {
-  //     console.log("User not loaded yet");
-  //     return;
-  //   }
-
-  //   console.log("Checking permission for user:", user);
-  //   console.log("User role:", user.role);
-
-  //   const allowedRoles = ["PROVIDER", "STAFF", "ADMIN", "USER"];
-
-  //   // Kiểm tra role có tồn tại và hợp lệ không
-  //   if (!user.role) {
-  //     console.log("User has no role, redirecting...");
-  //     notification.error({
-  //       message: "Không có quyền truy cập",
-  //       description: "Tài khoản của bạn chưa được phân quyền",
-  //     });
-  //     router.push("/");
-  //     return;
-  //   }
-
-  //   if (!allowedRoles.includes(user.role)) {
-  //     console.log("User role not allowed:", user.role);
-  //     notification.error({
-  //       message: "Không có quyền truy cập",
-  //       description: "Bạn không có quyền xem trang này",
-  //     });
-  //     router.push("/");
-  //   } else {
-  //     console.log("User has permission to view this page");
-  //   }
-  // }, [user]); // Chỉ phụ thuộc vào user, không phụ thuộc router
 
   useEffect(() => {
     console.log("ReportDetailPage mounted");
@@ -123,7 +105,6 @@ export default function ReportDetailPage() {
     console.log("Router query:", router.query);
     console.log("Router pathname:", router.pathname);
 
-    // Log khi component unmount
     return () => {
       console.log("ReportDetailPage unmounting - possible redirect happening");
     };
@@ -201,14 +182,12 @@ export default function ReportDetailPage() {
     return "NON_SERIOUS_ERROR";
   };
 
-  const canCreateStaffReport = (): boolean => {
+  const canProcessReports = (): boolean => {
     if (!reportDetail) return false;
-
     const generalType = getGeneralTypeFromType(reportDetail.reportSummary.type);
 
-    if (generalType === "SERIOUS_ERROR") {
-      return true;
-    } else if (generalType === "NON_SERIOUS_ERROR") {
+    if (generalType === "SERIOUS_ERROR") return true;
+    if (generalType === "NON_SERIOUS_ERROR") {
       return reportDetail.reporters.length >= 10;
     }
 
@@ -220,9 +199,75 @@ export default function ReportDetailPage() {
     setReportModalVisible(true);
   };
 
+  const handleRejectAllReports = () => {
+    Modal.confirm({
+      title: "Xác nhận báo cáo không chính xác",
+      content:
+        "Bạn có chắc chắn tất cả báo cáo này không chính xác? Tất cả báo cáo sẽ bị từ chối.",
+      okText: "Xác nhận",
+      cancelText: "Đóng",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const result = await rejectAllReports(
+            reportDetail!.reportSummary.reportId
+          );
+          showSuccess("Từ chối báo cáo thành công");
+          await loadReportDetail(targetId as string, type as string);
+        } catch (error) {
+          showError("Từ chối báo cáo thất bại");
+        }
+      },
+    });
+  };
+
   const handleReportReporter = (reporterId: string) => {
     setSelectedReporterForReport(reporterId);
     setReportReporterModalVisible(true);
+  };
+
+  const handleAppeal = (flagId: string) => {
+    setSelectedFlagForAppeal(flagId);
+    setAppealModalVisible(true);
+  };
+
+  const handleApproveAppeal = async (appealId: string) => {
+    Modal.confirm({
+      title: "Xác nhận chấp nhận kháng cáo",
+      content:
+        "Bạn có chắc chắn muốn chấp nhận kháng cáo này? Staff flag sẽ bị hủy.",
+      okText: "Chấp nhận",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          const result = await approveAppeal(appealId);
+          showSuccess("Chấp nhận kháng cáo thành công");
+          await loadReportDetail(targetId as string, type as string);
+        } catch (error) {
+          showError("Không thể chấp nhận kháng cáo");
+        }
+      },
+    });
+  };
+
+  const handleRejectAppeal = async (appealId: string) => {
+    Modal.confirm({
+      title: "Xác nhận từ chối kháng cáo",
+      content:
+        "Bạn có chắc chắn muốn từ chối kháng cáo này? Staff flag sẽ được giữ nguyên.",
+      okText: "Từ chối",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const result = await rejectAppeal(appealId);
+          showSuccess("Từ chối kháng cáo thành công");
+          await loadReportDetail(targetId as string, type as string);
+        } catch (error) {
+          showError("Không thể từ chối kháng cáo");
+        }
+      },
+    });
   };
 
   // Loading state
@@ -272,9 +317,6 @@ export default function ReportDetailPage() {
             <p style={{ fontSize: "16px", marginBottom: "24px" }}>
               Không tìm thấy thông tin báo cáo
             </p>
-            {/* <Button type="primary" onClick={() => router.back()}>
-              Quay lại
-            </Button> */}
           </Card>
         </Content>
       </Layout>
@@ -288,31 +330,15 @@ export default function ReportDetailPage() {
       <Content style={{ padding: "24px" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
           <Space direction="vertical" size={24} style={{ width: "100%" }}>
-            {/* Header Card */}
-            <Card
-              bordered={false}
-              style={{
-                borderRadius: "12px",
-                boxShadow:
-                  "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)",
-              }}
-            >
+            {/* Header Card với 2 nút xử lý */}
+            <Card bordered={false} style={{ borderRadius: "12px" }}>
               <Row gutter={[16, 16]} align="middle">
-                <Col xs={24} md={16}>
+                <Col xs={24} md={12}>
                   <Space
                     direction="vertical"
                     size={8}
                     style={{ width: "100%" }}
                   >
-                    {/* <Space>
-                      <Button
-                        icon={<ArrowLeftOutlined />}
-                        onClick={() => router.back()}
-                        style={{ marginRight: "8px" }}
-                      >
-                        Quay lại
-                      </Button>
-                    </Space> */}
                     <Title level={3} style={{ margin: 0 }}>
                       Chi tiết báo cáo
                     </Title>
@@ -323,26 +349,72 @@ export default function ReportDetailPage() {
                   </Space>
                 </Col>
 
-                <Col xs={24} md={8} style={{ textAlign: "right" }}>
-                  {canCreateStaffReport() &&
+                <Col xs={24} md={12} style={{ textAlign: "right" }}>
+                  {canProcessReports() &&
                     user?.role &&
                     ["STAFF", "ADMIN"].includes(user.role) && (
-                      <Button
-                        type="primary"
-                        danger
-                        icon={<WarningOutlined />}
-                        size="large"
-                        onClick={() =>
-                          handleCreateStaffReport(reportDetail.reportedUser.id)
-                        }
-                        style={{ width: "100%", maxWidth: "280px" }}
-                      >
-                        Tạo báo cáo vi phạm
-                      </Button>
+                      <Space wrap>
+                        <Button
+                          danger
+                          icon={<CloseCircleOutlined />}
+                          onClick={handleRejectAllReports}
+                        >
+                          Báo cáo không chính xác
+                        </Button>
+
+                        <Button
+                          type="primary"
+                          danger
+                          icon={<WarningOutlined />}
+                          onClick={() =>
+                            handleCreateStaffReport(
+                              reportDetail.reportedUser.id
+                            )
+                          }
+                        >
+                          Yêu cầu cung cấp bằng chứng
+                        </Button>
+                      </Space>
                     )}
                 </Col>
               </Row>
             </Card>
+
+            {/* Card giải thích cho Staff/Admin */}
+            {canProcessReports() &&
+              user?.role &&
+              ["STAFF", "ADMIN"].includes(user.role) && (
+                <Card
+                  style={{
+                    backgroundColor: "#fff7e6",
+                    border: "1px solid #ffd591",
+                  }}
+                >
+                  <Space direction="vertical" size={8}>
+                    <Text strong style={{ fontSize: "16px" }}>
+                      <InfoCircleOutlined
+                        style={{ marginRight: "8px", color: "#fa8c16" }}
+                      />
+                      Hướng dẫn xử lý:
+                    </Text>
+                    <ul style={{ marginBottom: 0, paddingLeft: "24px" }}>
+                      <li>
+                        <Text>
+                          <strong>Báo cáo không chính xác:</strong> Từ chối tất
+                          cả báo cáo, không tính vi phạm cho người bị báo cáo
+                        </Text>
+                      </li>
+                      <li>
+                        <Text>
+                          <strong>Yêu cầu cung cấp bằng chứng:</strong> Tạo cờ
+                          cảnh báo (STAFF_REPORT), người bị báo cáo có 24h để
+                          kháng cáo. Tất cả báo cáo hiện tại sẽ được chấp nhận.
+                        </Text>
+                      </li>
+                    </ul>
+                  </Space>
+                </Card>
+              )}
 
             {/* Tổng quan báo cáo */}
             <Card
@@ -387,38 +459,190 @@ export default function ReportDetailPage() {
                     </Tag>
                   </Space>
                 </Col>
-
-                {(generalType === "SERIOUS_ERROR" ||
-                  generalType === "STAFF_ERROR") &&
-                  reportDetail.reportSummary.booking && (
-                    <Col xs={24} sm={12} lg={8}>
-                      <Space
-                        direction="vertical"
-                        size={4}
-                        style={{ width: "100%" }}
-                      >
-                        <Text type="secondary">Mã đơn hàng</Text>
-                        <Space>
-                          <Text
-                            strong
-                            style={{ fontSize: "16px", color: "#1890ff" }}
-                          >
-                            {reportDetail.reportSummary.booking}
-                          </Text>
-                          <Link
-                            href={`/booking-detail/${reportDetail.reportSummary.booking}`}
-                            target="_blank"
-                          >
-                            <Button size="small" icon={<EyeOutlined />}>
-                              Xem
-                            </Button>
-                          </Link>
-                        </Space>
-                      </Space>
-                    </Col>
-                  )}
               </Row>
             </Card>
+
+            {/* Card thông tin xử lý cho STAFF_REPORT */}
+            {reportDetail.reportSummary.type === "STAFF_REPORT" && (
+              <Card
+                title={
+                  <Space>
+                    <ClockCircleOutlined />
+                    <span>Thông tin xử lý</span>
+                  </Space>
+                }
+                style={{
+                  borderRadius: "12px",
+                  boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+                }}
+              >
+                <Row gutter={[24, 24]}>
+                  <Col xs={24} sm={12}>
+                    <Space direction="vertical" size={4}>
+                      <Text type="secondary">Số cờ hiện tại</Text>
+                      <Tag
+                        color={
+                          (reportDetail.reportSummary.currentFlagCount ?? 0) >=
+                          2
+                            ? "error"
+                            : "warning"
+                        }
+                      >
+                        {reportDetail.reportSummary.currentFlagCount}/3 cờ
+                      </Tag>
+                      {reportDetail.reportSummary.currentFlagCount === 2 && (
+                        <Text type="danger" style={{ fontSize: "12px" }}>
+                          Cảnh báo: Thêm 1 cờ nữa sẽ bị khóa tài khoản
+                        </Text>
+                      )}
+                    </Space>
+                  </Col>
+
+                  <Col xs={24} sm={12}>
+                    <Space direction="vertical" size={4}>
+                      <Text type="secondary">Thời hạn kháng cáo</Text>
+                      {reportDetail.reportSummary.canAppeal ? (
+                        <Space>
+                          <Tag color="processing">
+                            Còn thời hạn đến:{" "}
+                            {dayjs(
+                              reportDetail.reportSummary.appealDeadline
+                            ).format("DD/MM/YYYY HH:mm")}
+                          </Tag>
+                        </Space>
+                      ) : (
+                        <Tag color="default">Đã hết hạn kháng cáo</Tag>
+                      )}
+                    </Space>
+                  </Col>
+                </Row>
+
+                {/* Nút kháng cáo cho PROVIDER bị flag */}
+                {reportDetail.reportSummary.canAppeal &&
+                  !reportDetail.reportSummary.hasAppealed &&
+                  user?.role === "PROVIDER" &&
+                  user?.id === reportDetail.reportedUser.id && (
+                    <div style={{ marginTop: "24px" }}>
+                      <Button
+                        type="primary"
+                        icon={<FileTextOutlined />}
+                        onClick={() =>
+                          handleAppeal(reportDetail.reportSummary.reportId)
+                        }
+                        block
+                      >
+                        Cung cấp bằng chứng kháng cáo
+                      </Button>
+                    </div>
+                  )}
+              </Card>
+            )}
+
+            {/* Card hiển thị thông tin kháng cáo nếu có */}
+            {reportDetail.appealInfo && (
+              <Card
+                title={
+                  <Space>
+                    <FileTextOutlined />
+                    <span>Thông tin kháng cáo</span>
+                    <Tag
+                      color={
+                        reportDetail.appealInfo.status === "APPROVED"
+                          ? "success"
+                          : reportDetail.appealInfo.status === "REJECTED"
+                          ? "error"
+                          : "processing"
+                      }
+                    >
+                      {reportDetail.appealInfo.status === "APPROVED"
+                        ? "Đã chấp nhận"
+                        : reportDetail.appealInfo.status === "REJECTED"
+                        ? "Đã từ chối"
+                        : "Đang xử lý"}
+                    </Tag>
+                  </Space>
+                }
+                style={{
+                  borderRadius: "12px",
+                  boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+                }}
+              >
+                <Descriptions
+                  bordered
+                  column={{ xs: 1, sm: 1, md: 2 }}
+                  labelStyle={{ backgroundColor: "#fafafa" }}
+                >
+                  <Descriptions.Item label="Người kháng cáo">
+                    <Space>
+                      <Avatar icon={<UserOutlined />} size="small" />
+                      <Text strong>
+                        {reportDetail.appealInfo.appellantName}
+                      </Text>
+                    </Space>
+                  </Descriptions.Item>
+
+                  <Descriptions.Item label="Email">
+                    {reportDetail.appealInfo.appellantEmail}
+                  </Descriptions.Item>
+
+                  <Descriptions.Item label="Thời gian gửi">
+                    {dayjs(reportDetail.appealInfo.createdAt).format(
+                      "DD/MM/YYYY HH:mm"
+                    )}
+                  </Descriptions.Item>
+
+                  <Descriptions.Item label="Bằng chứng">
+                    {reportDetail.appealInfo.evidenceUrl ? (
+                      <a
+                        href={reportDetail.appealInfo.evidenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button type="link" icon={<EyeOutlined />} size="small">
+                          Xem bằng chứng
+                        </Button>
+                      </a>
+                    ) : (
+                      <Text type="secondary">Không có</Text>
+                    )}
+                  </Descriptions.Item>
+
+                  <Descriptions.Item label="Lý do kháng cáo" span={2}>
+                    <Text>{reportDetail.appealInfo.reason}</Text>
+                  </Descriptions.Item>
+                </Descriptions>
+
+                {/* Nút xử lý cho Staff/Admin */}
+                {user?.role &&
+                  ["STAFF", "ADMIN"].includes(user.role) &&
+                  reportDetail.appealInfo.status === "PENDING" && (
+                    <div style={{ marginTop: "24px" }}>
+                      <Space>
+                        <Button
+                          type="primary"
+                          onClick={() =>
+                            handleApproveAppeal(
+                              reportDetail.appealInfo!.appealId
+                            )
+                          }
+                        >
+                          Chấp nhận kháng cáo
+                        </Button>
+                        <Button
+                          danger
+                          onClick={() =>
+                            handleRejectAppeal(
+                              reportDetail.appealInfo!.appealId
+                            )
+                          }
+                        >
+                          Từ chối kháng cáo
+                        </Button>
+                      </Space>
+                    </div>
+                  )}
+              </Card>
+            )}
 
             {/* Trạng thái xử lý - Chỉ hiển thị cho STAFF và ADMIN */}
             {user?.role && ["STAFF", "ADMIN"].includes(user.role) && (
@@ -474,7 +698,7 @@ export default function ReportDetailPage() {
                         width: "12px",
                         height: "12px",
                         borderRadius: "50%",
-                        backgroundColor: canCreateStaffReport()
+                        backgroundColor: canProcessReports()
                           ? "#ff4d4f"
                           : "#faad14",
                         marginTop: "4px",
@@ -484,16 +708,14 @@ export default function ReportDetailPage() {
                       <Text
                         strong
                         style={{
-                          color: canCreateStaffReport() ? "#ff4d4f" : "#faad14",
+                          color: canProcessReports() ? "#ff4d4f" : "#faad14",
                           fontSize: "18px",
                         }}
                       >
-                        {canCreateStaffReport()
-                          ? "Lỗi nghiêm trọng"
-                          : "Lỗi nhẹ"}
+                        {canProcessReports() ? "Lỗi nghiêm trọng" : "Lỗi nhẹ"}
                       </Text>
                       <Text>
-                        {canCreateStaffReport()
+                        {canProcessReports()
                           ? "Đã có đủ 10 lượt báo cáo. Vui lòng xem xét để xử lý."
                           : `Đủ 10 lượt báo cáo sẽ phải xem xét để đưa ra quyết định phù hợp (hiện tại: ${reportDetail.reporters.length}/10)`}
                       </Text>
@@ -564,14 +786,6 @@ export default function ReportDetailPage() {
                     <Text>{reportDetail.reportedUser.email || "N/A"}</Text>
                   </Space>
                 </Descriptions.Item>
-                {/* <Descriptions.Item label="Số lượt bị báo cáo" span={2}>
-                  <Tag
-                    color="error"
-                    style={{ fontSize: "14px", padding: "4px 12px" }}
-                  >
-                    {reportDetail.reporters.length} báo cáo
-                  </Tag>
-                </Descriptions.Item> */}
               </Descriptions>
             </Card>
 
@@ -640,6 +854,34 @@ export default function ReportDetailPage() {
                       </Space>
                     ),
                   },
+                  ...(generalType === "SERIOUS_ERROR"
+                    ? [
+                        {
+                          title: "Mã đơn hàng liên quan",
+                          dataIndex: "booking",
+                          key: "booking",
+                          width: 180,
+                          render: (bookingId: string) => {
+                            if (!bookingId) {
+                              return <Text type="secondary">Không có</Text>;
+                            }
+
+                            return (
+                              <Space>
+                                <Link
+                                  href={`/booking-detail/${bookingId}`}
+                                  target="_blank"
+                                >
+                                  <Button size="small" icon={<EyeOutlined />}>
+                                    Xem
+                                  </Button>
+                                </Link>
+                              </Space>
+                            );
+                          },
+                        },
+                      ]
+                    : []),
                   {
                     title: "Lý do báo cáo",
                     dataIndex: "reason",
@@ -734,12 +976,11 @@ export default function ReportDetailPage() {
             </Card>
           </Space>
 
-          {/* Report Modals */}
+          {/* Modal tạo STAFF_REPORT */}
           {reportModalVisible && selectedTargetForReport && (
             <ReportButton
               targetId={selectedTargetForReport}
               reportType="STAFF_REPORT"
-              booking={reportDetail.reportSummary.booking}
               buttonText=""
               size="small"
               type="text"
@@ -748,15 +989,16 @@ export default function ReportDetailPage() {
               onModalClose={() => {
                 setReportModalVisible(false);
                 setSelectedTargetForReport(null);
+                loadReportDetail(targetId as string, type as string);
               }}
             />
           )}
 
+          {/* Modal báo cáo spam reporter */}
           {reportReporterModalVisible && selectedReporterForReport && (
             <ReportButton
               targetId={selectedReporterForReport}
               reportType="STAFF_REPORT"
-              booking={reportDetail.reportSummary.booking}
               buttonText=""
               size="small"
               type="text"
@@ -765,6 +1007,24 @@ export default function ReportDetailPage() {
               onModalClose={() => {
                 setReportReporterModalVisible(false);
                 setSelectedReporterForReport(null);
+              }}
+            />
+          )}
+
+          {/* Modal Appeal cho Provider */}
+          {appealModalVisible && selectedFlagForAppeal && (
+            <ReportButton
+              targetId={selectedFlagForAppeal}
+              reportType="APPEAL"
+              buttonText=""
+              size="small"
+              type="text"
+              icon={false}
+              autoOpen={true}
+              onModalClose={() => {
+                setAppealModalVisible(false);
+                setSelectedFlagForAppeal(null);
+                loadReportDetail(targetId as string, type as string);
               }}
             />
           )}

@@ -12,4 +12,6 @@ public class ReportDetailDTO {
     private ReportSummaryDTO reportSummary;
     private ReportedUserDTO reportedUser;
     private List<ReporterDetailDTO> reporters;
+
+    private AppealInfoDTO appealInfo;
 }

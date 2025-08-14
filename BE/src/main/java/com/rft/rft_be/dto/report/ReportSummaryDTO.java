@@ -8,5 +8,11 @@ import lombok.*;
 public class ReportSummaryDTO {
     private String reportId;
     private String type;
-    private String booking;
+    private String status;
+
+    // THÊM fields cho STAFF_REPORT
+    private String appealDeadline;
+    private boolean canAppeal;
+    private boolean hasAppealed;
+    private long currentFlagCount;
 }

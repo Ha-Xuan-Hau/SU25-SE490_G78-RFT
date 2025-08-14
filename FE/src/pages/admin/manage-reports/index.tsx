@@ -47,12 +47,10 @@ import {
   ReporterDetailDTO,
   ReportGroupedByTargetDTO,
 } from "@/types/report";
+import { showError } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 const { Search } = Input;
-import ReportButton from "@/components/ReportComponent";
-import Link from "next/link";
-import { useRouter } from "next/router";
 
 type ReportType =
   // Serious Reports
@@ -142,20 +140,6 @@ export default function UserReportsPage() {
   // Get report type mapping
   const typeMapping = getReportTypeMapping();
 
-  // Xử lý lỗi API
-  const handleApiError = (error: any, defaultMessage = "Có lỗi xảy ra") => {
-    console.error("API Error:", error);
-    const errorMessage =
-      error.response?.data?.message || error.message || defaultMessage;
-    setError(errorMessage);
-
-    notification.error({
-      message: "Lỗi",
-      description: errorMessage,
-      duration: 4,
-    });
-  };
-
   // Load dữ liệu báo cáo
   const loadReports = async () => {
     try {
@@ -177,7 +161,7 @@ export default function UserReportsPage() {
       const stats = calculateReportStatistics(apiReports, generalType);
       setStatistics(stats || {});
     } catch (error) {
-      handleApiError(error, "Không thể tải danh sách báo cáo");
+      showError("Không thể tải danh sách báo cáo");
       setAggregatedReports([]);
       setStatistics({} as Statistics);
     } finally {
@@ -266,13 +250,6 @@ export default function UserReportsPage() {
     setReportModalVisible(true);
   };
 
-  // Handler khi đóng modal báo cáo - không cần refresh
-  const handleReportModalClose = () => {
-    setReportModalVisible(false);
-    setSelectedTargetForReport(null);
-    // Data sẽ tự động refresh khi cần thiết
-  };
-
   // Effect để reset modal states khi chuyển tab
   useEffect(() => {
     // Reset tất cả modal states khi chuyển tab
@@ -290,13 +267,6 @@ export default function UserReportsPage() {
     console.log("handleReportReporter called with reporterId:", reporterId);
     setSelectedReporterForReport(reporterId);
     setReportReporterModalVisible(true);
-  };
-
-  // Handler khi đóng modal báo cáo người báo cáo - không cần refresh
-  const handleReportReporterModalClose = () => {
-    setReportReporterModalVisible(false);
-    setSelectedReporterForReport(null);
-    // Data sẽ tự động refresh khi cần thiết
   };
 
   // Safe getter functions
@@ -426,7 +396,24 @@ export default function UserReportsPage() {
       align: "center",
     },
     {
-      title: "Người bị báo cáo/ Xe bị báo cáo",
+      title: "Người bị báo cáo",
+      key: "reportedUser",
+      render: (record: AggregatedReport) => (
+        <div className="flex items-center gap-3">
+          <Avatar icon={<UserOutlined />} />
+          <div>
+            <div className="font-medium">{record.reportedUserName}</div>
+            <div className="text-xs text-gray-500">
+              <MailOutlined className="mr-1" />
+              {record.reportedUserEmail}
+            </div>
+          </div>
+        </div>
+      ),
+      sorter: (a, b) => a.reportedUserName.localeCompare(b.reportedUserName),
+    },
+    {
+      title: "Xe bị báo cáo",
       key: "reportedUser",
       render: (record: AggregatedReport) => (
         <div className="flex items-center gap-3">
@@ -653,7 +640,7 @@ export default function UserReportsPage() {
               </Col>
 
               {/* Thêm phần Mã đơn hàng cho SERIOUS_ERROR và STAFF_ERROR - chỉ khi có booking */}
-              {(getGeneralTypeByTab(activeTab) === "SERIOUS_ERROR" ||
+              {/* {(getGeneralTypeByTab(activeTab) === "SERIOUS_ERROR" ||
                 getGeneralTypeByTab(activeTab) === "STAFF_ERROR") &&
                 selectedReportDetail.reportSummary.booking && ( // Thêm điều kiện này
                   <Col xs={24} sm={12}>
@@ -683,7 +670,7 @@ export default function UserReportsPage() {
                       </div>
                     </Card>
                   </Col>
-                )}
+                )} */}
             </Row>
           </div>
 
@@ -1130,37 +1117,6 @@ export default function UserReportsPage() {
         >
           <DetailContent />
         </Drawer>
-      )}
-
-      {/* ReportButton Modal - Chỉ render khi cần */}
-      {reportModalVisible && selectedTargetForReport && (
-        <ReportButton
-          targetId={selectedTargetForReport}
-          reportType="STAFF_REPORT" // Báo cáo loại STAFF_REPORT
-          booking={selectedReportDetail?.reportSummary.booking}
-          buttonText=""
-          size="small"
-          type="text"
-          icon={false}
-          autoOpen={true}
-          onModalClose={handleReportModalClose}
-        />
-      )}
-
-      {/* ReportButton Modal cho báo cáo người báo cáo spam */}
-      {reportReporterModalVisible && selectedReporterForReport && (
-        <ReportButton
-          key={`reporter-spam-${selectedReporterForReport}-${Date.now()}`}
-          targetId={selectedReporterForReport}
-          reportType="STAFF_REPORT"
-          booking={selectedReportDetail?.reportSummary.booking}
-          buttonText=""
-          size="small"
-          type="text"
-          icon={false}
-          autoOpen={true}
-          onModalClose={handleReportReporterModalClose}
-        />
       )}
     </div>
   );

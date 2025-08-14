@@ -125,3 +125,33 @@ export const calculateReportStatistics = (reports, generalType) => {
 
     return stats;
 };
+
+
+
+// Xử lý reject tất cả reports
+export const rejectAllReports = async (reportId) => {
+    const response = await apiClient.put('/reports/process/reject-all', null, {
+        params: { reportId }
+    });
+    return response.data;
+};
+
+// Approve tất cả reports (không cần dùng trong flow hiện tại)
+export const approveAllReports = async (targetId, type) => {
+    const response = await apiClient.put('/reports/process/approve-all', null, {
+        params: { targetId, type }
+    });
+    return response.data;
+};
+
+// Approve appeal
+export const approveAppeal = async (appealId) => {
+    const response = await apiClient.put(`/reports/appeal/${appealId}/approve`);
+    return response.data;
+};
+
+// Reject appeal
+export const rejectAppeal = async (appealId) => {
+    const response = await apiClient.put(`/reports/appeal/${appealId}/reject`);
+    return response.data;
+};
