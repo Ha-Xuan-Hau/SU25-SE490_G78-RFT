@@ -1,5 +1,6 @@
 package com.rft.rft_be.service.Notification;
 
+import com.rft.rft_be.constants.WebSocketEvents;
 import com.rft.rft_be.dto.Notification.*;
 import com.rft.rft_be.entity.Notification;
 import com.rft.rft_be.entity.User;
@@ -7,6 +8,7 @@ import com.rft.rft_be.mapper.NotificationMapper;
 import com.rft.rft_be.repository.NotificationRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.Notification.NotificationService;
+import com.rft.rft_be.service.WebSocketEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +28,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final NotificationMapper notificationMapper;
+    private final WebSocketEventService wsEventService;
 
     @Override
     @Transactional
@@ -48,7 +51,16 @@ public class NotificationServiceImpl implements NotificationService {
 
         log.info("Notification created successfully with id: {} and db type: {}",
                 savedNotification.getId(), dbType);
-        return notificationMapper.toResponseDTO(savedNotification);
+        NotificationResponseDTO response = notificationMapper.toResponseDTO(notification);
+
+        // Gửi qua WebSocket - THÊM 4 DÒNG NÀY
+        wsEventService.sendToUser(
+                request.getReceiverId(),
+                WebSocketEvents.NOTIFICATION,
+                response
+        );
+
+        return response;
     }
 
     @Override

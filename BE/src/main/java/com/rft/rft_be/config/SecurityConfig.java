@@ -30,7 +30,8 @@ public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/**", "/api/penalties/**", "/api/payment/vn-pay-callback",
-            "/api/payment/topUpCallBack","/api/notifications/**"
+            "/api/payment/topUpCallBack","/api/notifications/**", "/ws/**",  // Thêm WebSocket endpoint
+            "/ws"
     };
     @Value("${jwt.signerKey}")
     private String signerKey;
@@ -77,6 +78,8 @@ public class SecurityConfig {
 //                                .requestMatchers(HttpMethod.GET, "/api/bookings/**").hasAuthority("ADMIN")
 //                                .requestMatchers(HttpMethod.GET, "/api/vehicle-rent").hasAuthority("PROVIDER")
 //                                .requestMatchers(HttpMethod.POST, "/api/vehicle-rent/register").hasAnyRole("PROVIDER","ADMIN")
+
+
                                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                                 .anyRequest().authenticated()
 
