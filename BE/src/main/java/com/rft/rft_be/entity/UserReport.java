@@ -2,6 +2,7 @@ package com.rft.rft_be.entity;
 
 import java.time.LocalDateTime;
 
+import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
@@ -61,8 +62,15 @@ public class UserReport {
     @JoinColumn(name = "booking_id")
     private Booking booking;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private UserReport.Status status = Status.PENDING;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    public enum Status{
+        PENDING, REJECTED, APPROVED
+    }
 }

@@ -148,7 +148,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         </div>
       ),
       okText: "Đồng ý",
-      cancelText: "Hủy",
+      cancelText: "Đóng",
       onOk: async () => {
         setToggleLoading(true);
         try {

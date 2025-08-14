@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, List, Tag, message } from "antd";
-import { coupon as CouponType } from "@/types/coupon";
+import { coupon as CouponType } from "@/types/userCoupon";
 import { getCoupons } from "@/apis/coupon.api";
 import { useUserValue } from "@/recoils/user.state";
 import { User } from "@/types/user";
