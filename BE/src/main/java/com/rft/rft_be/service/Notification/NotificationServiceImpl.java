@@ -17,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +32,20 @@ public class NotificationServiceImpl implements NotificationService {
     private final UserRepository userRepository;
     private final NotificationMapper notificationMapper;
     private final WebSocketEventService wsEventService;
+
+    // Helper method để gửi cả notification và booking event
+    private void sendBookingWebSocketEvent(String userId, String bookingId, String eventType, Map<String, Object> additionalData) {
+        // Tạo payload cho booking event
+        Map<String, Object> bookingPayload = new HashMap<>();
+        bookingPayload.put("bookingId", bookingId);
+        bookingPayload.put("timestamp", LocalDateTime.now());
+        if (additionalData != null) {
+            bookingPayload.putAll(additionalData);
+        }
+
+        // Gửi booking event
+        wsEventService.sendToUser(userId, eventType, bookingPayload);
+    }
 
     @Override
     @Transactional
@@ -196,24 +213,48 @@ public class NotificationServiceImpl implements NotificationService {
         String message = notificationMapper.formatOrderPlacedMessage(vehicleName);
         String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.ORDER_PLACED, message, redirectUrl);
+        // Gửi WebSocket event cho booking mới
+        Map<String, Object> data = Map.of(
+                "vehicleName", vehicleName,
+                "status", "UNPAID"
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_UPDATE, data);
     }
 
     @Override
     @Transactional
-    public void notifyPaymentCompleted(String userId, String bookingId, Double amount) {
+    public void notifyPaymentCompleted(String userId, String providerId, String bookingId, Double amount) {
         String message = notificationMapper.formatPaymentCompletedMessage(amount);
-//        String redirectUrl = "/bookings/" + bookingId + "/payment";
         String redirectUrl = "/booking-detail/" + bookingId;
-
         createNotificationForUser(userId, NotificationMapper.PAYMENT_COMPLETED, message, redirectUrl);
+
+        // Gửi payment event
+        Map<String, Object> paymentData = Map.of(
+                "bookingId", bookingId,
+                "amount", amount,
+                "status", "COMPLETED"
+        );
+        wsEventService.sendToUser(userId, WebSocketEvents.PAYMENT_UPDATE, paymentData);
+
+        // Gửi booking status change
+        Map<String, Object> statusData = Map.of(
+                "newStatus", "CONFIRMED"
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, statusData);
+        sendBookingWebSocketEvent(providerId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, statusData);
     }
 
     @Override
     @Transactional
     public void notifyOrderApproved(String userId, String bookingId) {
-    //    String redirectUrl = "/booking-detail/" + bookingId;
         String redirectUrl = "/profile/booking-history";
         createNotificationForUser(userId, NotificationMapper.ORDER_APPROVED, NotificationMapper.ORDER_APPROVED_MSG, redirectUrl);
+
+        // Gửi booking status change event
+        Map<String, Object> data = Map.of(
+                "newStatus", "CONFIRMED"
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
 
     @Override
@@ -222,6 +263,13 @@ public class NotificationServiceImpl implements NotificationService {
         String message = notificationMapper.formatOrderRejectedMessage(reason);
         String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.ORDER_REJECTED, message, redirectUrl);
+
+        // Gửi booking status change event
+        Map<String, Object> data = Map.of(
+                "newStatus", "REJECTED",
+                "reason", reason
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
 
     @Override
@@ -230,31 +278,59 @@ public class NotificationServiceImpl implements NotificationService {
         String message = notificationMapper.formatOrderCanceledMessage(reason);
         String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.ORDER_CANCELED, message, redirectUrl);
+
+        // Gửi booking status change event
+        Map<String, Object> data = Map.of(
+                "newStatus", "CANCELLED",
+                "reason", reason != null ? reason : ""
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
 
     @Override
     @Transactional
     public void notifyVehicleHandover(String userId, String bookingId, String vehicleName, String location) {
         String message = notificationMapper.formatVehicleHandoverMessage(vehicleName, location);
-//        String redirectUrl = "/bookings/" + bookingId + "/handover";
         String redirectUrl = "/profile/booking-history";
         createNotificationForUser(userId, NotificationMapper.VEHICLE_HANDOVER, message, redirectUrl);
+
+        // Gửi booking status change event
+        Map<String, Object> data = Map.of(
+                "newStatus", "DELIVERED",
+                "vehicleName", vehicleName,
+                "location", location
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
+
 
     @Override
     @Transactional
     public void notifyVehiclePickupConfirmed(String ownerId, String bookingId, String renterName) {
         String message = notificationMapper.formatVehiclePickupConfirmedMessage(renterName);
-    //    String redirectUrl = "/bookings/" + bookingId;
         String redirectUrl = "/provider/manage-accepted-bookings";
         createNotificationForUser(ownerId, NotificationMapper.VEHICLE_PICKUP_CONFIRMED, message, redirectUrl);
+
+        // Gửi booking status change event cho provider
+        Map<String, Object> data = Map.of(
+                "newStatus", "RECEIVED_BY_CUSTOMER",
+                "renterName", renterName
+        );
+        sendBookingWebSocketEvent(ownerId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
 
     @Override
     @Transactional
     public void notifyVehicleReturnConfirmed(String userId, String bookingId) {
         String redirectUrl = "/profile/booking-history";
-        createNotificationForUser(userId, NotificationMapper.VEHICLE_RETURN_CONFIRMED, NotificationMapper.VEHICLE_RETURN_CONFIRMED_MSG, redirectUrl);
+        createNotificationForUser(userId, NotificationMapper.VEHICLE_RETURN_CONFIRMED,
+                NotificationMapper.VEHICLE_RETURN_CONFIRMED_MSG, redirectUrl);
+
+        // Gửi booking status change event
+        Map<String, Object> data = Map.of(
+                "newStatus", "RETURNED"
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
 
     @Override
@@ -263,6 +339,13 @@ public class NotificationServiceImpl implements NotificationService {
         String message = notificationMapper.formatUserReturnVehicleMessage(renterName);
         String redirectUrl = "/provider/manage-accepted-bookings";
         createNotificationForUser(ownerId, NotificationMapper.USER_RETURN_VEHICLE, message, redirectUrl);
+
+        // Gửi booking status change event cho provider
+        Map<String, Object> data = Map.of(
+                "newStatus", "RETURNED",
+                "renterName", renterName
+        );
+        sendBookingWebSocketEvent(ownerId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
 
     @Override
@@ -287,6 +370,14 @@ public class NotificationServiceImpl implements NotificationService {
         String message = notificationMapper.formatProviderReceivedBookingMessage(vehicleName);
         String redirectUrl = "/provider/manage-accepted-bookings";
         createNotificationForUser(providerId, NotificationMapper.PROVIDER_RECEIVED_BOOKING, message, redirectUrl);
+
+        // Gửi booking event cho provider với flag isNew
+        Map<String, Object> data = Map.of(
+                "vehicleName", vehicleName,
+                "isNew", true,
+                "status", "CONFIRMED"
+        );
+        sendBookingWebSocketEvent(providerId, bookingId, WebSocketEvents.BOOKING_UPDATE, data);
     }
 
     @Override
@@ -397,6 +488,12 @@ public class NotificationServiceImpl implements NotificationService {
         String message = NotificationMapper.BOOKING_COMPLETED_MSG;
         String redirectUrl = "/booking-detail/" + bookingId;
         createNotificationForUser(userId, NotificationMapper.BOOKING_COMPLETED, message, redirectUrl);
+
+        // Gửi booking status change event
+        Map<String, Object> data = Map.of(
+                "newStatus", "COMPLETED"
+        );
+        sendBookingWebSocketEvent(userId, bookingId, WebSocketEvents.BOOKING_STATUS_CHANGE, data);
     }
 
     @Override

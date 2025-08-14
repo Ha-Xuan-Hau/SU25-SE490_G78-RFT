@@ -1,4 +1,5 @@
 import { Client, IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 export type EventType =
     | 'NOTIFICATION'
@@ -26,62 +27,136 @@ class RealtimeEventService {
     private eventHandlers: Map<EventType, Set<EventHandler>> = new Map();
     private globalHandlers: Set<EventHandler> = new Set();
     private isConnecting = false;
+    private currentUserId: string | null = null;
+    private connectionPromise: Promise<void> | null = null;
 
     connect(userId: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            if (this.client?.connected) {
-                resolve();
-                return;
-            }
+        // Nếu đã connected với cùng userId
+        if (this.client?.connected && this.currentUserId === userId) {
+            console.log('Already connected for user:', userId);
+            return Promise.resolve();
+        }
 
-            if (this.isConnecting) {
-                reject(new Error('Already connecting'));
-                return;
-            }
+        // Nếu đang connecting, return promise hiện tại
+        if (this.isConnecting && this.connectionPromise) {
+            console.log('Connection in progress, returning existing promise');
+            return this.connectionPromise;
+        }
 
-            this.isConnecting = true;
+        // Nếu connected với userId khác, disconnect trước
+        if (this.client?.connected && this.currentUserId !== userId) {
+            console.log('Different user, disconnecting first');
+            this.disconnect();
+        }
+
+        this.isConnecting = true;
+        this.currentUserId = userId;
+
+        this.connectionPromise = new Promise((resolve, reject) => {
+            console.log('Creating new WebSocket connection for user:', userId);
 
             this.client = new Client({
-                brokerURL: `ws://localhost:8080/ws`,
+                // SỬA: Dùng SockJS thay vì WebSocket thuần
+                webSocketFactory: () => {
+                    return new SockJS('http://localhost:8080/ws');
+                },
+
+                connectHeaders: {
+                    userId: userId
+                },
+
+                debug: function (str) {
+                    console.log('[STOMP]', str);
+                },
+
                 reconnectDelay: 5000,
-                heartbeatIncoming: 30000,
-                heartbeatOutgoing: 30000,
-                onConnect: () => {
-                    console.log('Realtime service connected');
+                heartbeatIncoming: 4000,
+                heartbeatOutgoing: 4000,
+
+                onConnect: (frame) => {
+                    console.log('✅ WebSocket Connected:', frame);
                     this.isConnecting = false;
+                    this.connectionPromise = null;
 
                     // Subscribe to user channel
                     this.client?.subscribe(`/topic/user/${userId}`, (message: IMessage) => {
-                        this.handleMessage(JSON.parse(message.body));
+                        console.log('📨 Received user message:', message.body);
+                        try {
+                            const event = JSON.parse(message.body);
+                            this.handleMessage(event);
+                        } catch (error) {
+                            console.error('Error parsing user message:', error);
+                        }
                     });
+                    console.log(`✅ Subscribed to /topic/user/${userId}`);
 
                     // Subscribe to broadcast channel
                     this.client?.subscribe('/topic/broadcast', (message: IMessage) => {
-                        this.handleMessage(JSON.parse(message.body));
+                        console.log('📢 Received broadcast message:', message.body);
+                        try {
+                            const event = JSON.parse(message.body);
+                            this.handleMessage(event);
+                        } catch (error) {
+                            console.error('Error parsing broadcast message:', error);
+                        }
                     });
+                    console.log('✅ Subscribed to /topic/broadcast');
 
                     resolve();
                 },
-                onDisconnect: () => {
-                    console.log('Realtime service disconnected');
+
+                onDisconnect: (frame) => {
+                    console.log('❌ WebSocket Disconnected:', frame);
                     this.isConnecting = false;
+                    this.connectionPromise = null;
+                    this.currentUserId = null;
                 },
+
                 onStompError: (frame) => {
-                    console.error('STOMP error:', frame);
+                    console.error('❌ STOMP error:', frame);
                     this.isConnecting = false;
-                    reject(new Error(frame.headers['message']));
+                    this.connectionPromise = null;
+                    this.currentUserId = null;
+                    reject(new Error(frame.headers['message'] || 'STOMP connection error'));
                 },
+
+                onWebSocketError: (event) => {
+                    console.error('❌ WebSocket error:', event);
+                },
+
+                onWebSocketClose: (event) => {
+                    console.log('🔌 WebSocket closed:', event);
+                }
             });
 
-            this.client.activate();
+            try {
+                this.client.activate();
+                console.log('🚀 WebSocket client activated');
+            } catch (error) {
+                console.error('Failed to activate WebSocket client:', error);
+                this.isConnecting = false;
+                this.connectionPromise = null;
+                this.currentUserId = null;
+                reject(error);
+            }
         });
+
+        return this.connectionPromise;
     }
 
     disconnect(): void {
         if (this.client?.connected) {
-            this.client.deactivate();
+            try {
+                this.client.deactivate();
+                console.log('🔌 WebSocket disconnected');
+            } catch (error) {
+                console.error('Error during disconnect:', error);
+            }
         }
         this.client = null;
+        this.currentUserId = null;
+        this.connectionPromise = null;
+        this.isConnecting = false;
         this.eventHandlers.clear();
         this.globalHandlers.clear();
     }
@@ -111,19 +186,37 @@ class RealtimeEventService {
         }
 
         const subscription = this.client.subscribe(`/topic/channel/${channel}`, (message: IMessage) => {
-            handler(JSON.parse(message.body));
+            try {
+                handler(JSON.parse(message.body));
+            } catch (error) {
+                console.error('Error parsing channel message:', error);
+            }
         });
 
         return () => subscription.unsubscribe();
     }
 
     private handleMessage(event: RealtimeEvent) {
+        console.log('🔔 Handling event:', event.eventType, event);
+
         const handlers = this.eventHandlers.get(event.eventType);
         if (handlers) {
-            handlers.forEach(handler => handler(event));
+            handlers.forEach(handler => {
+                try {
+                    handler(event);
+                } catch (error) {
+                    console.error('Error in event handler:', error);
+                }
+            });
         }
 
-        this.globalHandlers.forEach(handler => handler(event));
+        this.globalHandlers.forEach(handler => {
+            try {
+                handler(event);
+            } catch (error) {
+                console.error('Error in global handler:', error);
+            }
+        });
     }
 
     isConnected(): boolean {

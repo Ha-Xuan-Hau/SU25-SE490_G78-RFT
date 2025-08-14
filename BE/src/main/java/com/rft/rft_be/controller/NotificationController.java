@@ -222,15 +222,15 @@ public class NotificationController {
     }
 
     //gửi thông báo khi thanh toán hoàn tất thành công
-    @PostMapping("/booking/payment-completed")
-    public ResponseEntity<Map<String, String>> notifyPaymentCompleted(@RequestBody Map<String, Object> request) {
-        String userId = (String) request.get("userId");
-        String bookingId = (String) request.get("bookingId");
-        Double amount = ((Number) request.get("amount")).doubleValue();
-
-        notificationService.notifyPaymentCompleted(userId, bookingId, amount);
-        return ResponseEntity.ok(Map.of("message", "Đã gửi thông báo thanh toán hoàn tất"));
-    }
+//    @PostMapping("/booking/payment-completed")
+//    public ResponseEntity<Map<String, String>> notifyPaymentCompleted(@RequestBody Map<String, Object> request) {
+//        String userId = (String) request.get("userId");
+//        String bookingId = (String) request.get("bookingId");
+//        Double amount = ((Number) request.get("amount")).doubleValue();
+//
+//        notificationService.notifyPaymentCompleted(userId, bookingId, amount);
+//        return ResponseEntity.ok(Map.of("message", "Đã gửi thông báo thanh toán hoàn tất"));
+//    }
 
     //gửi thông báo khi đơn hàng được provider/admin chấp thuận
     @PostMapping("/booking/order-approved")
