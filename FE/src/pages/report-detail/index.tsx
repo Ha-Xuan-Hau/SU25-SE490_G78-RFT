@@ -15,6 +15,8 @@ import {
   Layout,
   Space,
   Modal,
+  Alert,
+  Image,
 } from "antd";
 import {
   UserOutlined,
@@ -25,26 +27,25 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   InfoCircleOutlined,
+  CarOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
-  getReportDetail,
+  getGroupedReportDetail,
+  getSingleReportDetail,
   getReportTypeMapping,
   rejectAllReports,
   approveAppeal,
   rejectAppeal,
+  approveAndCreateStaffReport,
 } from "@/apis/report.api";
 import { ReportDetailDTO, ReporterDetailDTO } from "@/types/report";
 import ReportButton from "@/components/ReportComponent";
 import Link from "next/link";
 import { useUserState } from "@/recoils/user.state";
 import { translateENtoVI } from "@/lib/viDictionary";
-import {
-  showApiError,
-  showApiSuccess,
-  showError,
-  showSuccess,
-} from "@/utils/toast.utils";
+import { showError, showSuccess } from "@/utils/toast.utils";
+import Paragraph from "antd/es/typography/Paragraph";
 
 const { Title, Text } = Typography;
 const { Content } = Layout;
@@ -76,7 +77,7 @@ type ReportType =
 
 export default function ReportDetailPage() {
   const router = useRouter();
-  const { targetId, type } = router.query;
+  const { reportId, targetId, type, mode } = router.query;
   const [user] = useUserState();
 
   const [loading, setLoading] = useState(true);
@@ -110,27 +111,56 @@ export default function ReportDetailPage() {
     };
   }, []);
 
-  // Load report detail
+  // Load report detail based on mode
   useEffect(() => {
     if (!router.isReady) return;
 
-    if (
+    // Determine which API to call based on available params
+    if (mode === "single" && reportId && typeof reportId === "string") {
+      // SERIOUS hoặc STAFF_REPORT - dùng reportId
+      loadSingleReportDetail(reportId);
+    } else if (
+      mode === "grouped" &&
       targetId &&
       type &&
       typeof targetId === "string" &&
       typeof type === "string"
     ) {
-      loadReportDetail(targetId, type);
-    }
-  }, [router.isReady, targetId, type]);
+      // NON_SERIOUS - dùng targetId và type
+      loadGroupedReportDetail(targetId, type);
+    } else if (
+      // Fallback cho URL cũ
+      targetId &&
+      type &&
+      typeof targetId === "string" &&
+      typeof type === "string"
+    ) {
+      // Xác định loại report dựa vào type
+      const nonSeriousTypes = [
+        "INAPPROPRIATE",
+        "VIOLENCE",
+        "SPAM",
+        "OTHERS",
+        "DIRTY_CAR",
+        "MISLEADING_LISTING",
+      ];
 
-  const loadReportDetail = async (targetIdStr: string, typeStr: string) => {
+      if (nonSeriousTypes.includes(type)) {
+        loadGroupedReportDetail(targetId, type);
+      } else {
+        // Với SERIOUS và STAFF_REPORT, targetId thực ra là reportId
+        loadSingleReportDetail(targetId);
+      }
+    }
+  }, [router.isReady, reportId, targetId, type, mode]);
+
+  const loadSingleReportDetail = async (reportIdStr: string) => {
     try {
       setLoading(true);
-      const detail = await getReportDetail(targetIdStr, typeStr);
+      const detail = await getSingleReportDetail(reportIdStr);
       setReportDetail(detail);
     } catch (error) {
-      console.error("Error loading report detail:", error);
+      console.error("Error loading single report detail:", error);
       notification.error({
         message: "Lỗi",
         description: "Không thể tải chi tiết báo cáo",
@@ -138,6 +168,41 @@ export default function ReportDetailPage() {
       setTimeout(() => router.back(), 2000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadGroupedReportDetail = async (
+    targetIdStr: string,
+    typeStr: string
+  ) => {
+    try {
+      setLoading(true);
+      const detail = await getGroupedReportDetail(targetIdStr, typeStr);
+      setReportDetail(detail);
+    } catch (error) {
+      console.error("Error loading grouped report detail:", error);
+      notification.error({
+        message: "Lỗi",
+        description: "Không thể tải chi tiết báo cáo",
+      });
+      setTimeout(() => router.back(), 2000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reload function based on current mode
+  const reloadReportDetail = () => {
+    if (mode === "single" && reportId && typeof reportId === "string") {
+      loadSingleReportDetail(reportId);
+    } else if (
+      mode === "grouped" &&
+      targetId &&
+      type &&
+      typeof targetId === "string" &&
+      typeof type === "string"
+    ) {
+      loadGroupedReportDetail(targetId, type);
     }
   };
 
@@ -195,27 +260,111 @@ export default function ReportDetailPage() {
   };
 
   const handleCreateStaffReport = (targetId: string) => {
-    setSelectedTargetForReport(targetId);
-    setReportModalVisible(true);
-  };
+    // Check null trước
+    if (!reportDetail) {
+      showError("Không tìm thấy thông tin báo cáo");
+      return;
+    }
 
-  const handleRejectAllReports = () => {
     Modal.confirm({
-      title: "Xác nhận báo cáo không chính xác",
-      content:
-        "Bạn có chắc chắn tất cả báo cáo này không chính xác? Tất cả báo cáo sẽ bị từ chối.",
+      title: "Yêu cầu cung cấp bằng chứng",
+      content: (
+        <div>
+          <p>Hành động này sẽ:</p>
+          <ul>
+            <li>1. Chấp nhận tất cả báo cáo hiện tại</li>
+            <li>2. Tạo cờ cảnh báo đến người bị báo cáo</li>
+            <li>3. Bị cáo có 24h để kháng cáo</li>
+          </ul>
+          <p className="mt-2 font-semibold">Bạn chắc chắn?</p>
+        </div>
+      ),
       okText: "Xác nhận",
-      cancelText: "Đóng",
+      cancelText: "Quay lại",
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          const result = await rejectAllReports(
-            reportDetail!.reportSummary.reportId
-          );
-          showSuccess("Từ chối báo cáo thành công");
-          await loadReportDetail(targetId as string, type as string);
+          const reason = `Vi phạm ${translateENtoVI(
+            reportDetail.reportSummary.type
+          )}. Yêu cầu cung cấp bằng chứng trong vòng 24h.`;
+
+          let response;
+          if (mode === "grouped") {
+            // NON_SERIOUS
+            response = await approveAndCreateStaffReport(
+              targetId as string,
+              type as string,
+              undefined,
+              reason
+            );
+          } else if (mode === "single") {
+            // SERIOUS
+            response = await approveAndCreateStaffReport(
+              undefined,
+              undefined,
+              reportId as string,
+              reason
+            );
+          }
+
+          showSuccess("Đã tạo yêu cầu cung cấp bằng chứng.");
+
+          // Redirect to STAFF_REPORT detail
+          if (response?.staffReportId) {
+            router.push(
+              `/report-detail?reportId=${response.staffReportId}&mode=single`
+            );
+          }
         } catch (error) {
-          showError("Từ chối báo cáo thất bại");
+          showError("Lỗi khi tạo yêu cầu");
+        }
+      },
+    });
+  };
+
+  // Trong JSX - thêm optional chaining
+  <Button
+    type="primary"
+    danger
+    icon={<WarningOutlined />}
+    onClick={() =>
+      handleCreateStaffReport(reportDetail?.reportedUser?.id || "")
+    }
+    disabled={!reportDetail?.reportedUser?.id} // Disable nếu không có id
+  >
+    Yêu cầu cung cấp bằng chứng
+  </Button>;
+
+  const canShowActionButtons = () => {
+    if (!reportDetail) return false;
+
+    // Kiểm tra flag hasProcessed từ backend
+    const notProcessed = !reportDetail.reportSummary.hasProcessed;
+
+    return notProcessed && canProcessReports();
+  };
+
+  // report-detail page
+  const handleRejectAllReports = async () => {
+    Modal.confirm({
+      title: "Xác nhận báo cáo không chính xác",
+      content: "Báo cáo sẽ bị từ chối. Bạn chắc chắn?",
+      onOk: async () => {
+        try {
+          if (mode === "grouped") {
+            // NON_SERIOUS
+            await rejectAllReports(targetId, type, null);
+          } else if (mode === "single") {
+            // SERIOUS/STAFF
+            await rejectAllReports(null, null, reportId);
+          }
+
+          showSuccess("Đã từ chối báo cáo");
+
+          // Reload để update UI
+          reloadReportDetail();
+        } catch (error) {
+          showError("Lỗi khi từ chối báo cáo");
         }
       },
     });
@@ -242,7 +391,7 @@ export default function ReportDetailPage() {
         try {
           const result = await approveAppeal(appealId);
           showSuccess("Chấp nhận kháng cáo thành công");
-          await loadReportDetail(targetId as string, type as string);
+          reloadReportDetail();
         } catch (error) {
           showError("Không thể chấp nhận kháng cáo");
         }
@@ -262,7 +411,7 @@ export default function ReportDetailPage() {
         try {
           const result = await rejectAppeal(appealId);
           showSuccess("Từ chối kháng cáo thành công");
-          await loadReportDetail(targetId as string, type as string);
+          reloadReportDetail();
         } catch (error) {
           showError("Không thể từ chối kháng cáo");
         }
@@ -325,12 +474,39 @@ export default function ReportDetailPage() {
 
   const generalType = getGeneralTypeFromType(reportDetail.reportSummary.type);
 
+  // Phần return giữ nguyên như cũ, chỉ thay đổi các callback functions
   return (
     <Layout style={{ minHeight: "100vh", background: "#f5f5f5" }}>
       <Content style={{ padding: "24px" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
           <Space direction="vertical" size={24} style={{ width: "100%" }}>
-            {/* Header Card với 2 nút xử lý */}
+            {/* STATUS ALERT - ĐẶT NGAY SAU HEADER */}
+            {reportDetail.reportSummary.hasProcessed && (
+              <Alert
+                message={
+                  reportDetail.reportSummary.status === "APPROVED"
+                    ? "✅ Báo cáo đã được chấp nhận"
+                    : "❌ Báo cáo đã bị từ chối"
+                }
+                description={
+                  reportDetail.reportSummary.status === "APPROVED"
+                    ? "Các báo cáo này đã được xác nhận là chính xác và đã được xử lý."
+                    : "Các báo cáo này đã được xác định là không chính xác và đã bị từ chối."
+                }
+                type={
+                  reportDetail.reportSummary.status === "APPROVED"
+                    ? "success"
+                    : "error"
+                }
+                showIcon
+                style={{
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                }}
+              />
+            )}
+
+            {/* Header Card với 2 nút xử lý - GIỮ NGUYÊN */}
             <Card bordered={false} style={{ borderRadius: "12px" }}>
               <Row gutter={[16, 16]} align="middle">
                 <Col xs={24} md={12}>
@@ -344,13 +520,12 @@ export default function ReportDetailPage() {
                     </Title>
                     <Text type="secondary" style={{ fontSize: "16px" }}>
                       <UserOutlined style={{ marginRight: "8px" }} />
-                      {reportDetail.reportedUser.fullName}
+                      Người bị báo cáo: {reportDetail.reportedUser.fullName}
                     </Text>
                   </Space>
                 </Col>
-
                 <Col xs={24} md={12} style={{ textAlign: "right" }}>
-                  {canProcessReports() &&
+                  {canShowActionButtons() &&
                     user?.role &&
                     ["STAFF", "ADMIN"].includes(user.role) && (
                       <Space wrap>
@@ -361,7 +536,6 @@ export default function ReportDetailPage() {
                         >
                           Báo cáo không chính xác
                         </Button>
-
                         <Button
                           type="primary"
                           danger
@@ -424,25 +598,34 @@ export default function ReportDetailPage() {
                   <span>Tổng quan báo cáo</span>
                 </Space>
               }
-              style={{
-                borderRadius: "12px",
-                boxShadow:
-                  "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)",
-              }}
             >
               <Row gutter={[24, 24]}>
-                <Col xs={24} sm={12} lg={8}>
+                {/* <Col xs={24} sm={12} lg={8}>
                   <Space
                     direction="vertical"
                     size={4}
                     style={{ width: "100%" }}
                   >
-                    <Text type="secondary">Mã báo cáo</Text>
-                    <Text strong style={{ fontSize: "16px", color: "#1890ff" }}>
-                      {reportDetail.reportSummary.reportId}
-                    </Text>
+                    {mode === "grouped" ? (
+                      <>
+                        <Text type="secondary">Mã báo cáo</Text>
+                        <Text strong style={{ fontSize: "16px" }}>
+                          Đây là báo cáo tổng hợp
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text type="secondary">Mã báo cáo</Text>
+                        <Text
+                          strong
+                          style={{ fontSize: "16px", color: "#1890ff" }}
+                        >
+                          {reportDetail.reportSummary.reportId}
+                        </Text>
+                      </>
+                    )}
                   </Space>
-                </Col>
+                </Col> */}
 
                 <Col xs={24} sm={12} lg={8}>
                   <Space
@@ -450,10 +633,10 @@ export default function ReportDetailPage() {
                     size={4}
                     style={{ width: "100%" }}
                   >
-                    <Text type="secondary">Loại báo cáo</Text>
+                    <Text>Loại báo cáo</Text>
                     <Tag
                       color={getTypeColor(reportDetail.reportSummary.type)}
-                      style={{ fontSize: "14px", padding: "4px 12px" }}
+                      style={{ fontSize: "18px", padding: "4px 12px" }}
                     >
                       {translateENtoVI(reportDetail.reportSummary.type)}
                     </Tag>
@@ -462,6 +645,7 @@ export default function ReportDetailPage() {
               </Row>
             </Card>
 
+            {/* PHẦN CÒN LẠI GIỮ NGUYÊN HOÀN TOÀN */}
             {/* Card thông tin xử lý cho STAFF_REPORT */}
             {reportDetail.reportSummary.type === "STAFF_REPORT" && (
               <Card
@@ -644,6 +828,7 @@ export default function ReportDetailPage() {
               </Card>
             )}
 
+            {/* PHẦN CÒN LẠI GIỮ NGUYÊN HOÀN TOÀN NHƯ CODE CŨ */}
             {/* Trạng thái xử lý - Chỉ hiển thị cho STAFF và ADMIN */}
             {user?.role && ["STAFF", "ADMIN"].includes(user.role) && (
               <Card
@@ -752,40 +937,124 @@ export default function ReportDetailPage() {
             <Card
               title={
                 <Space>
-                  <UserOutlined />
-                  <span>Thông tin người bị báo cáo</span>
+                  {reportDetail.reportedUser.vehicleId ? (
+                    <CarOutlined />
+                  ) : (
+                    <UserOutlined />
+                  )}
+                  <span>Thông tin bị cáo</span>
                 </Space>
               }
               bordered={false}
-              style={{
-                borderRadius: "12px",
-                boxShadow:
-                  "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)",
-              }}
             >
               <Descriptions
                 bordered
-                column={{ xs: 1, sm: 1, md: 2, lg: 2 }}
+                column={{ xs: 1, sm: 2, md: 2, lg: 2, xl: 2, xxl: 2 }}
                 labelStyle={{ backgroundColor: "#fafafa", fontWeight: 500 }}
                 contentStyle={{ backgroundColor: "#fff" }}
               >
-                <Descriptions.Item label="Họ và tên">
-                  <Space>
-                    <Avatar
-                      icon={<UserOutlined />}
-                      style={{ backgroundColor: "#1890ff" }}
-                    />
-                    <Text strong style={{ fontSize: "15px" }}>
-                      {reportDetail.reportedUser.fullName}
-                    </Text>
-                  </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="Email">
-                  <Space>
-                    <MailOutlined style={{ color: "#1890ff" }} />
-                    <Text>{reportDetail.reportedUser.email || "N/A"}</Text>
-                  </Space>
-                </Descriptions.Item>
+                {/* Hiển thị thông tin xe nếu có */}
+                {reportDetail.reportedUser.vehicleId ? (
+                  <>
+                    <Descriptions.Item label="Chủ xe">
+                      <Space>
+                        <Avatar
+                          icon={<UserOutlined />}
+                          style={{ backgroundColor: "#1890ff" }}
+                          size="small"
+                        />
+                        <Text strong style={{ fontSize: "15px" }}>
+                          {reportDetail.reportedUser.fullName}
+                        </Text>
+                      </Space>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item label="Email chủ xe">
+                      <Space>
+                        <MailOutlined style={{ color: "#1890ff" }} />
+                        <Text>{reportDetail.reportedUser.email || "N/A"}</Text>
+                      </Space>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item label="Tên đăng ký xe">
+                      <Text
+                        strong
+                        style={{ fontSize: "15px", color: "#1890ff" }}
+                      >
+                        {reportDetail.reportedUser.vehicleName || "N/A"}
+                      </Text>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item label="Hình ảnh xe">
+                      {reportDetail.reportedUser.vehicleImage ? (
+                        <Image
+                          src={reportDetail.reportedUser.vehicleImage}
+                          alt="Vehicle"
+                          width={120}
+                          height={80}
+                          style={{
+                            objectFit: "cover",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                          }}
+                          preview={{
+                            maskClassName: "rounded",
+                          }}
+                          placeholder={
+                            <div
+                              style={{
+                                width: 120,
+                                height: 80,
+                                background: "#f0f0f0",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                borderRadius: "6px",
+                              }}
+                            >
+                              <Spin />
+                            </div>
+                          }
+                        />
+                      ) : (
+                        <Text type="secondary">Không có ảnh</Text>
+                      )}
+                    </Descriptions.Item>
+                  </>
+                ) : (
+                  // Hiển thị thông tin người nếu không phải xe
+                  <>
+                    <Descriptions.Item label="Họ và tên">
+                      <Space>
+                        <Avatar
+                          icon={<UserOutlined />}
+                          style={{ backgroundColor: "#1890ff" }}
+                          size="small"
+                        />
+                        <Text strong style={{ fontSize: "15px" }}>
+                          {reportDetail.reportedUser.fullName}
+                        </Text>
+                      </Space>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item label="Email">
+                      <Space>
+                        <MailOutlined style={{ color: "#1890ff" }} />
+                        <Text>{reportDetail.reportedUser.email || "N/A"}</Text>
+                      </Space>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item label="Mã người dùng">
+                      <Text style={{ color: "#595959" }}>
+                        {reportDetail.reportedUser.id}
+                      </Text>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item label="Trạng thái">
+                      <Tag color="green">Đang hoạt động</Tag>
+                    </Descriptions.Item>
+                  </>
+                )}
               </Descriptions>
             </Card>
 
@@ -886,9 +1155,21 @@ export default function ReportDetailPage() {
                     title: "Lý do báo cáo",
                     dataIndex: "reason",
                     key: "reason",
-                    ellipsis: true,
+                    width: 350,
                     render: (reason: string) => (
-                      <Text style={{ display: "block" }}>{reason}</Text>
+                      <Paragraph
+                        ellipsis={{
+                          rows: 2, // Hiển thị tối đa 2 dòng
+                          expandable: true,
+                          symbol: "Xem thêm",
+                          onExpand: (event) => {
+                            event.stopPropagation(); // Ngăn trigger row click
+                          },
+                        }}
+                        style={{ marginBottom: 0 }}
+                      >
+                        {reason}
+                      </Paragraph>
                     ),
                   },
                   {
@@ -941,7 +1222,9 @@ export default function ReportDetailPage() {
                       </Space>
                     ),
                   },
-                  ...(user?.role && ["STAFF", "ADMIN"].includes(user.role)
+                  ...(user?.role &&
+                  ["STAFF", "ADMIN"].includes(user.role) &&
+                  generalType !== "STAFF_ERROR" // Dùng generalType thay vì type
                     ? [
                         {
                           title: "Thao tác",
@@ -989,7 +1272,7 @@ export default function ReportDetailPage() {
               onModalClose={() => {
                 setReportModalVisible(false);
                 setSelectedTargetForReport(null);
-                loadReportDetail(targetId as string, type as string);
+                reloadReportDetail();
               }}
             />
           )}
@@ -1024,7 +1307,7 @@ export default function ReportDetailPage() {
               onModalClose={() => {
                 setAppealModalVisible(false);
                 setSelectedFlagForAppeal(null);
-                loadReportDetail(targetId as string, type as string);
+                reloadReportDetail();
               }}
             />
           )}

@@ -1,5 +1,6 @@
 export interface ReportGroupedByTargetDTO {
   targetId: string;
+  reportId?: string;
   reportedNameOrVehicle: string;
   email: string;
   type: string;
@@ -14,12 +15,18 @@ export interface ReportSummaryDTO {
   canAppeal?: boolean;
   hasAppealed?: boolean;
   currentFlagCount?: number;
+  hasProcessed: boolean;
+  status: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 export interface ReportedUserDTO {
   id: string;
   fullName: string;
   email: string;
+
+  vehicleId?: string;
+  vehicleName?: string;
+  vehicleImage?: string;
 }
 
 export interface ReporterDetailDTO {
@@ -42,10 +49,20 @@ export interface ReportDetailDTO {
 
 export interface AggregatedReport {
   id: string;
+  reportId?: string;
   reportedUserName: string;
   reportedUserEmail: string;
   reportCount: number;
   types: Set<string>;
+}
+
+export interface AggregatedNonSeriousReport {
+  targetId: string;
+  reportedNameOrVehicle: string;
+  email: string;
+  types: Set<string>;
+  totalCount: number;
+  reports: ReportGroupedByTargetDTO[];
 }
 
 export interface AppealInfoDTO {

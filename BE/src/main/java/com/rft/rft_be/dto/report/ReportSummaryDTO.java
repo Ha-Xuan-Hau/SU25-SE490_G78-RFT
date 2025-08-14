@@ -9,6 +9,7 @@ public class ReportSummaryDTO {
     private String reportId;
     private String type;
     private String status;
+    private boolean hasProcessed;
 
     // THÊM fields cho STAFF_REPORT
     private String appealDeadline;

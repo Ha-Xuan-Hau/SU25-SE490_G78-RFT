@@ -5,6 +5,7 @@ import com.rft.rft_be.dto.report.ReportDetailDTO;
 import com.rft.rft_be.dto.report.ReportGroupedByTargetDTO;
 import com.rft.rft_be.dto.report.ReportRequest;
 import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.UserReport;
 
 import java.util.List;
 
@@ -17,13 +18,21 @@ public interface ReportService {
 
     ReportDetailDTO getReportDetailByTargetAndType(String targetId, String type);
 
-    //reject các report có trong 1 report detail
-    void rejectAllReports( String targetId, String type);
+    // Method reject cho NON_SERIOUS
+    void rejectAllReports(String targetId, String type);
 
-    void rejectSeriousReports(String reportId);
+    // Method reject cho SERIOUS/STAFF
+    void rejectSingleReport(String reportId);
+
+    void approveAllReports(String targetId, String type);
+    void approveSingleReport(String reportId);
+    String createStaffReport(User staff, ReportRequest request);
+    UserReport getReportById(String reportId);
 
     //approve kháng cáo từ bị cáo
     void processAppealDecision(String appealId, boolean approved);
 
-//    List<ReportGroupedByTargetDTO> getEscalationTargets();
+    ReportDetailDTO getGroupedReportDetail(String targetId, String type);
+    ReportDetailDTO getSingleReportDetail(String reportId);
+
 }

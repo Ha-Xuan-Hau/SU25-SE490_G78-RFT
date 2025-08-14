@@ -12,12 +12,12 @@ import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.UserReportRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.repository.VehicleRepository;
-import com.rft.rft_be.util.ProfanityValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -43,14 +43,11 @@ public class ReportServiceImpl implements ReportService {
             "DISPUTE_REFUND", "LATE_RETURN_NO_CONTACT"
     );
 
-    //SPAM, INAPPROPRIATE - người
-    //MISLEADING_LISTING - xe
     private final List<String> nonSeriousReport = List.of(
             "INAPPROPRIATE", "VIOLENCE", "SPAM", "OTHERS", "DIRTY_CAR", "MISLEADING_LISTING"
     );
 
     private final List<String> staffReport = List.of("STAFF_REPORT");
-    private final List<String> appealReport = List.of("APPEAL");
 
     @Override
     public void report(User reporter, ReportRequest request) {
@@ -58,11 +55,6 @@ public class ReportServiceImpl implements ReportService {
 
         if ("APPEAL".equals(type)) {
             processAppeal(reporter, request);
-            return;
-        }
-
-        if ("STAFF_REPORT".equals(type)) {
-            processStaffReport(reporter, request);
             return;
         }
 
@@ -87,40 +79,6 @@ public class ReportServiceImpl implements ReportService {
         }
 
         reportRepo.save(report);
-    }
-
-    private void processStaffReport(User staff, ReportRequest request) {
-        request.setGeneralType("STAFF_ERROR");
-        request.setType("STAFF_REPORT");
-
-        // THÊM: Approve tất cả reports hiện tại của target
-        String targetId = request.getTargetId();
-
-        // Tìm tất cả reports NON_SERIOUS hoặc SERIOUS về target này
-        List<UserReport> existingReports = reportRepo.findAll().stream()
-                .filter(r -> r.getReportedId().equals(targetId))
-                .filter(r -> nonSeriousReport.contains(r.getType()) || seriousReport.contains(r.getType()))
-                .filter(r -> r.getStatus() == UserReport.Status.PENDING)
-                .collect(Collectors.toList());
-
-        // Approve tất cả
-        existingReports.forEach(report -> {
-            report.setStatus(UserReport.Status.APPROVED);
-        });
-        reportRepo.saveAll(existingReports);
-
-        // Tạo STAFF_REPORT
-        UserReport staffFlag = reportMapper.toEntity(request);
-        staffFlag.setReporter(staff);
-        staffFlag.setCreatedAt(LocalDateTime.now());
-        staffFlag.setStatus(UserReport.Status.PENDING);
-
-        LocalDateTime deadline = LocalDateTime.now().plusHours(24);
-        staffFlag.setReason(request.getReason() +
-                "\n\n[Thời hạn kháng cáo: " +
-                deadline.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) + "]");
-
-        reportRepo.save(staffFlag);
     }
 
 
@@ -149,7 +107,6 @@ public class ReportServiceImpl implements ReportService {
             throw new IllegalArgumentException("Bạn đã kháng cáo báo cáo này rồi");
         }
 
-        request.setGeneralType("PROVIDER_APPEAL");
         request.setType("APPEAL");
         UserReport appeal = reportMapper.toEntity(request);
         appeal.setReporter(appellant);
@@ -222,19 +179,16 @@ public class ReportServiceImpl implements ReportService {
     @Override
     @Transactional
     public void rejectAllReports(String targetId, String type) {
-        // Tìm tất cả reports của targetId với type cụ thể
         List<UserReport> reports = reportRepo.findByReportedIdAndType(targetId, type);
 
         if (reports.isEmpty()) {
             throw new RuntimeException("Không tìm thấy báo cáo");
         }
 
-        // Chỉ xử lý NON_SERIOUS và SERIOUS
         if (!nonSeriousReport.contains(type) && !seriousReport.contains(type)) {
             throw new IllegalArgumentException("Không thể xử lý loại báo cáo này");
         }
 
-        // Đổi tất cả sang REJECTED
         reports.forEach(report -> {
             if (report.getStatus() == UserReport.Status.PENDING) {
                 report.setStatus(UserReport.Status.REJECTED);
@@ -246,89 +200,256 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional
-    public void rejectSeriousReports(String reportId) {
-        // Tìm report theo ID
+    public void rejectSingleReport(String reportId) {
         UserReport report = reportRepo.findById(reportId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo với ID: " + reportId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo"));
 
-        // Kiểm tra phải là SERIOUS report không
-        if (!seriousReport.contains(report.getType())) {
-            throw new IllegalArgumentException("Báo cáo này không phải loại nghiêm trọng");
+        if (!seriousReport.contains(report.getType()) &&
+                !"STAFF_REPORT".equals(report.getType())) {
+            throw new IllegalArgumentException("Method này chỉ dùng cho SERIOUS/STAFF reports");
         }
 
-        // Kiểm tra status hiện tại
+        if (report.getStatus() != UserReport.Status.PENDING) {
+            throw new IllegalArgumentException("Báo cáo đã được xử lý");
+        }
+
+        report.setStatus(UserReport.Status.APPROVED);
+        reportRepo.save(report);
+    }
+
+    @Override
+    @Transactional
+    public void approveAllReports(String targetId, String type) {
+        List<UserReport> reports = reportRepo.findByReportedIdAndType(targetId, type).stream()
+                .filter(r -> r.getStatus() == UserReport.Status.PENDING)
+                .collect(Collectors.toList());
+
+        if (reports.isEmpty()) {
+            throw new RuntimeException("Không tìm thấy báo cáo PENDING để approve");
+        }
+
+        if (!nonSeriousReport.contains(type)) {
+            throw new IllegalArgumentException("Method này chỉ dùng cho NON_SERIOUS reports");
+        }
+
+        reports.forEach(report -> report.setStatus(UserReport.Status.APPROVED));
+        reportRepo.saveAll(reports);
+
+    }
+
+    @Override
+    @Transactional
+    public void approveSingleReport(String reportId) {
+        UserReport report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo: " + reportId));
+
+        if (!seriousReport.contains(report.getType())) {
+            throw new IllegalArgumentException("Method này chỉ dùng cho SERIOUS reports");
+        }
+
         if (report.getStatus() != UserReport.Status.PENDING) {
             throw new IllegalArgumentException("Báo cáo đã được xử lý trước đó");
         }
 
-        // Lấy targetId và type từ report này
-        String targetId = report.getReportedId();
-        String type = report.getType();
-
-        // Tìm TẤT CẢ reports cùng targetId và cùng type
-        List<UserReport> allRelatedReports = reportRepo.findByReportedIdAndType(targetId, type);
-
-        // Reject tất cả reports liên quan
-        allRelatedReports.forEach(relatedReport -> {
-            if (relatedReport.getStatus() == UserReport.Status.PENDING) {
-                relatedReport.setStatus(UserReport.Status.REJECTED);
-            }
-        });
-
-        // Lưu tất cả thay đổi
-        reportRepo.saveAll(allRelatedReports);
-
-        System.out.println("Đã reject " + allRelatedReports.size() + " báo cáo loại " + type + " của target: " + targetId);
+        report.setStatus(UserReport.Status.APPROVED);
+        reportRepo.save(report);
     }
 
+    @Override
+    @Transactional
+    public String createStaffReport(User staff, ReportRequest request) {
+        request.setGeneralType("STAFF_ERROR");
+        request.setType("STAFF_REPORT");
 
-//    @Override
-//    public List<ReportGroupedByTargetDTO> getEscalationTargets() {
-//        List<Object[]> results = reportRepo.findEscalationTargets(nonSeriousReport, 10L);
-//
-//        return results.stream().map(row -> {
-//            String targetId = (String) row[0];
-//            long count = ((Number) row[1]).longValue();
-//            return new ReportGroupedByTargetDTO(
-//                    targetId,
-//                    resolveReportedName(targetId),
-//                    resolveReportedEmail(targetId),
-//                    "ESCALATION_NEEDED",
-//                    count
-//            );
-//        }).collect(Collectors.toList());
-//    }
+        UserReport staffFlag = reportMapper.toEntity(request);
+        staffFlag.setReporter(staff);
+        staffFlag.setCreatedAt(LocalDateTime.now());
+        staffFlag.setStatus(UserReport.Status.PENDING);
+
+        LocalDateTime deadline = LocalDateTime.now().plusHours(24);
+        staffFlag.setReason(request.getReason() +
+                "\n\n[Thời hạn kháng cáo: " +
+                deadline.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) + "]");
+
+        UserReport saved = reportRepo.save(staffFlag);
+
+        // TODO: Send notification to user
+        // notificationService.notifyUserAboutStaffFlag(request.getTargetId(), saved.getId());
+
+        return saved.getId();
+    }
+
+    @Override
+    public UserReport getReportById(String reportId) {
+        return reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found: " + reportId));
+    }
 
     @Override
     public List<ReportGroupedByTargetDTO> getReportsByType(String generalType, int page, int size) {
-        List<UserReport> filteredReports = reportRepo.findAll().stream()
-                .filter(r -> matchGeneralType(r.getType(), generalType))
+        List<ReportGroupedByTargetDTO> result = new ArrayList<>();
+
+        if ("NON_SERIOUS_ERROR".equals(generalType)) {
+            result = getNonSeriousReports();
+        } else if ("SERIOUS_ERROR".equals(generalType)) {
+            result = getSeriousReports();
+        } else if ("STAFF_ERROR".equals(generalType)) {
+            result = getStaffReports();
+        }
+        // Không xử lý APPEAL vì không hiển thị trên UI
+
+        // Sort by count (descending) then by created date
+        result.sort(Comparator
+                .comparingLong(ReportGroupedByTargetDTO::getCount).reversed());
+
+        return paginate(result, page, size);
+    }
+
+    // Xử lý NON_SERIOUS - nhóm theo targetId và type
+    private List<ReportGroupedByTargetDTO> getNonSeriousReports() {
+        // Lấy tất cả reports NON_SERIOUS với status PENDING
+        List<UserReport> pendingReports = reportRepo.findAll().stream()
+                .filter(r -> nonSeriousReport.contains(r.getType()))
+                .filter(r -> r.getStatus() == UserReport.Status.PENDING)
                 .collect(Collectors.toList());
 
-        List<ReportGroupedByTargetDTO> grouped = buildGroupedDTOList(filteredReports).stream()
-                .sorted(Comparator.comparingLong(ReportGroupedByTargetDTO::getCount).reversed())
+        // Group by targetId và type
+        Map<String, Map<String, List<UserReport>>> groupedByTargetAndType = pendingReports.stream()
+                .collect(Collectors.groupingBy(
+                        UserReport::getReportedId,
+                        Collectors.groupingBy(UserReport::getType)
+                ));
+
+        List<ReportGroupedByTargetDTO> result = new ArrayList<>();
+
+        groupedByTargetAndType.forEach((targetId, typeMap) -> {
+            typeMap.forEach((type, reports) -> {
+                ReportGroupedByTargetDTO dto = new ReportGroupedByTargetDTO();
+                dto.setTargetId(targetId);
+                dto.setReportId(null); // NON_SERIOUS không cần reportId
+                dto.setReportedNameOrVehicle(resolveReportedName(targetId));
+                dto.setEmail(resolveReportedEmail(targetId));
+                dto.setType(type);
+                dto.setCount((long) reports.size());
+                result.add(dto);
+            });
+        });
+
+        return result;
+    }
+
+    // Xử lý SERIOUS - mỗi report là 1 item riêng
+    private List<ReportGroupedByTargetDTO> getSeriousReports() {
+        List<UserReport> reports = reportRepo.findAll().stream()
+                .filter(r -> seriousReport.contains(r.getType()))
+                .filter(r -> r.getStatus() == UserReport.Status.PENDING)
                 .collect(Collectors.toList());
 
-        return paginate(grouped, page, size);
+        return reports.stream().map(report -> {
+            ReportGroupedByTargetDTO dto = new ReportGroupedByTargetDTO();
+            dto.setTargetId(report.getReportedId());
+            dto.setReportId(report.getId()); // SERIOUS cần reportId
+            dto.setReportedNameOrVehicle(resolveReportedName(report.getReportedId()));
+            dto.setEmail(resolveReportedEmail(report.getReportedId()));
+            dto.setType(report.getType());
+            dto.setCount(1L); // SERIOUS luôn có count = 1
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+    // Xử lý STAFF_REPORT - mỗi report là 1 item riêng
+    private List<ReportGroupedByTargetDTO> getStaffReports() {
+        List<UserReport> reports = reportRepo.findAll().stream()
+                .filter(r -> "STAFF_REPORT".equals(r.getType()))
+                .filter(r -> r.getStatus() == UserReport.Status.PENDING)
+                .collect(Collectors.toList());
+
+        return reports.stream().map(report -> {
+            ReportGroupedByTargetDTO dto = new ReportGroupedByTargetDTO();
+            dto.setTargetId(report.getReportedId());
+            dto.setReportId(report.getId()); // STAFF_REPORT cần reportId
+            dto.setReportedNameOrVehicle(resolveReportedName(report.getReportedId()));
+            dto.setEmail(resolveReportedEmail(report.getReportedId()));
+            dto.setType("STAFF_REPORT");
+            dto.setCount(1L);
+
+            // Thêm thông tin appeal status
+            LocalDateTime deadline = report.getCreatedAt().plusHours(24);
+            boolean hasAppeal = reportRepo.existsAppealByReporterAndFlag(
+                    report.getReportedId(), report.getId()
+            );
+
+            String additionalInfo = "";
+            if (hasAppeal) {
+                additionalInfo = " (Đã có kháng cáo)";
+            } else if (LocalDateTime.now().isAfter(deadline)) {
+                additionalInfo = " (Hết hạn kháng cáo)";
+            } else {
+                long hoursLeft = Duration.between(LocalDateTime.now(), deadline).toHours();
+                additionalInfo = " (Còn " + hoursLeft + "h để kháng cáo)";
+            }
+            dto.setAdditionalInfo(additionalInfo);
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     @Override
     public List<ReportGroupedByTargetDTO> searchReports(String generalType, String keyword, String type, int page, int size) {
-        List<UserReport> filteredReports = reportRepo.findAll().stream()
-                .filter(r -> matchGeneralType(r.getType(), generalType))
-                .filter(r -> keyword == null || resolveReportedName(r.getReportedId()).toLowerCase().contains(keyword.toLowerCase()))
-                .filter(r -> type == null || r.getType().equalsIgnoreCase(type))
+        List<ReportGroupedByTargetDTO> allReports = getReportsByType(generalType, 0, Integer.MAX_VALUE);
+
+        // Filter by keyword and type
+        List<ReportGroupedByTargetDTO> filtered = allReports.stream()
+                .filter(r -> keyword == null || keyword.isEmpty() ||
+                        r.getReportedNameOrVehicle().toLowerCase().contains(keyword.toLowerCase()) ||
+                        r.getEmail().toLowerCase().contains(keyword.toLowerCase()))
+                .filter(r -> type == null || type.isEmpty() || r.getType().equalsIgnoreCase(type))
                 .collect(Collectors.toList());
 
-        List<ReportGroupedByTargetDTO> grouped = buildGroupedDTOList(filteredReports);
-        return paginate(grouped, page, size);
+        return paginate(filtered, page, size);
     }
 
     @Override
-    public ReportDetailDTO getReportDetailByTargetAndType(String targetId, String type) {
-        //phân biệt đây là report xe hay report người
+    public ReportDetailDTO getGroupedReportDetail(String targetId, String type) {
+        if (!nonSeriousReport.contains(type)) {
+            throw new IllegalArgumentException("This endpoint only supports non-serious report types");
+        }
 
+        // LẤY TẤT CẢ reports, không chỉ PENDING
         List<UserReport> reports = reportRepo.findByReportedIdAndType(targetId, type);
+
+        if (reports.isEmpty()) {
+            return null;
+        }
+
+        // Thêm flag để biết đã xử lý chưa
+        boolean hasProcessed = reports.stream()
+                .anyMatch(r -> r.getStatus() != UserReport.Status.PENDING);
+
+        return buildReportDetailDTO(reports, targetId, hasProcessed);
+    }
+
+    @Override
+    public ReportDetailDTO getSingleReportDetail(String reportId) {
+        UserReport report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        if (!seriousReport.contains(report.getType()) && !"STAFF_REPORT".equals(report.getType())) {
+            throw new IllegalArgumentException("This endpoint only supports serious or staff report types");
+        }
+
+//        if (report.getStatus() != UserReport.Status.PENDING) {
+//            throw new IllegalArgumentException("Report is not in PENDING status");
+//        }
+
+        List<UserReport> singleReportList = List.of(report);
+
+        boolean hasProcessed = report.getStatus() != UserReport.Status.PENDING;
+
+        return buildReportDetailDTO(singleReportList, report.getReportedId(), hasProcessed);
+    }
+
+    private ReportDetailDTO buildReportDetailDTO(List<UserReport> reports, String targetId,boolean hasProcessed) {
         if (reports.isEmpty()) {
             return null;
         }
@@ -338,52 +459,78 @@ public class ReportServiceImpl implements ReportService {
         ReportSummaryDTO summary = new ReportSummaryDTO();
         summary.setReportId(sample.getId());
         summary.setType(sample.getType());
-
         summary.setStatus(String.valueOf(sample.getStatus()));
+        summary.setHasProcessed(hasProcessed);
 
-        // THÊM: Xử lý đặc biệt cho STAFF_REPORT
+
         AppealInfoDTO appealInfo = null;
-
-        if ("STAFF_REPORT".equals(type)) {
-            UserReport staffFlag = reports.stream()
-                    .filter(r -> r.getStatus() == UserReport.Status.PENDING)
-                    .findFirst()
-                    .orElse(sample); // Fallback to sample if no PENDING
-
-            if (staffFlag != null) {
-                LocalDateTime deadline = staffFlag.getCreatedAt().plusHours(24);
-                summary.setAppealDeadline(deadline.toString());
-                summary.setCanAppeal(LocalDateTime.now().isBefore(deadline) &&
-                        staffFlag.getStatus() == UserReport.Status.PENDING);
-
-                // Check có appeal không
-                List<UserReport> appeals = reportRepo.findByReportedIdAndType(
-                        staffFlag.getId(), "APPEAL");
-
-                if (!appeals.isEmpty()) {
-                    UserReport appeal = appeals.get(0); // Lấy appeal đầu tiên
-                    summary.setHasAppealed(true);
-
-                    // Tạo AppealInfoDTO
-                    appealInfo = new AppealInfoDTO();
-                    appealInfo.setAppealId(appeal.getId());
-                    appealInfo.setAppellantName(appeal.getReporter().getFullName());
-                    appealInfo.setAppellantEmail(appeal.getReporter().getEmail());
-                    appealInfo.setReason(appeal.getReason());
-                    appealInfo.setEvidenceUrl(appeal.getEvidenceUrl());
-                    appealInfo.setCreatedAt(appeal.getCreatedAt().toString());
-                    appealInfo.setStatus(appeal.getStatus().toString());
-                }
-            }
-
-            // Đếm số cờ
-            long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
-                    targetId, "STAFF_REPORT", UserReport.Status.APPROVED);
-            summary.setCurrentFlagCount(flagCount);
+        if ("STAFF_REPORT".equals(sample.getType())) {
+            appealInfo = buildAppealInfo(sample, targetId, summary);
         }
 
+        ReportedUserDTO reportedUser = buildReportedUserDTO(targetId);
 
+        List<ReporterDetailDTO> reporterList = reports.stream()
+                .map(this::buildReporterDetailDTO)
+                .collect(Collectors.toList());
+
+        ReportDetailDTO detail = new ReportDetailDTO();
+        detail.setReportSummary(summary);
+        detail.setReportedUser(reportedUser);
+        detail.setReporters(reporterList);
+        detail.setAppealInfo(appealInfo);
+
+        return detail;
+    }
+
+    private AppealInfoDTO buildAppealInfo(UserReport staffFlag, String targetId, ReportSummaryDTO summary) {
+        LocalDateTime deadline = staffFlag.getCreatedAt().plusHours(24);
+        summary.setAppealDeadline(deadline.toString());
+        summary.setCanAppeal(LocalDateTime.now().isBefore(deadline) &&
+                staffFlag.getStatus() == UserReport.Status.PENDING);
+
+        List<UserReport> appeals = reportRepo.findByReportedIdAndType(staffFlag.getId(), "APPEAL");
+
+        AppealInfoDTO appealInfo = null;
+        if (!appeals.isEmpty()) {
+            UserReport appeal = appeals.get(0);
+            summary.setHasAppealed(true);
+
+            appealInfo = new AppealInfoDTO();
+            appealInfo.setAppealId(appeal.getId());
+            appealInfo.setAppellantName(appeal.getReporter().getFullName());
+            appealInfo.setAppellantEmail(appeal.getReporter().getEmail());
+            appealInfo.setReason(appeal.getReason());
+            appealInfo.setEvidenceUrl(appeal.getEvidenceUrl());
+            appealInfo.setCreatedAt(appeal.getCreatedAt().toString());
+            appealInfo.setStatus(appeal.getStatus().toString());
+        }
+
+        long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
+                targetId, "STAFF_REPORT", UserReport.Status.APPROVED);
+        summary.setCurrentFlagCount(flagCount);
+
+        return appealInfo;
+    }
+
+    private ReporterDetailDTO buildReporterDetailDTO(UserReport report) {
+        ReporterDetailDTO dto = new ReporterDetailDTO();
+        dto.setId(report.getReporter().getId());
+        dto.setFullName(report.getReporter().getFullName());
+        dto.setEmail(report.getReporter().getEmail());
+        dto.setReason(report.getReason());
+        dto.setEvidenceUrl(report.getEvidenceUrl());
+        dto.setCreatedAt(report.getCreatedAt().toString());
+        dto.setReportStatus(report.getStatus().toString());
+        if(report.getBooking() != null) {
+            dto.setBooking(report.getBooking().getId());
+        }
+        return dto;
+    }
+
+    private ReportedUserDTO buildReportedUserDTO(String targetId) {
         ReportedUserDTO reportedUser = new ReportedUserDTO();
+
         Optional<User> userOpt = userRepo.findById(targetId);
         Optional<Vehicle> vehicleOpt = vehicleRepo.findById(targetId);
 
@@ -399,7 +546,8 @@ public class ReportServiceImpl implements ReportService {
 
             try {
                 ObjectMapper mapper = new ObjectMapper();
-                List<String> images = mapper.readValue(vehicle.getVehicleImages(), new TypeReference<List<String>>() {});
+                List<String> images = mapper.readValue(vehicle.getVehicleImages(),
+                        new TypeReference<List<String>>() {});
                 if (!images.isEmpty()) {
                     reportedUser.setVehicleImage(images.get(0));
                 }
@@ -419,59 +567,7 @@ public class ReportServiceImpl implements ReportService {
             reportedUser.setEmail("N/A");
         }
 
-        List<ReporterDetailDTO> reporterList = reports.stream().map(r -> {
-            ReporterDetailDTO dto = new ReporterDetailDTO();
-            dto.setId(r.getReporter().getId());
-            dto.setFullName(r.getReporter().getFullName());
-            dto.setEmail(r.getReporter().getEmail());
-            dto.setReason(r.getReason());
-            dto.setEvidenceUrl(r.getEvidenceUrl());
-            dto.setCreatedAt(r.getCreatedAt().toString());
-            dto.setBooking(r.getBooking().getId());
-            dto.setReportStatus(r.getStatus().toString());
-            return dto;
-        }).toList();
-
-        ReportDetailDTO detail = new ReportDetailDTO();
-        detail.setReportSummary(summary);
-        detail.setReportedUser(reportedUser);
-        detail.setReporters(reporterList);
-        detail.setAppealInfo(appealInfo); //
-
-        return detail;
-    }
-
-    private boolean matchGeneralType(String type, String generalType) {
-        return ("SERIOUS_ERROR".equals(generalType) && seriousReport.contains(type))
-                || ("NON_SERIOUS_ERROR".equals(generalType) && nonSeriousReport.contains(type))
-                || ("STAFF_ERROR".equals(generalType) && staffReport.contains(type))
-                || ("PROVIDER_APPEAL".equals(generalType) && appealReport.contains(type));
-    }
-
-    private List<ReportGroupedByTargetDTO> buildGroupedDTOList(List<UserReport> reports) {
-        return reports.stream()
-                .collect(Collectors.groupingBy(UserReport::getReportedId))
-                .entrySet().stream()
-                .flatMap(entry -> {
-                    String targetId = entry.getKey();
-                    List<UserReport> grouped = entry.getValue();
-                    String name = resolveReportedName(targetId);
-                    String email = userRepo.findById(targetId).map(User::getEmail).orElse("Ẩn");
-
-                    Map<String, Long> typeCounts = grouped.stream()
-                            .collect(Collectors.groupingBy(UserReport::getType, Collectors.counting()));
-
-                    return typeCounts.entrySet().stream().map(e
-                                    -> new ReportGroupedByTargetDTO(
-                                    targetId,
-                                    name,
-                                    email,
-                                    e.getKey(),
-                                    e.getValue()
-                            )
-                    );
-                })
-                .collect(Collectors.toList());
+        return reportedUser;
     }
 
     private String resolveReportedName(String targetId) {
@@ -480,6 +576,48 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private String resolveReportedEmail(String targetId) {
-        return userRepo.findById(targetId).map(User::getEmail).orElse("");
+        Optional<User> userOpt = userRepo.findById(targetId);
+        if (userOpt.isPresent()) {
+            return userOpt.get().getEmail();
+        }
+
+        Optional<Vehicle> vehicleOpt = vehicleRepo.findById(targetId);
+        if (vehicleOpt.isPresent() && vehicleOpt.get().getUser() != null) {
+            return vehicleOpt.get().getUser().getEmail();
+        }
+
+        return "";
+    }
+
+    // Method cũ - giữ lại cho compatibility hoặc có thể deprecate
+    @Override
+    @Deprecated
+    public ReportDetailDTO getReportDetailByTargetAndType(String targetId, String type) {
+        // Redirect to appropriate method based on type
+        if (nonSeriousReport.contains(type)) {
+            return getGroupedReportDetail(targetId, type);
+        } else if (seriousReport.contains(type) || "STAFF_REPORT".equals(type)) {
+            // For backward compatibility, need to find the report ID first
+            List<UserReport> reports = reportRepo.findByReportedIdAndType(targetId, type).stream()
+                    .filter(r -> r.getStatus() == UserReport.Status.PENDING)
+                    .findFirst()
+                    .map(List::of)
+                    .orElse(Collections.emptyList());
+
+            if (reports.isEmpty()) {
+                return null;
+            }
+
+            return getSingleReportDetail(reports.get(0).getId());
+        }
+
+        return null;
+    }
+
+    private boolean matchGeneralType(String type, String generalType) {
+        return ("SERIOUS_ERROR".equals(generalType) && seriousReport.contains(type))
+                || ("NON_SERIOUS_ERROR".equals(generalType) && nonSeriousReport.contains(type))
+                || ("STAFF_ERROR".equals(generalType) && "STAFF_REPORT".equals(type));
+        // Không check APPEAL vì không hiển thị trên UI
     }
 }

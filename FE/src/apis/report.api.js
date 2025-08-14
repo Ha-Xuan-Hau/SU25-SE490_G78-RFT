@@ -56,20 +56,21 @@ export const searchReports = async (generalType, keyword = "", type = "", page =
 /**
  * Lấy chi tiết báo cáo theo ID đối tượng bị báo cáo
  */
-export const getReportDetail = async (targetId, type) => {
-    const response = await apiClient.get(`/reports/detail/${targetId}`, {
+export const getGroupedReportDetail = async (targetId, type) => {
+    const response = await apiClient.get(`/reports/detail/grouped/${targetId}`, {
         params: { type }
     });
     return response.data;
 };
 
 /**
- * Tạo báo cáo bởi nhân viên
+ * Lấy chi tiết báo cáo theo ID của report
  */
-export const createReportByStaff = async (reportData) => {
-    const response = await apiClient.post('/reports/staff', reportData);
+export const getSingleReportDetail = async (reportId) => {
+    const response = await apiClient.get(`/reports/detail/single/${reportId}`);
     return response.data;
 };
+
 
 /**
  * Lấy mapping loại báo cáo cho frontend
@@ -126,23 +127,66 @@ export const calculateReportStatistics = (reports, generalType) => {
     return stats;
 };
 
-
-
 // Xử lý reject tất cả reports
-export const rejectAllReports = async (reportId) => {
+export const rejectAllReports = async (targetId, type, reportId) => {
+    const params = {};
+
+    if (reportId) {
+        params.reportId = reportId;
+    } else if (targetId && type) {
+        params.targetId = targetId;
+        params.type = type;
+    }
+
     const response = await apiClient.put('/reports/process/reject-all', null, {
-        params: { reportId }
+        params
     });
     return response.data;
 };
 
-// Approve tất cả reports (không cần dùng trong flow hiện tại)
-export const approveAllReports = async (targetId, type) => {
-    const response = await apiClient.put('/reports/process/approve-all', null, {
-        params: { targetId, type }
+/**
+ * Tạo báo cáo bởi nhân viên
+ */
+export const createReportByStaff = async (reportData) => {
+    const response = await apiClient.post('/reports/staff', reportData);
+    return response.data;
+};
+
+export const approveAndCreateStaffReport = async (
+    targetId,
+    type,
+    reportId,
+    reason
+) => {
+    const params = { reason };
+
+    if (reportId) {
+        // SERIOUS: chỉ cần reportId
+        params.reportId = reportId;
+    } else if (targetId && type) {
+        // NON_SERIOUS: cần targetId + type
+        params.targetId = targetId;
+        params.type = type;
+    }
+
+    const response = await apiClient.post('/reports/process/staff-approve-all', null, {
+        params
+    });
+
+    return response.data;
+};
+
+export const createAppeal = async (flagId, reason, evidenceUrl) => {
+    const response = await apiClient.post('/reports', {
+        targetId: flagId,  // ID của STAFF_REPORT cần kháng cáo
+        type: 'APPEAL',
+        reason: reason,
+        evidenceUrl: evidenceUrl || '',
+        originalReportId: flagId  // Để backend biết đây là appeal
     });
     return response.data;
 };
+
 
 // Approve appeal
 export const approveAppeal = async (appealId) => {
