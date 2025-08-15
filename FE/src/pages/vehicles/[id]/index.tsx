@@ -265,16 +265,17 @@ export default function VehicleDetail() {
             user.validLicenses.length === 0))
       ) {
         setIsModalCheckOpen(true);
-      } else if (vehicle?.id && pickupDateTime && returnDateTime) {
-        // Only navigate if dates are selected by user
-        router.push({
-          pathname: `/booking/${vehicle.id}`,
-          query: {
-            pickupTime: pickupDateTime,
-            returnTime: returnDateTime,
-          },
-        });
       }
+      // else if (vehicle?.id && pickupDateTime && returnDateTime) {
+      //   // Only navigate if dates are selected by user
+      //   router.push({
+      //     pathname: `/booking/${vehicle.id}`,
+      //     query: {
+      //       pickupTime: pickupDateTime,
+      //       returnTime: returnDateTime,
+      //     },
+      //   });
+      // }
     }
   }, [
     user,
@@ -467,6 +468,20 @@ export default function VehicleDetail() {
     if (values && values[0] && values[1]) {
       const startDate = values[0] as Dayjs;
       const endDate = values[1] as Dayjs;
+
+      // Validate phút phải là 00 hoặc 30
+      const startMinute = startDate.minute();
+      const endMinute = endDate.minute();
+
+      if (startMinute !== 0 && startMinute !== 30) {
+        message.error("Giờ nhận xe phải chọn phút :00 hoặc :30");
+        return;
+      }
+
+      if (endMinute !== 0 && endMinute !== 30) {
+        message.error("Giờ trả xe phải chọn phút :00 hoặc :30");
+        return;
+      }
 
       setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
       setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));

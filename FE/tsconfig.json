@@ -28,7 +28,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/recoils/user.state.ts",
-    "src/recoils/provider.state.js"
+    "src/recoils/provider.state.js",
+    "src/utils/jwt.js"
   ],
   "exclude": ["node_modules"]
 }

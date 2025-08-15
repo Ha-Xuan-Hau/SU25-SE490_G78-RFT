@@ -1,7 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+"use client";
+
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { User } from "@/types/user";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { apiClient } from "@/apis/client";
+import { isTokenExpired } from "@/utils/jwt";
 
 export type AuthMode =
   | "login"
@@ -47,23 +56,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ""
   );
 
-  // Kiểm tra xác thực khi component được mount
-  useEffect(() => {
-    // Nếu có thông tin người dùng trong localStorage, đặt trạng thái xác thực
-    if (accessToken && storedUser) {
-      try {
-        const userData =
-          typeof storedUser === "string" ? JSON.parse(storedUser) : storedUser;
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-        setUser(userData);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error("Lỗi khi phân tích dữ liệu người dùng:", error);
-        // Nếu có lỗi, xóa dữ liệu không hợp lệ
-        logout();
+  // Kiểm tra và xóa token hết hạn
+  const checkAndClearExpiredToken = () => {
+    if (accessToken) {
+      const token =
+        typeof accessToken === "string"
+          ? accessToken.replace(/^"|"$/g, "")
+          : "";
+
+      if (isTokenExpired(token)) {
+        console.log("Token expired, clearing localStorage...");
+        clearAccessToken();
+        clearStoredUser();
+        setUser(null);
+        setIsAuthenticated(false);
+        return false;
+      }
+      return true;
+    }
+    return false;
+  };
+
+  // Kiểm tra token khi mount và setup interval
+  useEffect(() => {
+    // Kiểm tra token ban đầu
+    if (accessToken && storedUser) {
+      const token =
+        typeof accessToken === "string"
+          ? accessToken.replace(/^"|"$/g, "")
+          : "";
+
+      if (isTokenExpired(token)) {
+        console.log("Token expired on mount, clearing...");
+        clearAccessToken();
+        clearStoredUser();
+      } else {
+        try {
+          const userData =
+            typeof storedUser === "string"
+              ? JSON.parse(storedUser)
+              : storedUser;
+          setUser(userData);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error("Error parsing user data:", error);
+          clearAccessToken();
+          clearStoredUser();
+        }
       }
     }
+
+    // Setup interval để kiểm tra mỗi 30 giây
+    checkIntervalRef.current = setInterval(() => {
+      checkAndClearExpiredToken();
+    }, 30000); // Kiểm tra mỗi 30 giây
+
+    return () => {
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
+    };
   }, []);
+
+  // Kiểm tra khi tab/window được focus lại
+  useEffect(() => {
+    const handleFocus = () => {
+      checkAndClearExpiredToken();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        checkAndClearExpiredToken();
+      }
+    });
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [accessToken]);
 
   // Xử lý popup
   const openAuthPopup = (newMode: AuthMode = "login") => {
@@ -88,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Đóng popup sau khi đăng nhập thành công
     closeAuthPopup();
 
-    console.log("Login successful - User data:", userData);
+    console.log("Login successful");
   };
 
   const logout = () => {
@@ -99,31 +172,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Cập nhật state
     setUser(null);
     setIsAuthenticated(false);
+
+    console.log("User logged out");
   };
 
   const updateUser = (userData: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return null;
       const updated = { ...prev, ...userData };
-      setStoredUser(updated); // Cập nhật vào localStorage
+      setStoredUser(updated);
       return updated;
     });
   };
 
   const refreshUserFromApi = async () => {
-    // Gọi API /users/get-user như trong Recoil
     const value = window.localStorage.getItem("access_token");
     if (value) {
-      const token = value.replace(/^"|"$/g, "");
-      const response = await apiClient.request({
-        method: "GET",
-        url: "/users/get-user",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      setUser(response.data);
+      const token = JSON.parse(value).replace(/^"|"$/g, "");
+
+      // Kiểm tra token trước khi gọi API
+      if (isTokenExpired(token)) {
+        logout();
+        return;
+      }
+
+      try {
+        const response = await apiClient.request({
+          method: "GET",
+          url: "/users/get-user",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        setUser(response.data);
+      } catch (error: any) {
+        if (error.response?.status === 401) {
+          logout();
+        }
+        throw error;
+      }
     }
   };
 

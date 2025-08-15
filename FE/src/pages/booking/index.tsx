@@ -1146,12 +1146,12 @@ const BookingPage: React.FC = () => {
 
   // Prepare default date values
   const { pickupTime, returnTime } = router.query;
-  const defaultStartDate: Dayjs = pickupTime
+  const defaultStartDate: Dayjs | null = pickupTime
     ? dayjs(pickupTime as string)
-    : dayjs().add(1, "day").hour(7).minute(0);
-  const defaultEndDate: Dayjs = returnTime
+    : null;
+  const defaultEndDate: Dayjs | null = returnTime
     ? dayjs(returnTime as string)
-    : dayjs().add(4, "day").hour(20).minute(0);
+    : null;
 
   // Tạo disabledTime và disabledDate functions sử dụng helper mới
   // Nếu nhiều xe, lấy open/closeTime của xe đầu tiên
@@ -1619,7 +1619,14 @@ const BookingPage: React.FC = () => {
                     disabledTime={disabledRangeTime}
                     disabledDate={disabledDateFunction}
                     size="large"
-                    value={selectedDates || [defaultStartDate, defaultEndDate]}
+                    // value={selectedDates || [defaultStartDate, defaultEndDate]}
+                    // value={
+                    //   selectedDates ||
+                    //   (defaultStartDate && defaultEndDate
+                    //     ? [defaultStartDate, defaultEndDate]
+                    //     : undefined)
+                    // }
+                    value={selectedDates}
                     className="w-full"
                     placeholder={["Thời gian nhận xe", "Thời gian trả xe"]}
                   />
