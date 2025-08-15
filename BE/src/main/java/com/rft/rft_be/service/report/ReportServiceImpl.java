@@ -3,15 +3,14 @@ package com.rft.rft_be.service.report;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rft.rft_be.dto.report.*;
-import com.rft.rft_be.entity.Booking;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.UserReport;
-import com.rft.rft_be.entity.Vehicle;
+import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.ReportMapper;
 import com.rft.rft_be.repository.BookingRepository;
 import com.rft.rft_be.repository.UserReportRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.repository.VehicleRepository;
+import com.rft.rft_be.service.Notification.NotificationService;
+import com.rft.rft_be.service.mail.EmailSenderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -34,6 +33,8 @@ public class ReportServiceImpl implements ReportService {
     private final VehicleRepository vehicleRepo;
     private final ReportMapper reportMapper;
     private final BookingRepository bookingRepository;
+    private final EmailSenderService emailSenderService;
+    private final NotificationService notificationService;
 
     private final List<String> seriousReport = List.of(
             "DAMAGED_VEHICLE", "FRAUD", "MISLEADING_INFO", "OWNER_NO_SHOW",
@@ -48,6 +49,7 @@ public class ReportServiceImpl implements ReportService {
     );
 
     private final List<String> staffReport = List.of("STAFF_REPORT");
+    private final UserRepository userRepository;
 
     @Override
     public void report(User reporter, ReportRequest request) {
@@ -157,6 +159,9 @@ public class ReportServiceImpl implements ReportService {
     private void checkAndExecuteBan(String userId) {
         long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
                 userId, "STAFF_REPORT", UserReport.Status.APPROVED);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
 
         if (flagCount == 2) {
             // TODO: Gửi cảnh báo

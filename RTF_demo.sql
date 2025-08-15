@@ -10,7 +10,7 @@ CREATE TABLE `users` (
   `profile_picture` text,
   `date_of_birth` date DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
-  `address` nvarchar(255) NOT NULL,
+  `address` nvarchar(255) DEFAUlT NULL,
   `status` enum('ACTIVE','INACTIVE','TEMP_BANNED') DEFAULT 'ACTIVE',
   `role` enum('USER', 'PROVIDER' ,'STAFF','ADMIN') DEFAULT 'USER',
   `open_time` datetime DEFAULT NULL,
