@@ -203,9 +203,9 @@ public class WalletServiceImpl implements WalletService {
         //get approved transaction and userid not null
         List<WalletTransaction> approvedTransactions = txRepository.findByStatusAndUserIdNotNull(WalletTransaction.Status.APPROVED);
 
-        if (approvedTransactions.isEmpty()) {
-            throw new RuntimeException("Không có giao dịch nào đã được phê duyệt.");
-        }
+//        if (approvedTransactions.isEmpty()) {
+//            throw new RuntimeException("Không có giao dịch nào đã được phê duyệt.");
+//        }
 
         //map to dto
         List<WalletTransactionDTO> transactionDTOs = approvedTransactions.stream()

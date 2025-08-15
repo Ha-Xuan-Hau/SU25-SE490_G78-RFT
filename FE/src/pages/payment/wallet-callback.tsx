@@ -63,7 +63,7 @@ const WalletCallback: React.FC = () => {
         if (responseCode === "00") {
           // Nạp tiền thành công
           setPaymentStatus("success");
-          message.success("Nạp tiền vào ví thành công!");
+          //message.success("Nạp tiền vào ví thành công!");
 
           // Có thể gọi API để cập nhật số dư ví
           try {
@@ -77,13 +77,13 @@ const WalletCallback: React.FC = () => {
           setPaymentStatus("failed");
           const errorMsg = getErrorMessage(responseCode);
           setErrorMessage(errorMsg);
-          message.error("Nạp tiền thất bại!");
+          //message.error("Nạp tiền thất bại!");
         }
       } catch (error) {
         console.error("Error processing wallet callback:", error);
         setPaymentStatus("failed");
         setErrorMessage("Có lỗi xảy ra khi xử lý nạp tiền");
-        message.error("Có lỗi xảy ra khi xử lý nạp tiền");
+        //message.error("Có lỗi xảy ra khi xử lý nạp tiền");
       } finally {
         setLoading(false);
       }

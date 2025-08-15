@@ -24,7 +24,7 @@ import {
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import { showApiError, showError, showSuccess } from "@/utils/toast.utils";
 import { coupon as Coupon, couponRequest } from "@/types/userCoupon";
 import { getAllCoupons, updateCoupon, createCoupon } from "@/apis/coupon.api";
 import { translateENtoVI } from "@/lib/viDictionary";
@@ -48,8 +48,7 @@ export default function ManageDiscountCodesPage() {
       const response = await getAllCoupons(); // Lấy tất cả coupon
       setCoupons(response); // Cập nhật danh sách coupon
     } catch (error) {
-      console.error(error);
-      showError("Không thể tải danh sách mã giảm giá!");
+      showApiError(error);
     } finally {
       setLoading(false);
     }
