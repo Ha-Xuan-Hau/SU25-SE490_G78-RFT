@@ -94,7 +94,6 @@ public class ReportServiceImpl implements ReportService {
             throw new IllegalArgumentException("Báo cáo này không thể kháng cáo");
         }
 
-        // BUG Ở ĐÂY: flag.getReportedId() là ID của người bị flag, không phải ID của flag
         // Cần check appellant.getId() == flag.getReportedId()
         if (!flag.getReportedId().equals(appellant.getId())) {
             throw new IllegalArgumentException("Bạn không thể kháng cáo báo cáo này");
@@ -105,7 +104,7 @@ public class ReportServiceImpl implements ReportService {
             throw new IllegalArgumentException("Đã quá thời hạn kháng cáo (24 giờ)");
         }
 
-        // Check đã appeal chưa - LOGIC NÀY CŨNG CẦN SỬA
+        // Check đã appeal chưa
         boolean hasAppealed = reportRepo.findAll().stream()
                 .anyMatch(r -> "APPEAL".equals(r.getType())
                         && r.getReporter().getId().equals(appellant.getId())

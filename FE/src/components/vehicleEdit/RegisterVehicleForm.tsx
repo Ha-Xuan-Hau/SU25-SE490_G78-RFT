@@ -1252,7 +1252,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         <div className="md:w-3/5">
           <Card
             title={
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
                   <span>Thông tin xe</span>
                   {vehicleId && (
@@ -1278,7 +1278,8 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                     </Tag>
                   )}
                 </div>
-                {/* Thêm nút ẩn/hiện xe */}
+
+                {/* Nút ẩn/hiện xe - nằm riêng bên phải */}
                 {vehicleId &&
                   (vehicleDetail.data?.data?.status === "AVAILABLE" ||
                     vehicleDetail.data?.data?.status === "SUSPENDED") && (
