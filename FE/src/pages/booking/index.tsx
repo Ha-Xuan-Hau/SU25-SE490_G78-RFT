@@ -60,7 +60,7 @@ import { Vehicle } from "@/types/vehicle";
 import { User } from "@/types/user";
 
 import { useUserValue } from "@/recoils/user.state";
-import { showError } from "@/utils/toast.utils";
+import { showApiError, showApiSuccess, showError } from "@/utils/toast.utils";
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -312,7 +312,7 @@ const BookingPage: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching vehicle details:", error);
-        message.error("Không thể tải thông tin xe");
+        showError("Không thể tải thông tin xe");
       } finally {
         setLoading(false);
       }
@@ -328,7 +328,7 @@ const BookingPage: React.FC = () => {
   const fetchAvailableVehiclesForModal = async () => {
     try {
       if (!selectedDates?.[0] || !selectedDates?.[1]) {
-        message.error("Vui lòng chọn thời gian thuê xe trước");
+        showError("Vui lòng chọn thời gian thuê xe trước");
         return;
       }
 
@@ -337,15 +337,13 @@ const BookingPage: React.FC = () => {
         vehicle || (multiVehicles.length > 0 ? multiVehicles[0] : null);
 
       if (!referenceVehicle?.thumb || !referenceVehicle?.userId) {
-        message.error("Không thể lấy thông tin xe để tìm xe tương tự");
+        showError("Không thể lấy thông tin xe để tìm xe tương tự");
         return;
       }
 
       // Kiểm tra loại xe - chỉ cho phép xe máy và xe đạp
       if (referenceVehicle.vehicleType.toUpperCase() === "CAR") {
-        message.error(
-          "Tính năng chọn nhiều xe chỉ áp dụng cho xe máy và xe đạp"
-        );
+        showError("Tính năng chọn nhiều xe chỉ áp dụng cho xe máy và xe đạp");
         return;
       }
 
@@ -377,7 +375,7 @@ const BookingPage: React.FC = () => {
       setIsVehicleSelectModalOpen(true);
     } catch (error) {
       console.error("Error fetching available vehicles:", error);
-      message.error("Không thể lấy danh sách xe khả dụng");
+      showError("Không thể lấy danh sách xe khả dụng");
     }
   };
 
@@ -538,7 +536,15 @@ const BookingPage: React.FC = () => {
 
       // Kiểm tra xem đã chọn thời gian chưa
       if (!selectedDates || !selectedDates[0] || !selectedDates[1]) {
-        message.error("Vui lòng chọn thời gian thuê xe");
+        showError("Vui lòng chọn thời gian thuê xe");
+        setSubmitting(false);
+        return;
+      }
+
+      // Kiểm tra thời gian bắt đầu phải ở tương lai
+      const now = dayjs();
+      if (selectedDates[0].isBefore(now)) {
+        showError("Thời gian nhận xe phải sau thời điểm hiện tại");
         setSubmitting(false);
         return;
       }
@@ -588,12 +594,12 @@ const BookingPage: React.FC = () => {
 
           // Kiểm tra finalVehicleIds có hợp lệ không
           if (finalVehicleIds.length === 0) {
-            message.error("Không tìm thấy thông tin xe để đặt");
+            showError("Không tìm thấy thông tin xe để đặt");
             setSubmitting(false);
             return;
           }
 
-          console.log("Final vehicle IDs for booking:", finalVehicleIds);
+          //console.log("Final vehicle IDs for booking:", finalVehicleIds);
 
           // Double-check availability cho xe đầu tiên
           const firstVehicleId = finalVehicleIds[0];
@@ -689,7 +695,7 @@ const BookingPage: React.FC = () => {
             driverFee: calculatedDriverFee,
           };
 
-          console.log("Creating booking with data:", bookingRequestData);
+          //console.log("Creating booking with data:", bookingRequestData);
 
           const response = (await createBooking(
             bookingRequestData
@@ -698,6 +704,7 @@ const BookingPage: React.FC = () => {
           if (response.success && response.data) {
             setBookingData(response.data);
             message.success("Tạo đơn đặt xe thành công!");
+            showApiSuccess(response.data.message || "Đơn đặt xe đã được tạo");
             setCurrent(1);
             return; // Exit retry loop on success
           } else {
@@ -705,7 +712,25 @@ const BookingPage: React.FC = () => {
             if (response.isConflict || response.statusCode === 409) {
               throw new Error("CONFLICT: " + response.error);
             }
-            message.error(response.error || "Có lỗi xảy ra khi tạo đơn đặt xe");
+            if (response.error) {
+              try {
+                const errorData = JSON.parse(response.error);
+                if (errorData.errors) {
+                  // Lấy error message đầu tiên từ validation errors
+                  const firstError = Object.values(errorData.errors)[0];
+                  showApiError(firstError as string);
+                } else {
+                  showApiError(response.error);
+                }
+              } catch {
+                // Nếu không parse được JSON, hiển thị error gốc
+                showApiError(
+                  response.error || "Có lỗi xảy ra khi tạo đơn đặt xe"
+                );
+              }
+            } else {
+              showApiError("Có lỗi xảy ra khi tạo đơn đặt xe");
+            }
             return;
           }
         } catch (error: unknown) {
@@ -756,7 +781,7 @@ const BookingPage: React.FC = () => {
             }
           } else {
             // Other errors
-            console.error("Booking error:", error);
+            //console.error("Booking error:", error);
             message.error(
               errorResponse?.data?.message || "Có lỗi khi tạo booking"
             );

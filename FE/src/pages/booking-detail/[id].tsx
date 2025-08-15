@@ -388,6 +388,29 @@ export default function BookingDetailPage() {
                       {formatDateTime(data?.createdAt || "")}
                     </span>
                   </div>
+                  {/* Dòng Hình phạt áp dụng */}
+                  {data?.penaltyType &&
+                    data?.penaltyValue !== undefined &&
+                    data?.minCancelHour !== undefined && (
+                      <div className="flex justify-between items-start py-2 border-b border-gray-100">
+                        <span className="text-gray-600 whitespace-nowrap">
+                          Hình phạt áp dụng:
+                        </span>
+                        <span className="text-sm text-right text-red-600 font-medium ml-4">
+                          {(() => {
+                            if (data.penaltyType === "PERCENT") {
+                              return `Phí phạt ${data.penaltyValue}% giá trị đơn hàng áp dụng khi hủy đơn trong vòng ${data.minCancelHour} giờ trước giờ nhận xe`;
+                            } else {
+                              return `Phí phạt cố định ${formatCurrency(
+                                data.penaltyValue
+                              )} áp dụng khi hủy đơn trong vòng ${
+                                data.minCancelHour
+                              } giờ trước giờ nhận xe`;
+                            }
+                          })()}
+                        </span>
+                      </div>
+                    )}
                 </div>
               </div>
 
