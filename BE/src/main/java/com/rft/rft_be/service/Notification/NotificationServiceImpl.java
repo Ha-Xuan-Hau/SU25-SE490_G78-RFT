@@ -542,7 +542,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notifyUserTemporaryBan(String userId) {
         User user = findUserById(userId);
-        String message = notificationMapper.ACCOUNT_TEMPORARY_BAN_MSG;
+        String message = NotificationMapper.ACCOUNT_TEMPORARY_BAN_MSG;
         String redirectUrl = "https://mail.google.com/mail/u/0/#inbox";
         createNotificationForUser(userId, NotificationMapper.SYSTEM_ANNOUNCEMENT, message, redirectUrl);
         LocalDateTime appealDeadline = LocalDateTime.now().plusHours(1);
@@ -556,5 +556,13 @@ public class NotificationServiceImpl implements NotificationService {
                 "status", "SUSPENDED"
         );
         wsEventService.sendToUser(userId, WebSocketEvents.NOTIFICATION, wsData);
+    }
+
+    @Override
+    @Transactional
+    public void notifyUserBeingReportedByStaff(String userId, String reportUrl) {
+        User user = findUserById(userId);
+        String message = NotificationMapper.ACCOUNT_BEING_STAFF_REPORTED;
+        createNotificationForUser(userId, NotificationMapper.PENALTY_RECEIVED_AFTER_CANCELLATION, message, reportUrl);
     }
 }

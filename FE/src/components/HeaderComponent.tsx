@@ -272,6 +272,21 @@ const HeaderComponent: React.FC = () => {
                 className="block dark:hidden sm:w-[120px] sm:h-[42px]"
               />
             </Link>
+
+            {/* Desktop Menu Button cho tất cả user */}
+            <button
+              onClick={() => {
+                // Dispatch custom event để mở sidebar/menu
+                window.dispatchEvent(new CustomEvent("toggleDesktopMenu"));
+              }}
+              className="hidden lg:flex items-center justify-center ml-6 p-2 rounded-md hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Icon
+                icon="heroicons:bars-3-20-solid"
+                className="w-6 h-6 text-gray-700"
+              />
+            </button>
           </div>
 
           {/* Desktop Navigation */}
