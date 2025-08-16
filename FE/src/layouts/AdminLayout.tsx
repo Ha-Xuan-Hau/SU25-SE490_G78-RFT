@@ -20,10 +20,9 @@ const ADMIN_ONLY_PATHS = [
 export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const currentPath = router.pathname;
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Luôn false mặc định
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
 
   // GỌI TẤT CẢ HOOKS TRƯỚC BẤT KỲ RETURN NÀO
   const [adminProfile, , clearAdminProfile] = useLocalStorage(
@@ -36,13 +35,12 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const isAdmin = adminProfile?.role === "ADMIN";
   const isStaff = adminProfile?.role === "STAFF";
 
-  // Check role authorization
+  // Check role authorization - giữ nguyên
   useEffect(() => {
     const checkAuthorization = () => {
       const storedUser = localStorage.getItem("user_profile");
 
       if (!storedUser) {
-        // Redirect về home với hard refresh để clear state
         window.location.href = "/";
         return;
       }
@@ -50,16 +48,13 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       try {
         const user = JSON.parse(storedUser);
 
-        // Check if user is ADMIN or STAFF
         if (user.role === "ADMIN" || user.role === "STAFF") {
-          // Check if STAFF is trying to access ADMIN-only pages
           if (user.role === "STAFF" && ADMIN_ONLY_PATHS.includes(currentPath)) {
             router.push("/404");
             return;
           }
           setIsAuthorized(true);
         } else {
-          // Not ADMIN or STAFF -> redirect to 404
           router.push("/404");
         }
       } catch (error) {
@@ -73,22 +68,36 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     checkAuthorization();
   }, [router, currentPath]);
 
-  // Track screen size for mobile responsiveness
+  // Lắng nghe event từ header để toggle sidebar
+  useEffect(() => {
+    const handleToggleSidebar = () => {
+      setSidebarOpen((prev) => !prev);
+    };
+
+    window.addEventListener("toggleDesktopMenu", handleToggleSidebar);
+
+    return () => {
+      window.removeEventListener("toggleDesktopMenu", handleToggleSidebar);
+    };
+  }, []);
+
+  // Auto close sidebar khi navigate
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [currentPath]);
+
+  // XÓA hoặc SỬA LẠI useEffect resize - không tự động mở sidebar nữa
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setIsMobile(window.innerWidth < 768);
-
       const handleResize = () => {
-        setIsMobile(window.innerWidth < 768);
+        // Chỉ đóng sidebar khi resize xuống mobile, KHÔNG tự động mở khi lên desktop
         if (window.innerWidth < 768) {
           setSidebarOpen(false);
-        } else {
-          setSidebarOpen(true);
         }
+        // XÓA dòng else setSidebarOpen(true)
       };
 
       window.addEventListener("resize", handleResize);
-      handleResize();
 
       return () => window.removeEventListener("resize", handleResize);
     }
@@ -243,7 +252,6 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If not authorized, don't render anything (router will redirect)
   if (!isAuthorized) {
     return null;
   }
@@ -254,7 +262,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
       <section className="flex-1 w-full">
         <div className="flex min-h-screen w-full relative">
-          {/* Mobile sidebar toggle button */}
+          {/* Mobile sidebar toggle button - giữ nguyên */}
           <button
             onClick={toggleSidebar}
             className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
@@ -262,18 +270,32 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
           </button>
 
-          {/* Sidebar */}
+          {/* Sidebar - SỬA LẠI className để luôn ẩn mặc định */}
           <div
             className={`${
-              sidebarOpen
-                ? "translate-x-0"
-                : "-translate-x-full md:translate-x-0"
-            } fixed md:relative top-0 left-0 h-full z-20 md:z-0
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } fixed top-0 left-0 h-full z-40
             w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-            transform transition-transform duration-300 ease-in-out md:translate-x-0
-            shadow-xl md:shadow-none overflow-y-auto`}
+            transform transition-transform duration-300 ease-in-out
+            shadow-xl overflow-y-auto`}
           >
-            {/* User Profile Section */}
+            {/* Thêm nút close trong sidebar */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Menu
+              </h2>
+              <button
+                onClick={toggleSidebar}
+                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Icon
+                  icon="heroicons:x-mark-20-solid"
+                  className="w-5 h-5 text-gray-700 dark:text-gray-300"
+                />
+              </button>
+            </div>
+
+            {/* User Profile Section - giữ nguyên */}
             <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700">
               <div className="flex flex-col items-center text-center">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate w-full">
@@ -294,7 +316,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               </div>
             </div>
 
-            {/* Navigation Menu */}
+            {/* Navigation Menu - giữ nguyên */}
             <nav className="mt-4 pb-6">
               {menuGroups.map((group) => (
                 <div key={group.title} className="mb-6">
@@ -332,15 +354,15 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             </nav>
           </div>
 
-          {/* Backdrop for mobile */}
-          {sidebarOpen && isMobile && (
+          {/* Backdrop - hiển thị cho cả desktop và mobile khi sidebar mở */}
+          {sidebarOpen && (
             <div
-              className="fixed inset-0 bg-black/50 z-10 md:hidden"
+              className="fixed inset-0 bg-black/50 z-30"
               onClick={toggleSidebar}
             />
           )}
 
-          {/* Main content */}
+          {/* Main content - luôn full width */}
           <div className="flex-1 px-4 md:px-6 py-6 w-full">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full overflow-x-auto">
               {children}

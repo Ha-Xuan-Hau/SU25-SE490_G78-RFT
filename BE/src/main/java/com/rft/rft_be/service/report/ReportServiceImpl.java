@@ -288,8 +288,10 @@ public class ReportServiceImpl implements ReportService {
 
         UserReport saved = reportRepo.save(staffFlag);
 
+
         // TODO: Send notification to user
-        // notificationService.notifyUserAboutStaffFlag(request.getTargetId(), saved.getId());
+        String reportUrl = "/report-detail?reportId=" + saved.getId() + "&mode=single";
+        notificationService.notifyUserBeingReportedByStaff(request.getTargetId(), reportUrl);
 
         return saved.getId();
     }

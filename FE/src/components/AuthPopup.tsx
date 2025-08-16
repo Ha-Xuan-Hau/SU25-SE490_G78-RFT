@@ -8,6 +8,7 @@ import {
   resetPasswordWithOtpSchema,
   registerStep1Schema,
   registerStep2Schema,
+  registerSchema,
 } from "@/lib/validations/auth";
 import { z } from "zod";
 import { Icon } from "@iconify/react";
@@ -191,8 +192,17 @@ export function AuthPopup({
       }
     } else {
       // Step 2: Verify OTP và hoàn tất đăng ký
+      // QUAN TRỌNG: Validate lại toàn bộ form data, không chỉ OTP
       try {
-        registerStep2Schema.parse({ otp: formData.otp });
+        // Validate toàn bộ thông tin đăng ký
+        registerSchema.parse({
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          otp: formData.otp,
+          referralCode: formData.referralCode || undefined,
+        });
         setErrors({});
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -252,7 +262,7 @@ export function AuthPopup({
 
   const handleForgotPasswordFlow = async () => {
     if (!isOtpSent) {
-      // Bước 1: Gửi OTP
+      // Bước 1: Gửi OTP (giữ nguyên)
       try {
         forgotPasswordSchema.parse({ email: formData.email });
         setErrors({});
@@ -313,10 +323,12 @@ export function AuthPopup({
 
       setIsLoading(true);
       try {
+        // SỬA LẠI: Gửi đủ các trường theo yêu cầu của backend
         await forgotPassword({
           email: resetEmail,
           otp: formData.otp,
           newPassword: formData.password,
+          confirmPassword: formData.confirmPassword, // THÊM TRƯỜNG NÀY
         });
 
         showSuccess("Mật khẩu đã được đặt lại thành công!");
