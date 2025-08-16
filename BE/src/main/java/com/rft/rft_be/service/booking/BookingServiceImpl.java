@@ -908,7 +908,8 @@ public class BookingServiceImpl implements BookingService {
                     .userId(currentUserId)
                     .timeFinish(LocalDateTime.now())
                     .costSettlement(refundAmount)
-                    .note("Hủy do khách không đến nhận xe. " + (reason != null ? "Lý do: " + reason : ""))
+//                    .note("Hủy do khách không đến nhận xe. " + (reason != null ? "Lý do: " + reason : ""))
+                    .note("Hủy do khách không đến nhận xe.")
                     .build();
 
             try {

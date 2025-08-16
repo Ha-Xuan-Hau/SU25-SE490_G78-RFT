@@ -526,11 +526,11 @@ export default function ManageAcceptedBookings() {
         setSelectedBookingId(null);
         await fetchBookings(true); // Force refresh data
       } else {
-        showApiError(result.error || "Lỗi khi hủy hợp đồng");
+        showApiError(result.error || "Lỗi khi hủy đơn");
       }
     } catch (error) {
       console.error("Error canceling contract:", error);
-      showApiError("Lỗi khi hủy hợp đồng");
+      showApiError("Lỗi khi hủy đơn");
     } finally {
       setLoading(false);
     }
@@ -870,7 +870,7 @@ export default function ManageAcceptedBookings() {
               onClick={() => showCancelModal(booking.id)}
               className="w-full"
             >
-              Hủy hợp đồng
+              Hủy đơn hàng
             </Button>
           );
         }
@@ -885,7 +885,7 @@ export default function ManageAcceptedBookings() {
             onClick={() => showCancelModal(booking.id)}
             className="w-full"
           >
-            Hủy hợp đồng
+            Hủy đơn hàng
           </Button>,
           <div key="waiting" className="text-xs text-gray-500 text-center">
             Chờ khách xác nhận nhận xe

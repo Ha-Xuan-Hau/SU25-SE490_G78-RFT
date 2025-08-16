@@ -41,6 +41,17 @@ export const getUserDetail = async (userId) => {
     return response.data;
 };
 
+export const createStaff = async (staffData) => {
+    const response = await apiClient.post('/adminmanageusers/admin/staff', staffData);
+    return response.data;
+};
+
+//Booking
+export const getAllBookings = async (params = {}) => {
+    const response = await apiClient.get('/bookings', { params });
+    return response.data;
+};
+
 // Final Contracts API Endpoints
 export const getAllFinalContracts = async () => {
     const response = await apiClient.get('/final-contracts');

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+
 const useLocalStorage = (key, initialValue) => {
     const [state, setState] = useState(() => {
         try {
@@ -6,9 +7,10 @@ const useLocalStorage = (key, initialValue) => {
                 const value = window.localStorage.getItem(key);
                 return value ? JSON.parse(value) : initialValue;
             }
-            return null;
+            return initialValue;
         } catch (error) {
             console.log(error);
+            return initialValue;
         }
     });
 
@@ -32,7 +34,7 @@ const useLocalStorage = (key, initialValue) => {
             if (typeof window !== "undefined") {
                 const valueToStore = value instanceof Function ? value(state) : value;
                 window.localStorage.setItem(key, JSON.stringify(valueToStore));
-                setState(value);
+                setState(valueToStore);
             }
         } catch (error) {
             console.log(error);

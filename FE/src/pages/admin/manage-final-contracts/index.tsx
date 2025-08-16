@@ -29,7 +29,7 @@ import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import { showApiError, showError, showSuccess } from "@/utils/toast.utils";
 import { translateENtoVI } from "@/lib/viDictionary";
 import {
   getAllFinalUnapprovedContracts,
@@ -87,7 +87,7 @@ export default function FinalContractsPage() {
       setContracts(data);
       setFilteredContracts(data);
     } catch (error) {
-      message.error("Không thể tải hợp đồng. Vui lòng thử lại.");
+      showApiError(error);
     } finally {
       setLoading(false);
     }
