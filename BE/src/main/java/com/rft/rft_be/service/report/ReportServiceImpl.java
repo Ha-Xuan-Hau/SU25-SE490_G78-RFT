@@ -33,7 +33,6 @@ public class ReportServiceImpl implements ReportService {
     private final VehicleRepository vehicleRepo;
     private final ReportMapper reportMapper;
     private final BookingRepository bookingRepository;
-    private final EmailSenderService emailSenderService;
     private final NotificationService notificationService;
 
     private final List<String> seriousReport = List.of(
@@ -165,9 +164,11 @@ public class ReportServiceImpl implements ReportService {
 
         if (flagCount == 2) {
             // TODO: Gửi cảnh báo
+            notificationService.notifyUserWarningTwoFlags(userId, 2);
             System.out.println("Warning: User " + userId + " has 2 flags");
         } else if (flagCount >= 3) {
             // TODO: Execute ban
+            notificationService.notifyUserTemporaryBan(userId);
             System.out.println("Ban: User " + userId + " has 3 flags");
         }
     }

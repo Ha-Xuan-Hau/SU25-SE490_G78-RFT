@@ -219,10 +219,9 @@ CREATE TABLE `user_report` (
   
     `evidence_url` text,                       -- URL cho ảnh/video bằng chứng nếu có
     `status` enum('PENDING','REJECTED','APPROVED') DEFAULT 'PENDING',
-
     `booking_id` varchar(225) DEFAULT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-	
+	PRIMARY KEY (`id`),
     FOREIGN KEY (reporter_id) REFERENCES users(id),
     FOREIGN KEY (booking_id) REFERENCES bookings(id)
 ) COMMENT = 'Lưu các lần người dùng bị report, phân loại theo type';

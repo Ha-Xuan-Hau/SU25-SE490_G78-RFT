@@ -9,6 +9,7 @@ import com.rft.rft_be.repository.NotificationRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.Notification.NotificationService;
 import com.rft.rft_be.service.WebSocketEventService;
+import com.rft.rft_be.service.mail.EmailSenderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,8 +17,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +36,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final UserRepository userRepository;
     private final NotificationMapper notificationMapper;
     private final WebSocketEventService wsEventService;
+    private final EmailSenderService emailSenderService;
 
     // Helper method để gửi cả notification và booking event
     private void sendBookingWebSocketEvent(String userId, String bookingId, String eventType, Map<String, Object> additionalData) {
@@ -510,5 +515,46 @@ public class NotificationServiceImpl implements NotificationService {
         String message = notificationMapper.formatVehicleRejectedMessage(vehicleName, reason);
         String redirectUrl = "/provider/manage-vehicles";
         createNotificationForUser(userId, NotificationMapper.VEHICLE_REJECTED, message, redirectUrl);
+    }
+
+    @Override
+    @Transactional
+    public void notifyUserWarningTwoFlags(String userId, long currentFlagCount) {
+        User user = findUserById(userId);
+        String message = notificationMapper.WARNING_TWO_FLAGS_MSG;
+        String redirectUrl = "https://mail.google.com/mail/u/0/#inbox";
+        createNotificationForUser(userId, NotificationMapper.SYSTEM_ANNOUNCEMENT, message, redirectUrl);
+
+        // 1. Gửi email chi tiết
+        emailSenderService.sendTwoFlagsWarningEmail(user, currentFlagCount);
+
+        // 3. Gửi WebSocket event
+        Map<String, Object> wsData = Map.of(
+                "type", "FLAG_WARNING",
+                "flagCount", currentFlagCount,
+                "severity", "HIGH",
+                "emailSent", true
+        );
+        wsEventService.sendToUser(userId, WebSocketEvents.NOTIFICATION, wsData);
+    }
+
+    @Override
+    @Transactional
+    public void notifyUserTemporaryBan(String userId) {
+        User user = findUserById(userId);
+        String message = notificationMapper.ACCOUNT_TEMPORARY_BAN_MSG;
+        String redirectUrl = "https://mail.google.com/mail/u/0/#inbox";
+        createNotificationForUser(userId, NotificationMapper.SYSTEM_ANNOUNCEMENT, message, redirectUrl);
+        LocalDateTime appealDeadline = LocalDateTime.now().plusHours(1);
+
+        emailSenderService.sendPermanentBanEmail(user, appealDeadline);
+
+        // Gửi WebSocket event
+        Map<String, Object> wsData = Map.of(
+                "type", "TEMPORARY_BAN",
+                "appealDeadline", appealDeadline.toString(),
+                "status", "SUSPENDED"
+        );
+        wsEventService.sendToUser(userId, WebSocketEvents.NOTIFICATION, wsData);
     }
 }
