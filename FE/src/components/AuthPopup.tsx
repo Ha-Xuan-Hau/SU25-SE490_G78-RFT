@@ -262,7 +262,7 @@ export function AuthPopup({
 
   const handleForgotPasswordFlow = async () => {
     if (!isOtpSent) {
-      // Bước 1: Gửi OTP
+      // Bước 1: Gửi OTP (giữ nguyên)
       try {
         forgotPasswordSchema.parse({ email: formData.email });
         setErrors({});
@@ -323,10 +323,12 @@ export function AuthPopup({
 
       setIsLoading(true);
       try {
+        // SỬA LẠI: Gửi đủ các trường theo yêu cầu của backend
         await forgotPassword({
           email: resetEmail,
           otp: formData.otp,
           newPassword: formData.password,
+          confirmPassword: formData.confirmPassword, // THÊM TRƯỜNG NÀY
         });
 
         showSuccess("Mật khẩu đã được đặt lại thành công!");
