@@ -26,10 +26,6 @@ export const registerSchema = z
         "Mật khẩu phải có ít nhất một chữ hoa, một chữ thường và một số."
       ),
     confirmPassword: z.string(),
-    // address: z
-    //   .string()
-    //   .min(1, "Địa chỉ là bắt buộc")
-    //   .min(10, "Địa chỉ phải có ít nhất 10 ký tự"),
     otp: z
       .string()
       .min(1, "Mã OTP là bắt buộc")
