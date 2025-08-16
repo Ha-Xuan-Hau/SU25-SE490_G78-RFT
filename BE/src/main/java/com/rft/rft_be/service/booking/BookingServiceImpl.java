@@ -2,13 +2,11 @@ package com.rft.rft_be.service.booking;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
@@ -596,6 +594,29 @@ public class BookingServiceImpl implements BookingService {
             try {
                 var finalContract = finalContractService.createFinalContract(finalContractDTO);
                 finalContractId = finalContract.getId();
+                //cập nhật tiền vào ví
+                if (finalContract.getContractStatus() != null && finalContract.getContractStatus().trim().equals("FINISHED")) {
+                    BigDecimal finalAmount = finalContractDTO.getCostSettlement();
+
+                    Wallet providerWallet = walletRepository.findByUserId(finalContract.getProviderId())
+                            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+                    providerWallet.setBalance(providerWallet.getBalance().add(finalAmount));
+                    walletRepository.save(providerWallet);
+
+                    // Ghi log giao dịch nhận tiềm
+                    WalletTransaction penaltyTx = WalletTransaction.builder()
+                            .wallet(providerWallet)
+                            .amount(finalAmount)
+                            .status(WalletTransaction.Status.APPROVED)
+                            .build();
+                    walletTransactionRepository.save(penaltyTx);
+
+                    String formattedAmount = NumberFormat.getCurrencyInstance(new Locale("vi", "VN")).format(finalContractDTO.getCostSettlement());
+                    notificationService.createNotification(notificationMapper.toNotificationCreateDTO(
+                            finalContract.getProviderId(), NotificationMapper.WITHDRAWAL_APPROVED,
+                            String.format("Bạn đã nhận %s vào ví RFT cho giao dịch thành công", formattedAmount), null)
+                    );
+                }
             } catch (Exception e) {
                 log.error("Failed to create final contract for booking {}: {}", bookingId, e.getMessage());
             }

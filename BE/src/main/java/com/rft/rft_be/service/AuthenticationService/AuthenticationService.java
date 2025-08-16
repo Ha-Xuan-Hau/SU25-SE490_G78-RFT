@@ -134,6 +134,9 @@ public class AuthenticationService {
         if (!isPasswordValid(request.getNewPassword())) {
             throw new IllegalArgumentException("Mật khẩu phải chứa ít nhất một số, một ký tự chữ, và bảy ký tự.");
         }
+        if (!otpService.verifyOtp(request.getEmail(), request.getOtp())){
+            throw new RuntimeException("Otp sai hoặc hết hạn");
+        }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
