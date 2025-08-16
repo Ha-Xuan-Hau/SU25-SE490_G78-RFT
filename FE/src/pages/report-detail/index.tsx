@@ -9,7 +9,6 @@ import {
   Button,
   Table,
   Spin,
-  notification,
   Row,
   Col,
   Layout,
@@ -107,16 +106,16 @@ export default function ReportDetailPage() {
 
   const typeMapping = getReportTypeMapping();
 
-  useEffect(() => {
-    console.log("ReportDetailPage mounted");
-    console.log("Current user:", user);
-    console.log("Router query:", router.query);
-    console.log("Router pathname:", router.pathname);
+  // useEffect(() => {
+  //   console.log("ReportDetailPage mounted");
+  //   console.log("Current user:", user);
+  //   console.log("Router query:", router.query);
+  //   console.log("Router pathname:", router.pathname);
 
-    return () => {
-      console.log("ReportDetailPage unmounting - possible redirect happening");
-    };
-  }, []);
+  //   return () => {
+  //     console.log("ReportDetailPage unmounting - possible redirect happening");
+  //   };
+  // }, []);
 
   // Load report detail based on mode
   useEffect(() => {
@@ -167,11 +166,12 @@ export default function ReportDetailPage() {
       const detail = await getSingleReportDetail(reportIdStr);
       setReportDetail(detail);
     } catch (error) {
-      console.error("Error loading single report detail:", error);
-      notification.error({
-        message: "Lỗi",
-        description: "Không thể tải chi tiết báo cáo",
-      });
+      //console.error("Error loading single report detail:", error);
+      // notification.error({
+      //   message: "Lỗi",
+      //   description: "Không thể tải chi tiết báo cáo",
+      // });
+      showError("Không thể tải chi tiết báo cáo");
       setTimeout(() => router.back(), 2000);
     } finally {
       setLoading(false);
@@ -188,10 +188,11 @@ export default function ReportDetailPage() {
       setReportDetail(detail);
     } catch (error) {
       console.error("Error loading grouped report detail:", error);
-      notification.error({
-        message: "Lỗi",
-        description: "Không thể tải chi tiết báo cáo",
-      });
+      // notification.error({
+      //   message: "Lỗi",
+      //   description: "Không thể tải chi tiết báo cáo",
+      // });
+      showError("Không thể tải chi tiết báo cáo");
       setTimeout(() => router.back(), 2000);
     } finally {
       setLoading(false);
