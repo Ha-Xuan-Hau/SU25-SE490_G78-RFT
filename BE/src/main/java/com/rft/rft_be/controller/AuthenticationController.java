@@ -36,6 +36,16 @@ public class AuthenticationController {
         return result;
     }
 
+    @PostMapping("/google-login")
+    public ResponseEntity<AuthenticationResponse> googleLogin(@RequestBody GoogleLoginRequest request) {
+        try {
+            AuthenticationResponse response = authenticationService.authenticateWithGoogle(request.getCredential());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
     @PostMapping("/introspect")
     IntrospectResponse authenticate(@RequestBody IntrospectRequest request)
             throws ParseException, JOSEException {

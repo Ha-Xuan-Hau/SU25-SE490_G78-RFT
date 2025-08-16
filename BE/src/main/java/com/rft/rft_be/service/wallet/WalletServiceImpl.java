@@ -138,7 +138,7 @@ public class WalletServiceImpl implements WalletService {
             throw new RuntimeException("Số dư không đủ");
         }
         WalletTransaction tx = new WalletTransaction();
-        tx.setAmount(dto.getAmount());
+        tx.setAmount(dto.getAmount().negate());
         tx.setStatus(WalletTransaction.Status.PENDING);
         tx.setWallet(wallet);
         wallet.setBalance(wallet.getBalance().subtract(dto.getAmount()));

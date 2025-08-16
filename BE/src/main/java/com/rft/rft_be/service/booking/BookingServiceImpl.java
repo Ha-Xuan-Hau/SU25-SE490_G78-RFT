@@ -1015,7 +1015,7 @@ public class BookingServiceImpl implements BookingService {
         // Ghi log giao dịch
         WalletTransaction tx = WalletTransaction.builder()
                 .wallet(wallet)
-                .amount(totalCost)
+                .amount(totalCost.negate())
                 .status(WalletTransaction.Status.APPROVED)
                 .build();
         walletTransactionRepository.save(tx);
