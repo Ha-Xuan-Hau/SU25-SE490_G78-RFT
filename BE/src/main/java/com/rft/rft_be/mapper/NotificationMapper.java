@@ -55,8 +55,8 @@ public class NotificationMapper {
     public static final String VEHICLE_REJECTED_MSG = "Xe \"%s\" không được duyệt. Lý do: %s";
     public static final String REFUND_AFTER_CANCELLATION_MSG = "Bạn đã được hoàn lại %.0f VND từ đơn hàng #%s sau khi hủy. Vui lòng kiểm tra ví.";
     public static final String PENALTY_RECEIVED_AFTER_CANCELLATION_MSG = "Bạn đã nhận được %.0f VND phí phạt từ đơn hàng #%s. Vui lòng kiểm tra ví.";
-
-
+    public static final String WARNING_TWO_FLAGS_MSG = "Cảnh báo: Tài khoản bị báo cáo 2 lần. Kiểm tra email để biết thông tin chi tiết";
+    public static final String ACCOUNT_TEMPORARY_BAN_MSG = "Tài khoản bị báo cáo 3 lần và bị ban. Kiểm tra email để biết chi tiết!";
     // Notification categories for grouping
     public static final String CATEGORY_BOOKING = "BOOKING";
     public static final String CATEGORY_PAYMENT = "PAYMENT";

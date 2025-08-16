@@ -4,6 +4,7 @@ import com.rft.rft_be.dto.Notification.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface NotificationService {
@@ -185,6 +186,21 @@ public interface NotificationService {
      * Công dụng: Thông báo cho tất cả user biết hệ thống sẽ bảo trì
      */
     void createMaintenanceNotice(String message, String scheduledTime);
+
+    // Report and Ban notifications (simplified)
+    /**
+     * Thông báo cảnh báo khi user bị 2 flags
+     * Input: userId, currentFlagCount, emailId
+     * Công dụng: Gửi thông báo ngắn và link đến email chi tiết
+     */
+    void notifyUserWarningTwoFlags(String userId, long currentFlagCount);
+
+    /**
+     * Thông báo tạm khóa tài khoản khi bị 3 flags
+     * Input: userId, appealDeadline, emailId
+     * Công dụng: Gửi thông báo ngắn về việc bị tạm khóa
+     */
+    void notifyUserTemporaryBan(String userId);
     void notifyRefundAfterCancellation(String userId, String bookingId, Double amount); // Thông báo hoàn tiền cho người thuê sau khi hủy đơn hàng
     void notifyPenaltyReceivedAfterCancellation(String providerId, String bookingId, Double amount); // Thông báo cho chủ xe khi nhận được phí phạt do khách hàng hủy đơn hàng sát giờ
 
