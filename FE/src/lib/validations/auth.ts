@@ -22,7 +22,7 @@ export const registerSchema = z
       .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")
       .max(50, "Mật khẩu không được vượt quá 50 ký tự.")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,50}$/,
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{7,50}$/,
         "Mật khẩu phải có ít nhất một chữ hoa, một chữ thường và một số."
       ),
     confirmPassword: z.string(),
