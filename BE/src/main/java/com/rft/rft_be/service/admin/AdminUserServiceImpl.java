@@ -325,7 +325,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     public AdminUserDetailDTO banUser(String userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         // Chỉ xử lý cho USER/PROVIDER
         if (user.getRole() == User.Role.USER) {
