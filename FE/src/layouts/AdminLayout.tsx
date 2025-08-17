@@ -172,7 +172,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           key: "bookings",
           path: "/admin/manage-bookings",
           icon: "mdi:calendar-clock",
-          label: "Quản lý đặt xe",
+          label: "Quản lý đơn đặt xe",
         },
       ],
     },
@@ -185,12 +185,12 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:cash-minus",
           label: "Yêu cầu rút tiền",
         },
-        {
-          key: "revenue",
-          path: "/admin/manage-final-contracts",
-          icon: "mdi:file-document-edit",
-          label: "Tất toán hợp đồng",
-        },
+        // {
+        //   key: "revenue",
+        //   path: "/admin/manage-final-contracts",
+        //   icon: "mdi:file-document-edit",
+        //   label: "Tất toán hợp đồng",
+        // },
         // Chỉ Admin mới thấy các menu này
         ...(isAdmin
           ? [

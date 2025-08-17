@@ -224,19 +224,19 @@ export default function FinalContractsPage() {
       onFilter: (value, record) => record.contractStatus === value,
       align: "center",
     },
-    {
-      title: "Người duyệt",
-      key: "approver",
-      render: (_, record) =>
-        record.contractStatus === "FINISHED" && record.userName ? (
-          <div className="text-sm">
-            <div className="font-medium">{record.userName}</div>
-            <div className="text-gray-500">
-              {formatTimestamp(record.updatedAt)}
-            </div>
-          </div>
-        ) : null,
-    },
+    // {
+    //   title: "Người duyệt",
+    //   key: "approver",
+    //   render: (_, record) =>
+    //     record.contractStatus === "FINISHED" && record.userName ? (
+    //       <div className="text-sm">
+    //         <div className="font-medium">{record.userName}</div>
+    //         <div className="text-gray-500">
+    //           {formatTimestamp(record.updatedAt)}
+    //         </div>
+    //       </div>
+    //     ) : null,
+    // },
     {
       title: "Thao tác",
       key: "action",

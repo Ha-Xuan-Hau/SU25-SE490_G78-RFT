@@ -207,7 +207,7 @@ public class AuthenticationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
 
-        if (!user.getPassword().equals(passwordEncoder.encode(request.getPassword()))) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new IllegalStateException("Sai mật khẩu hiện tại");
         }
 
