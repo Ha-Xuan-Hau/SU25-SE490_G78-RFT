@@ -44,11 +44,6 @@ export default function ProductSoldMap() {
         <h3 className="text-lg font-semibold text-gray-900">
           Tổng số đơn đặt xe trong tháng
         </h3>
-        <select className="text-sm border rounded-lg px-3 py-1 text-gray-600">
-          <option>Tháng này</option>
-          <option>Tháng trước</option>
-          <option>3 tháng gần nhất</option>
-        </select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">

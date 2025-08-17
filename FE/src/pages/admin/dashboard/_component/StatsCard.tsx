@@ -1,10 +1,6 @@
-// components/admin/StatsCard.tsx
 "use client";
 import React from "react";
-import dynamic from "next/dynamic";
-import { ApexOptions } from "apexcharts";
-
-const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface StatsCardProps {
   title: string;
@@ -15,8 +11,6 @@ interface StatsCardProps {
   iconBg: string;
   iconColor: string;
   period: string;
-  chartData: number[];
-  chartColor: string;
 }
 
 export default function StatsCard({
@@ -28,57 +22,38 @@ export default function StatsCard({
   iconBg,
   iconColor,
   period,
-  chartData,
-  chartColor,
 }: StatsCardProps) {
-  const chartOptions: ApexOptions = {
-    chart: {
-      type: "line",
-      sparkline: { enabled: true },
-      toolbar: { show: false },
-    },
-    stroke: {
-      curve: "smooth",
-      width: 2,
-    },
-    colors: [chartColor],
-    tooltip: { enabled: false },
-  };
-
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
+    <div className="bg-white rounded-xl p-5 shadow-sm  transition-all">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-medium text-gray-600">{title}</span>
         <div className={`p-2 rounded-lg ${iconBg} ${iconColor}`}>{icon}</div>
-        <span className="text-xs text-gray-500">{period}</span>
       </div>
 
+      {/* Value */}
       <div className="mb-3">
-        <p className="text-sm text-gray-600 mb-1">{title}</p>
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
-          {change && (
-            <span
-              className={`text-sm font-medium ${
-                trend === "up"
-                  ? "text-green-600"
-                  : trend === "down"
-                  ? "text-red-600"
-                  : "text-gray-600"
-              }`}
-            >
-              {change}
-            </span>
-          )}
-        </div>
+        <h3 className="text-3xl font-bold text-gray-900">{value}</h3>
       </div>
 
-      <div className="h-16">
-        <Chart
-          options={chartOptions}
-          series={[{ data: chartData }]}
-          type="line"
-          height="100%"
-        />
+      {/* Footer */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-500">{period}</span>
+        {change && (
+          <div
+            className={`flex items-center gap-1 text-sm font-medium ${
+              trend === "up"
+                ? "text-green-600"
+                : trend === "down"
+                ? "text-red-600"
+                : "text-gray-600"
+            }`}
+          >
+            {trend === "up" && <TrendingUp className="w-4 h-4" />}
+            {trend === "down" && <TrendingDown className="w-4 h-4" />}
+            <span>{change}</span>
+          </div>
+        )}
       </div>
     </div>
   );
