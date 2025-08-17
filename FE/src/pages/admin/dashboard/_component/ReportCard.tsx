@@ -66,41 +66,45 @@ export default function WorldMap() {
         </span>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      {/* Stats Cards - Stacked Rows */}
+      <div className="space-y-3 mb-4">
         {/* Lỗi vi phạm */}
-        <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
-              <span className="font-medium text-gray-700">Lỗi vi phạm</span>
+        <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-600" />
+                <span className="font-medium text-gray-700">Lỗi vi phạm</span>
+              </div>
+              <div className="text-2xl font-bold text-yellow-600">
+                {reportStats.violation.pending}
+              </div>
             </div>
-          </div>
-          <div className="text-2xl font-bold text-yellow-600 mb-1">
-            {reportStats.violation.pending}
-          </div>
-          <div className="text-xs text-gray-600">
-            Tổng: {reportStats.violation.total} | Đã xử lý:{" "}
-            {reportStats.violation.resolved}
+            <div className="text-right text-xs text-gray-600">
+              <div>Tổng: {reportStats.violation.total}</div>
+              <div>Đã xử lý: {reportStats.violation.resolved}</div>
+            </div>
           </div>
         </div>
 
         {/* Lỗi nghiêm trọng */}
-        <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              <span className="font-medium text-gray-700">
-                Lỗi nghiêm trọng
-              </span>
+        <div className="border border-red-200 bg-red-50 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <span className="font-medium text-gray-700">
+                  Lỗi nghiêm trọng
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-red-600">
+                {reportStats.serious.pending}
+              </div>
             </div>
-          </div>
-          <div className="text-2xl font-bold text-red-600 mb-1">
-            {reportStats.serious.pending}
-          </div>
-          <div className="text-xs text-gray-600">
-            Tổng: {reportStats.serious.total} | Đã xử lý:{" "}
-            {reportStats.serious.resolved}
+            <div className="text-right text-xs text-gray-600">
+              <div>Tổng: {reportStats.serious.total}</div>
+              <div>Đã xử lý: {reportStats.serious.resolved}</div>
+            </div>
           </div>
         </div>
       </div>
