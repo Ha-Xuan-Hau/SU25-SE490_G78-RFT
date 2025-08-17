@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, X, Mail } from "lucide-react";
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from "@react-oauth/google";
 import {
   loginSchema,
   forgotPasswordSchema,
@@ -22,9 +22,13 @@ import {
   forgotPassword,
   loginWithGoogle,
 } from "@/apis/auth.api";
-import { toast } from "react-toastify";
 import { useUserState } from "@/recoils/user.state";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import {
+  showApiError,
+  showApiSuccess,
+  showError,
+  showSuccess,
+} from "@/utils/toast.utils";
 
 interface AuthPopupProps {
   isOpen: boolean;
@@ -82,19 +86,19 @@ export function AuthPopup({
         const userData = response.result || {};
         login(userData, response.access_token);
         setRecoilUser(userData);
-        showSuccess("Đăng nhập thành công!");
+        showApiSuccess("Đăng nhập thành công!");
         onClose();
       }
     } catch (error: any) {
-      const errorMessage = error.message || "Đăng nhập Google thất bại!";
-      showError(errorMessage);
+      // Backend đã trả về message chính xác, chỉ cần hiển thị
+      showApiError(error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleError = () => {
-    showError("Đăng nhập Google thất bại!");
+    showApiError({ message: "Không thể kết nối với Google" });
   };
   // Reset form data when mode changes or popup opens/closes
   useEffect(() => {
@@ -188,17 +192,8 @@ export function AuthPopup({
           confirmPassword: formData.confirmPassword,
         });
         setErrors({});
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          const newErrors: Record<string, string> = {};
-          error.errors.forEach((err) => {
-            if (err.path) {
-              newErrors[err.path[0]] = err.message;
-            }
-          });
-          setErrors(newErrors);
-          return;
-        }
+      } catch (err: any) {
+        showApiError(err);
       }
 
       setIsLoading(true);
@@ -293,17 +288,8 @@ export function AuthPopup({
       try {
         forgotPasswordSchema.parse({ email: formData.email });
         setErrors({});
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          const newErrors: Record<string, string> = {};
-          error.errors.forEach((err) => {
-            if (err.path) {
-              newErrors[err.path[0]] = err.message;
-            }
-          });
-          setErrors(newErrors);
-          return;
-        }
+      } catch (err: any) {
+        showApiError(err);
       }
 
       setIsLoading(true);
@@ -393,14 +379,7 @@ export function AuthPopup({
         }
       }
     } catch (err: any) {
-      let errorMessage = "Có lỗi xảy ra. Vui lòng thử lại.";
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      setErrors({ submit: errorMessage });
-      showError(errorMessage);
+      showApiError(err);
     } finally {
       setIsLoading(false);
     }
@@ -425,7 +404,7 @@ export function AuthPopup({
       setCanResendOtp(false);
       showSuccess("Mã OTP mới đã được gửi!");
     } catch (err: any) {
-      showError("Có lỗi xảy ra khi gửi lại OTP");
+      showApiError(err);
     } finally {
       setIsLoading(false);
     }
@@ -703,14 +682,14 @@ export function AuthPopup({
 
             <div className="w-full">
               <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  useOneTap={false}
-                  theme="outline"
-                  size="large"
-                  width="100%"
-                  text="signin_with"
-                  locale="vi"
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap={false}
+                theme="outline"
+                size="large"
+                width="100%"
+                text="signin_with"
+                locale="vi"
               />
             </div>
 

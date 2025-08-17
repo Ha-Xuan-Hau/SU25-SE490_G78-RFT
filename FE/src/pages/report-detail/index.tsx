@@ -432,11 +432,11 @@ export default function ReportDetailPage() {
 
   const handleApproveAppeal = async (appealId: string) => {
     Modal.confirm({
-      title: "Xác nhận chấp nhận khiếu nại",
+      title: "Xác nhận chấp nhận bằng chứng khiếu nại",
       content:
-        "Bạn có chắc chắn muốn chấp nhận khiếu nại này? Staff flag sẽ bị hủy.",
+        "Bạn có chắc chắn muốn chấp nhận khiếu nại này? Báo cáo này sẽ bị hủy.",
       okText: "Chấp nhận",
-      cancelText: "Hủy",
+      cancelText: "Đóng",
       onOk: async () => {
         try {
           const result = await approveAppeal(appealId);
@@ -451,11 +451,11 @@ export default function ReportDetailPage() {
 
   const handleRejectAppeal = async (appealId: string) => {
     Modal.confirm({
-      title: "Xác nhận từ chối khiếu nại",
+      title: "Xác nhận từ chối bằng chứng khiếu nại",
       content:
-        "Bạn có chắc chắn muốn từ chối khiếu nại này? Staff flag sẽ được giữ nguyên.",
+        "Bạn có chắc chắn muốn từ chối khiếu nại này? Người bị báo cáo sẽ bị gán thêm 1 cờ cảnh báo",
       okText: "Từ chối",
-      cancelText: "Hủy",
+      cancelText: "Đóng",
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
@@ -536,7 +536,7 @@ export default function ReportDetailPage() {
                 appealForm.resetFields();
               }}
             >
-              Hủy
+              Đóng
             </Button>
             <Button type="primary" htmlType="submit" loading={submittingAppeal}>
               Gửi khiếu nại
@@ -955,7 +955,7 @@ export default function ReportDetailPage() {
                             )
                           }
                         >
-                          Chấp nhận khiếu nại
+                          Chấp nhận bằng chứng khiếu nại
                         </Button>
                         <Button
                           danger
@@ -965,7 +965,7 @@ export default function ReportDetailPage() {
                             )
                           }
                         >
-                          Từ chối khiếu nại
+                          Từ chối bằng chứng khiếu nại
                         </Button>
                       </Space>
                     </div>
@@ -1275,7 +1275,7 @@ export default function ReportDetailPage() {
                   ...(generalType === "SERIOUS_ERROR"
                     ? [
                         {
-                          title: "Mã đơn hàng liên quan",
+                          title: "Đơn hàng liên quan",
                           dataIndex: "booking",
                           key: "booking",
                           width: 180,

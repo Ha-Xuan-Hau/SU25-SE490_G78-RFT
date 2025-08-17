@@ -22,7 +22,6 @@ import {
   Spin,
   Row,
   Col,
-  Card,
   Table,
   Tag,
 } from "antd";
@@ -32,6 +31,8 @@ import {
   DownloadOutlined,
   WalletOutlined,
   HistoryOutlined,
+  ArrowDownOutlined,
+  ArrowUpOutlined,
 } from "@ant-design/icons";
 import { bankCard } from "@/types/bankCard";
 import RegisterBankCardModal from "@/components/RegisterBankCardModal";
@@ -371,11 +372,24 @@ export default function UserWalletsPage() {
       dataIndex: "amount",
       key: "amount",
       width: 150,
-      render: (amount: number) => (
-        <span className="font-semibold text-red-600">
-          {formatCurrency(amount)}
-        </span>
-      ),
+      render: (amount: number) => {
+        const isNegative = amount < 0;
+
+        return (
+          <span
+            className={`font-semibold flex items-center gap-1 ${
+              isNegative ? "text-red-600" : "text-green-600"
+            }`}
+          >
+            {isNegative ? (
+              <ArrowDownOutlined className="text-xs" />
+            ) : (
+              <ArrowUpOutlined className="text-xs" />
+            )}
+            {formatCurrency(Math.abs(amount))}
+          </span>
+        );
+      },
     },
     // {
     //   title: "Trạng thái",
