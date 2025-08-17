@@ -10,6 +10,7 @@ import com.rft.rft_be.repository.UserReportRepository;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.repository.VehicleRepository;
 import com.rft.rft_be.service.Notification.NotificationService;
+import com.rft.rft_be.service.admin.AdminUserService;
 import com.rft.rft_be.service.mail.EmailSenderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -33,6 +34,7 @@ public class ReportServiceImpl implements ReportService {
     private final VehicleRepository vehicleRepo;
     private final ReportMapper reportMapper;
     private final BookingRepository bookingRepository;
+    private final AdminUserService adminUserService;
     private final NotificationService notificationService;
 
     private final List<String> seriousReport = List.of(
@@ -167,7 +169,7 @@ public class ReportServiceImpl implements ReportService {
             System.out.println("Warning: User " + userId + " has 2 flags");
         } else if (flagCount >= 3) {
             // TODO: Execute ban
-            notificationService.notifyUserTemporaryBan(userId);
+            adminUserService.banUser(userId);
             System.out.println("Ban: User " + userId + " has 3 flags");
         }
     }
@@ -292,7 +294,12 @@ public class ReportServiceImpl implements ReportService {
         // TODO: Send notification to user
         String reportUrl = "/report-detail?reportId=" + saved.getId() + "&mode=single";
         notificationService.notifyUserBeingReportedByStaff(request.getTargetId(), reportUrl);
-
+        String userBanId = request.getTargetId();
+        long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
+                userBanId, "STAFF_REPORT", UserReport.Status.APPROVED);
+        if (flagCount >= 3) {
+            notificationService.notifyUserTemporaryBan(userBanId);
+        }
         return saved.getId();
     }
 
