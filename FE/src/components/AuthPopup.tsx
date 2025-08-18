@@ -184,18 +184,31 @@ export function AuthPopup({
   const handleRegisterFlow = async () => {
     if (!isOtpSent) {
       // Step 1: Validate và gửi OTP
-      try {
-        registerStep1Schema.parse({
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
+      const validationResult = registerStep1Schema.safeParse({
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      });
+
+      if (!validationResult.success) {
+        const newErrors: Record<string, string> = {};
+        validationResult.error.errors.forEach((err) => {
+          if (err.path) {
+            newErrors[err.path[0]] = err.message;
+          }
         });
-        setErrors({});
-      } catch (err: any) {
-        showApiError(err);
+        setErrors(newErrors);
+        const firstError =
+          validationResult.error.errors[0]?.message ||
+          "Vui lòng kiểm tra lại thông tin";
+        showError(firstError);
+        return;
       }
 
+      setErrors({});
+
+      // Tiếp tục gửi OTP...
       setIsLoading(true);
       try {
         await sendOtpRegister(formData.email);
@@ -288,8 +301,20 @@ export function AuthPopup({
       try {
         forgotPasswordSchema.parse({ email: formData.email });
         setErrors({});
-      } catch (err: any) {
-        showApiError(err);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          const newErrors: Record<string, string> = {};
+          error.errors.forEach((err) => {
+            if (err.path) {
+              newErrors[err.path[0]] = err.message;
+            }
+          });
+          setErrors(newErrors);
+          showError(
+            error.errors[0]?.message || "Vui lòng kiểm tra lại thông tin"
+          );
+          return;
+        }
       }
 
       setIsLoading(true);

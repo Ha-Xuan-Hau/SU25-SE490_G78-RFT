@@ -261,7 +261,7 @@ export default function ManageAcceptedBookings() {
 
         // Fix duplicate calls - kiểm tra đã fetch chưa
         if (!forceRefresh && hasFetchedRef.current === providerId) {
-          console.log("Already fetched for this provider");
+          //console.log("Already fetched for this provider");
           return;
         }
 
@@ -274,31 +274,48 @@ export default function ManageAcceptedBookings() {
           "RETURNED",
         ];
 
-        const allBookings = [];
-
-        for (const status of statuses) {
+        // Gọi API song song thay vì tuần tự
+        const promises = statuses.map(async (status) => {
           try {
-            // API giờ trả về trực tiếp array
             const bookingData = await getBookingsByProviderAndStatus(
               providerId,
               status
             );
-
-            // bookingData giờ là array trực tiếp
-            if (Array.isArray(bookingData) && bookingData.length > 0) {
-              allBookings.push(...bookingData);
-            }
-          } catch (error) {
-            // Bỏ qua lỗi, không log
-            continue;
+            return Array.isArray(bookingData) ? bookingData : [];
+          } catch (error: any) {
+            // Bỏ qua lỗi, trả về array rỗng
+            showApiError(error.message);
+            return [];
           }
-        }
+        });
+
+        // Đợi tất cả API calls hoàn thành
+        const results = await Promise.all(promises);
+
+        // Gộp tất cả bookings
+        const allBookings = results.flat();
+
+        // SẮP XẾP THEO THỜI GIAN MỚI NHẤT
+        allBookings.sort((a, b) => {
+          // Sắp xếp theo updatedAt hoặc createdAt (mới nhất lên đầu)
+          const timeA = a.createdAt || [0];
+          const timeB = b.createdAt || [0];
+
+          // So sánh từ năm -> tháng -> ngày -> giờ -> phút
+          for (let i = 0; i < Math.min(timeA.length, timeB.length); i++) {
+            if (timeB[i] !== timeA[i]) {
+              return timeB[i] - timeA[i]; // Đảo ngược để mới nhất lên đầu
+            }
+          }
+          return 0;
+        });
 
         console.log("Total bookings fetched:", allBookings.length);
         setBookings(allBookings);
         hasFetchedRef.current = providerId; // Đánh dấu đã fetch
-      } catch (error) {
+      } catch (error: any) {
         // Không log error
+        showApiError(error.message);
       } finally {
         setLoading(false);
       }
@@ -382,9 +399,9 @@ export default function ManageAcceptedBookings() {
     console.log("Setting up WebSocket listeners for provider:", provider);
 
     const unsubscribeBookingStatus = on("BOOKING_STATUS_CHANGE", (event) => {
-      console.log("Provider - Booking status changed:", event);
-      console.log("Event payload:", event.payload);
-      console.log("Calling fetchBookings...");
+      // console.log("Provider - Booking status changed:", event);
+      // console.log("Event payload:", event.payload);
+      // console.log("Calling fetchBookings...");
 
       // Gọi fetchBookings
       fetchBookings(true)
@@ -397,8 +414,8 @@ export default function ManageAcceptedBookings() {
     });
 
     const unsubscribeBookingUpdate = on("BOOKING_UPDATE", (event) => {
-      console.log("Provider - Booking updated:", event);
-      console.log("Event payload:", event.payload);
+      // console.log("Provider - Booking updated:", event);
+      // console.log("Event payload:", event.payload);
 
       fetchBookings(true)
         .then(() => {

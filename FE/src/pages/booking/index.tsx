@@ -194,6 +194,10 @@ const BookingPage: React.FC = () => {
     [key: string]: boolean;
   }>({});
 
+  const [allVehicleBookings, setAllVehicleBookings] = useState<{
+    [vehicleId: string]: ExistingBooking[];
+  }>({});
+
   // State cho tính khoảng cách
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [isCalculatingDistance, setIsCalculatingDistance] =
@@ -232,6 +236,10 @@ const BookingPage: React.FC = () => {
     const fetchVehicleData = async () => {
       if (!vehicleIds.length) return;
       setLoading(true);
+
+      // Khai báo bookingsByVehicle ở ngoài để có thể dùng trong toàn bộ function
+      const bookingsByVehicle: { [key: string]: ExistingBooking[] } = {};
+
       try {
         if (vehicleIds.length === 1) {
           const vehicleData = await getVehicleById(vehicleIds[0]);
@@ -239,17 +247,26 @@ const BookingPage: React.FC = () => {
           const bookings = await getBookedSlotById(vehicleIds[0]);
           setExistingBookings(bookings);
         } else {
-          // Multi-vehicle booking
+          // Multi-vehicle booking - QUAN TRỌNG: Lưu bookings riêng cho từng xe
           const vehicles: Vehicle[] = [];
-          let allBookings: ExistingBooking[] = [];
+          let allBookingsCombined: ExistingBooking[] = []; // Gộp TẤT CẢ bookings
+
           for (const vid of vehicleIds) {
             const v = await getVehicleById(vid);
             vehicles.push(v);
             const bookings = await getBookedSlotById(vid);
-            allBookings = allBookings.concat(bookings);
+
+            // Lưu bookings riêng cho từng xe
+            bookingsByVehicle[vid] = bookings;
+
+            // Gộp tất cả bookings lại để chặn
+            allBookingsCombined = allBookingsCombined.concat(bookings);
           }
+
           setMultiVehicles(vehicles);
-          setExistingBookings(allBookings);
+          setAllVehicleBookings(bookingsByVehicle);
+          // Set tất cả bookings đã gộp để dùng cho việc disable time
+          setExistingBookings(allBookingsCombined);
         }
 
         // Check for time parameters in URL
@@ -264,18 +281,23 @@ const BookingPage: React.FC = () => {
             setTotalDays(
               calculation.isHourlyRate ? 1 : calculation.billingDays
             );
-            // Kiểm tra buffer time conflict cho tất cả xe
+
+            // Kiểm tra buffer time conflict
             let hasConflict = false;
             let conflictMsg = "";
+
             if (vehicleIds.length === 1) {
-              if (vehicle?.vehicleType) {
+              // Lấy vehicle data mới nhất
+              const vehicleData = await getVehicleById(vehicleIds[0]);
+              if (vehicleData?.vehicleType) {
                 const vehicleType =
-                  vehicle.vehicleType.toUpperCase() as VehicleType;
+                  vehicleData.vehicleType.toUpperCase() as VehicleType;
+                const bookings = await getBookedSlotById(vehicleIds[0]);
                 const conflictCheck = checkBufferTimeConflict(
                   vehicleType,
                   startDate,
                   endDate,
-                  existingBookings
+                  bookings
                 );
                 if (conflictCheck.hasConflict) {
                   hasConflict = true;
@@ -284,20 +306,28 @@ const BookingPage: React.FC = () => {
                 }
               }
             } else {
-              // Multi-vehicle: check all
-              for (let i = 0; i < multiVehicles.length; i++) {
-                const vData = multiVehicles[i];
-                if (vData?.vehicleType) {
+              // Multi-vehicle: check từng xe với bookings riêng của nó
+              // Lấy vehicles data mới nhất
+              const vehicles: Vehicle[] = [];
+              for (const vid of vehicleIds) {
+                const v = await getVehicleById(vid);
+                vehicles.push(v);
+              }
+
+              for (let i = 0; i < vehicles.length; i++) {
+                const vData = vehicles[i];
+                const vehicleId = vehicleIds[i];
+
+                if (vData?.vehicleType && bookingsByVehicle[vehicleId]) {
                   const vehicleType =
                     vData.vehicleType.toUpperCase() as VehicleType;
                   const conflictCheck = checkBufferTimeConflict(
                     vehicleType,
                     startDate,
                     endDate,
-                    existingBookings.filter(
-                      (b) => String(b.id) === String(vData.id)
-                    )
+                    bookingsByVehicle[vehicleId] // Dùng bookings riêng của từng xe
                   );
+
                   if (conflictCheck.hasConflict) {
                     hasConflict = true;
                     conflictMsg =
@@ -307,6 +337,7 @@ const BookingPage: React.FC = () => {
                 }
               }
             }
+
             setBufferConflictMessage(hasConflict ? conflictMsg : "");
           }
         }
@@ -317,13 +348,9 @@ const BookingPage: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchVehicleData();
-  }, [
-    vehicleIds.join(","),
-    router.query,
-    multiVehicles.length,
-    vehicle?.vehicleType,
-  ]);
+  }, [vehicleIds.join(","), router.query]);
 
   const fetchAvailableVehiclesForModal = async () => {
     try {
@@ -464,9 +491,9 @@ const BookingPage: React.FC = () => {
         ([_, isAvailable]) => !isAvailable
       );
       if (unavailableVehicles.length > 0) {
-        message.warning(
-          `Có ${unavailableVehicles.length} xe đã được đặt trong khoảng thời gian này. Vui lòng chọn lại xe hoặc thay đổi thời gian.`
-        );
+        // message.warning(
+        //   `Có ${unavailableVehicles.length} xe đã được đặt trong khoảng thời gian này. Vui lòng chọn lại xe hoặc thay đổi thời gian.`
+        // );
       }
     } catch (error) {
       console.error("Error checking vehicles availability:", error);
@@ -482,7 +509,7 @@ const BookingPage: React.FC = () => {
   // Function để handle việc chọn lại xe
   const handleVehicleReselect = () => {
     if (newSelectedVehicleIds.length === 0) {
-      message.error("Vui lòng chọn ít nhất một xe");
+      //message.error("Vui lòng chọn ít nhất một xe");
       return;
     }
 
@@ -560,9 +587,9 @@ const BookingPage: React.FC = () => {
         );
 
         if (conflictCheck.hasConflict) {
-          message.error(
-            conflictCheck.message || "Có xung đột thời gian với booking khác"
-          );
+          // message.error(
+          //   conflictCheck.message || "Có xung đột thời gian với booking khác"
+          // );
           setSubmitting(false);
           return;
         }
@@ -703,7 +730,7 @@ const BookingPage: React.FC = () => {
 
           if (response.success && response.data) {
             setBookingData(response.data);
-            message.success("Tạo đơn đặt xe thành công!");
+            //message.success("Tạo đơn đặt xe thành công!");
             showApiSuccess(response.data.message || "Đơn đặt xe đã được tạo");
             setCurrent(1);
             return; // Exit retry loop on success
@@ -753,10 +780,10 @@ const BookingPage: React.FC = () => {
 
           if (isConflictError) {
             if (retryCount < maxRetries) {
-              message.warning(
-                `Xe vừa được đặt bởi người khác. Đang thử lại... (Lần ${retryCount}/${maxRetries})`,
-                3
-              );
+              // message.warning(
+              //   `Xe vừa được đặt bởi người khác. Đang thử lại... (Lần ${retryCount}/${maxRetries})`,
+              //   3
+              // );
 
               // Wait với exponential backoff (1s, 2s, 4s)
               await new Promise((resolve) =>
@@ -782,9 +809,7 @@ const BookingPage: React.FC = () => {
           } else {
             // Other errors
             //console.error("Booking error:", error);
-            message.error(
-              errorResponse?.data?.message || "Có lỗi khi tạo booking"
-            );
+            showError(errorResponse?.data?.message || "Có lỗi khi tạo booking");
             return;
           }
         }
@@ -800,14 +825,14 @@ const BookingPage: React.FC = () => {
       setSubmitting(true);
 
       if (!bookingData) {
-        message.error("Không tìm thấy thông tin đơn đặt xe");
+        //message.error("Không tìm thấy thông tin đơn đặt xe");
         return;
       }
 
       if (paymentMethod === "WALLET") {
         // Kiểm tra số dư ví
         if (walletBalance < bookingData.totalCost) {
-          message.error("Số dư ví không đủ để thanh toán");
+          //.error("Số dư ví không đủ để thanh toán");
           return;
         }
 
@@ -817,10 +842,10 @@ const BookingPage: React.FC = () => {
         )) as PaymentResponse;
 
         if (paymentResponse.success) {
-          message.success("Thanh toán ví thành công!");
+          //message.success("Thanh toán ví thành công!");
           setCurrent(2); // Chuyển đến kết quả thành công
         } else {
-          message.error(paymentResponse.error || "Lỗi thanh toán ví");
+          //message.error(paymentResponse.error || "Lỗi thanh toán ví");
         }
       } else {
         // Tạo link thanh toán VNPay, truyền thêm amount
@@ -830,16 +855,17 @@ const BookingPage: React.FC = () => {
         )) as PaymentResponse;
 
         if (paymentResponse.success && paymentResponse.data?.paymentUrl) {
-          message.info("Chuyển hướng đến VNPay...");
+          //message.info("Chuyển hướng đến VNPay...");
           // Redirect to VNPay
           window.location.href = paymentResponse.data.paymentUrl;
         } else {
-          message.error(paymentResponse.error || "Lỗi tạo link thanh toán");
+          //message.error(paymentResponse.error || "Lỗi tạo link thanh toán");
         }
       }
-    } catch (error: unknown) {
-      console.error("Lỗi khi thanh toán:", error);
-      message.error("Lỗi trong quá trình thanh toán");
+    } catch (error: any) {
+      //console.error("Lỗi khi thanh toán:", error);
+      //message.error("Lỗi trong quá trình thanh toán");
+      showApiError(error.message || "Lỗi trong quá trình thanh toán");
     } finally {
       setSubmitting(false);
     }
@@ -973,30 +999,56 @@ const BookingPage: React.FC = () => {
       // Legacy compatibility
       setTotalDays(calculation.isHourlyRate ? 1 : calculation.billingDays);
 
-      // Kiểm tra buffer time conflict cho xe đầu tiên (reference vehicle)
-      const referenceVehicle =
-        vehicle || (multiVehicles.length > 0 ? multiVehicles[0] : null);
-      if (referenceVehicle?.vehicleType) {
-        const vehicleType =
-          referenceVehicle.vehicleType.toUpperCase() as VehicleType;
-        const conflictCheck = checkBufferTimeConflict(
-          vehicleType,
-          startDate,
-          endDate,
-          existingBookings
-        );
+      // Kiểm tra buffer time conflict
+      let hasConflict = false;
+      let conflictMsg = "";
 
-        if (conflictCheck.hasConflict) {
-          setBufferConflictMessage(
-            conflictCheck.message || "Có xung đột thời gian"
+      if (vehicleIds.length === 1) {
+        const referenceVehicle = vehicle;
+        if (referenceVehicle?.vehicleType) {
+          const vehicleType =
+            referenceVehicle.vehicleType.toUpperCase() as VehicleType;
+          const conflictCheck = checkBufferTimeConflict(
+            vehicleType,
+            startDate,
+            endDate,
+            existingBookings
           );
-          message.warning(
-            conflictCheck.message || "Có xung đột thời gian với booking khác"
-          );
-        } else {
-          setBufferConflictMessage("");
+
+          if (conflictCheck.hasConflict) {
+            hasConflict = true;
+            conflictMsg = conflictCheck.message || "Có xung đột thời gian";
+          }
+        }
+      } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+        // Multi-vehicle: check từng xe với bookings riêng của nó
+        for (let i = 0; i < vehicleIds.length; i++) {
+          const vehicleId = vehicleIds[i];
+          const vData = multiVehicles[i];
+
+          if (vData?.vehicleType && allVehicleBookings[vehicleId]) {
+            const vehicleType = vData.vehicleType.toUpperCase() as VehicleType;
+            const vehicleBookings = allVehicleBookings[vehicleId];
+
+            const conflictCheck = checkBufferTimeConflict(
+              vehicleType,
+              startDate,
+              endDate,
+              vehicleBookings // Dùng bookings riêng của từng xe để check
+            );
+
+            if (conflictCheck.hasConflict) {
+              hasConflict = true;
+              conflictMsg = `Xe ${i + 1}: ${
+                conflictCheck.message || "Có xung đột thời gian"
+              }`;
+              // Không break để có thể check hết tất cả xe
+            }
+          }
         }
       }
+
+      setBufferConflictMessage(hasConflict ? conflictMsg : "");
 
       // Check availability cho tất cả xe hiện tại
       await checkAllVehiclesAvailability();
@@ -1009,7 +1061,6 @@ const BookingPage: React.FC = () => {
       setBufferConflictMessage("");
     }
   };
-
   // Xử lý coupon
   const handleApplyCoupon = (coupon: CouponType | null): void => {
     if (coupon) {
@@ -1180,11 +1231,34 @@ const BookingPage: React.FC = () => {
 
   // Tạo disabledTime và disabledDate functions sử dụng helper mới
   // Nếu nhiều xe, lấy open/closeTime của xe đầu tiên
-  const openTime = vehicle?.openTime || (multiVehicles[0]?.openTime ?? "00:00");
-  const closeTime =
-    vehicle?.closeTime || (multiVehicles[0]?.closeTime ?? "00:00");
+  const openTime = vehicle?.openTime || multiVehicles[0]?.openTime || "";
+  const closeTime = vehicle?.closeTime || multiVehicles[0]?.closeTime || "";
 
   const disabledRangeTime = useMemo(() => {
+    // Kiểm tra nếu không có openTime/closeTime
+    if (!openTime && !closeTime) {
+      // Trả về function không disable gì
+      return () => ({
+        disabledHours: () => [],
+        disabledMinutes: () => [],
+      });
+    }
+
+    // Với nhiều xe: dùng TẤT CẢ bookings đã gộp
+    if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+      const vehicleType =
+        multiVehicles[0].vehicleType.toUpperCase() as VehicleType;
+
+      // Dùng existingBookings đã chứa TẤT CẢ bookings của các xe
+      return createDisabledTimeFunction(
+        vehicleType,
+        existingBookings, // Đã gộp tất cả bookings
+        openTime,
+        closeTime
+      );
+    }
+
+    // Single vehicle
     if (vehicleIds.length === 1 && vehicle?.vehicleType) {
       const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
       return createDisabledTimeFunction(
@@ -1193,22 +1267,19 @@ const BookingPage: React.FC = () => {
         openTime,
         closeTime
       );
-    } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-      // Nếu nhiều xe, gộp tất cả bookings lại, lấy loại xe đầu tiên
-      const vehicleType =
-        multiVehicles[0].vehicleType.toUpperCase() as VehicleType;
-      return createDisabledTimeFunction(
-        vehicleType,
-        existingBookings,
-        openTime,
-        closeTime
-      );
     }
-    return createDisabledTimeFunction("CAR", [], openTime, closeTime);
+
+    // Default fallback
+    return createDisabledTimeFunction(
+      "CAR",
+      [],
+      openTime || "00:00",
+      closeTime || "00:00"
+    );
   }, [
     vehicle?.vehicleType,
     multiVehicles,
-    existingBookings,
+    existingBookings, // Đã chứa tất cả bookings khi multi-vehicle
     openTime,
     closeTime,
     vehicleIds.join(","),
@@ -1216,20 +1287,51 @@ const BookingPage: React.FC = () => {
 
   const disabledDateFunction = useMemo(() => {
     return (current: Dayjs): boolean => {
-      if (vehicleIds.length === 1 && vehicle?.vehicleType) {
-        const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-        return isDateDisabled(current, vehicleType, existingBookings);
-      } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+      if (!current) return false;
+
+      // Kiểm tra nếu không có openTime/closeTime thì không disable
+      if (!openTime && !closeTime) {
+        // Chỉ disable ngày quá khứ
+        const today = dayjs().startOf("day");
+        return current.isBefore(today);
+      }
+
+      // Với nhiều xe: dùng TẤT CẢ bookings đã gộp
+      if (vehicleIds.length > 1 && multiVehicles.length > 0) {
+        // Lấy loại xe từ xe đầu tiên (giả sử tất cả xe cùng loại)
         const vehicleType =
           multiVehicles[0].vehicleType.toUpperCase() as VehicleType;
-        return isDateDisabled(current, vehicleType, existingBookings);
+
+        // Dùng existingBookings đã gộp TẤT CẢ bookings của các xe
+        return isDateDisabled(
+          current,
+          vehicleType,
+          existingBookings, // Đã chứa TẤT CẢ bookings
+          openTime,
+          closeTime
+        );
       }
+
+      // Single vehicle
+      if (vehicleIds.length === 1 && vehicle?.vehicleType) {
+        const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
+        return isDateDisabled(
+          current,
+          vehicleType,
+          existingBookings,
+          openTime,
+          closeTime
+        );
+      }
+
       return false;
     };
   }, [
     vehicle?.vehicleType,
     multiVehicles,
-    existingBookings,
+    existingBookings, // Đã chứa tất cả bookings khi multi-vehicle
+    openTime,
+    closeTime,
     vehicleIds.join(","),
   ]);
 

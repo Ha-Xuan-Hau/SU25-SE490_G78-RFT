@@ -92,10 +92,10 @@ export default function ActiveUsersCard() {
           <div className="bg-white/10 backdrop-blur rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-4 h-4" />
-              <p className="text-xs opacity-90">Tổng số người dùng</p>
+              <p className="text-xs opacity-90">Tổng số người dùng </p>
             </div>
             <p className="text-2xl font-bold">
-              {totalUsers.toLocaleString("vi-VN")}
+              {(totalUsers - totalCarOwners).toLocaleString("vi-VN")}
             </p>
             <p className="text-xs opacity-80 mt-1">
               <span className="text-green-300">↑ 12.5%</span> so với tháng trước

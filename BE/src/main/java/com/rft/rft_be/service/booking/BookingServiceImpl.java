@@ -485,7 +485,8 @@ public class BookingServiceImpl implements BookingService {
 //                    "Bạn chỉ có thể giao xe trong khoảng từ 5 đến 8 tiếng trước thời gian bắt đầu chuyến đi.");
 //        }
 
-        if (hoursUntilStart > 8) {
+        //sua lai thanh 5h
+        if (hoursUntilStart > 5) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Bạn chỉ có thể giao xe trong khoảng từ 8 tiếng trước thời gian bắt đầu chuyến đi.");
         }
