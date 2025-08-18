@@ -2,14 +2,14 @@
 package com.rft.rft_be.controller;
 
 import com.rft.rft_be.dto.*;
-import com.rft.rft_be.dto.admin.AvgDurationResponse;
-import com.rft.rft_be.dto.admin.CountResponse;
-import com.rft.rft_be.dto.admin.MoneyResponse;
-import com.rft.rft_be.dto.admin.MonthlyBookingSummaryResponse;
+import com.rft.rft_be.dto.admin.*;
 import com.rft.rft_be.service.admin.AdminDashboardService;
+import com.rft.rft_be.service.report.ReportService;
+import com.rft.rft_be.service.report.ReportServiceImpl;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
 
 @RestController
@@ -17,9 +17,10 @@ import java.time.YearMonth;
 public class AdminDashboardController {
 
     private final AdminDashboardService service;
-
-    public AdminDashboardController(AdminDashboardService service) {
+    private final ReportService reportService;
+    public AdminDashboardController(AdminDashboardService service,  ReportService reportService) {
         this.service = service;
+        this.reportService = reportService;
     }
 
     // 1) Tổng số lượng hợp đồng tất toán (theo tháng)
@@ -50,5 +51,24 @@ public class AdminDashboardController {
     @GetMapping("/bookings/total")
     public CountResponse getMonthlyTotalBookings(@RequestParam(value = "month", required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
         return service.getMonthlyTotalBookings(month);
+    }
+
+    @GetMapping("reports")
+    public ReportDashboardResponse getReportStatistics(
+            @RequestParam(value = "from", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @RequestParam(value = "to", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        LocalDate today = LocalDate.now();
+        LocalDate startOfMonth = today.withDayOfMonth(1);
+
+        LocalDate fromDate = (from != null) ? from : startOfMonth;
+        LocalDate toDate = (to != null) ? to : today;
+
+        return reportService.getDashboardReportStatistics(
+                fromDate.atStartOfDay(),
+                toDate.atTime(23, 59, 59));
     }
 }

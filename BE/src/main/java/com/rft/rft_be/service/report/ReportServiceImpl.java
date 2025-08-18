@@ -2,6 +2,8 @@ package com.rft.rft_be.service.report;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rft.rft_be.dto.admin.ReportDashboardResponse;
+import com.rft.rft_be.dto.admin.ReportStatisticDTO;
 import com.rft.rft_be.dto.report.*;
 import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.ReportMapper;
@@ -643,5 +645,32 @@ public class ReportServiceImpl implements ReportService {
                 || ("NON_SERIOUS_ERROR".equals(generalType) && nonSeriousReport.contains(type))
                 || ("STAFF_ERROR".equals(generalType) && "STAFF_REPORT".equals(type));
         // Không check APPEAL vì không hiển thị trên UI
+    }
+    @Override
+    public ReportDashboardResponse getDashboardReportStatistics(LocalDateTime from, LocalDateTime to) {
+        // Gộp type của cả 2 nhóm
+        List<String> allTypes = new ArrayList<>();
+        allTypes.addAll(nonSeriousReport);
+        allTypes.addAll(seriousReport);
+
+        long pendingAll = reportRepo.countByTypesAndStatusAndDateRange(
+                allTypes, UserReport.Status.PENDING, from, to);
+        ReportDashboardResponse response = new ReportDashboardResponse();
+        response.setPendingTotal(pendingAll);
+        response.setNonSerious(buildStats(nonSeriousReport, from, to));
+        response.setSerious(buildStats(seriousReport, from, to));
+        return response;
+    }
+
+    private ReportStatisticDTO buildStats(List<String> types, LocalDateTime from, LocalDateTime to) {
+        long total = reportRepo.countByTypesAndDateRange(types, from, to);
+        long pending = reportRepo.countByTypesAndStatusAndDateRange(types, UserReport.Status.PENDING, from, to);
+        long processed = total - pending;
+
+        ReportStatisticDTO dto = new ReportStatisticDTO();
+        dto.setTotal(total);
+        dto.setPending(pending);
+        dto.setProcessed(processed);
+        return dto;
     }
 }
