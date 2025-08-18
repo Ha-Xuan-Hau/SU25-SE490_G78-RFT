@@ -43,11 +43,11 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           if (user.role === "PROVIDER") {
             setIsAuthorized(true);
           } else {
-            router.push("/404");
+            router.push("/not-found");
           }
         } catch (error) {
           console.error("Error parsing user profile:", error);
-          router.push("/404");
+          router.push("/not-found");
         } finally {
           setIsLoading(false);
         }
@@ -144,6 +144,17 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
       ],
     },
     {
+      title: "Quản lý giấy tờ",
+      items: [
+        {
+          key: "driver-licenses",
+          path: "/provider/driver-licenses",
+          icon: "mdi:card-account-details",
+          label: "Giấy phép lái xe",
+        },
+      ],
+    },
+    {
       title: "Quản lý thuê xe",
       items: [
         {
@@ -228,7 +239,7 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
                   {providerProfile?.email || "user@example.com"}
                 </p>
                 <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Nhà cung cấp dịch vụ
+                  Chủ xe
                 </span>
               </div>
             </div>
