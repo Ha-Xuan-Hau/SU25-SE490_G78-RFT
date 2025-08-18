@@ -12,9 +12,18 @@ import {
   Input,
   Select,
   Form,
-  InputNumber,
+  Space,
 } from "antd";
-import { EyeOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  EyeOutlined,
+  SearchOutlined,
+  UserOutlined,
+  PlusOutlined,
+  MailOutlined,
+  LockOutlined,
+  UserAddOutlined,
+  SafetyOutlined,
+} from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import {
   getUsers,
@@ -22,7 +31,10 @@ import {
   getUserDetail,
   searchUsersByName,
   searchUsersByEmail,
+  createStaff,
 } from "@/apis/admin.api";
+import { sendOtpRegister } from "@/apis/auth.api";
+import { showApiError, showApiSuccess } from "@/utils/toast.utils";
 import type { ColumnsType } from "antd/es/table";
 
 const { Title } = Typography;
@@ -38,107 +50,162 @@ interface User {
   dateOfBirth: number[];
   role: "ADMIN" | "STAFF";
   status: "ACTIVE" | "INACTIVE";
-  profilePicture: string; // Avatar
-  createdAt: number[]; // Ngày tạo
-  updatedAt: number[]; // Ngày sửa đổi
-  // totalBookings: number; // Tổng số booking
-  // completedBookings: number; // Số booking đã hoàn thành
-  // cancelledBookings: number; // Số booking đã hủy
-  // averageRating: number; // Đánh giá trung bình
-  // totalRatings: number; // Tổng số đánh giá
-  // walletBalance: number; // Số dư ví
-  // bankName: string; // Ngân hàng
-  // cardNumber: string; // Số thẻ
-  // cardHolderName: string; // Tên trên thẻ
+  profilePicture: string;
+  createdAt: number[];
+  updatedAt: number[];
+}
+
+interface CreateStaffFormValues {
+  email: string;
+  fullName: string;
+  password: string;
+  otp: string;
 }
 
 export default function ManageStaffPage() {
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("ADMIN");
+  const [activeTab, setActiveTab] = useState("STAFF");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false); // Modal xác nhận
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [searchType, setSearchType] = useState("name"); // Trạng thái cho loại tìm kiếm
+  const [searchType, setSearchType] = useState("name");
   const [users, setUsers] = useState<User[]>([]);
-  const [currentPage, setCurrentPage] = useState(0); // Trạng thái cho trang hiện tại
-  const [form] = Form.useForm(); // Khởi tạo form
+  const [currentPage, setCurrentPage] = useState(0);
+  const [form] = Form.useForm();
+
+  // States cho form tạo nhân viên
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [createForm] = Form.useForm<CreateStaffFormValues>();
+  const [createLoading, setCreateLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
 
   const fetchUsers = async (page = 0, search = "") => {
     setLoading(true);
     try {
-      const response = await getUsers({ page, size: 10, name: search }); // Gọi API với tham số cần thiết
-      setUsers(response.users);
-      setCurrentPage(response.currentPage); // Cập nhật trang hiện tại
+      const response = await getUsers({ page, size: 10, name: search });
+      setUsers(response.users || []);
+      setCurrentPage(response.currentPage || 0);
     } catch (error) {
-      console.error(error);
+      showApiError(error, "Không thể tải danh sách nhân viên");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers(currentPage, searchText); // Gọi hàm fetch với tham số tìm kiếm
-  }, [currentPage, searchText]); // Gọi lại khi currentPage hoặc searchText thay đổi
+    fetchUsers(currentPage, searchText);
+  }, [currentPage]);
 
-  const handleSearch = async (value: string) => {
-    setSearchText(value);
-    setCurrentPage(0); // Reset về trang đầu khi tìm kiếm
+  // Countdown cho OTP
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCountdown]);
 
-    // Nếu không có giá trị tìm kiếm, gọi lại fetchUsers
-    if (value.trim() === "") {
-      fetchUsers(0, ""); // Lấy lại danh sách người dùng
+  // Xử lý gửi OTP
+  const handleSendOtp = async () => {
+    const email = createForm.getFieldValue("email");
+
+    if (!email) {
+      showApiError(null, "Vui lòng nhập email trước khi gửi OTP");
       return;
     }
 
-    // Gọi API tìm kiếm theo loại đã chọn
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showApiError(null, "Email không hợp lệ");
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      await sendOtpRegister(email);
+      showApiSuccess("Mã OTP đã được gửi đến email");
+      setOtpSent(true);
+      setOtpCountdown(60);
+    } catch (error) {
+      showApiError(error, "Không thể gửi OTP");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Xử lý tạo nhân viên
+  const handleCreateStaff = async (values: CreateStaffFormValues) => {
+    setCreateLoading(true);
+    try {
+      await createStaff({
+        email: values.email,
+        fullName: values.fullName,
+        password: values.password,
+        otp: values.otp,
+      });
+
+      showApiSuccess("Tạo tài khoản nhân viên thành công");
+      setIsCreateModalVisible(false);
+      createForm.resetFields();
+      setOtpSent(false);
+      setOtpCountdown(0);
+
+      // Refresh danh sách
+      await fetchUsers(0, "");
+      setCurrentPage(0);
+    } catch (error) {
+      showApiError(error, "Không thể tạo tài khoản nhân viên");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleSearch = async (value: string) => {
+    setSearchText(value);
+    setCurrentPage(0);
+
+    if (value.trim() === "") {
+      fetchUsers(0, "");
+      return;
+    }
+
+    setLoading(true);
     try {
       let response;
       if (searchType === "name") {
-        response = await searchUsersByName(value, currentPage, 10);
+        response = await searchUsersByName(value, 0, 10);
       } else if (searchType === "email") {
-        response = await searchUsersByEmail(value, currentPage, 10);
+        response = await searchUsersByEmail(value, 0, 10);
       }
-
-      setUsers(response.users); // Cập nhật danh sách người dùng
+      setUsers(response?.users || []);
     } catch (error) {
-      console.error(error);
+      showApiError(error, "Không thể tìm kiếm");
+    } finally {
+      setLoading(false);
     }
   };
 
   const filteredUsers = users.filter((user) => {
-    const matchesTab =
-      // activeTab === "ALL" ||
-      (activeTab === "ADMIN" && user.role === "ADMIN") ||
-      (activeTab === "STAFF" && user.role === "STAFF");
-
-    return matchesTab; // Chỉ cần kiểm tra tab
+    return activeTab === "STAFF" && user.role === "STAFF";
   });
 
   const handleViewDetails = async (user: User) => {
     setSelectedUser(user);
     setIsModalVisible(true);
 
-    // Gọi API để lấy thông tin chi tiết người dùng
     try {
       const userDetail = await getUserDetail(user.id);
-      setSelectedUser(userDetail); // Cập nhật thông tin người dùng chi tiết
-      form.setFieldsValue({
-        // Thiết lập giá trị cho form
-        cardName: userDetail.cardName,
-        bankName: userDetail.bankName,
-        cardHolderName: userDetail.cardHolderName,
-        walletBalance: userDetail.walletBalance,
-      });
+      setSelectedUser(userDetail);
     } catch (error) {
-      console.error(error);
+      showApiError(error, "Không thể tải chi tiết người dùng");
     }
   };
 
   const handleToggleUserStatus = () => {
     if (!selectedUser) return;
-
-    // Hiển thị modal xác nhận
     setIsConfirmModalVisible(true);
   };
 
@@ -155,34 +222,23 @@ export default function ManageStaffPage() {
         )
       );
       setSelectedUser({ ...selectedUser, status: newStatus });
+      showApiSuccess("Cập nhật trạng thái thành công");
     } catch (error) {
-      console.error(error);
+      showApiError(error, "Không thể cập nhật trạng thái");
     }
 
-    // Đóng modal xác nhận
     setIsConfirmModalVisible(false);
-    setIsModalVisible(false); // Đóng modal chi tiết người dùng
+    setIsModalVisible(false);
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page - 1); // Cập nhật currentPage khi chuyển trang
-  };
-
-  const getRoleColor = (role: string) => {
-    return role === "ADMIN" ? "red" : "blue";
-  };
-
-  const getRoleText = (role: string) => {
-    return role === "STAFF" ? "Nhân viên" : "Quản trị viên";
-  };
-
-  const getStatusColor = (status: string) => {
-    return status === "ACTIVE" ? "success" : "error";
-  };
-
-  const getStatusText = (status: string) => {
-    return status === "ACTIVE" ? "Hoạt động" : "Ngưng hoạt động";
-  };
+  // Helper functions
+  const getRoleColor = (role: string) => (role === "ADMIN" ? "red" : "blue");
+  const getRoleText = (role: string) =>
+    role === "STAFF" ? "Nhân viên" : "Quản trị viên";
+  const getStatusColor = (status: string) =>
+    status === "ACTIVE" ? "success" : "error";
+  const getStatusText = (status: string) =>
+    status === "ACTIVE" ? "Hoạt động" : "Ngưng hoạt động";
 
   const formatDOB = (dateArray: number[] | undefined | null): string => {
     if (!dateArray || !Array.isArray(dateArray) || dateArray.length < 3)
@@ -197,7 +253,6 @@ export default function ManageStaffPage() {
     timestamp: number | string | number[] | undefined | null
   ): string => {
     if (!timestamp) return "";
-
     if (Array.isArray(timestamp) && timestamp.length >= 5) {
       const [year, month, day, hour, minute] = timestamp;
       return `${day.toString().padStart(2, "0")}/${month
@@ -206,21 +261,6 @@ export default function ManageStaffPage() {
         .toString()
         .padStart(2, "0")}`;
     }
-
-    if (typeof timestamp === "number" || typeof timestamp === "string") {
-      const date = new Date(
-        typeof timestamp === "number" ? timestamp * 1000 : timestamp
-      );
-      return `${date.getDate().toString().padStart(2, "0")}/${(
-        date.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}/${date.getFullYear()} ${date
-        .getHours()
-        .toString()
-        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-    }
-
     return "";
   };
 
@@ -229,10 +269,9 @@ export default function ManageStaffPage() {
       title: "STT",
       key: "index",
       width: 60,
-      render: (_, __, index) => index + 1 + currentPage * 10, // Cập nhật chỉ số STT dựa theo trang hiện tại
+      render: (_, __, index) => index + 1 + currentPage * 10,
       align: "center",
     },
-
     {
       title: "Họ và tên",
       dataIndex: "fullName",
@@ -289,23 +328,6 @@ export default function ManageStaffPage() {
     },
   ];
 
-  const tabItems = [
-    // {
-    //   key: "ALL",
-    //   label: `Tất cả (${users.length})`,
-    // },
-    {
-      key: "ADMIN",
-      label: `Quản trị viên (${
-        users.filter((u) => u.role === "ADMIN").length
-      })`,
-    },
-    {
-      key: "STAFF",
-      label: `Nhân viên (${users.filter((u) => u.role === "STAFF").length})`,
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div>
@@ -322,7 +344,7 @@ export default function ManageStaffPage() {
           <div className="flex-1 max-w-md flex items-center">
             <Select
               defaultValue="name"
-              onChange={(value) => setSearchType(value)} // Thay đổi loại tìm kiếm
+              onChange={(value) => setSearchType(value)}
               style={{ width: 120, marginRight: 10 }}
             >
               <Option value="name">Tên</Option>
@@ -337,6 +359,19 @@ export default function ManageStaffPage() {
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
+
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={() => {
+              setIsCreateModalVisible(true);
+              setOtpSent(false);
+              setOtpCountdown(0);
+            }}
+          >
+            Tạo nhân viên mới
+          </Button>
         </div>
       </div>
 
@@ -344,7 +379,14 @@ export default function ManageStaffPage() {
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
-          items={tabItems}
+          items={[
+            {
+              key: "STAFF",
+              label: `Nhân viên (${
+                users.filter((u) => u.role === "STAFF").length
+              })`,
+            },
+          ]}
           className="px-6 pt-4"
         />
 
@@ -355,12 +397,12 @@ export default function ManageStaffPage() {
             rowKey="id"
             loading={loading}
             pagination={{
-              current: currentPage + 1, // Hiển thị trang hiện tại
+              current: currentPage + 1,
               pageSize: 10,
-              showSizeChanger: true,
+              showSizeChanger: false,
               showQuickJumper: true,
-              total: users.length, // Tổng số người dùng
-              onChange: handlePageChange, // Gọi hàm khi chuyển trang
+              total: filteredUsers.length,
+              onChange: (page) => setCurrentPage(page - 1),
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} người dùng`,
             }}
@@ -370,11 +412,152 @@ export default function ManageStaffPage() {
         </div>
       </div>
 
+      {/* Modal tạo nhân viên mới */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <UserAddOutlined className="text-blue-500" />
+            <span>Tạo tài khoản nhân viên mới</span>
+          </div>
+        }
+        open={isCreateModalVisible}
+        onCancel={() => {
+          setIsCreateModalVisible(false);
+          createForm.resetFields();
+          setOtpSent(false);
+          setOtpCountdown(0);
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={createForm}
+          layout="vertical"
+          onFinish={handleCreateStaff}
+          className="mt-4"
+        >
+          <Form.Item
+            name="fullName"
+            label="Họ và tên"
+            rules={[
+              { required: true, message: "Vui lòng nhập họ và tên" },
+              { min: 3, message: "Họ tên phải có ít nhất 3 ký tự" },
+            ]}
+          >
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="Nhập họ và tên nhân viên"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: "Vui lòng nhập email" },
+              { type: "email", message: "Email không hợp lệ" },
+            ]}
+          >
+            <Input
+              prefix={<MailOutlined />}
+              placeholder="Nhập email nhân viên"
+              size="large"
+              disabled={otpSent}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="Mật khẩu"
+            rules={[
+              { required: true, message: "Vui lòng nhập mật khẩu" },
+              { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự" },
+              {
+                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/,
+                message:
+                  "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số",
+              },
+            ]}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item label="Mã OTP" required>
+            <Space.Compact style={{ width: "100%" }}>
+              <Form.Item
+                name="otp"
+                noStyle
+                rules={[
+                  { required: true, message: "Vui lòng nhập mã OTP" },
+                  { len: 6, message: "Mã OTP phải có 6 số" },
+                  { pattern: /^\d{6}$/, message: "Mã OTP chỉ chứa số" },
+                ]}
+              >
+                <Input
+                  prefix={<SafetyOutlined />}
+                  placeholder="Nhập mã OTP 6 số"
+                  size="large"
+                  style={{ width: "calc(100% - 120px)" }}
+                  maxLength={6}
+                />
+              </Form.Item>
+              <Button
+                type="primary"
+                size="large"
+                onClick={handleSendOtp}
+                loading={otpLoading}
+                disabled={otpCountdown > 0}
+                style={{ width: "120px" }}
+              >
+                {otpCountdown > 0 ? `${otpCountdown}s` : "Gửi OTP"}
+              </Button>
+            </Space.Compact>
+            {otpSent && (
+              <div className="text-green-600 text-sm mt-2">
+                Mã OTP đã được gửi đến email. Vui lòng kiểm tra hộp thư (có thể
+                trong mục spam).
+              </div>
+            )}
+          </Form.Item>
+
+          <Form.Item className="mb-0">
+            <div className="flex gap-3 justify-end">
+              <Button
+                size="large"
+                onClick={() => {
+                  setIsCreateModalVisible(false);
+                  createForm.resetFields();
+                  setOtpSent(false);
+                  setOtpCountdown(0);
+                }}
+              >
+                Đóng
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                size="large"
+                loading={createLoading}
+                icon={<UserAddOutlined />}
+              >
+                Tạo tài khoản
+              </Button>
+            </div>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal chi tiết người dùng */}
       <Modal
         title={
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
             <Avatar
-              src={selectedUser?.profilePicture} // Hiển thị avatar từ response
+              src={selectedUser?.profilePicture}
               icon={<UserOutlined />}
               size={40}
             />
@@ -414,8 +597,6 @@ export default function ManageStaffPage() {
       >
         {selectedUser && (
           <div className="pt-4 space-y-6">
-            {/* Mục 1: Thông tin cá nhân */}
-            {/* <div className="border-b pb-4 mb-4"> */}
             <Title level={4}>Thông tin cá nhân</Title>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -441,7 +622,7 @@ export default function ManageStaffPage() {
                   Số điện thoại
                 </label>
                 <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
-                  {selectedUser.phone}
+                  {selectedUser.phone || "Chưa cập nhật"}
                 </div>
               </div>
 
@@ -500,12 +681,11 @@ export default function ManageStaffPage() {
                 </div>
               </div>
             </div>
-            {/* </div> */}
           </div>
         )}
       </Modal>
 
-      {/* Modal xác nhận chuyển trạng thái nhân viên   */}
+      {/* Modal xác nhận chuyển trạng thái nhân viên */}
       <Modal
         title="Xác nhận thay đổi trạng thái nhân viên"
         open={isConfirmModalVisible}

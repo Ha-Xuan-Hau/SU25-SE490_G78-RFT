@@ -63,7 +63,7 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
-        user.setAddress(dto.getAddress());
+//        user.setAddress(dto.getAddress());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
 
         // LƯU USER TRƯỚC

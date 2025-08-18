@@ -1,113 +1,120 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Typography, Table, Button, Tag, Input, Avatar, Tooltip } from "antd";
 import {
   EyeOutlined,
   SearchOutlined,
-  CalendarOutlined,
   UserOutlined,
-  MailOutlined,
-  CarOutlined,
-  DollarOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
-import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
+import { getAllBookings } from "@/apis/admin.api";
+import { showApiError, showApiSuccess } from "@/utils/toast.utils";
+import { BookingResponseDTO } from "@/types/booking";
 
 const { Title } = Typography;
 const { Search } = Input;
 
-export interface Booking {
-  id: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  phoneNumber: string;
-  address: string;
-  timeBookingStart: string;
-  timeBookingEnd: string;
-  codeTransaction: string;
-  timeTransaction: string;
-  totalCost: number;
-  status:
-    | "UNPAID"
-    | "PENDING"
-    | "CONFIRMED"
-    | "CANCELLED"
-    | "DELIVERED"
-    | "RECEIVED_BY_CUSTOMER"
-    | "RETURNED"
-    | "COMPLETED";
-  penaltyType: "PERCENT" | "FIXED";
-  penaltyValue: number;
-  minCancelHour: number;
-  couponId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Mockup data với ID dài
-const mockBookings: Booking[] = [
-  {
-    id: "3f4f6195-e7ee-4dc1-91dd-c6f24a42f95b",
-    userId: "user_003",
-    userName: "Lê Minh Cường",
-    userEmail: "leminhcuong@gmail.com",
-    phoneNumber: "0901234567",
-    address: "456 Đường Nguyễn Huệ, Quận 3, TP.HCM",
-    timeBookingStart: "2025-07-20T18:00:00Z",
-    timeBookingEnd: "2025-07-22T07:00:00Z",
-    codeTransaction: "BOOK-4E2X56F",
-    timeTransaction: "2025-07-20T15:30:00Z",
-    totalCost: 680000,
-    status: "CONFIRMED",
-    penaltyType: "PERCENT",
-    penaltyValue: 10.0,
-    minCancelHour: 24,
-    couponId: "coupon_003",
-    createdAt: "2025-07-20T14:30:00Z",
-    updatedAt: "2025-07-20T15:45:00Z",
-  },
-  {
-    id: "3f4f6195-e7ee-4dc1-91dd-c6f24a42f95b",
-    userId: "user_003",
-    userName: "Lê Minh Cường",
-    userEmail: "leminhcuong@gmail.com",
-    phoneNumber: "0901234567",
-    address: "456 Đường Nguyễn Huệ, Quận 3, TP.HCM",
-    timeBookingStart: "2025-07-20T15:00:00Z",
-    timeBookingEnd: "2025-07-22T07:00:00Z",
-    codeTransaction: "BOOK-NPE4176",
-    timeTransaction: "2025-07-20T14:45:00Z",
-    totalCost: 750000,
-    status: "DELIVERED",
-    penaltyType: "PERCENT",
-    penaltyValue: 10.0,
-    minCancelHour: 24,
-    createdAt: "2025-07-20T14:30:00Z",
-    updatedAt: "2025-07-21T16:20:00Z",
-  },
-];
-
 export default function ManageBookingsPage() {
   const [loading, setLoading] = useState(false);
-  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+  const [bookings, setBookings] = useState<BookingResponseDTO[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
   const router = useRouter();
 
-  // Filter bookings based on search text
+  // Format timestamp function
+  const formatTimestamp = (
+    timestamp: number | string | number[] | undefined | null
+  ): string => {
+    if (!timestamp) return "";
+
+    if (Array.isArray(timestamp) && timestamp.length >= 5) {
+      const [year, month, day, hour, minute] = timestamp;
+      return `${day.toString().padStart(2, "0")}/${month
+        .toString()
+        .padStart(2, "0")}/${year} ${hour.toString().padStart(2, "0")}:${minute
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
+    if (typeof timestamp === "number" || typeof timestamp === "string") {
+      const date = new Date(
+        typeof timestamp === "number" ? timestamp * 1000 : timestamp
+      );
+      return `${date.getDate().toString().padStart(2, "0")}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${date.getFullYear()} ${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    return "";
+  };
+
+  // Fetch bookings data
+  const fetchBookings = async (page = 1, size = 10, search = "") => {
+    setLoading(true);
+    try {
+      const response = await getAllBookings({
+        page: page - 1,
+        size,
+        search,
+      });
+
+      if (response.content) {
+        setBookings(response.content);
+        setTotal(response.totalElements || 0);
+      } else if (Array.isArray(response)) {
+        setBookings(response);
+        setTotal(response.length);
+      } else if (response.data) {
+        setBookings(response.data);
+        setTotal(response.total || response.data.length);
+      } else {
+        setBookings([]);
+        setTotal(0);
+      }
+    } catch (error) {
+      showApiError(error, "Không thể tải danh sách đặt xe");
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings(currentPage, pageSize, searchText);
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchText || searchText === "") {
+        setCurrentPage(1);
+        fetchBookings(1, pageSize, searchText);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
   const filteredBookings = bookings.filter((booking) => {
+    if (!searchText) return true;
+
     const searchLower = searchText.toLowerCase();
     return (
-      booking.userName.toLowerCase().includes(searchLower) ||
-      booking.userEmail.toLowerCase().includes(searchLower) ||
-      booking.id.toLowerCase().includes(searchLower) ||
-      booking.codeTransaction.toLowerCase().includes(searchLower) ||
-      booking.phoneNumber.includes(searchLower) ||
-      booking.address.toLowerCase().includes(searchLower)
+      booking.user?.fullName?.toLowerCase().includes(searchLower) ||
+      booking.user?.email?.toLowerCase().includes(searchLower) ||
+      booking.id?.toLowerCase().includes(searchLower) ||
+      booking.codeTransaction?.toLowerCase().includes(searchLower) ||
+      booking.phoneNumber?.includes(searchLower) ||
+      booking.address?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -117,31 +124,35 @@ export default function ManageBookingsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+    showApiSuccess("Đã copy vào clipboard");
   };
 
+  // Màu sắc cho từng trạng thái
   const getStatusColor = (status: string) => {
     switch (status) {
       case "UNPAID":
-        return "error";
+        return "default"; // Màu đen/xám
       case "PENDING":
-        return "warning";
+        return "warning"; // Màu vàng
       case "CONFIRMED":
-        return "processing";
+        return "processing"; // Màu xanh dương
       case "CANCELLED":
-        return "default";
+        return "error"; // Màu đỏ
       case "DELIVERED":
-        return "cyan";
+      case "DELIVERING":
+        return "cyan"; // Màu cyan
       case "RECEIVED_BY_CUSTOMER":
-        return "blue";
+        return "blue"; // Màu xanh
       case "RETURNED":
-        return "purple";
+        return "purple"; // Màu tím
       case "COMPLETED":
-        return "success";
+        return "success"; // Màu xanh lá
       default:
         return "default";
     }
   };
 
+  // Text hiển thị cho từng trạng thái
   const getStatusText = (status: string) => {
     switch (status) {
       case "UNPAID":
@@ -153,6 +164,7 @@ export default function ManageBookingsPage() {
       case "CANCELLED":
         return "Đã hủy";
       case "DELIVERED":
+      case "DELIVERING":
         return "Đã giao xe";
       case "RECEIVED_BY_CUSTOMER":
         return "Khách đã nhận";
@@ -172,25 +184,12 @@ export default function ManageBookingsPage() {
     }).format(amount);
   };
 
-  const calculateDuration = (start: string, end: string) => {
-    const startTime = dayjs(start);
-    const endTime = dayjs(end);
-    const hours = endTime.diff(startTime, "hour");
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-
-    if (days > 0) {
-      return `${days} ngày${remainingHours > 0 ? ` ${remainingHours}h` : ""}`;
-    }
-    return `${hours}h`;
-  };
-
-  const columns: ColumnsType<Booking> = [
+  const columns: ColumnsType<BookingResponseDTO> = [
     {
       title: "STT",
       key: "index",
       width: 50,
-      render: (_, __, index) => index + 1,
+      render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
       align: "center",
       fixed: "left",
     },
@@ -226,69 +225,183 @@ export default function ManageBookingsPage() {
       width: 200,
       render: (_, record) => (
         <div className="flex items-center gap-2">
-          <Avatar icon={<UserOutlined />} size="small" />
+          <Avatar
+            src={record.user?.profilePicture}
+            icon={<UserOutlined />}
+            size="small"
+          />
           <div className="min-w-0 flex-1">
             <div className="font-medium text-sm truncate">
-              {record.userName}
+              {record.user?.fullName || "N/A"}
             </div>
-            <div className="text-xs text-gray-500 truncate">
-              {record.userEmail}
+            {/* <div className="text-xs text-gray-500 truncate">
+              {record.user?.email || "N/A"}
+            </div> */}
+            <div className="text-xs text-gray-500">
+              {record.phoneNumber || record.user?.phone || "N/A"}
             </div>
-            <div className="text-xs text-gray-500">📱 {record.phoneNumber}</div>
-          </div>
-        </div>
-      ),
-      sorter: (a, b) => a.userName.localeCompare(b.userName),
-    },
-    {
-      title: "Thời gian thuê",
-      key: "duration",
-      width: 140,
-      render: (_, record) => (
-        <div className="text-xs">
-          <div className="text-primary font-medium">
-            {dayjs(record.timeBookingStart).format("DD/MM HH:mm")}
-          </div>
-          <div className="text-gray-400">đến</div>
-          <div className="text-primary font-medium">
-            {dayjs(record.timeBookingEnd).format("DD/MM HH:mm")}
-          </div>
-          <div className="text-blue-600 font-semibold">
-            ({calculateDuration(record.timeBookingStart, record.timeBookingEnd)}
-            )
           </div>
         </div>
       ),
       sorter: (a, b) =>
-        dayjs(a.timeBookingStart).unix() - dayjs(b.timeBookingStart).unix(),
+        (a.user?.fullName || "").localeCompare(b.user?.fullName || ""),
     },
+    // {
+    //   title: "Xe thuê",
+    //   key: "vehicles",
+    //   width: 150,
+    //   render: (_, record) => (
+    //     <div className="text-xs">
+    //       {record.vehicles && record.vehicles.length > 0 ? (
+    //         <>
+    //           <div className="font-medium">
+    //             {record.vehicles[0].vehicleThumb}
+    //           </div>
+    //           <div className="text-gray-500">
+    //             {record.vehicles[0].vehicleLicensePlate}
+    //           </div>
+    //           {record.vehicles.length > 1 && (
+    //             <div className="text-blue-600">
+    //               +{record.vehicles.length - 1} xe khác
+    //             </div>
+    //           )}
+    //         </>
+    //       ) : (
+    //         <span className="text-gray-400">Không có thông tin</span>
+    //       )}
+    //     </div>
+    //   ),
+    // },
     {
-      title: "Mã GD",
-      dataIndex: "codeTransaction",
-      key: "codeTransaction",
-      width: 100,
-      render: (code) => (
-        <Tooltip title={code}>
-          <span className="font-mono text-xs font-semibold">{code}</span>
-        </Tooltip>
-      ),
+      title: "Thời gian thuê",
+      key: "duration",
+      width: 160,
+      render: (_, record) => {
+        const startFormatted = formatTimestamp(record.timeBookingStart);
+        const endFormatted = formatTimestamp(record.timeBookingEnd);
+
+        // Hàm tính thời lượng thuê
+        const calculateDuration = () => {
+          let startDate: Date | null = null;
+          let endDate: Date | null = null;
+
+          // Xử lý các định dạng timestamp khác nhau
+          if (
+            Array.isArray(record.timeBookingStart) &&
+            Array.isArray(record.timeBookingEnd)
+          ) {
+            if (
+              record.timeBookingStart.length >= 5 &&
+              record.timeBookingEnd.length >= 5
+            ) {
+              const [startYear, startMonth, startDay, startHour, startMinute] =
+                record.timeBookingStart;
+              const [endYear, endMonth, endDay, endHour, endMinute] =
+                record.timeBookingEnd;
+              startDate = new Date(
+                startYear,
+                startMonth - 1,
+                startDay,
+                startHour,
+                startMinute
+              );
+              endDate = new Date(
+                endYear,
+                endMonth - 1,
+                endDay,
+                endHour,
+                endMinute
+              );
+            }
+          } else if (
+            typeof record.timeBookingStart === "number" &&
+            typeof record.timeBookingEnd === "number"
+          ) {
+            startDate = new Date(record.timeBookingStart * 1000);
+            endDate = new Date(record.timeBookingEnd * 1000);
+          } else if (
+            typeof record.timeBookingStart === "string" &&
+            typeof record.timeBookingEnd === "string"
+          ) {
+            startDate = new Date(record.timeBookingStart);
+            endDate = new Date(record.timeBookingEnd);
+          }
+
+          if (
+            !startDate ||
+            !endDate ||
+            isNaN(startDate.getTime()) ||
+            isNaN(endDate.getTime())
+          ) {
+            return "";
+          }
+
+          const diffMs = endDate.getTime() - startDate.getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const diffHours = Math.floor(
+            (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+          );
+          const diffMinutes = Math.floor(
+            (diffMs % (1000 * 60 * 60)) / (1000 * 60)
+          );
+
+          if (diffDays > 0) {
+            return `${diffDays} ngày ${
+              diffHours > 0 ? diffHours + " giờ" : ""
+            }`;
+          } else if (diffHours > 0) {
+            return `${diffHours} giờ ${
+              diffMinutes > 0 ? diffMinutes + " phút" : ""
+            }`;
+          } else if (diffMinutes > 0) {
+            return `${diffMinutes} phút`;
+          }
+          return "";
+        };
+
+        const duration = record.rentalDuration || calculateDuration();
+
+        return (
+          <div className="text-xs">
+            <div className="text-primary font-medium">
+              {startFormatted
+                ? startFormatted.split(" ")[0] +
+                  " " +
+                  startFormatted.split(" ")[1]
+                : "-"}
+            </div>
+            <div className="text-gray-400">đến</div>
+            <div className="text-primary font-medium">
+              {endFormatted
+                ? endFormatted.split(" ")[0] + " " + endFormatted.split(" ")[1]
+                : "-"}
+            </div>
+            {duration && (
+              <div className="text-blue-600 font-semibold mt-1">{duration}</div>
+            )}
+          </div>
+        );
+      },
     },
+
     {
       title: "Tổng tiền",
       dataIndex: "totalCost",
       key: "totalCost",
-      width: 100,
+      width: 120,
       render: (cost) => (
-        <span className="font-semibold text-sm">{formatAmount(cost)}</span>
+        <div>
+          <div className="font-semibold text-sm">{formatAmount(cost || 0)}</div>
+        </div>
       ),
-      sorter: (a, b) => a.totalCost - b.totalCost,
+      sorter: (a, b) => (a.totalCost || 0) - (b.totalCost || 0),
       align: "right",
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 120,
+      width: 130,
       render: (status) => (
         <Tag color={getStatusColor(status)} className="text-xs">
           {getStatusText(status)}
@@ -310,39 +423,46 @@ export default function ManageBookingsPage() {
       title: "Ngày đặt",
       dataIndex: "createdAt",
       key: "createdAt",
-      width: 100,
+      width: 120,
       render: (createdAt) => (
         <span className="text-gray-600 text-xs">
-          {dayjs(createdAt).format("DD/MM/YY HH:mm")}
+          {formatTimestamp(createdAt)}
         </span>
       ),
-      sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
     },
     {
       title: "Thao tác",
       key: "action",
       width: 80,
       render: (_, record) => (
-        <Button
-          type="primary"
-          icon={<EyeOutlined />}
-          size="small"
-          onClick={() => handleViewDetails(record.id)}
+        <a
+          href={`/booking-detail/${record.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
         >
-          Chi tiết
-        </Button>
+          <Button type="primary" icon={<EyeOutlined />} size="small">
+            Chi tiết
+          </Button>
+        </a>
       ),
       align: "center",
       fixed: "right",
     },
   ];
 
+  // Đếm số lượng cho TẤT CẢ 8 trạng thái
   const getStatusCounts = () => {
     return {
       unpaid: bookings.filter((b) => b.status === "UNPAID").length,
       pending: bookings.filter((b) => b.status === "PENDING").length,
       confirmed: bookings.filter((b) => b.status === "CONFIRMED").length,
-      delivered: bookings.filter((b) => b.status === "DELIVERED").length,
+      delivered: bookings.filter(
+        (b) => b.status === "DELIVERED" || b.status === "DELIVERING"
+      ).length,
+      receivedByCustomer: bookings.filter(
+        (b) => b.status === "RECEIVED_BY_CUSTOMER"
+      ).length,
+      returned: bookings.filter((b) => b.status === "RETURNED").length,
       completed: bookings.filter((b) => b.status === "COMPLETED").length,
       cancelled: bookings.filter((b) => b.status === "CANCELLED").length,
     };
@@ -374,52 +494,73 @@ export default function ManageBookingsPage() {
               onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-            <span>
-              Chờ xác nhận:{" "}
-              <span className="font-semibold">{statusCounts.pending}</span>
-            </span>
-            <span>
-              Đã xác nhận:{" "}
-              <span className="font-semibold">{statusCounts.confirmed}</span>
-            </span>
-            <span>
-              Hoàn thành:{" "}
-              <span className="font-semibold">{statusCounts.completed}</span>
-            </span>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
             <span>
               Tổng:{" "}
-              <span className="font-semibold">{filteredBookings.length}</span>
+              <span className="font-semibold text-lg">
+                {total || filteredBookings.length}
+              </span>
             </span>
           </div>
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Chưa thanh toán</div>
-          <div className="text-xl font-semibold">{statusCounts.unpaid}</div>
+      {/* Statistics Cards - HIỂN THỊ ĐẦY ĐỦ 8 TRẠNG THÁI */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-gray-800">
+          <div className="text-xs text-gray-500">Chưa thanh toán</div>
+          <div className="text-2xl font-bold text-gray-800">
+            {statusCounts.unpaid}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Chờ xác nhận</div>
-          <div className="text-xl font-semibold">{statusCounts.pending}</div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-500">
+          <div className="text-xs text-gray-500">Chờ xác nhận</div>
+          <div className="text-2xl font-bold text-yellow-600">
+            {statusCounts.pending}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Đã xác nhận</div>
-          <div className="text-xl font-semibold">{statusCounts.confirmed}</div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500">
+          <div className="text-xs text-gray-500">Đã xác nhận</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {statusCounts.confirmed}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Đã giao xe</div>
-          <div className="text-xl font-semibold">{statusCounts.delivered}</div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-cyan-500">
+          <div className="text-xs text-gray-500">Đã giao xe</div>
+          <div className="text-2xl font-bold text-cyan-600">
+            {statusCounts.delivered}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Hoàn thành</div>
-          <div className="text-xl font-semibold">{statusCounts.completed}</div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-indigo-500">
+          <div className="text-xs text-gray-500">Khách đã nhận</div>
+          <div className="text-2xl font-bold text-indigo-600">
+            {statusCounts.receivedByCustomer}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-500">Đã hủy</div>
-          <div className="text-xl font-semibold">{statusCounts.cancelled}</div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-purple-500">
+          <div className="text-xs text-gray-500">Đã trả xe</div>
+          <div className="text-2xl font-bold text-purple-600">
+            {statusCounts.returned}
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
+          <div className="text-xs text-gray-500">Hoàn thành</div>
+          <div className="text-2xl font-bold text-green-600">
+            {statusCounts.completed}
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-500">
+          <div className="text-xs text-gray-500">Đã hủy</div>
+          <div className="text-2xl font-bold text-red-600">
+            {statusCounts.cancelled}
+          </div>
         </div>
       </div>
 
@@ -432,13 +573,19 @@ export default function ManageBookingsPage() {
             rowKey="id"
             loading={loading}
             pagination={{
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
+              total: total || filteredBookings.length,
               showSizeChanger: true,
               showQuickJumper: true,
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size || 10);
+              },
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} đơn đặt xe`,
             }}
-            scroll={{ x: 1000, y: 600 }}
+            scroll={{ x: 1200, y: 600 }}
             className="border-0"
             size="small"
           />

@@ -314,9 +314,6 @@ const BecomeProviderPage = () => {
           1.2. Nhà cung cấp phải cung cấp thông tin chính xác về xe và các điều
           kiện cho thuê.
           <br />
-          1.3. Nền tảng RFT sẽ thu phí hoa hồng 10% trên mỗi giao dịch thành
-          công.
-          <br />
           <br />
           <strong>2. Trách nhiệm của nhà cung cấp</strong>
           <br />

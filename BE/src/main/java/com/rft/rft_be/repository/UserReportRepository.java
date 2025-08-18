@@ -5,39 +5,26 @@ import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
     public interface UserReportRepository extends JpaRepository<UserReport, String> {
         List<UserReport> findByReportedIdAndType(String reportedId, String type);
 
+        // Đếm số cờ APPROVED của user
+        long countByReportedIdAndTypeAndStatus(String reportedId, String type, UserReport.Status status);
 
-        // Thêm methods mới cho appeal
-        List<UserReport> findByReportedId(String reportedId);
+        // Tìm STAFF_REPORT quá hạn để auto-approve
+        List<UserReport> findByTypeAndStatusAndCreatedAtBefore(String type, UserReport.Status status, LocalDateTime deadline);
 
-        @Query("SELECT ur FROM UserReport ur WHERE ur.reporter.id = :reporterId")
-        List<UserReport> findByReporterId(@Param("reporterId") String reporterId);
-
-        // Optional: method để check nhanh
+        // Check user đã appeal flag này chưa
         @Query("SELECT COUNT(ur) > 0 FROM UserReport ur " +
                 "WHERE ur.reporter.id = :reporterId " +
-                "AND ur.reportedId = :targetId")
-        boolean existsByReporterIdAndReportedId(
-                @Param("reporterId") String reporterId,
-                @Param("targetId") String targetId
-        );
+                "AND ur.reportedId = :flagId " +
+                "AND ur.type = 'APPEAL'")
+        boolean existsAppealByReporterAndFlag(@Param("reporterId") String reporterId,
+                                              @Param("flagId") String flagId);
 
-        @Query("SELECT COUNT(ur) > 0 FROM UserReport ur " +
-                "WHERE ur.reporter.id = :reporterId " +
-                "AND ur.type = 'APPEAL' " +
-                "AND ur.reportedId = :originalReportId")
-        boolean existsByReporterIdAndOriginalReportId(
-                @Param("reporterId") String reporterId,
-                @Param("originalReportId") String originalReportId
-        );
 
-        // Tìm tất cả kháng cáo của một báo cáo
-        @Query("SELECT ur FROM UserReport ur " +
-                "WHERE ur.type = 'APPEAL' " +
-                "AND ur.reportedId = :originalReportId")
-        List<UserReport> findAppealsByOriginalReportId(@Param("originalReportId") String originalReportId);
+
 }

@@ -14,7 +14,7 @@ import java.time.Duration;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class OtpService {
     RedisTemplate<String, String> redisTemplate;
-    Duration OTP_TTL = Duration.ofMinutes(5);
+    Duration OTP_TTL = Duration.ofMinutes(1);
     public void saveOtp(String email, String otp) {
         ValueOperations<String, String> ops = redisTemplate.opsForValue();
         ops.set("OTP:" + email, otp, OTP_TTL);

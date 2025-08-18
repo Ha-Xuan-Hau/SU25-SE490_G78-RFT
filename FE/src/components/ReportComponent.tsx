@@ -254,6 +254,15 @@ export default function ReportButton({
           placeholder: "Vui lòng mô tả chi tiết về vấn đề được báo cáo...",
         };
 
+      // APPEAL
+      case "APPEAL":
+        return {
+          generalType: "STAFF_ERROR",
+          type: "APPEAL",
+          displayText: "Khiếu nại",
+          placeholder: "Vui lòng cung cấp đầy đủ lý do và bằng chứng",
+        };
+
       default:
         console.log("Fell to default case for:", reportType);
         return {

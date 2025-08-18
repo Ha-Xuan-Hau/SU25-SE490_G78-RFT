@@ -33,3 +33,9 @@ export async function getPenaltyById(id) {
     const { data } = await apiClient.get(`/penalties/${id}`);
     return data;
 }
+
+// Lấy thống kê dashboard provider
+export async function getProviderStatistics() {
+    const { data } = await apiClient.get("/vehicle-rent/statistics");
+    return data;
+}

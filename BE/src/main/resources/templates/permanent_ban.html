@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Thông báo khóa tài khoản</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: #000;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .ban-box {
+            background: #f8d7da;
+            border: 3px solid #dc3545;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .ban-box h2 {
+            color: #721c24;
+            margin: 0;
+        }
+        .deadline-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .deadline-time {
+            font-size: 22px;
+            color: #dc3545;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .important-box {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 50px;
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .button:hover {
+            background: #c82333;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #dee2e6;
+        }
+        ul li {
+            margin: 10px 0;
+        }
+        .warning-text {
+            color: #dc3545;
+            font-weight: bold;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>❌ TÀI KHOẢN ĐÃ BỊ KHÓA</h1>
+    </div>
+
+    <div class="content">
+        <p>Xin chào <strong>${fullName}</strong>,</p>
+
+        <div class="ban-box">
+            <h2>Tài khoản ${email}</h2>
+            <p style="font-size: 18px; margin: 15px 0 0 0;">đã bị khóa</p>
+            <p style="color: #721c24; margin: 10px 0 0 0;">Do vi phạm nghiêm trọng điều khoản sử dụng</p>
+        </div>
+
+        <div class="deadline-box">
+            <h3 style="margin-top: 0; color: #856404;">⏰ QUYỀN KHÁNG CÁO CỦA BẠN</h3>
+            <p style="font-size: 16px; margin: 10px 0;">Bạn có quyền kháng cáo trong vòng:</p>
+            <div class="deadline-time">24 GIỜ</div>
+            <p style="margin: 10px 0;">Thời hạn đến: <strong>${appealDeadline}</strong></p>
+            <p class="warning-text" style="margin-bottom: 0;">
+                Nếu không kháng cáo, tài khoản sẽ bị khóa hoàn toàn!
+            </p>
+        </div>
+
+        <div class="info-box">
+            <h3 style="margin-top: 0; color: #0c5460;">📋 Thông tin quan trọng:</h3>
+            <ul style="color: #0c5460; margin: 0; padding-left: 20px;">
+                <li><strong>Đơn hàng đang hoạt động:</strong> Nếu bạn còn đơn hàng chưa hoàn thành, bạn vẫn có thể hoàn tất chúng.</li>
+                <li><strong>Sau khi hoàn thành đơn hàng:</strong> Tài khoản sẽ bị khóa ngay lập tức.</li>
+                <li><strong>Không thể tạo đơn mới:</strong> Bạn không thể tạo thêm đơn hàng mới.</li>
+            </ul>
+        </div>
+
+        <div class="important-box">
+            <h3 style="margin-top: 0; color: #004085;">💰 Về số dư trong tài khoản:</h3>
+            <p style="color: #004085; margin: 10px 0;">
+                Sau khi tài khoản bị khóa hoàn toàn, <strong>toàn bộ số dư trong ví</strong> sẽ được chúng tôi
+                <strong>tự động chuyển về tài khoản ngân hàng</strong> mà bạn đã đăng ký trong ví.
+            </p>
+            <p style="color: #004085; margin: 0;">
+                Thời gian xử lý: 1-3 ngày làm việc sau khi khóa tài khoản.
+            </p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0;">🔔 Bạn nên làm gì ngay bây giờ?</h3>
+            <ol style="margin: 0; padding-left: 20px;">
+                <li>Nếu bạn cho rằng đây là nhầm lẫn, hãy <strong>kháng cáo ngay</strong></li>
+                <li>Chuẩn bị đầy đủ bằng chứng và lý do cho kháng cáo</li>
+                <li>Hoàn thành các đơn hàng đang có (nếu có)</li>
+                <li>Kiểm tra thông tin ngân hàng trong ví để nhận hoàn tiền</li>
+            </ol>
+        </div>
+        <p class="warning-text" style="text-align: center; margin-top: 30px;">
+            ⚠️ Đây là cơ hội cuối cùng để khôi phục tài khoản của bạn!
+        </p>
+    </div>
+
+    <div class="footer">
+        <p><strong>Cần hỗ trợ?</strong></p>
+        <p>📧 Email: rftteamk17@gmail.com | ☎️ Hotline: 1900-xxxx</p>
+        <p>Thời gian làm việc: 8:00 - 17:00 (T2-T6)</p>
+        <hr style="margin: 15px 0; border: none; border-top: 1px solid #dee2e6;">
+        <p>© 2025 RFT System. All rights reserved.</p>
+    </div>
+</div>
+</body>
+</html>

@@ -45,6 +45,7 @@ public class VehicleRentServiceTest {
     @Mock private SecurityContext securityContext;
     @Mock private JwtAuthenticationToken jwtAuthenticationToken;
     @Mock private Jwt jwt;
+    @Mock private BookingRepository bookingRepository;
 
     private static final String TEST_USER_ID = "test-user-id";
     private static final String TEST_VEHICLE_ID = "test-vehicle-id";
@@ -58,6 +59,9 @@ public class VehicleRentServiceTest {
         SecurityContextHolder.setContext(securityContext);
         when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
         when(jwt.getClaim("userId")).thenReturn(TEST_USER_ID);
+        
+        // Mock bookingRepository for all toggleVehicleStatus tests
+        lenient().when(bookingRepository.existsActiveOrFutureByVehicleId(anyString(), any())).thenReturn(false);
     }
 
     // --- getProviderCar ---
@@ -326,9 +330,23 @@ public class VehicleRentServiceTest {
         Vehicle vehicle = createMockVehicle();
         vehicle.setStatus(Vehicle.Status.UNAVAILABLE);
         vehicle.setCostPerDay(BigDecimal.ZERO); // thiếu costPerDay
+        // Đảm bảo vehicle có đủ các trường cần thiết để trigger validation
+        vehicle.setVehicleType(Vehicle.VehicleType.CAR);
+        vehicle.setBrand(createMockBrand());
+        vehicle.setModel(createMockModel());
+        vehicle.setNumberSeat(4);
+        vehicle.setYearManufacture(2020);
+        vehicle.setTransmission(Vehicle.Transmission.AUTOMATIC);
+        vehicle.setFuelType(Vehicle.FuelType.GASOLINE);
+        vehicle.setInsuranceStatus(Vehicle.InsuranceStatus.YES);
+        vehicle.setShipToAddress(Vehicle.ShipToAddress.YES);
+        vehicle.setDescription("Test vehicle");
+        vehicle.setVehicleImages("[\"image1.jpg\"]");
+        vehicle.setThumb("thumb.jpg");
+        
         when(vehicleRepository.findByIdAndUserId(TEST_VEHICLE_ID, TEST_USER_ID)).thenReturn(Optional.of(vehicle));
         RuntimeException ex = assertThrows(RuntimeException.class, () -> vehicleRentService.toggleVehicleStatus(TEST_VEHICLE_ID));
-        assertTrue(ex.getMessage().contains("Thiếu các trường bắt buộc"));
+        assertTrue(ex.getMessage().contains("Không thể đặt xe thành CÓ SẴN"));
     }
 
     // --- getProviderCarGrouped ---

@@ -138,7 +138,7 @@ public class WalletServiceImpl implements WalletService {
             throw new RuntimeException("Số dư không đủ");
         }
         WalletTransaction tx = new WalletTransaction();
-        tx.setAmount(dto.getAmount());
+        tx.setAmount(dto.getAmount().negate());
         tx.setStatus(WalletTransaction.Status.PENDING);
         tx.setWallet(wallet);
         wallet.setBalance(wallet.getBalance().subtract(dto.getAmount()));
@@ -203,9 +203,9 @@ public class WalletServiceImpl implements WalletService {
         //get approved transaction and userid not null
         List<WalletTransaction> approvedTransactions = txRepository.findByStatusAndUserIdNotNull(WalletTransaction.Status.APPROVED);
 
-        if (approvedTransactions.isEmpty()) {
-            throw new RuntimeException("Không có giao dịch nào đã được phê duyệt.");
-        }
+//        if (approvedTransactions.isEmpty()) {
+//            throw new RuntimeException("Không có giao dịch nào đã được phê duyệt.");
+//        }
 
         //map to dto
         List<WalletTransactionDTO> transactionDTOs = approvedTransactions.stream()

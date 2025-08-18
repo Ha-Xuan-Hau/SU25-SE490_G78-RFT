@@ -2,17 +2,19 @@ package com.rft.rft_be.controller;
 
 import com.rft.rft_be.dto.report.*;
 import com.rft.rft_be.entity.User;
+import com.rft.rft_be.entity.UserReport;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.report.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -57,28 +59,149 @@ public class ReportController {
     }
 
     /**
-     * API lấy chi tiết báo cáo theo ID của người/xe bị báo cáo.
+     * API lấy chi tiết báo cáo NON_SERIOUS (nhóm theo targetId và type)
+     * Path: /api/reports/detail/grouped/{targetId}?type=SPAM
      */
-    @GetMapping("/detail/{targetId}")
-    public ResponseEntity<ReportDetailDTO> getReportDetail(@PathVariable String targetId, @RequestParam String type) {
-        return ResponseEntity.ok(reportService.getReportDetailByTargetAndType(targetId, type));
+    @GetMapping("/detail/grouped/{targetId}")
+    public ResponseEntity<ReportDetailDTO> getGroupedReportDetail(
+            @PathVariable String targetId,
+            @RequestParam String type) {
+
+        try {
+            ReportDetailDTO detail = reportService.getGroupedReportDetail(targetId, type);
+            if (detail == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(detail);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
+    /**
+     * API lấy chi tiết báo cáo SERIOUS hoặc STAFF_REPORT (theo reportId)
+     * Path: /api/reports/detail/single/{reportId}
+     */
+    @GetMapping("/detail/single/{reportId}")
+    public ResponseEntity<ReportDetailDTO> getSingleReportDetail(@PathVariable String reportId) {
+        try {
+            ReportDetailDTO detail = reportService.getSingleReportDetail(reportId);
+            return ResponseEntity.ok(detail);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // SỬA endpoint /staff - dùng type STAFF_REPORT thay vì "Report by staff"
     @PostMapping("/staff")
     public ResponseEntity<Void> createReportByStaff(@RequestBody ReportRequest request) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-        String role = authentication.getToken().getClaimAsString("role");
         String userId = authentication.getToken().getClaimAsString("userId");
-
-        // Chỉ cho phép STAFF hoặc ADMIN tạo report by staff
-        if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
-            throw new AccessDeniedException("Bạn không có quyền tạo báo cáo này");
-        }
 
         User staff = userRepo.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        request.setType("Report by staff"); // gán type mặc định
-        reportService.report(staff, request); // dùng lại service hiện tại
+        request.setType("STAFF_REPORT");
+        reportService.report(staff, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/process/reject-all")
+    public ResponseEntity<Void> rejectAllReports(
+            @RequestParam(required = false) String targetId,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String reportId) {
+
+        if (reportId != null) {
+            // SERIOUS/STAFF: reject theo reportId
+            reportService.rejectSingleReport(reportId);
+        } else if (targetId != null && type != null) {
+            // NON_SERIOUS: reject theo targetId + type
+            reportService.rejectAllReports(targetId, type);
+        }
+
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/process/staff-approve-all")
+    @Transactional
+    public ResponseEntity<Map<String, String>> approveAllReportsAndCreateStaffFlag(
+            @RequestParam(required = false) String targetId,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String reportId,
+            @RequestParam(required = false) String evidenceUrl,
+            @RequestParam String reason) {
+
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth.getToken().getClaimAsString("userId");
+        //String role = auth.getToken().getClaimAsString("scope");
+
+        // Kiểm tra quyền
+//        if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
+//            throw new AccessDeniedException("Chỉ STAFF hoặc ADMIN mới có quyền");
+//        }
+
+        User staff = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        String finalTargetId;
+
+        if (reportId != null) {
+            // SERIOUS: targetId đã được truyền từ frontend
+            if (targetId == null) {
+                // Fallback: lấy từ report nếu không có
+                UserReport report = reportService.getReportById(reportId);
+                finalTargetId = report.getReportedId();
+            } else {
+                finalTargetId = targetId;  // Dùng targetId từ frontend
+            }
+            reportService.approveSingleReport(reportId);
+        } else if (targetId != null && type != null) {
+            // NON_SERIOUS
+            finalTargetId = targetId;
+            reportService.approveAllReports(targetId, type);
+        } else {
+            throw new IllegalArgumentException("Thiếu tham số bắt buộc");
+        }
+
+        // 2. Tạo STAFF_REPORT mới
+        ReportRequest staffRequest = new ReportRequest();
+        staffRequest.setTargetId(finalTargetId);
+        staffRequest.setType("STAFF_REPORT");
+        staffRequest.setReason(reason);
+        staffRequest.setEvidenceUrl(evidenceUrl);
+
+        String staffReportId = reportService.createStaffReport(staff, staffRequest);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("staffReportId", staffReportId);
+        response.put("targetId", finalTargetId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/appeal/{id}/approve")
+    public ResponseEntity<Void> approveAppeal(@PathVariable String id) {
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String role = auth.getToken().getClaimAsString("role");
+
+//        if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
+//            throw new AccessDeniedException("Chỉ staff hoặc admin mới có thể xử lý kháng cáo");
+//        }
+
+        reportService.processAppealDecision(id, true);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/appeal/{id}/reject")
+    public ResponseEntity<Void> rejectAppeal(@PathVariable String id) {
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String role = auth.getToken().getClaimAsString("role");
+
+//        if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
+//            throw new AccessDeniedException("Chỉ staff hoặc admin mới có thể xử lý kháng cáo");
+//        }
+
+        reportService.processAppealDecision(id, false);
         return ResponseEntity.ok().build();
     }
 }

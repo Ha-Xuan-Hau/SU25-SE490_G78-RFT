@@ -24,7 +24,7 @@ import { getAllWithdrawals, updateWithdrawalStatus } from "@/apis/wallet.api";
 import type { ColumnsType } from "antd/es/table";
 import { translateENtoVI } from "@/lib/viDictionary";
 import dayjs from "dayjs";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import { showApiError, showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -65,7 +65,7 @@ export default function WithdrawalRequestsPage() {
       const data = await getAllWithdrawals(status || "PENDING");
       setWithdrawals(data);
     } catch (error) {
-      message.error("Không thể tải yêu cầu rút tiền.");
+      showApiError(error);
     } finally {
       setLoading(false);
     }

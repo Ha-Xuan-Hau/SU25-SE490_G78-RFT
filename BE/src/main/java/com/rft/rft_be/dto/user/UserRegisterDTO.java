@@ -18,8 +18,8 @@ public class UserRegisterDTO {
     String password;
     @NotBlank
     String phone;
-    @NotBlank
-    String address;
+//    @NotBlank
+//    String address;
     @NotBlank
     String otp;
 }

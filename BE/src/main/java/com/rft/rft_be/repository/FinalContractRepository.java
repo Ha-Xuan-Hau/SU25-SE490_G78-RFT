@@ -1,5 +1,6 @@
 package com.rft.rft_be.repository;
 
+import com.rft.rft_be.entity.Contract;
 import com.rft.rft_be.entity.FinalContract;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -101,4 +102,17 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
     long countFinalContractsByProviderAndMonth(@Param("providerId") String providerId, 
                                               @Param("month") int month, 
                                               @Param("year") int year);
+
+    long countByTimeFinishBetween(LocalDateTime start, LocalDateTime end);
+
+    // CHỈ tính các hợp đồng có Contract.status = FINISHED
+    @Query("""
+           SELECT COALESCE(SUM(fc.costSettlement), 0)
+           FROM FinalContract fc
+           JOIN fc.contract c
+           WHERE fc.timeFinish >= :start AND fc.timeFinish < :end
+             AND c.status = :status
+           """)
+    BigDecimal sumCostSettlementByTimeFinishAndContractStatus(
+            LocalDateTime start, LocalDateTime end, Contract.Status status);
 }

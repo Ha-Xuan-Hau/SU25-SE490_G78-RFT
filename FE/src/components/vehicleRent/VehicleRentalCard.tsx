@@ -172,7 +172,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         showError(result.error || "Có lỗi xảy ra khi xác nhận nhận xe");
       }
     } catch (error) {
-      console.error("Error receiving vehicle:", error);
+      //console.error("Error receiving vehicle:", error);
       showError("Có lỗi xảy ra khi xác nhận nhận xe");
     } finally {
       setLoading(false);
@@ -198,7 +198,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         showError(result.error || "Có lỗi xảy ra khi hủy đơn");
       }
     } catch (error) {
-      console.error("Error canceling booking:", error);
+      //console.error("Error canceling booking:", error);
       showError("Có lỗi xảy ra khi hủy đơn");
     } finally {
       setLoading(false);
@@ -230,7 +230,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         showError(result.error || "Có lỗi xảy ra khi trả xe");
       }
     } catch (error) {
-      console.error("Error returning vehicle:", error);
+      //console.error("Error returning vehicle:", error);
       showError("Có lỗi xảy ra khi trả xe");
     } finally {
       setLoading(false);
@@ -379,6 +379,8 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
       "Đã trả xe",
       "COMPLETED",
       "Đã tất toán",
+      "CANCELLED",
+      "Đã hủy",
     ];
 
     return (
@@ -433,6 +435,16 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
       ];
     }
 
+    // Đã hủy
+    if (
+      contractStatus === "CANCELLED" ||
+      bookingStatus === "CANCELLED" ||
+      contractStatus === "Đã hủy" ||
+      bookingStatus === "Đã hủy"
+    ) {
+      return ["FRAUD"]; // Chỉ báo cáo lừa đảo cho đơn đã hủy
+    }
+
     return [];
   };
 
@@ -440,6 +452,10 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
     const contractStatus = info?.contract?.status;
     const bookingStatus = info?.status;
     const status = contractStatus || bookingStatus;
+
+    if (status === "CANCELLED" || status === "Đã hủy") {
+      return "cancelled";
+    }
 
     if (
       status === "CONFIRMED" ||
@@ -510,7 +526,14 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
           "⛽ Mức nhiên liệu không đúng cam kết",
           "📋 Vấn đề bảo hiểm (hết hạn hoặc không có)",
           "📄 Giấy tờ xe không hợp lệ",
+          "⚠️ Chủ xe lừa đảo (Không minh bạch trong giao dịch)",
         ],
+      };
+    } else if (phase === "cancelled") {
+      return {
+        title: "Hướng dẫn báo cáo vấn đề sau quá trình hủy đơn",
+        description: "Đơn đã bị hủy và có thể báo cáo các vấn đề liên quan:",
+        issues: ["⚠️ Chủ xe lừa đảo (Không minh bạch trong giao dịch)"],
       };
     }
 
@@ -675,7 +698,12 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
               )}
 
               {/* Nút chi tiết */}
-              <Link href={`/booking-detail/${info?._id}`} passHref>
+              <Link
+                href={`/booking-detail/${info?._id}`}
+                passHref
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Button type="default">Chi tiết</Button>
               </Link>
             </div>

@@ -1,6 +1,7 @@
 package com.rft.rft_be.repository;
 
 import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.entity.Booking.Status;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -146,6 +147,7 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     Long countByUserIdAndStatus(String userId, Booking.Status status);
 
 
+
     @Query("""
     select count(b) from Booking b
     where b.user.id = :userId
@@ -155,7 +157,6 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     long countUnfinishedByUserId(@Param("userId") String userId,
                                  @Param("completed") Booking.Status completed,
                                  @Param("cancelled") Booking.Status cancelled);
-
 
 
   @Query("""
@@ -169,4 +170,34 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
           @Param("vehicleId") String vehicleId,
           @Param("now") LocalDateTime now
   );
+
+    @Query("""
+           SELECT COUNT(b) FROM Booking b
+           WHERE b.createdAt >= :start AND b.createdAt < :end
+           """)
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    @Query("""
+           SELECT COUNT(b) FROM Booking b
+           WHERE b.status = :status
+             AND b.createdAt >= :start AND b.createdAt < :end
+           """)
+    long countByStatusAndCreatedAtBetween(Status status, LocalDateTime start, LocalDateTime end);
+
+    @Query("""
+           SELECT COUNT(b) FROM Booking b
+           WHERE b.status IN :statuses
+             AND b.createdAt >= :start AND b.createdAt < :end
+           """)
+    long countByStatusInAndCreatedAtBetween(List<Status> statuses, LocalDateTime start, LocalDateTime end);
+
+    // Thời gian thuê trung bình (ngày) cho booking COMPLETED trong tháng có time_booking_end
+    // MySQL native để dùng TIMESTAMPDIFF(DAY, start, end)
+    @Query(value = """
+           SELECT AVG(TIMESTAMPDIFF(DAY, b.time_booking_start, b.time_booking_end))
+           FROM bookings b
+           WHERE b.status = 'COMPLETED'
+             AND b.time_booking_end >= :start AND b.time_booking_end < :end
+           """, nativeQuery = true)
+    Double avgRentalDaysCompletedByEndBetween(LocalDateTime start, LocalDateTime end);
 }

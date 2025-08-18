@@ -14,17 +14,16 @@ import { Avatar } from "antd";
 export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const currentPath = router.pathname;
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // THAY ĐỔI: false mặc định
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const [, , clearAccessToken] = useLocalStorage("access_token");
   const [userProfile, , clearUserProfile] = useLocalStorage("user_profile", "");
 
-  // Check role authorization
+  // Check role authorization - GIỮ NGUYÊN
   useEffect(() => {
     const checkAuthorization = () => {
-      // Delay một chút để đảm bảo localStorage đã được update
       setTimeout(() => {
         const storedUser = localStorage.getItem("user_profile");
 
@@ -39,44 +38,56 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           if (user.role === "USER") {
             setIsAuthorized(true);
           } else {
-            router.push("/404");
+            router.push("/not-found");
           }
         } catch (error) {
           console.error("Error parsing user profile:", error);
-          router.push("/404");
+          router.push("/not-found");
         } finally {
           setIsLoading(false);
         }
-      }, 100); // Delay 100ms
+      }, 100);
     };
 
     checkAuthorization();
   }, [router]);
 
-  // Track screen size for mobile responsiveness
-  const [isMobile, setIsMobile] = useState(false);
+  // THÊM MỚI: Lắng nghe event từ header để toggle sidebar
+  useEffect(() => {
+    const handleToggleSidebar = () => {
+      setSidebarOpen((prev) => !prev);
+    };
 
+    window.addEventListener("toggleDesktopMenu", handleToggleSidebar);
+
+    return () => {
+      window.removeEventListener("toggleDesktopMenu", handleToggleSidebar);
+    };
+  }, []);
+
+  // Auto close sidebar khi navigate
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [currentPath]);
+
+  // SỬA LẠI: Không tự động mở sidebar trên desktop
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setIsMobile(window.innerWidth < 768);
-
       const handleResize = () => {
-        setIsMobile(window.innerWidth < 768);
+        // Chỉ đóng sidebar khi resize xuống mobile
         if (window.innerWidth < 768) {
           setSidebarOpen(false);
-        } else {
-          setSidebarOpen(true);
         }
+        // XÓA phần else setSidebarOpen(true)
       };
 
       window.addEventListener("resize", handleResize);
-      handleResize();
 
       return () => window.removeEventListener("resize", handleResize);
     }
   }, []);
 
-  // Show loading while checking authorization
+  // Show loading while checking authorization - GIỮ NGUYÊN
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -88,7 +99,6 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If not authorized, don't render anything (router will redirect)
   if (!isAuthorized) {
     return null;
   }
@@ -97,6 +107,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  // menuGroups - GIỮ NGUYÊN
   const menuGroups = [
     {
       title: "Tài khoản cá nhân",
@@ -156,7 +167,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
 
       <section className="flex-1 w-full">
         <div className="flex h-screen w-full relative">
-          {/* Mobile sidebar toggle button */}
+          {/* Mobile sidebar toggle button - GIỮ NGUYÊN */}
           <button
             onClick={toggleSidebar}
             className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
@@ -164,18 +175,32 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
             {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
           </button>
 
-          {/* Sidebar */}
+          {/* Sidebar - SỬA LẠI: luôn ẩn mặc định */}
           <div
             className={`${
-              sidebarOpen
-                ? "translate-x-0"
-                : "-translate-x-full md:translate-x-0"
-            } fixed md:relative top-0 left-0 h-full z-20 md:z-0
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } fixed top-0 left-0 h-full z-40
             w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-            transform transition-transform duration-300 ease-in-out md:translate-x-0
-            shadow-xl md:shadow-none overflow-y-auto`}
+            transform transition-transform duration-300 ease-in-out
+            shadow-xl overflow-y-auto`}
           >
-            {/* User Profile Section */}
+            {/* THÊM MỚI: Nút close trong sidebar */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Menu
+              </h2>
+              <button
+                onClick={toggleSidebar}
+                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Icon
+                  icon="heroicons:x-mark-20-solid"
+                  className="w-5 h-5 text-gray-700 dark:text-gray-300"
+                />
+              </button>
+            </div>
+
+            {/* User Profile Section - GIỮ NGUYÊN */}
             <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-700">
               <div className="flex flex-col items-center text-center">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate w-full">
@@ -185,12 +210,12 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                   {userProfile?.email || "user@example.com"}
                 </p>
                 <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                  Khách hàng
+                  Người dùng
                 </span>
               </div>
             </div>
 
-            {/* Navigation Menu */}
+            {/* Navigation Menu - GIỮ NGUYÊN */}
             <nav className="mt-4 pb-6">
               {menuGroups.map((group) => (
                 <div key={group.title} className="mb-6">
@@ -228,15 +253,15 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
             </nav>
           </div>
 
-          {/* Backdrop for mobile */}
-          {sidebarOpen && isMobile && (
+          {/* Backdrop - SỬA LẠI: hiển thị cho cả desktop và mobile */}
+          {sidebarOpen && (
             <div
-              className="fixed inset-0 bg-black/50 z-10 md:hidden"
+              className="fixed inset-0 bg-black/50 z-30"
               onClick={toggleSidebar}
             />
           )}
 
-          {/* Main content */}
+          {/* Main content - GIỮ NGUYÊN */}
           <div className="flex-1 px-4 md:px-6 py-6 w-full">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full overflow-x-auto">
               {children}

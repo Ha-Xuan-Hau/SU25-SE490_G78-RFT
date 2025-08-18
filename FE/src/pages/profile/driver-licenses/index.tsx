@@ -343,14 +343,14 @@ export default function DriverLicensePage() {
                     Bạn cần đăng ký giấy phép lái xe để có thể sử dụng dịch vụ
                     thuê xe của chúng tôi.
                   </p>
-                  <Button
+                  {/* <Button
                     type="primary"
                     onClick={showModalRegister}
                     className="bg-blue-500 hover:bg-blue-600 px-6 py-2 h-auto text-sm font-medium"
                     icon={<EditOutlined />}
                   >
                     Đăng ký giấy phép ngay
-                  </Button>
+                  </Button> */}
                 </div>
               }
               className="py-12"

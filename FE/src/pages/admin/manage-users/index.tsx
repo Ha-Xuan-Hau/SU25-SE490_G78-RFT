@@ -12,7 +12,6 @@ import {
   Input,
   Select,
   Form,
-  InputNumber,
 } from "antd";
 import { EyeOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
@@ -37,7 +36,7 @@ interface User {
   address: string;
   dateOfBirth: number[];
   role: "USER" | "PROVIDER";
-  status: "ACTIVE" | "INACTIVE";
+  status: "ACTIVE" | "INACTIVE" | "TEMP_BAN";
   profilePicture: string; // Avatar
   createdAt: number[]; // Ngày tạo
   updatedAt: number[]; // Ngày sửa đổi
@@ -177,11 +176,29 @@ export default function ManageUserPage() {
   };
 
   const getStatusColor = (status: string) => {
-    return status === "ACTIVE" ? "success" : "error";
+    switch (status) {
+      case "ACTIVE":
+        return "success";
+      case "INACTIVE":
+        return "error";
+      case "TEMP_BAN":
+        return "warning";
+      default:
+        return "default";
+    }
   };
 
   const getStatusText = (status: string) => {
-    return status === "ACTIVE" ? "Hoạt động" : "Ngưng hoạt động";
+    switch (status) {
+      case "ACTIVE":
+        return "Hoạt động";
+      case "INACTIVE":
+        return "Ngưng hoạt động";
+      case "TEMP_BAN":
+        return "Tạm khóa";
+      default:
+        return status;
+    }
   };
 
   const formatDOB = (dateArray: number[] | undefined | null): string => {
@@ -267,10 +284,12 @@ export default function ManageUserPage() {
       filters: [
         { text: "Hoạt động", value: "ACTIVE" },
         { text: "Ngưng hoạt động", value: "INACTIVE" },
+        { text: "Tạm khóa", value: "TEMP_BAN" },
       ],
       onFilter: (value, record) => record.status === value,
       align: "center",
     },
+
     {
       title: "Thao tác",
       key: "action",
@@ -369,12 +388,11 @@ export default function ManageUserPage() {
           />
         </div>
       </div>
-
       <Modal
         title={
           <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
             <Avatar
-              src={selectedUser?.profilePicture} // Hiển thị avatar từ response
+              src={selectedUser?.profilePicture}
               icon={<UserOutlined />}
               size={40}
             />
@@ -398,17 +416,20 @@ export default function ManageUserPage() {
           >
             Đóng
           </Button>,
-          <Button
-            key="toggle"
-            type="primary"
-            danger={selectedUser?.status === "ACTIVE"}
-            size="large"
-            onClick={handleToggleUserStatus}
-          >
-            {selectedUser?.status === "ACTIVE"
-              ? "Vô hiệu hóa người dùng"
-              : "Kích hoạt người dùng"}
-          </Button>,
+          // Chỉ hiển thị nút khi status là TEMP_BAN
+          ...(selectedUser?.status === "TEMP_BAN"
+            ? [
+                <Button
+                  key="toggle"
+                  type="primary"
+                  danger
+                  size="large"
+                  onClick={handleToggleUserStatus}
+                >
+                  Vô hiệu hóa người dùng
+                </Button>,
+              ]
+            : []),
         ]}
       >
         {selectedUser && (
@@ -548,7 +569,7 @@ export default function ManageUserPage() {
 
       {/* Modal xác nhận chuyển trạng thái người dùng */}
       <Modal
-        title="Xác nhận thay đổi trạng thái người dùng"
+        title="Xác nhận vô hiệu hóa người dùng"
         open={isConfirmModalVisible}
         onCancel={() => setIsConfirmModalVisible(false)}
         footer={[
@@ -558,24 +579,22 @@ export default function ManageUserPage() {
           <Button
             key="confirm"
             type="primary"
+            danger
             onClick={confirmToggleUserStatus}
           >
-            Xác nhận
+            Xác nhận vô hiệu hóa
           </Button>,
         ]}
       >
         <p>
-          Bạn có chắc chắn muốn{" "}
-          {selectedUser?.status === "ACTIVE" ? "vô hiệu hóa" : "kích hoạt"}{" "}
-          người dùng <strong>{selectedUser?.fullName}</strong>?
+          Bạn có chắc chắn muốn vô hiệu hóa người dùng{" "}
+          <strong>{selectedUser?.fullName}</strong>?
         </p>
-        {selectedUser?.status === "ACTIVE" && (
-          <div style={{ color: "#d4380d", marginTop: 12, fontWeight: 500 }}>
-            Hành động này sẽ vô hiệu hóa người dùng khỏi hệ thống ngay lập tức
-            và không thể đăng nhập, sử dụng các chức năng cho đến khi được kích
-            hoạt lại!
-          </div>
-        )}
+        <div style={{ color: "#d4380d", marginTop: 12, fontWeight: 500 }}>
+          Hành động này sẽ vô hiệu hóa người dùng khỏi hệ thống ngay lập tức và
+          không thể đăng nhập, sử dụng các chức năng cho đến khi được kích hoạt
+          lại!
+        </div>
       </Modal>
     </div>
   );

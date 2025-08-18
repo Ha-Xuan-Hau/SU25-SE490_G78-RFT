@@ -21,6 +21,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import java.util.Collections;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,6 +52,11 @@ public class AuthenticationService {
     @Value("${jwt.signerKey}")
     protected String SIGNER_KEY;
 
+    // Thêm fields
+    @NonFinal
+    @Value("${google.client-id}")
+    protected String GOOGLE_CLIENT_ID;
+
     public IntrospectResponse introspect(IntrospectRequest request) throws JOSEException, ParseException {
         var token = request.getToken();
         boolean isValid = true;
@@ -59,6 +69,56 @@ public class AuthenticationService {
         return IntrospectResponse.builder()
                 .valid(isValid)
                 .build();
+    }
+
+    public AuthenticationResponse authenticateWithGoogle(String idTokenString) {
+        try {
+            // Khởi tạo Google Token Verifier
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    new NetHttpTransport(),
+                    new GsonFactory()
+            )
+                    .setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
+                    .build();
+
+            // Xác thực token từ Google
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+
+            if (idToken == null) {
+                throw new RuntimeException("Token Google không hợp lệ");
+            }
+
+            // Lấy thông tin từ Google token
+            GoogleIdToken.Payload payload = idToken.getPayload();
+            String email = payload.getEmail();
+            boolean emailVerified = payload.getEmailVerified();
+
+            if (!emailVerified) {
+                throw new RuntimeException("Email chưa được xác thực với Google");
+            }
+
+            // Kiểm tra user trong database
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Email chưa được đăng ký trong hệ thống. Vui lòng đăng ký tài khoản trước."));
+
+            // Kiểm tra trạng thái tài khoản
+            if (user.getStatus().name().equals("INACTIVE")) {
+                throw new RuntimeException("Tài khoản đã bị khóa");
+            }
+
+            // Generate JWT token cho user
+            String token = generateToken(user);
+
+            log.info("Google login successful for user: {}", email);
+
+            return AuthenticationResponse.builder()
+                    .token(token)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Google authentication failed: {}", e.getMessage());
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -134,6 +194,9 @@ public class AuthenticationService {
         if (!isPasswordValid(request.getNewPassword())) {
             throw new IllegalArgumentException("Mật khẩu phải chứa ít nhất một số, một ký tự chữ, và bảy ký tự.");
         }
+        if (!otpService.verifyOtp(request.getEmail(), request.getOtp())){
+            throw new RuntimeException("Otp sai hoặc hết hạn");
+        }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
@@ -144,7 +207,7 @@ public class AuthenticationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
 
-        if (!user.getPassword().equals(passwordEncoder.encode(request.getPassword()))) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new IllegalStateException("Sai mật khẩu hiện tại");
         }
 
