@@ -13,6 +13,8 @@ import "react-toastify/dist/ReactToastify.css";
 import { RecoilRoot } from "recoil";
 import { ToastContainer } from "react-toastify";
 import { useRealtimeEvents } from "@/hooks/useRealtimeEvents";
+import { GoogleOAuthProvider } from '@react-oauth/google'; // Thêm import này
+
 // Khai báo kiểu cho page có custom layout
 type NextPageWithLayout = NextPage & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -23,6 +25,9 @@ type NextPageWithLayout = NextPage & {
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
+
+// Lấy Google Client ID từ environment variable
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
 function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
   const Layout = Component.Layout || UserWebLayout;
@@ -35,36 +40,39 @@ function MyApp({ Component, pageProps: { ...pageProps } }: AppPropsWithLayout) {
   };
 
   return (
-    <RecoilRoot>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider
-          attribute="class"
-          enableSystem={true}
-          defaultTheme="light"
-        >
-          <AuthProvider>
-            <RealtimeWrapper>
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
-            <ReactQueryDevtools initialIsOpen={false} />
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop={false}
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-            </RealtimeWrapper>
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </RecoilRoot>
+      <RecoilRoot>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider
+              attribute="class"
+              enableSystem={true}
+              defaultTheme="light"
+          >
+            {/* Wrap AuthProvider với GoogleOAuthProvider */}
+            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+              <AuthProvider>
+                <RealtimeWrapper>
+                  <Layout>
+                    <Component {...pageProps} />
+                  </Layout>
+                  <ReactQueryDevtools initialIsOpen={false} />
+                  <ToastContainer
+                      position="top-right"
+                      autoClose={5000}
+                      hideProgressBar={false}
+                      newestOnTop={false}
+                      closeOnClick
+                      rtl={false}
+                      pauseOnFocusLoss
+                      draggable
+                      pauseOnHover
+                      theme="light"
+                  />
+                </RealtimeWrapper>
+              </AuthProvider>
+            </GoogleOAuthProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </RecoilRoot>
   );
 }
 

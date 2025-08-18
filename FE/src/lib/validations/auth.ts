@@ -4,7 +4,7 @@ export const loginSchema = z.object({
   phone: z.string().email("Email không hợp lệ").min(1, "Email là bắt buộc"),
   password: z
     .string()
-    .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")
+    // .min(7, "Mật khẩu phải có ít nhất 7 ký tự.")
     .max(50, "Mật khẩu không được vượt quá 50 ký tự."),
 });
 
@@ -19,7 +19,7 @@ export const registerSchema = z
       .max(11, "Số điện thoại không được vượt quá 11 số"),
     password: z
       .string()
-      .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")
+      .min(7, "Mật khẩu phải có ít nhất 7 ký tự.")
       .max(50, "Mật khẩu không được vượt quá 50 ký tự.")
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{7,50}$/,
@@ -54,10 +54,10 @@ export const resetPasswordSchema = z
   .object({
     password: z
       .string()
-      .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")
+      .min(7, "Mật khẩu phải có ít nhất 7 ký tự.")
       .max(50, "Mật khẩu không được vượt quá 50 ký tự.")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,50}$/,
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{7,50}$/,
         "Mật khẩu phải có ít nhất một chữ hoa, một chữ thường và một số."
       ),
     confirmPassword: z.string(),
@@ -82,10 +82,10 @@ export const registerStep1Schema = z
       .max(11, "Số điện thoại không được vượt quá 11 số"),
     password: z
       .string()
-      .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")
+      .min(7, "Mật khẩu phải có ít nhất 7 ký tự.")
       .max(50, "Mật khẩu không được vượt quá 50 ký tự.")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,50}$/,
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{7,50}$/,
         "Mật khẩu phải có ít nhất một chữ hoa, một chữ thường và một số."
       ),
     confirmPassword: z.string(),
@@ -112,9 +112,9 @@ export const resetPasswordWithOtpSchema = z
       .regex(/^\d+$/, "Mã OTP chỉ được chứa số"),
     newPassword: z
       .string()
-      .min(6, "Mật khẩu phải có ít nhất 6 ký tự.")
+      .min(7, "Mật khẩu phải có ít nhất 7 ký tự.")
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,50}$/,
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{7,50}$/,
         "Mật khẩu phải có ít nhất một chữ hoa, một chữ thường và một số."
       ),
     confirmPassword: z.string(),

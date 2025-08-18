@@ -424,14 +424,14 @@ export default function BookingDetailPage() {
         </Card>
 
         {/* Back button */}
-        <div className="text-center mt-6 sm:mt-8">
+        {/* <div className="text-center mt-6 sm:mt-8">
           <button
             onClick={() => router.back()}
             className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md transition-colors"
           >
             Quay lại
           </button>
-        </div>
+        </div> */}
       </div>
 
       <style jsx global>{`

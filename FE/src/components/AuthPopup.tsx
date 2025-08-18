@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, X, Mail } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 import {
   loginSchema,
   forgotPasswordSchema,
@@ -19,10 +20,15 @@ import {
   register as apiRegister,
   sendOtpForgotPassword,
   forgotPassword,
+  loginWithGoogle,
 } from "@/apis/auth.api";
-import { toast } from "react-toastify";
 import { useUserState } from "@/recoils/user.state";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import {
+  showApiError,
+  showApiSuccess,
+  showError,
+  showSuccess,
+} from "@/utils/toast.utils";
 
 interface AuthPopupProps {
   isOpen: boolean;
@@ -69,6 +75,31 @@ export function AuthPopup({
 
   const { login } = useAuth();
 
+  // THÊM PHẦN NÀY - Handler cho Google Login
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setIsLoading(true);
+
+      const response = await loginWithGoogle(credentialResponse.credential);
+
+      if (response && response.access_token) {
+        const userData = response.result || {};
+        login(userData, response.access_token);
+        setRecoilUser(userData);
+        showApiSuccess("Đăng nhập thành công!");
+        onClose();
+      }
+    } catch (error: any) {
+      // Backend đã trả về message chính xác, chỉ cần hiển thị
+      showApiError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    showApiError({ message: "Không thể kết nối với Google" });
+  };
   // Reset form data when mode changes or popup opens/closes
   useEffect(() => {
     setFormData({
@@ -161,17 +192,8 @@ export function AuthPopup({
           confirmPassword: formData.confirmPassword,
         });
         setErrors({});
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          const newErrors: Record<string, string> = {};
-          error.errors.forEach((err) => {
-            if (err.path) {
-              newErrors[err.path[0]] = err.message;
-            }
-          });
-          setErrors(newErrors);
-          return;
-        }
+      } catch (err: any) {
+        showApiError(err);
       }
 
       setIsLoading(true);
@@ -266,17 +288,8 @@ export function AuthPopup({
       try {
         forgotPasswordSchema.parse({ email: formData.email });
         setErrors({});
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          const newErrors: Record<string, string> = {};
-          error.errors.forEach((err) => {
-            if (err.path) {
-              newErrors[err.path[0]] = err.message;
-            }
-          });
-          setErrors(newErrors);
-          return;
-        }
+      } catch (err: any) {
+        showApiError(err);
       }
 
       setIsLoading(true);
@@ -366,14 +379,7 @@ export function AuthPopup({
         }
       }
     } catch (err: any) {
-      let errorMessage = "Có lỗi xảy ra. Vui lòng thử lại.";
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      setErrors({ submit: errorMessage });
-      showError(errorMessage);
+      showApiError(err);
     } finally {
       setIsLoading(false);
     }
@@ -398,7 +404,7 @@ export function AuthPopup({
       setCanResendOtp(false);
       showSuccess("Mã OTP mới đã được gửi!");
     } catch (err: any) {
-      showError("Có lỗi xảy ra khi gửi lại OTP");
+      showApiError(err);
     } finally {
       setIsLoading(false);
     }
@@ -664,13 +670,28 @@ export function AuthPopup({
               {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
 
-            <button
-              type="button"
-              className="w-full flex items-center justify-center space-x-2 rounded-md bg-white border border-dark py-2 text-dark hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition duration-300"
-            >
-              <Icon icon="flat-color-icons:google" width={24} height={24} />
-              <span>Đăng nhập với Google</span>
-            </button>
+            {/* THAY THẾ BUTTON GOOGLE CŨ BẰNG PHẦN NÀY */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Hoặc</span>
+              </div>
+            </div>
+
+            <div className="w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap={false}
+                theme="outline"
+                size="large"
+                width="100%"
+                text="signin_with"
+                locale="vi"
+              />
+            </div>
 
             <div className="flex justify-between text-sm">
               <button

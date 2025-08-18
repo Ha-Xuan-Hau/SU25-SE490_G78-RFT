@@ -228,19 +228,19 @@ const HeaderComponent: React.FC = () => {
     const badgeConfig = {
       ADMIN: {
         color: "bg-red-100 text-red-800 border-red-200",
-        label: "Admin",
+        label: "Quản trị viên",
       },
       STAFF: {
         color: "bg-blue-100 text-blue-800 border-blue-200",
-        label: "Staff",
+        label: "Nhân viên",
       },
       PROVIDER: {
         color: "bg-green-100 text-green-800 border-green-200",
-        label: "Provider",
+        label: "Chủ xe",
       },
       USER: {
         color: "bg-gray-100 text-gray-800 border-gray-200",
-        label: "User",
+        label: "Người dùng",
       },
     };
 
@@ -276,16 +276,20 @@ const HeaderComponent: React.FC = () => {
             {/* Desktop Menu Button cho tất cả user */}
             <button
               onClick={() => {
-                // Dispatch custom event để mở sidebar/menu
                 window.dispatchEvent(new CustomEvent("toggleDesktopMenu"));
               }}
-              className="hidden lg:flex items-center justify-center ml-6 p-2 rounded-md hover:bg-gray-100 transition-colors"
+              className="hidden lg:flex items-center justify-center ml-6 p-2 rounded-md hover:bg-gray-100 transition-colors group relative"
               aria-label="Toggle menu"
+              title="Menu"
             >
               <Icon
-                icon="heroicons:bars-3-20-solid"
-                className="w-6 h-6 text-gray-700"
+                icon="ph:dots-nine"
+                className="w-6 h-6 text-gray-700 group-hover:text-gray-900 transition-colors"
               />
+              {/* Optional: Custom tooltip */}
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                Mở menu
+              </span>
             </button>
           </div>
 
