@@ -79,28 +79,46 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
 
   const options: ApexOptions = {
     legend: {
-      show: false,
+      show: true,
       position: "top",
-      horizontalAlign: "left",
+      horizontalAlign: "right",
+      fontSize: "11px",
+      markers: {
+        size: 8, // Sửa lỗi: dùng size thay vì width/height
+        offsetX: 0,
+        offsetY: 0,
+      },
+      itemMargin: {
+        horizontal: 8,
+        vertical: 0,
+      },
     },
-    colors: ["#465FFF", "#9CB9FF"],
+    colors: ["#3B82F6", "#10B981"],
     chart: {
-      fontFamily: "Outfit, sans-serif",
-      height: 250,
+      fontFamily: "Inter, sans-serif",
+      height: "100%",
       type: "line",
       toolbar: {
         show: false,
       },
+      zoom: {
+        enabled: false,
+      },
+      sparkline: {
+        enabled: false,
+      },
     },
     stroke: {
-      curve: "straight",
-      width: [2, 2],
+      curve: "smooth",
+      width: 2,
     },
     fill: {
       type: "gradient",
       gradient: {
-        opacityFrom: 0.55,
-        opacityTo: 0,
+        shadeIntensity: 1,
+        opacityFrom: 0.3,
+        opacityTo: 0.05,
+        stops: [0, 100],
       },
     },
     markers: {
@@ -108,10 +126,12 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
       strokeColors: "#fff",
       strokeWidth: 2,
       hover: {
-        size: 6,
+        size: 4,
       },
     },
     grid: {
+      borderColor: "#E5E7EB",
+      strokeDashArray: 3,
       xaxis: {
         lines: {
           show: false,
@@ -122,12 +142,24 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
           show: true,
         },
       },
+      padding: {
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+      },
     },
     dataLabels: {
       enabled: false,
     },
     tooltip: {
       enabled: true,
+      shared: true,
+      intersect: false,
+      theme: "light",
+      style: {
+        fontSize: "11px",
+      },
       y: {
         formatter: function (value, { seriesIndex }) {
           if (seriesIndex === 0) {
@@ -148,8 +180,8 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
       },
       labels: {
         style: {
-          fontSize: "12px",
-          colors: "#6B7280",
+          fontSize: "10px",
+          colors: "#9CA3AF",
         },
       },
     },
@@ -157,42 +189,77 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
       {
         // Y-axis cho số đơn (bên trái)
         min: 0,
-        max: Math.ceil(maxOrders / 10) * 10,
-        tickAmount: 5,
+        max: Math.ceil(maxOrders / 10) * 10 || 10,
+        tickAmount: 3,
         labels: {
           style: {
-            fontSize: "12px",
-            colors: ["#6B7280"],
+            fontSize: "10px",
+            colors: "#9CA3AF",
           },
           formatter: function (value) {
             return Math.round(value).toString();
           },
         },
-        forceNiceScale: true,
+        title: {
+          text: undefined, // Ẩn title để tiết kiệm không gian
+        },
       },
       {
         // Y-axis cho doanh thu (bên phải)
         opposite: true,
         min: 0,
-        max: Math.ceil(maxRevenue / 1000000) * 1000000,
-        tickAmount: 5,
+        max: Math.ceil(maxRevenue / 1000000) * 1000000 || 1000000,
+        tickAmount: 3,
         labels: {
           style: {
-            fontSize: "12px",
-            colors: ["#6B7280"],
+            fontSize: "10px",
+            colors: "#9CA3AF",
           },
           formatter: function (value) {
             if (value >= 1000000000) {
-              return Math.round(value / 1000000000) + "B";
+              return (value / 1000000000).toFixed(0) + "B";
             } else if (value >= 1000000) {
-              return Math.round(value / 1000000) + "M";
+              return (value / 1000000).toFixed(0) + "M";
             } else if (value >= 1000) {
-              return Math.round(value / 1000) + "K";
+              return (value / 1000).toFixed(0) + "K";
             }
             return Math.round(value).toString();
           },
         },
-        forceNiceScale: true,
+        title: {
+          text: undefined, // Ẩn title để tiết kiệm không gian
+        },
+      },
+    ],
+    responsive: [
+      {
+        breakpoint: 1024,
+        options: {
+          chart: {
+            height: 200,
+          },
+          legend: {
+            fontSize: "10px",
+          },
+        },
+      },
+      {
+        breakpoint: 640,
+        options: {
+          chart: {
+            height: 180,
+          },
+          legend: {
+            show: false,
+          },
+          xaxis: {
+            labels: {
+              style: {
+                fontSize: "9px",
+              },
+            },
+          },
+        },
       },
     ],
   };
@@ -210,27 +277,69 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
     },
   ];
 
+  // Tính tổng để hiển thị summary
+  const totalOrders = orders.reduce((a, b) => a + b, 0);
+  const totalRevenue = revenue.reduce((a, b) => a + b, 0);
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
-      <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
-        <div className="w-full">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Thống kê doanh thu
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+      {/* Header với summary */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+            Biểu đồ thống kê
           </h3>
-          <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Số đơn hàng và doanh thu theo tháng
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Theo dõi xu hướng 12 tháng
           </p>
         </div>
+
+        {/* Mini summary */}
+        {/* <div className="flex gap-4">
+          <div className="text-right">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Tổng đơn</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              {totalOrders}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Tổng thu</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              {totalRevenue >= 1000000000
+                ? (totalRevenue / 1000000000).toFixed(1) + "B"
+                : totalRevenue >= 1000000
+                ? (totalRevenue / 1000000).toFixed(1) + "M"
+                : totalRevenue >= 1000
+                ? (totalRevenue / 1000).toFixed(0) + "K"
+                : totalRevenue}
+            </p>
+          </div>
+        </div> */}
       </div>
 
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
-        <div className="min-w-[1000px] xl:min-w-full">
-          <ReactApexChart
-            options={options}
-            series={series}
-            type="area"
-            height={190}
-          />
+      {/* Chart container - Thu nhỏ chiều cao */}
+      <div className="h-[200px] sm:h-[220px] lg:h-[240px] xl:h-[260px]">
+        <ReactApexChart
+          options={options}
+          series={series}
+          type="area"
+          height="100%"
+        />
+      </div>
+
+      {/* Legend thủ công cho mobile */}
+      <div className="flex items-center justify-center gap-6 mt-3 sm:hidden">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+          <span className="text-xs text-gray-600 dark:text-gray-400">
+            Số đơn
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+          <span className="text-xs text-gray-600 dark:text-gray-400">
+            Doanh thu
+          </span>
         </div>
       </div>
     </div>

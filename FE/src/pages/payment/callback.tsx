@@ -62,10 +62,10 @@ const PaymentCallback: React.FC = () => {
         if (responseCode === "00") {
           // Thanh toán thành công
           setPaymentStatus("success");
-          if (!messageShown.current) {
-            message.success("Thanh toán thành công!");
-            messageShown.current = true;
-          }
+          // if (!messageShown.current) {
+          //   message.success("Thanh toán thành công!");
+          //   messageShown.current = true;
+          // }
 
           // Có thể gọi API để cập nhật trạng thái booking
           try {
@@ -79,19 +79,19 @@ const PaymentCallback: React.FC = () => {
           setPaymentStatus("failed");
           const errorMsg = getErrorMessage(responseCode);
           setErrorMessage(errorMsg);
-          if (!messageShown.current) {
-            message.error("Thanh toán thất bại!");
-            messageShown.current = true;
-          }
+          // if (!messageShown.current) {
+          //   message.error("Thanh toán thất bại!");
+          //   messageShown.current = true;
+          // }
         }
       } catch (error) {
         console.error("Error processing payment callback:", error);
         setPaymentStatus("failed");
         setErrorMessage("Có lỗi xảy ra khi xử lý thanh toán");
-        if (!messageShown.current) {
-          message.error("Có lỗi xảy ra khi xử lý thanh toán");
-          messageShown.current = true;
-        }
+        // if (!messageShown.current) {
+        //   message.error("Có lỗi xảy ra khi xử lý thanh toán");
+        //   messageShown.current = true;
+        // }
       } finally {
         setLoading(false);
       }
