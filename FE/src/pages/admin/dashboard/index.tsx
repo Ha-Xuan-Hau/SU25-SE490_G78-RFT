@@ -13,7 +13,7 @@ import { Car, Clock, FileText, CreditCard } from "lucide-react";
 export default function AdminDashboard() {
   return (
     <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
-      {/* Stats Cards Row */}
+      {/* Stats Cards Row - Giữ nguyên */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatsCard
           title="Tổng phương tiện đang hoạt động"
@@ -60,35 +60,25 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* Middle Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Active Users */}
-        <div className="lg:col-span-1">
-          <ActiveUsersCard />
-        </div>
-
-        {/* Product Sold Map */}
-        <div className="lg:col-span-2">
-          <ProductSoldMap />
-        </div>
-      </div>
-
-      {/* Bottom Section - 3 columns */}
+      {/* Main Content - 3 cột */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Column 1: Phương tiện */}
-        <div>
+        {/* Cột 1: Tổng người dùng & Phương tiện trong hệ thống */}
+        <div className="space-y-6">
+          <ActiveUsersCard />
           <VehicleStatsCard />
         </div>
-        {/* Column 2: Báo cáo & Hợp đồng */}
+
+        {/* Cột 2: Tổng số đơn đặt xe, Báo cáo từ người dùng, Mã giảm giá */}
         <div className="space-y-6">
+          <ProductSoldMap />
           <WorldMap />
-          <OrderHistoryCard />
+          <CouponCard />
         </div>
 
-        {/* Column 3: Mã giảm giá & Yêu cầu rút tiền */}
+        {/* Cột 3: Hợp đồng tất toán & Yêu cầu rút tiền */}
         <div className="space-y-6">
+          <OrderHistoryCard />
           <TopProductsTable />
-          <CouponCard />
         </div>
       </div>
     </div>

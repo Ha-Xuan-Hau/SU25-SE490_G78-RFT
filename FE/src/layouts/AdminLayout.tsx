@@ -263,12 +263,12 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <section className="flex-1 w-full">
         <div className="flex min-h-screen w-full relative">
           {/* Mobile sidebar toggle button - giữ nguyên */}
-          <button
+          {/* <button
             onClick={toggleSidebar}
             className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
           >
             {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-          </button>
+          </button> */}
 
           {/* Sidebar - SỬA LẠI className để luôn ẩn mặc định */}
           <div
