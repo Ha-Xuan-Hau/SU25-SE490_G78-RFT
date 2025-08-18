@@ -1,10 +1,10 @@
 package com.rft.rft_be.service.admin;
 
-import com.rft.rft_be.dto.*;
 import com.rft.rft_be.dto.admin.AvgDurationResponse;
 import com.rft.rft_be.dto.admin.CountResponse;
 import com.rft.rft_be.dto.admin.MoneyResponse;
 import com.rft.rft_be.dto.admin.MonthlyBookingSummaryResponse;
+import com.rft.rft_be.dto.admin.AdminDashboardSummaryDTO;
 
 import java.time.YearMonth;
 
@@ -23,4 +23,7 @@ public interface AdminDashboardService {
 
     // 5) Tổng số đơn đặt xe (FE tự so sánh tháng trước)
     CountResponse getMonthlyTotalBookings(YearMonth month);
+
+    // E) tổng số phương tiện , người dùng,phân loại phương tiện...
+    AdminDashboardSummaryDTO getVehicle_User(YearMonth month);
 }

@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.List;
+import java.time.LocalDateTime;
 public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
@@ -43,4 +44,15 @@ public interface UserRepository extends JpaRepository<User, String> {
             Pageable pageable
     );
     List<User> findByRole(User.Role role);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :from AND u.createdAt < :to")
+    long countByCreatedAtBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role")
+    long countByRole(@Param("role") User.Role role);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role AND u.createdAt >= :from AND u.createdAt < :to")
+    long countByRoleAndCreatedAtBetween(@Param("role") User.Role role,
+                                        @Param("from") LocalDateTime from,
+                                        @Param("to") LocalDateTime to);
 }

@@ -159,4 +159,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
 
     @Query("SELECT v FROM Vehicle v WHERE v.status = :status")
     Page<Vehicle> findByStatus(@Param("status") Vehicle.Status status, Pageable pageable);
+
+    @Query("SELECT COUNT(DISTINCT v.user.id) FROM Vehicle v WHERE v.vehicleType = :vehicleType")
+    long countDistinctUserByVehicleType(@Param("vehicleType") Vehicle.VehicleType vehicleType);
 }
