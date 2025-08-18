@@ -1,11 +1,11 @@
 // src/main/java/com/rft/rft_be/controller/AdminDashboardController.java
 package com.rft.rft_be.controller;
 
-import com.rft.rft_be.dto.*;
 import com.rft.rft_be.dto.admin.AvgDurationResponse;
 import com.rft.rft_be.dto.admin.CountResponse;
 import com.rft.rft_be.dto.admin.MoneyResponse;
 import com.rft.rft_be.dto.admin.MonthlyBookingSummaryResponse;
+import com.rft.rft_be.dto.admin.AdminDashboardSummaryDTO;
 import com.rft.rft_be.service.admin.AdminDashboardService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -50,5 +50,11 @@ public class AdminDashboardController {
     @GetMapping("/bookings/total")
     public CountResponse getMonthlyTotalBookings(@RequestParam(value = "month", required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
         return service.getMonthlyTotalBookings(month);
+    }
+
+    // 6)tổng số phương tiện , người dùng,phân loại phương tiện...
+    @GetMapping("/vehicle_User")
+    public AdminDashboardSummaryDTO getVehicle_User(@RequestParam(value = "month", required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
+        return service.getVehicle_User(month);
     }
 }
