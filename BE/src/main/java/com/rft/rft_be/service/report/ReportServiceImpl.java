@@ -615,7 +615,7 @@ public class ReportServiceImpl implements ReportService {
         return "";
     }
 
-    // Method cũ - giữ lại cho compatibility hoặc có thể deprecate
+    //Report write detail by target and type
     @Override
     @Deprecated
     public ReportDetailDTO getReportDetailByTargetAndType(String targetId, String type) {
@@ -646,6 +646,7 @@ public class ReportServiceImpl implements ReportService {
                 || ("STAFF_ERROR".equals(generalType) && "STAFF_REPORT".equals(type));
         // Không check APPEAL vì không hiển thị trên UI
     }
+    //show report total on dashboard
     @Override
     public ReportDashboardResponse getDashboardReportStatistics(LocalDateTime from, LocalDateTime to) {
         // Gộp type của cả 2 nhóm

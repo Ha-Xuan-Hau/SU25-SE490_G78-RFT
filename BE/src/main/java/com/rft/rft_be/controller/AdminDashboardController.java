@@ -52,7 +52,7 @@ public class AdminDashboardController {
     public CountResponse getMonthlyTotalBookings(@RequestParam(value = "month", required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
         return service.getMonthlyTotalBookings(month);
     }
-
+    // Total report 
     @GetMapping("reports")
     public ReportDashboardResponse getReportStatistics(
             @RequestParam(value = "from", required = false)
