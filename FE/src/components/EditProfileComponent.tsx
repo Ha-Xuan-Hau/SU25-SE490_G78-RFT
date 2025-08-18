@@ -504,7 +504,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
           </Col>
         </Row>
         <Form.Item
-          label="Địa chỉ"
+          label="Địa chỉ (Sử dụng địa chỉ trước sáp nhập)"
           name="address"
           required
           rules={[

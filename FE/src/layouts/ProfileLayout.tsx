@@ -38,11 +38,11 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           if (user.role === "USER") {
             setIsAuthorized(true);
           } else {
-            router.push("/404");
+            router.push("/not-found");
           }
         } catch (error) {
           console.error("Error parsing user profile:", error);
-          router.push("/404");
+          router.push("/not-found");
         } finally {
           setIsLoading(false);
         }
@@ -210,7 +210,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                   {userProfile?.email || "user@example.com"}
                 </p>
                 <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                  Khách hàng
+                  Người dùng
                 </span>
               </div>
             </div>
