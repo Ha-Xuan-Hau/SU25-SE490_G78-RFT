@@ -76,20 +76,6 @@ const HeaderComponent: React.FC = () => {
     };
   }, [navbarOpen]);
 
-  // Hàm xử lý điều hướng dựa trên role
-  const getNavigationByRole = (userRole: string) => {
-    switch (userRole) {
-      case "ADMIN":
-        return "/admin/dashboard";
-      case "STAFF":
-        return "/admin/dashboard";
-      case "PROVIDER":
-        return "/provider/dashboard";
-      default:
-        return "/profile";
-    }
-  };
-
   // Tạo dropdown items dựa trên role với type chính xác
   const getDropdownItems = (): MenuProps["items"] => {
     const userRole = user?.role;
@@ -182,7 +168,6 @@ const HeaderComponent: React.FC = () => {
       });
     } else if (userRole === "PROVIDER") {
       // Menu cho Provider
-
       baseItems?.push({
         key: "profile",
         label: (
@@ -204,7 +189,7 @@ const HeaderComponent: React.FC = () => {
             className="flex items-center py-1"
           >
             <DashboardOutlined className="mr-2 text-blue-600" />
-            Kênh bán hàng
+            Quản lý cho thuê
           </div>
         ),
       });
@@ -284,7 +269,6 @@ const HeaderComponent: React.FC = () => {
           {/* Logo và Desktop Menu Button */}
           <div className="flex items-center gap-3">
             {/* Desktop Menu Button - Hiển thị cho các trang có sidebar */}
-
             {shouldShowDesktopMenu && (
               <>
                 {/* Desktop Menu Button - Hiển thị từ md trở lên */}
@@ -401,11 +385,11 @@ const HeaderComponent: React.FC = () => {
               </>
             ) : (
               <div className="flex items-center gap-4">
-                {/* Notification Bell */}
+                {/* Notification Bell cho Desktop */}
                 <div className="relative">
                   <NotificationBell />
-                  <NotificationDropdown />
                 </div>
+
                 <Dropdown
                   menu={{ items: getDropdownItems() }}
                   placement="bottomRight"
@@ -451,11 +435,7 @@ const HeaderComponent: React.FC = () => {
           {/* Mobile Right Section */}
           <div className="lg:hidden flex items-center gap-2">
             {/* Mobile Notification Bell */}
-            {isAuthenticated && (
-              <div className="relative">
-                <NotificationBell />
-              </div>
-            )}
+            {isAuthenticated && <NotificationBell />}
 
             {/* Mobile Menu Button - Hamburger Icon */}
             <button
@@ -735,7 +715,7 @@ const HeaderComponent: React.FC = () => {
                     <div className="flex items-center">
                       <DashboardOutlined className="mr-3 text-blue-600" />
                       <span className="text-base font-medium">
-                        Kênh bán hàng
+                        Quản lý cho thuê
                       </span>
                     </div>
                   </Link>
@@ -815,6 +795,9 @@ const HeaderComponent: React.FC = () => {
           />
         )}
       </header>
+
+      {/* Render NotificationDropdown một lần duy nhất */}
+      {isAuthenticated && <NotificationDropdown />}
 
       <AuthPopup isOpen={isOpen} onClose={closeAuthPopup} initialMode={mode} />
       <SystemNotificationModal />

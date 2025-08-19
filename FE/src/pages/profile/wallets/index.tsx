@@ -391,45 +391,6 @@ export default function UserWalletsPage() {
         );
       },
     },
-    // {
-    //   title: "Trạng thái",
-    //   dataIndex: "status",
-    //   key: "status",
-    //   width: 120,
-    //   render: (status: string) => {
-    //     let color = "default";
-    //     let text = status;
-
-    //     switch (status?.toUpperCase()) {
-    //       case "SUCCESS":
-    //       case "APPROVED":
-    //         color = "success";
-    //         text = "Thành công";
-    //         break;
-    //       case "PENDING":
-    //         color = "processing";
-    //         text = "Đang xử lý";
-    //         break;
-    //       case "FAILED":
-    //       case "REJECTED":
-    //         color = "error";
-    //         text = "Bị từ chối";
-    //         break;
-    //       default:
-    //         color = "default";
-    //         text = status || "Không xác định";
-    //     }
-
-    //     return <Tag color={color}>{text}</Tag>;
-    //   },
-    //   filters: [
-    //     { text: "Thành công", value: "SUCCESS" },
-    //     { text: "Đang xử lý", value: "PENDING" },
-    //     { text: "Bị từ chối", value: "REJECTED" },
-    //   ],
-    //   onFilter: (value: any, record: WithdrawalTransaction) =>
-    //     record.status?.toUpperCase() === value,
-    // },
   ];
 
   if (loading) {

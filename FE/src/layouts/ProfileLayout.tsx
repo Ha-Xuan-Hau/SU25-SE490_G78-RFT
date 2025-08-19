@@ -215,7 +215,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                 <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                   {" "}
                   {/* Đổi sang màu blue */}
-                  Người dùng
+                  {userProfile?.role}
                 </span>
               </div>
             </div>
