@@ -172,7 +172,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           key: "bookings",
           path: "/admin/manage-bookings",
           icon: "mdi:calendar-clock",
-          label: "Quản lý đặt xe",
+          label: "Quản lý đơn đặt xe",
         },
       ],
     },
@@ -185,12 +185,12 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:cash-minus",
           label: "Yêu cầu rút tiền",
         },
-        {
-          key: "revenue",
-          path: "/admin/manage-final-contracts",
-          icon: "mdi:file-document-edit",
-          label: "Tất toán hợp đồng",
-        },
+        // {
+        //   key: "revenue",
+        //   path: "/admin/manage-final-contracts",
+        //   icon: "mdi:file-document-edit",
+        //   label: "Tất toán hợp đồng",
+        // },
         // Chỉ Admin mới thấy các menu này
         ...(isAdmin
           ? [
@@ -263,12 +263,12 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <section className="flex-1 w-full">
         <div className="flex min-h-screen w-full relative">
           {/* Mobile sidebar toggle button - giữ nguyên */}
-          <button
+          {/* <button
             onClick={toggleSidebar}
             className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
           >
             {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-          </button>
+          </button> */}
 
           {/* Sidebar - SỬA LẠI className để luôn ẩn mặc định */}
           <div

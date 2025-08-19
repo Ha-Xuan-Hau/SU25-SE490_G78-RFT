@@ -19,6 +19,7 @@ import {
   CarOutlined,
   FileTextOutlined,
   WalletOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 import NotificationBell from "@/components/notification/NotificationBell";
 import NotificationDropdown from "@/components/notification/NotificationDropdown";
@@ -38,6 +39,12 @@ const HeaderComponent: React.FC = () => {
     closeAuthPopup,
     mode,
   } = useAuth();
+
+  // Check if current page is admin/provider/customer layout
+  const isAdminPage = pathname?.startsWith("/admin");
+  const isProviderPage = pathname?.startsWith("/provider");
+  const isCustomerPage = pathname?.startsWith("/profile");
+  const shouldShowDesktopMenu = isAdminPage || isProviderPage || isCustomerPage;
 
   // Đóng menu khi resize window
   useEffect(() => {
@@ -175,6 +182,20 @@ const HeaderComponent: React.FC = () => {
       });
     } else if (userRole === "PROVIDER") {
       // Menu cho Provider
+
+      baseItems?.push({
+        key: "profile",
+        label: (
+          <div
+            onClick={() => router.push("/profile")}
+            className="flex items-center py-1"
+          >
+            <UserOutlined className="mr-2" />
+            Kênh người dùng
+          </div>
+        ),
+      });
+
       baseItems?.push({
         key: "provider-dashboard",
         label: (
@@ -183,7 +204,7 @@ const HeaderComponent: React.FC = () => {
             className="flex items-center py-1"
           >
             <DashboardOutlined className="mr-2 text-blue-600" />
-            Quản lý cho thuê
+            Kênh bán hàng
           </div>
         ),
       });
@@ -228,19 +249,19 @@ const HeaderComponent: React.FC = () => {
     const badgeConfig = {
       ADMIN: {
         color: "bg-red-100 text-red-800 border-red-200",
-        label: "Admin",
+        label: "Quản trị viên",
       },
       STAFF: {
         color: "bg-blue-100 text-blue-800 border-blue-200",
-        label: "Staff",
+        label: "Nhân viên",
       },
       PROVIDER: {
         color: "bg-green-100 text-green-800 border-green-200",
-        label: "Provider",
+        label: "Chủ xe",
       },
       USER: {
         color: "bg-gray-100 text-gray-800 border-gray-200",
-        label: "User",
+        label: "Người dùng",
       },
     };
 
@@ -260,8 +281,37 @@ const HeaderComponent: React.FC = () => {
     <>
       <header className="relative w-full bg-white shadow-sm border-b border-gray-100">
         <nav className="w-full flex items-center justify-between py-3 px-4 sm:px-6 lg:px-8">
-          {/* Logo */}
-          <div className="flex items-center">
+          {/* Logo và Desktop Menu Button */}
+          <div className="flex items-center gap-3">
+            {/* Desktop Menu Button - Hiển thị cho các trang có sidebar */}
+
+            {shouldShowDesktopMenu && (
+              <>
+                {/* Desktop Menu Button - Hiển thị từ md trở lên */}
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent("toggleDesktopMenu"));
+                  }}
+                  className="hidden md:flex items-center justify-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
+                  aria-label="Toggle menu"
+                  title="Menu"
+                >
+                  <MenuOutlined className="text-gray-600 group-hover:text-gray-900 transition-colors" />
+                </button>
+
+                {/* Mobile Menu Button - Hiển thị dưới md */}
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent("toggleDesktopMenu"));
+                  }}
+                  className="flex md:hidden items-center justify-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  aria-label="Toggle menu"
+                >
+                  <MenuOutlined className="text-gray-600" />
+                </button>
+              </>
+            )}
+            {/* Logo */}
             <Link href="/" onClick={() => setNavbarOpen(false)}>
               <Image
                 src="/images/rft-logo2.png"
@@ -272,53 +322,14 @@ const HeaderComponent: React.FC = () => {
                 className="block dark:hidden sm:w-[120px] sm:h-[42px]"
               />
             </Link>
-
-            {/* Desktop Menu Button cho tất cả user */}
-            <button
-              onClick={() => {
-                // Dispatch custom event để mở sidebar/menu
-                window.dispatchEvent(new CustomEvent("toggleDesktopMenu"));
-              }}
-              className="hidden lg:flex items-center justify-center ml-6 p-2 rounded-md hover:bg-gray-100 transition-colors"
-              aria-label="Toggle menu"
-            >
-              <Icon
-                icon="heroicons:bars-3-20-solid"
-                className="w-6 h-6 text-gray-700"
-              />
-            </button>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-10">
             {/* Hiển thị menu navigation chỉ cho USER và chưa đăng nhập */}
-            {(!isAuthenticated || user?.role === "PROVIDER") && (
-              <>
-                <Link
-                  href="/about-us"
-                  className={`text-base font-medium ${
-                    pathname === "/about-us"
-                      ? "text-primary font-semibold"
-                      : "text-dark"
-                  } hover:text-primary transition-colors`}
-                >
-                  Về RFT
-                </Link>
-
-                <Link
-                  href="/vehicles"
-                  className={`text-base font-medium ${
-                    pathname === "/vehicles"
-                      ? "text-primary font-semibold"
-                      : "text-dark"
-                  } hover:text-primary transition-colors`}
-                >
-                  Danh sách xe
-                </Link>
-              </>
-            )}
-
-            {isAuthenticated && user?.role === "USER" && (
+            {(!isAuthenticated ||
+              user?.role === "USER" ||
+              user?.role === "PROVIDER") && (
               <>
                 <Link
                   href="/about-us"
@@ -342,16 +353,18 @@ const HeaderComponent: React.FC = () => {
                   Danh sách xe
                 </Link>
 
-                <Link
-                  href="/become-provider"
-                  className={`text-base font-medium ${
-                    pathname === "/become-provider"
-                      ? "text-primary font-semibold"
-                      : "text-dark"
-                  } hover:text-primary transition-colors`}
-                >
-                  Trở thành chủ xe
-                </Link>
+                {isAuthenticated && user?.role === "USER" && (
+                  <Link
+                    href="/become-provider"
+                    className={`text-base font-medium ${
+                      pathname === "/become-provider"
+                        ? "text-primary font-semibold"
+                        : "text-dark"
+                    } hover:text-primary transition-colors`}
+                  >
+                    Trở thành chủ xe
+                  </Link>
+                )}
               </>
             )}
 
@@ -695,6 +708,22 @@ const HeaderComponent: React.FC = () => {
                 <>
                   <div className="border-t border-gray-200 my-2"></div>
                   <Link
+                    href="/profile"
+                    className={`block px-6 py-3 ${
+                      pathname === "/profile"
+                        ? "text-primary bg-primary/5 border-l-4 border-primary"
+                        : "text-gray-700 hover:bg-gray-50"
+                    } transition-colors`}
+                    onClick={() => setNavbarOpen(false)}
+                  >
+                    <div className="flex items-center">
+                      <UserOutlined className="mr-3 text-blue-600" />
+                      <span className="text-base font-medium">
+                        Kênh người dùng
+                      </span>
+                    </div>
+                  </Link>
+                  <Link
                     href="/provider/dashboard"
                     className={`block px-6 py-3 ${
                       pathname === "/provider/dashboard"
@@ -706,7 +735,7 @@ const HeaderComponent: React.FC = () => {
                     <div className="flex items-center">
                       <DashboardOutlined className="mr-3 text-blue-600" />
                       <span className="text-base font-medium">
-                        Quản lý cho thuê
+                        Kênh bán hàng
                       </span>
                     </div>
                   </Link>

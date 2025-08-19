@@ -43,11 +43,11 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           if (user.role === "PROVIDER") {
             setIsAuthorized(true);
           } else {
-            router.push("/404");
+            router.push("/not-found");
           }
         } catch (error) {
           console.error("Error parsing user profile:", error);
-          router.push("/404");
+          router.push("/not-found");
         } finally {
           setIsLoading(false);
         }
@@ -123,26 +123,37 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:view-dashboard",
           label: "Bảng điều khiển",
         },
-        {
-          key: "profile",
-          path: "/provider/provider-profile",
-          icon: "mdi:account-circle",
-          label: "Thông tin cá nhân",
-        },
+        // {
+        //   key: "profile",
+        //   path: "/provider/provider-profile",
+        //   icon: "mdi:account-circle",
+        //   label: "Thông tin cá nhân",
+        // },
         {
           key: "provider-wallet",
           path: "/provider/provider-wallet",
           icon: "mdi:wallet",
           label: "Ví của tôi",
         },
-        {
-          key: "change-password",
-          path: "/provider/change-password",
-          icon: "mdi:key-variant",
-          label: "Đổi mật khẩu",
-        },
+        // {
+        //   key: "change-password",
+        //   path: "/provider/change-password",
+        //   icon: "mdi:key-variant",
+        //   label: "Đổi mật khẩu",
+        // },
       ],
     },
+    // {
+    //   title: "Quản lý giấy tờ",
+    //   items: [
+    //     {
+    //       key: "driver-licenses",
+    //       path: "/provider/driver-licenses",
+    //       icon: "mdi:card-account-details",
+    //       label: "Giấy phép lái xe",
+    //     },
+    //   ],
+    // },
     {
       title: "Quản lý thuê xe",
       items: [
@@ -184,25 +195,26 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
       <HeaderComponent />
 
       <section className="flex-1 w-full">
-        <div className="flex h-screen w-full relative">
-          {/* Mobile sidebar toggle button - GIỮ NGUYÊN */}
-          <button
+        <div className="flex min-h-screen w-full relative">
+          {" "}
+          {/* Mobile sidebar toggle button */}
+          {/* <button
             onClick={toggleSidebar}
-            className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
+            className="md:hidden fixed top-20 left-4 z-30 bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg shadow-lg transition-colors"
           >
+            {" "}
             {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-          </button>
-
-          {/* Sidebar - SỬA LẠI: luôn ẩn mặc định */}
+          </button> */}
+          {/* Sidebar */}
           <div
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             } fixed top-0 left-0 h-full z-40
-            w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-            transform transition-transform duration-300 ease-in-out
-            shadow-xl overflow-y-auto`}
+          w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
+          transform transition-transform duration-300 ease-in-out
+          shadow-xl overflow-y-auto`}
           >
-            {/* THÊM MỚI: Nút close trong sidebar */}
+            {/* Nút close trong sidebar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Menu
@@ -218,7 +230,7 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
               </button>
             </div>
 
-            {/* User Profile Section - GIỮ NGUYÊN */}
+            {/* User Profile Section */}
             <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-700">
               <div className="flex flex-col items-center text-center">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate w-full">
@@ -228,12 +240,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
                   {providerProfile?.email || "user@example.com"}
                 </p>
                 <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Nhà cung cấp dịch vụ
+                  Chủ xe
                 </span>
               </div>
             </div>
 
-            {/* Navigation Menu - GIỮ NGUYÊN */}
+            {/* Navigation Menu */}
             <nav className="mt-4 pb-6">
               {menuGroups.map((group) => (
                 <div key={group.title} className="mb-6">
@@ -244,7 +256,9 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
                   </div>
                   <ul className="space-y-1 px-3">
                     {group.items.map((item) => (
-                      <li key={item.key}>
+                      <li key={`${item.key}-${item.path}`}>
+                        {" "}
+                        {/* Thêm path vào key để tránh duplicate */}
                         <Link
                           href={item.path}
                           className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
@@ -270,16 +284,14 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
               ))}
             </nav>
           </div>
-
-          {/* Backdrop - SỬA LẠI: hiển thị cho cả desktop và mobile */}
+          {/* Backdrop - hiển thị cho cả desktop và mobile khi sidebar mở */}
           {sidebarOpen && (
             <div
               className="fixed inset-0 bg-black/50 z-30"
               onClick={toggleSidebar}
             />
           )}
-
-          {/* Main content - GIỮ NGUYÊN */}
+          {/* Main content */}
           <div className="flex-1 px-4 md:px-6 py-6 w-full">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full overflow-x-auto">
               {children}

@@ -323,9 +323,15 @@ export default function VehicleDetail() {
       if (!current || !vehicle?.vehicleType) return false;
 
       const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-      return isDateDisabled(current, vehicleType, bookedTimeSlots);
+      return isDateDisabled(
+        current,
+        vehicleType,
+        bookedTimeSlots,
+        openTime,
+        closeTime
+      );
     };
-  }, [vehicle?.vehicleType, bookedTimeSlots]);
+  }, [vehicle?.vehicleType, bookedTimeSlots, openTime, closeTime]);
 
   // --- Loading and error states ---
   if (isLoading) {

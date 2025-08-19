@@ -2,16 +2,26 @@
 
 import { useState, useEffect } from "react";
 import { useUserState, useRefreshUser } from "@/recoils/user.state";
-import { Typography, Spin, Avatar } from "antd";
-import { UserOutlined } from "@ant-design/icons";
-import { ProfileLayout } from "@/layouts/ProfileLayout";
+import { Typography, Spin } from "antd";
+import {
+  EditIcon,
+  CalendarIcon,
+  MapPinIcon,
+  PhoneIcon,
+  MailIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  User2,
+  UserPlus,
+} from "lucide-react";
 import EditProfileModal from "@/components/EditProfileComponent";
-import { User } from "@/types/user";
+import type { User } from "@/types/user";
 import { showError } from "@/utils/toast.utils";
+import ProfileLayout from "@/layouts/ProfileLayout";
 
 const { Title } = Typography;
 
-export default function AccountPage() {
+export default function UserAccountPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const showModalEdit = () => setOpenEditModal(true);
   const handleCancleEditModal = () => setOpenEditModal(false);
@@ -83,8 +93,13 @@ export default function AccountPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-full min-h-[300px]">
-        <Spin size="large" />
+      <div className="flex justify-center items-center h-full min-h-[400px] bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Spin size="large" />
+          <p className="text-muted-foreground font-open-sans">
+            Đang tải thông tin...
+          </p>
+        </div>
       </div>
     );
   }
@@ -120,131 +135,184 @@ export default function AccountPage() {
   };
 
   return (
-    <div>
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
-        <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">
-          Hồ sơ
-        </h3>
-        <div className="space-y-6">
-          <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-col items-center w-full gap-6 xl:flex-row">
-                <div className="mb-4 relative">
-                  {user && user.profilePicture ? (
-                    <Avatar
-                      src={user.profilePicture}
-                      size={120}
-                      className="shadow-sm border-2 border-gray-200"
-                    />
-                  ) : (
-                    <Avatar
-                      icon={<UserOutlined />}
-                      size={120}
-                      className="shadow-sm bg-blue-50 text-blue-600 border-2 border-gray-200"
-                    />
-                  )}
-                </div>
-                <div className="order-3 xl:order-2">
-                  <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
-                    {user?.name || user?.email?.split("@")[0] || "user123"}
-                  </h4>
-                  <div className="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {user?.role === "USER" ? "Người dùng" : "Chủ thuê"}
-                    </p>
-                    <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block"></div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {user?.address || "Chưa cập nhật"}
-                    </p>
+    <div className="min-h-screen bg-background p-6 font-open-sans">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-montserrat font-bold text-foreground">
+            Hồ sơ cá nhân
+          </h1>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-primary/5 to-secondary/5 px-6 sm:px-8 py-8 sm:py-10">
+            <div className="flex flex-col lg:flex-row items-center lg:items-center gap-6 lg:gap-8">
+              {/* Avatar Section */}
+              <div className="relative flex-shrink-0">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-primary to-secondary p-1">
+                  <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
+                    {user && user.profilePicture ? (
+                      <img
+                        src={user.profilePicture}
+                        alt="Profile"
+                        className="w-[104px] h-[104px] sm:w-[120px] sm:h-[120px] rounded-full object-cover"
+                      />
+                    ) : (
+                      <User2 className="w-12 h-12 sm:w-14 sm:h-14 text-primary" />
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center order-2 gap-2 grow xl:order-3 xl:justify-end"></div>
+                <div className="absolute bottom-0 right-0 w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-full flex items-center justify-center border-2 border-card">
+                  <ShieldCheckIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-foreground" />
+                </div>
               </div>
+
+              {/* User Info */}
+              <div className="flex-1 text-center lg:text-left space-y-2 sm:space-y-3 min-w-0">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-montserrat font-bold text-foreground truncate">
+                    {user?.name || user?.email?.split("@")[0] || "user123"}
+                  </h2>
+                  <p className="text-base sm:text-lg text-muted-foreground font-open-sans">
+                    {user?.role === "USER" ? "Người dùng" : "Chủ xe"}
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center lg:items-start gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <MapPinIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {user?.address || "Chưa cập nhật"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <MailIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {user?.email || "Chưa cập nhật"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Button */}
               <button
                 onClick={showModalEdit}
-                className="flex w-full min-w-[115px] justify-center gap-2 rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md font-open-sans text-sm sm:text-base flex-shrink-0 mt-2 lg:mt-0"
               >
-                Chỉnh sửa
+                <EditIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Chỉnh sửa</span>
               </button>
             </div>
           </div>
+        </div>
 
-          <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-6">
-                  Thông tin cá nhân
-                </h4>
+        <div className="bg-card border border-border rounded-xl shadow-sm p-8">
+          <h3 className="text-xl font-montserrat font-semibold text-foreground mb-8 flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+              <User2 className="text-primary" />
+            </div>
+            Thông tin chi tiết
+          </h3>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
-                  <div>
-                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                      Họ và tên
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      {user?.fullName || "Chưa cập nhật"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                      Địa chỉ
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      {user?.address || "Chưa cập nhật"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                      Email
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      {user?.email || "Chưa cập nhật"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                      Số điện thoại
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      {user?.phone || "Chưa cập nhật"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                      Vai trò
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      {user?.role === "USER" ? "Người dùng" : "Chủ thuê"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                      Ngày sinh
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      {formatDOB(user?.dateOfBirth)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                      Cập nhật lần cuối
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                      {formatTimestamp(user?.updatedAt)}
-                    </p>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Full Name */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <User2 className="w-4 h-4" />
+                Họ và tên
               </div>
+              <p className="text-foreground font-medium text-lg font-open-sans">
+                {user?.fullName || "Chưa cập nhật"}
+              </p>
+            </div>
+
+            {/* Address */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <MapPinIcon className="w-4 h-4" />
+                Địa chỉ
+              </div>
+              <p className="text-foreground font-medium text-lg font-open-sans">
+                {user?.address || "Chưa cập nhật"}
+              </p>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <MailIcon className="w-4 h-4" />
+                Email
+              </div>
+              <p className="text-foreground font-medium text-lg font-open-sans">
+                {user?.email || "Chưa cập nhật"}
+              </p>
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <PhoneIcon className="w-4 h-4" />
+                Số điện thoại
+              </div>
+              <p className="text-foreground font-medium text-lg font-open-sans">
+                {user?.phone || "Chưa cập nhật"}
+              </p>
+            </div>
+
+            {/* Role */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <ShieldCheckIcon className="w-4 h-4" />
+                Vai trò
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    user?.role === "USER"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-secondary/10 text-secondary"
+                  }`}
+                >
+                  {user?.role === "USER" ? "Người dùng" : "Chủ xe"}
+                </span>
+              </div>
+            </div>
+
+            {/* Date of Birth */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <CalendarIcon className="w-4 h-4" />
+                Ngày sinh
+              </div>
+              <p className="text-foreground font-medium text-lg font-open-sans">
+                {formatDOB(user?.dateOfBirth)}
+              </p>
+            </div>
+
+            {/* Join Date */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <UserPlus className="w-4 h-4" />
+                Ngày tham gia
+              </div>
+              <p className="text-foreground font-medium text-lg font-open-sans">
+                {formatTimestamp(user?.createdAt)}
+              </p>
+            </div>
+
+            {/* Last Updated */}
+            <div className="space-y-3 ">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                <ClockIcon className="w-4 h-4" />
+                Cập nhật lần cuối
+              </div>
+              <p className="text-foreground font-medium text-lg font-open-sans">
+                {formatTimestamp(user?.updatedAt)}
+              </p>
             </div>
           </div>
         </div>
       </div>
+
       <EditProfileModal
         openEditModal={openEditModal}
         handleCancleEditModal={handleCancleEditModal}
@@ -255,4 +323,4 @@ export default function AccountPage() {
   );
 }
 
-AccountPage.Layout = ProfileLayout;
+UserAccountPage.Layout = ProfileLayout;

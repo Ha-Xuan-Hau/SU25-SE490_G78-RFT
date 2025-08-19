@@ -580,7 +580,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
           onClick={onClose}
           disabled={isSearching}
         >
-          Hủy
+          Đóng
         </button>
         <button
           className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center justify-center transition-colors font-medium"

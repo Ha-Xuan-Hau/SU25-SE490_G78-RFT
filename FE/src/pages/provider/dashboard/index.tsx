@@ -16,29 +16,35 @@ export default function ProviderDashboard() {
   } = useQuery({
     queryKey: ["provider-statistics"],
     queryFn: getProviderStatistics,
-    //refetchInterval: 60000, // Refresh mỗi phút
   });
 
   if (isLoading) return <LoadingSpinner />;
 
   if (error) {
     return (
-      <div className="text-center py-8 text-red-500">
-        Không thể tải dữ liệu thống kê
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center py-8 text-red-500">
+          Không thể tải dữ liệu thống kê
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 md:gap-6">
-      <div className="col-span-12 space-y-6 xl:col-span-7">
-        <UserProfileCard statistics={statistics} />
-        <OrderIncomeCard statistics={statistics} />
+    <div className="h-full flex flex-col gap-4 lg:gap-6">
+      {/* Top section - Cards */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
+        <div className="xl:col-span-7 space-y-4 lg:space-y-6">
+          <UserProfileCard statistics={statistics} />
+          <OrderIncomeCard statistics={statistics} />
+        </div>
+        <div className="xl:col-span-5">
+          <BusinessRegistrationCard statistics={statistics} />
+        </div>
       </div>
-      <div className="col-span-12 xl:col-span-5">
-        <BusinessRegistrationCard statistics={statistics} />
-      </div>
-      <div className="col-span-12">
+
+      {/* Bottom section - Chart */}
+      <div className="flex-1 min-h-[400px]">
         <StatisticsChart monthlyData={statistics?.monthlyRevenue} />
       </div>
     </div>

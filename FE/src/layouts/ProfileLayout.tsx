@@ -21,7 +21,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   const [, , clearAccessToken] = useLocalStorage("access_token");
   const [userProfile, , clearUserProfile] = useLocalStorage("user_profile", "");
 
-  // Check role authorization - GIỮ NGUYÊN
+  // Check role authorization
   useEffect(() => {
     const checkAuthorization = () => {
       setTimeout(() => {
@@ -35,14 +35,14 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
         try {
           const user = JSON.parse(storedUser);
 
-          if (user.role === "USER") {
+          if (user.role === "USER" || user.role === "PROVIDER") {
             setIsAuthorized(true);
           } else {
-            router.push("/404");
+            router.push("/not-found");
           }
         } catch (error) {
           console.error("Error parsing user profile:", error);
-          router.push("/404");
+          router.push("/not-found");
         } finally {
           setIsLoading(false);
         }
@@ -166,25 +166,26 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
       <HeaderComponent />
 
       <section className="flex-1 w-full">
-        <div className="flex h-screen w-full relative">
-          {/* Mobile sidebar toggle button - GIỮ NGUYÊN */}
-          <button
+        <div className="flex min-h-screen w-full relative">
+          {" "}
+          {/* Sửa h-screen thành min-h-screen */}
+          {/* Mobile sidebar toggle button */}
+          {/* <button
             onClick={toggleSidebar}
             className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
           >
             {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-          </button>
-
-          {/* Sidebar - SỬA LẠI: luôn ẩn mặc định */}
+          </button> */}
+          {/* Sidebar */}
           <div
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             } fixed top-0 left-0 h-full z-40
-            w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-            transform transition-transform duration-300 ease-in-out
-            shadow-xl overflow-y-auto`}
+          w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
+          transform transition-transform duration-300 ease-in-out
+          shadow-xl overflow-y-auto`}
           >
-            {/* THÊM MỚI: Nút close trong sidebar */}
+            {/* Nút close trong sidebar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Menu
@@ -200,8 +201,10 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
               </button>
             </div>
 
-            {/* User Profile Section - GIỮ NGUYÊN */}
-            <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-700">
+            {/* User Profile Section */}
+            <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700">
+              {" "}
+              {/* Đổi sang màu blue/indigo cho phù hợp */}
               <div className="flex flex-col items-center text-center">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate w-full">
                   {userProfile?.fullName || "Người dùng"}
@@ -209,13 +212,15 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate w-full">
                   {userProfile?.email || "user@example.com"}
                 </p>
-                <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                  Khách hàng
+                <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  {" "}
+                  {/* Đổi sang màu blue */}
+                  Người dùng
                 </span>
               </div>
             </div>
 
-            {/* Navigation Menu - GIỮ NGUYÊN */}
+            {/* Navigation Menu */}
             <nav className="mt-4 pb-6">
               {menuGroups.map((group) => (
                 <div key={group.title} className="mb-6">
@@ -226,12 +231,14 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                   </div>
                   <ul className="space-y-1 px-3">
                     {group.items.map((item) => (
-                      <li key={item.key}>
+                      <li key={`${item.key}-${item.path}`}>
+                        {" "}
+                        {/* Thêm path vào key để tránh duplicate */}
                         <Link
                           href={item.path}
                           className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                             currentPath === item.path
-                              ? "bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-300 border-r-2 border-gray-600"
+                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-600" /* Đổi sang màu blue */
                               : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                           }`}
                         >
@@ -239,7 +246,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                             icon={item.icon}
                             className={`w-5 h-5 flex-shrink-0 transition-colors ${
                               currentPath === item.path
-                                ? "text-gray-600 dark:text-gray-400"
+                                ? "text-blue-600 dark:text-blue-400" /* Đổi sang màu blue */
                                 : "text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300"
                             }`}
                           />
@@ -252,16 +259,14 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
               ))}
             </nav>
           </div>
-
-          {/* Backdrop - SỬA LẠI: hiển thị cho cả desktop và mobile */}
+          {/* Backdrop - hiển thị cho cả desktop và mobile khi sidebar mở */}
           {sidebarOpen && (
             <div
               className="fixed inset-0 bg-black/50 z-30"
               onClick={toggleSidebar}
             />
           )}
-
-          {/* Main content - GIỮ NGUYÊN */}
+          {/* Main content */}
           <div className="flex-1 px-4 md:px-6 py-6 w-full">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full overflow-x-auto">
               {children}
