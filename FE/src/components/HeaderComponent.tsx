@@ -264,7 +264,7 @@ const HeaderComponent: React.FC = () => {
 
   return (
     <>
-      <header className="relative w-full bg-white shadow-sm border-b border-gray-100">
+      <header className="sticky top-0 z-20 w-full bg-white shadow-sm border-b border-gray-100">
         <nav className="w-full flex items-center justify-between py-3 px-4 sm:px-6 lg:px-8">
           {/* Logo và Desktop Menu Button */}
           <div className="flex items-center gap-3">
