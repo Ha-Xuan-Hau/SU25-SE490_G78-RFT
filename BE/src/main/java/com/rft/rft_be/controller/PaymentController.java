@@ -3,6 +3,8 @@ package com.rft.rft_be.controller;
 import java.net.URI;
 import java.util.Map;
 
+import lombok.experimental.NonFinal;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +30,10 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final ContractService contractService;
 
+    @NonFinal
+    @Value("${next.publicReactURL}")
+    protected String FE_URL;
+
 
     //lấy thông tin là id của bookingId chuyền vào từ RequestBody để tạo mã thanh toán cho booking bằng vnpay
     @PostMapping("/vn-pay")
@@ -48,7 +54,7 @@ public class PaymentController {
             boolean isValid = paymentService.validateVNPayResponse(vnpParams);
             if (!isValid) {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create("http://localhost:3000/payment/callback?error=INVALID_SIGNATURE"))
+                        .location(URI.create(FE_URL+"/payment/callback?error=INVALID_SIGNATURE"))
                         .build();
             }
 
@@ -56,17 +62,17 @@ public class PaymentController {
             if ("00".equals(status)) {
                 contractService.createContractByPayment(vnpParams.get("vnp_TxnRef"));
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
+                        .location(URI.create(FE_URL+"/payment/callback?" + request.getQueryString()))
                         .build();
             } else {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create("http://localhost:3000/payment/callback?" + request.getQueryString()))
+                        .location(URI.create(FE_URL+"/payment/callback?" + request.getQueryString()))
                         .build();
             }
         } catch (RuntimeException e) {
             // Gửi lỗi về FE qua redirect
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("http://localhost:3000/payment/callback?error=" + e.getMessage().replace(" ", "%20")))
+                    .location(URI.create(FE_URL+"/payment/callback?error=" + e.getMessage().replace(" ", "%20")))
                     .build();
         }
     }
@@ -92,7 +98,7 @@ public class PaymentController {
             boolean isValid = paymentService.validateVNPayResponse(vnpParams);
             if (!isValid) {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create("http://localhost:3000/payment/wallet-callback?error=INVALID_SIGNATURE"))
+                        .location(URI.create(FE_URL+"/payment/wallet-callback?error=INVALID_SIGNATURE"))
                         .build();
             }
 
@@ -102,11 +108,11 @@ public class PaymentController {
                 paymentService.addWalletMoney(vnpParams);
 
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
+                        .location(URI.create(FE_URL+"/payment/wallet-callback?" + request.getQueryString()))
                         .build();
             } else {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create("http://localhost:3000/payment/wallet-callback?" + request.getQueryString()))
+                        .location(URI.create(FE_URL+"/payment/wallet-callback?" + request.getQueryString()))
                         .build();
             }
 
@@ -115,7 +121,7 @@ public class PaymentController {
             String errorMessage = ex.getMessage().replace(" ", "%20");
 
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("http://localhost:3000/payment/wallet-callback?error=" + errorMessage))
+                    .location(URI.create(FE_URL+"/payment/wallet-callback?error=" + errorMessage))
                     .build();
         }
     }
