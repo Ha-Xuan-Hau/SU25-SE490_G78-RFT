@@ -31,7 +31,7 @@ export default function ProductSoldMap() {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: "80%",
+    cutout: "75%",
     plugins: {
       legend: { display: false },
       tooltip: { enabled: true },
@@ -39,68 +39,69 @@ export default function ProductSoldMap() {
   };
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm h-full">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">
+    <div className="bg-white rounded-xl p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-900">
           Tổng số đơn đặt xe trong tháng
         </h3>
+        <span
+          className={`text-xs font-semibold ${
+            growthPercentage >= 0 ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {growthPercentage > 0 ? "+" : ""}
+          {growthPercentage}%
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-        {/* Thống kê chi tiết */}
-        <div className="flex flex-col space-y-4">
-          <div className="flex items-center">
-            <span className="w-3 h-3 rounded-full bg-blue-500 mr-3"></span>
-            <span className="text-2xl font-bold text-gray-800 mr-2">
-              {totalRenting}
-            </span>
-            <span className="text-gray-600">Đơn đang chạy</span>
-          </div>
-
-          <div className="flex items-center">
-            <span className="w-3 h-3 rounded-full bg-green-500 mr-3"></span>
-            <span className="text-2xl font-bold text-gray-800 mr-2">
-              {totalFinished.toLocaleString("vi-VN")}
-            </span>
-            <span className="text-gray-600">Đơn hoàn thành</span>
-          </div>
-
-          <div className="flex items-center">
-            <span className="w-3 h-3 rounded-full bg-red-500 mr-3"></span>
-            <span className="text-2xl font-bold text-gray-800 mr-2">
-              {totalCancelled}
-            </span>
-            <span className="text-gray-600">Đơn đã hủy</span>
-          </div>
-
-          {/* Phần trăm tăng trưởng */}
-          <div className="pt-4 border-t">
-            <p className="text-sm text-gray-600">
-              <span
-                className={`font-bold text-lg ${
-                  growthPercentage >= 0 ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {growthPercentage > 0 ? "+" : ""}
-                {growthPercentage}%
-              </span>
-              <span className="ml-2">
-                {growthPercentage >= 0 ? "Tăng" : "Giảm"} so với tháng trước
-              </span>
-            </p>
+      <div className="flex items-center gap-4">
+        {/* Biểu đồ Doughnut - Bên trái */}
+        <div className="relative flex-shrink-0">
+          <div className="relative h-28 w-28">
+            <Doughnut data={chartData} options={options} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="text-lg font-bold text-gray-800">
+                {totalOrders.toLocaleString("vi-VN")}
+              </div>
+              <div className="text-[10px] text-gray-500">Tổng đơn</div>
+            </div>
           </div>
         </div>
 
-        {/* Biểu đồ Doughnut */}
-        <div className="relative flex items-center justify-center">
-          <div className="relative h-48 w-48">
-            <Doughnut data={chartData} options={options} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-gray-800">
-                {totalOrders.toLocaleString("vi-VN")}
-              </div>
-              <div className="text-sm text-gray-500">Tổng đơn</div>
+        {/* Thống kê chi tiết - Bên phải */}
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
+              <span className="text-xs text-gray-600">Đang chạy</span>
             </div>
+            <span className="text-xs font-semibold text-gray-800">
+              {totalRenting}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+              <span className="text-xs text-gray-600">Hoàn thành</span>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">
+              {totalFinished.toLocaleString("vi-VN")}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+              <span className="text-xs text-gray-600">Đã hủy</span>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">
+              {totalCancelled}
+            </span>
+          </div>
+
+          <div className="text-[10px] text-gray-500 pt-1">
+            Tăng {Math.abs(growthPercentage)}% so với tháng trước
           </div>
         </div>
       </div>

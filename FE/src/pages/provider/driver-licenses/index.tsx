@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useUserState } from "@/recoils/user.state";
-import { ProfileLayout } from "@/layouts/ProfileLayout";
 import {
   Typography,
   Button,
@@ -28,6 +27,7 @@ import {
 import RegisterDriverModal from "@/components/RegisterDriverModal";
 import { getUserDriverLicenses } from "@/apis/driver-licenses.api";
 import type { DriverLicense } from "@/types/driverLicense";
+import { ProviderLayout } from "@/layouts/ProviderLayout";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -367,4 +367,4 @@ export default function DriverLicensePage() {
   );
 }
 
-DriverLicensePage.Layout = ProfileLayout;
+DriverLicensePage.Layout = ProviderLayout;

@@ -194,7 +194,7 @@ export default function ManageContracts() {
           showApiError("Không thể tải dữ liệu hợp đồng");
         }
       } catch (error) {
-        console.error("Error fetching contracts:", error);
+        //console.error("Error fetching contracts:", error);
         showApiError(error, "Có lỗi xảy ra khi tải dữ liệu");
       } finally {
         setLoading(false);

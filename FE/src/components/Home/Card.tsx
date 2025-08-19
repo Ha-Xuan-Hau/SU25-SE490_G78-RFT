@@ -15,6 +15,7 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
     vehicleImages,
     rating,
     address,
+    vehicleType,
   } = item;
 
   const mainImage = vehicleImages[0]?.imageUrl;
@@ -48,36 +49,44 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
-            <div className="flex flex-col items-center text-center">
-              <Icon
-                icon={"solar:transmission-bold"}
-                width={16}
-                height={16}
-                className="mb-1"
-              />
-              <p className="text-black dark:text-white truncate w-full">
-                {translateENtoVI(transmission)}
-              </p>
+          {/* Chỉ hiển thị thông tin xe khi vehicleType không phải là BICYCLE */}
+          {vehicleType !== "BICYCLE" && (
+            <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
+              <div className="flex flex-col items-center text-center">
+                <Icon
+                  icon={"solar:transmission-bold"}
+                  width={16}
+                  height={16}
+                  className="mb-1"
+                />
+                <p className="text-black dark:text-white truncate w-full">
+                  {translateENtoVI(transmission)}
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <Icon
+                  icon={"mdi:car-seat"}
+                  width={16}
+                  height={16}
+                  className="mb-1"
+                />
+                <p className="text-black dark:text-white truncate w-full">
+                  {numberSeat} chỗ
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <Icon
+                  icon={"mdi:fuel"}
+                  width={16}
+                  height={16}
+                  className="mb-1"
+                />
+                <p className="text-black dark:text-white truncate w-full">
+                  {translateENtoVI(fuelType)}
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col items-center text-center">
-              <Icon
-                icon={"mdi:car-seat"}
-                width={16}
-                height={16}
-                className="mb-1"
-              />
-              <p className="text-black dark:text-white truncate w-full">
-                {numberSeat} chỗ
-              </p>
-            </div>
-            <div className="flex flex-col items-center text-center">
-              <Icon icon={"mdi:fuel"} width={16} height={16} className="mb-1" />
-              <p className="text-black dark:text-white truncate w-full">
-                {translateENtoVI(fuelType)}
-              </p>
-            </div>
-          </div>
+          )}
 
           <hr className="my-3 border-t border-black/10 dark:border-white/10" />
 
