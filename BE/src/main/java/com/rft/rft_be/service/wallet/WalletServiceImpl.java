@@ -1,5 +1,6 @@
 package com.rft.rft_be.service.wallet;
 
+import com.rft.rft_be.dto.admin.WithdrawalDashboardResponse;
 import com.rft.rft_be.dto.wallet.*;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.Vehicle;
@@ -345,5 +346,22 @@ public class WalletServiceImpl implements WalletService {
 
         txRepository.save(tx);
     }
+    //Screen withdraw on dashboard
+    @Override
+    public WithdrawalDashboardResponse getWithdrawalDashboard(LocalDateTime from, LocalDateTime to) {
+        var waitingStatuses = List.of(
+                WalletTransaction.Status.PENDING,
+                WalletTransaction.Status.PROCESSING
+        );
 
+        long waiting = txRepository.countByStatusesAndDateRange(waitingStatuses, from, to);
+        long approved = txRepository.countByStatusAndDateRange(WalletTransaction.Status.APPROVED, from, to);
+        BigDecimal totalApproved = txRepository.sumApprovedAmountInRange(from, to);
+
+        return WithdrawalDashboardResponse.builder()
+                .waitingCount(waiting)
+                .approvedCount(approved)
+                .totalApprovedAmount(totalApproved)
+                .build();
+    }
 }
