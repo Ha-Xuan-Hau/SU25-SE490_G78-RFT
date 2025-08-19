@@ -9,6 +9,7 @@ import FooterComponent from "@/components/FooterComponent";
 import { Icon } from "@iconify/react";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import { Tooltip } from "antd";
 
 export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
@@ -123,37 +124,14 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:view-dashboard",
           label: "Bảng điều khiển",
         },
-        // {
-        //   key: "profile",
-        //   path: "/provider/provider-profile",
-        //   icon: "mdi:account-circle",
-        //   label: "Thông tin cá nhân",
-        // },
         {
           key: "provider-wallet",
           path: "/provider/provider-wallet",
           icon: "mdi:wallet",
           label: "Ví của tôi",
         },
-        // {
-        //   key: "change-password",
-        //   path: "/provider/change-password",
-        //   icon: "mdi:key-variant",
-        //   label: "Đổi mật khẩu",
-        // },
       ],
     },
-    // {
-    //   title: "Quản lý giấy tờ",
-    //   items: [
-    //     {
-    //       key: "driver-licenses",
-    //       path: "/provider/driver-licenses",
-    //       icon: "mdi:card-account-details",
-    //       label: "Giấy phép lái xe",
-    //     },
-    //   ],
-    // },
     {
       title: "Quản lý thuê xe",
       items: [
@@ -196,16 +174,58 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
 
       <section className="flex-1 w-full">
         <div className="flex min-h-screen w-full relative">
-          {" "}
-          {/* Mobile sidebar toggle button */}
-          {/* <button
-            onClick={toggleSidebar}
-            className="md:hidden fixed top-20 left-4 z-30 bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg shadow-lg transition-colors"
-          >
-            {" "}
-            {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-          </button> */}
-          {/* Sidebar */}
+          {/* Icon Sidebar - Chỉ hiển thị trên desktop */}
+          <div className="hidden md:block fixed top-0 left-0 h-full w-16 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-20 pt-4">
+            {/* Toggle button ở đầu sidebar */}
+            <button
+              onClick={toggleSidebar}
+              className="w-full flex items-center justify-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mb-4"
+              title="Menu"
+            >
+              <MenuOutlined className="text-gray-600 dark:text-gray-300 text-lg" />
+            </button>
+
+            {/* Divider */}
+            <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 mb-4" />
+
+            {/* Icon navigation */}
+            <nav className="space-y-1">
+              {menuGroups.map((group, groupIndex) => (
+                <div key={group.title} className="mb-2">
+                  {group.items.map((item) => (
+                    <Tooltip
+                      key={item.key}
+                      title={item.label}
+                      placement="right"
+                    >
+                      <Link
+                        href={item.path}
+                        className={`flex items-center justify-center p-3 mx-2 mb-1 rounded-lg transition-all duration-200 ${
+                          currentPath === item.path
+                            ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        <Icon
+                          icon={item.icon}
+                          className={`w-5 h-5 ${
+                            currentPath === item.path
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      </Link>
+                    </Tooltip>
+                  ))}
+                  {groupIndex < menuGroups.length - 1 && (
+                    <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-2" />
+                  )}
+                </div>
+              ))}
+            </nav>
+          </div>
+
+          {/* Full Sidebar - Logic giữ nguyên hoàn toàn */}
           <div
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -257,8 +277,6 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
                   <ul className="space-y-1 px-3">
                     {group.items.map((item) => (
                       <li key={`${item.key}-${item.path}`}>
-                        {" "}
-                        {/* Thêm path vào key để tránh duplicate */}
                         <Link
                           href={item.path}
                           className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
@@ -284,6 +302,7 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
               ))}
             </nav>
           </div>
+
           {/* Backdrop - hiển thị cho cả desktop và mobile khi sidebar mở */}
           {sidebarOpen && (
             <div
@@ -291,8 +310,9 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
               onClick={toggleSidebar}
             />
           )}
-          {/* Main content */}
-          <div className="flex-1 px-4 md:px-6 py-6 w-full">
+
+          {/* Main content - Thêm margin-left cho desktop khi có icon sidebar */}
+          <div className="flex-1 px-4 md:px-6 py-6 w-full md:ml-16">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full overflow-x-auto">
               {children}
             </div>

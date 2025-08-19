@@ -488,7 +488,7 @@ public class BookingServiceImpl implements BookingService {
         //sua lai thanh 5h
         if (hoursUntilStart > 5) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Bạn chỉ có thể giao xe trong khoảng từ 8 tiếng trước thời gian bắt đầu chuyến đi.");
+                    "Bạn chỉ có thể giao xe trong khoảng từ 5 tiếng trước thời gian bắt đầu chuyến đi.");
         }
 
         booking.setStatus(Booking.Status.DELIVERED);
