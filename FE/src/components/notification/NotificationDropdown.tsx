@@ -1,10 +1,11 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useRouter } from "next/navigation";
 import moment from "moment";
 import "moment/locale/vi";
+import { createPortal } from "react-dom";
 
 moment.locale("vi");
 
@@ -24,20 +25,89 @@ const NotificationDropdown: React.FC = () => {
 
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1024
+  );
+  const [bellPosition, setBellPosition] = useState({ top: 0, right: 0 });
+  const [mounted, setMounted] = useState(false);
+
+  // Mounted effect
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Track window width
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 640; // sm breakpoint
+  const isTablet = windowWidth >= 640 && windowWidth < 1024; // sm to lg
+  const isDesktop = windowWidth >= 1024; // lg and up
+
+  // Get bell position for desktop dropdown
+  useEffect(() => {
+    if (isDropdownOpen && isDesktop) {
+      // Tìm tất cả các bell elements (desktop và mobile)
+      const bellElements = document.querySelectorAll(
+        '[class*="hover:bg-gray-100"][class*="rounded-lg"]'
+      );
+
+      // Tìm bell element cho desktop (trong hidden lg:flex container)
+      let desktopBell = null;
+      bellElements.forEach((el) => {
+        const parent = el.closest(".hidden.lg\\:flex");
+        if (parent) {
+          desktopBell = el;
+        }
+      });
+
+      if (desktopBell) {
+        const rect = (desktopBell as Element).getBoundingClientRect();
+        setBellPosition({
+          top: rect.bottom + 8,
+          right: window.innerWidth - rect.right,
+        });
+      }
+    }
+  }, [isDropdownOpen, isDesktop]);
 
   // Close dropdown khi click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (!isDropdownOpen) return;
+
+      const target = event.target as Node;
+
+      // Kiểm tra nếu click vào bell button
+      const clickedOnBell = (target as Element).closest(
+        '[class*="hover:bg-gray-100"][class*="rounded-lg"]'
+      );
+      if (clickedOnBell) return;
+
+      // Kiểm tra nếu click ngoài dropdown
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         closeDropdown();
       }
     };
 
     if (isDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      // Delay để tránh đóng ngay khi mở
+      const timer = setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 100);
+
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
     }
 
     return () => {
@@ -45,13 +115,40 @@ const NotificationDropdown: React.FC = () => {
     };
   }, [isDropdownOpen, closeDropdown]);
 
-  // Helper function để convert array time thành moment object
+  // Prevent body scroll when dropdown is open on mobile/tablet
+  useEffect(() => {
+    if (isDropdownOpen && !isDesktop) {
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+    } else {
+      const scrollY = document.body.style.top;
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
+      }
+    }
+
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+    };
+  }, [isDropdownOpen, isDesktop]);
+
+  // Helper functions
   const parseDateTime = (date: string | number[]) => {
     if (Array.isArray(date)) {
       const [year, month, day, hour = 0, minute = 0, second = 0] = date;
       return moment({ year, month: month - 1, day, hour, minute, second });
     }
-    return moment(date); // string hoặc số timestamp
+    return moment(date);
   };
 
   const getNotificationIcon = (type: string) => {
@@ -98,24 +195,15 @@ const NotificationDropdown: React.FC = () => {
 
   const handleNotificationClick = async (notification: any) => {
     try {
-      console.log("Clicked notification:", notification); // Debug log
-
-      // Click notification để mark as read trước
       await clickNotification(notification.id);
 
-      // Kiểm tra redirectUrl trực tiếp từ notification object
       if (notification.redirectUrl) {
-        console.log("Redirecting to:", notification.redirectUrl); // Debug log
         closeDropdown();
-
-        // Chuyển hướng với router.push
         router.push(notification.redirectUrl);
       } else {
-        console.log("Opening modal for notification without URL"); // Debug log
-        // Không có URL -> mở modal
         openModal({
           ...notification,
-          message: notification.message, // Message đã là string rồi
+          message: notification.message,
         });
       }
     } catch (error) {
@@ -127,19 +215,224 @@ const NotificationDropdown: React.FC = () => {
     markAllAsRead();
   };
 
-  if (!isDropdownOpen) return null;
+  if (!isDropdownOpen || !mounted) return null;
 
-  return (
+  // Notification List Component (reusable)
+  const NotificationList = () => (
+    <>
+      {isLoading ? (
+        <div className="p-8 text-center">
+          <Icon
+            icon="heroicons:arrow-path-20-solid"
+            className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-500"
+          />
+          <p className="text-sm text-gray-500">Đang tải thông báo...</p>
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="p-8 text-center">
+          <Icon
+            icon="heroicons:bell-slash-20-solid"
+            className="w-16 h-16 mx-auto mb-4 text-gray-300"
+          />
+          <p className="text-lg font-medium mb-2 text-gray-600">
+            Chưa có thông báo
+          </p>
+          <p className="text-sm text-gray-500">
+            Thông báo mới sẽ xuất hiện ở đây
+          </p>
+        </div>
+      ) : (
+        <>
+          {notifications.map((notification, index) => (
+            <div
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className={`
+                ${isDesktop ? "p-4" : "p-3 sm:p-4"} 
+                cursor-pointer transition-all hover:bg-gray-50
+                ${
+                  !notification.isRead
+                    ? "bg-blue-50 border-l-4 border-l-blue-500"
+                    : ""
+                }
+                ${
+                  index !== notifications.length - 1
+                    ? "border-b border-gray-100"
+                    : ""
+                }
+              `}
+            >
+              <div
+                className={`flex items-start ${
+                  isDesktop ? "space-x-3" : "gap-2 sm:gap-3"
+                }`}
+              >
+                <div
+                  className={`${getNotificationColor(notification.type)} ${
+                    isDesktop ? "p-2" : "p-1.5 sm:p-2"
+                  } rounded-full bg-white shadow-sm flex-shrink-0`}
+                >
+                  <Icon
+                    icon={getNotificationIcon(notification.type)}
+                    className={isDesktop ? "w-5 h-5" : "w-4 sm:w-5 h-4 sm:h-5"}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`${
+                      isDesktop ? "text-sm" : "text-xs sm:text-sm"
+                    } leading-5 ${
+                      !notification.isRead
+                        ? "font-medium text-gray-900"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {notification.message}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1 flex items-center">
+                    <Icon
+                      icon="heroicons:clock-20-solid"
+                      className="w-3 h-3 mr-1"
+                    />
+                    {parseDateTime(notification.createdAt).fromNow()}
+                  </p>
+                </div>
+                {!notification.isRead && (
+                  <div
+                    className={`${
+                      isDesktop
+                        ? "w-2 h-2 mt-2"
+                        : "w-1.5 sm:w-2 h-1.5 sm:h-2 mt-1 sm:mt-2"
+                    } bg-blue-500 rounded-full flex-shrink-0`}
+                  ></div>
+                )}
+                {notification.redirectUrl && (
+                  <Icon
+                    icon={
+                      isDesktop
+                        ? "heroicons:arrow-top-right-on-square-20-solid"
+                        : "heroicons:chevron-right-20-solid"
+                    }
+                    className={`w-4 h-4 text-gray-400 ${
+                      isDesktop ? "" : "mt-1"
+                    } flex-shrink-0`}
+                  />
+                )}
+              </div>
+            </div>
+          ))}
+
+          {hasMore && (
+            <div className="p-4 text-center bg-gray-50">
+              <button
+                onClick={loadMore}
+                disabled={isLoading}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50 transition-colors px-4 py-2 rounded-full hover:bg-blue-100"
+              >
+                {isLoading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Icon
+                      icon="heroicons:arrow-path-20-solid"
+                      className="w-4 h-4 animate-spin"
+                    />
+                    Đang tải...
+                  </div>
+                ) : (
+                  "Tải thêm thông báo"
+                )}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  // Mobile & Tablet View - Full Screen Modal
+  if (!isDesktop) {
+    return createPortal(
+      <>
+        {/* Overlay */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50"
+          style={{ zIndex: 99998 }}
+          onClick={closeDropdown}
+        />
+
+        {/* Modal Content */}
+        <motion.div
+          ref={dropdownRef}
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ duration: 0.2 }}
+          className={`
+            fixed 
+            ${
+              isMobile
+                ? "inset-4"
+                : "inset-8 sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[500px] sm:h-[600px]"
+            }
+            bg-white rounded-2xl shadow-2xl flex flex-col
+          `}
+          style={{ zIndex: 99999 }}
+        >
+          {/* Header */}
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl flex-shrink-0">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold text-gray-900 text-base sm:text-lg">
+                {unreadCount > 0 ? `${unreadCount} thông báo mới` : "Thông báo"}
+              </h3>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs sm:text-sm text-blue-600 font-medium px-2 sm:px-3 py-1 rounded-full hover:bg-blue-100 transition-colors"
+                  >
+                    <span className="hidden sm:inline">
+                      Đánh dấu hết đã đọc
+                    </span>
+                    <span className="sm:hidden">Đọc hết</span>
+                  </button>
+                )}
+                <button
+                  onClick={closeDropdown}
+                  className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <Icon icon="heroicons:x-mark-20-solid" className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Notification List */}
+          <div className="flex-1 overflow-y-auto">
+            <NotificationList />
+          </div>
+        </motion.div>
+      </>,
+      document.body
+    );
+  }
+
+  // Desktop View - Dropdown
+  return createPortal(
     <AnimatePresence>
       <motion.div
         ref={dropdownRef}
-        // initial={{ opacity: 0, y: -10, scale: 0.95 }}
-        // animate={{ opacity: 1, y: 0, scale: 1 }}
-        // exit={{ opacity: 0, y: -10, scale: 0.95 }}
-        // transition={{ duration: 0.2 }}
-        className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-lg overflow-hidden z-50"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2 }}
+        className="fixed w-96 bg-white rounded-xl shadow-lg overflow-hidden"
         style={{
+          top: `${bellPosition.top}px`,
+          right: `${bellPosition.right}px`,
           maxHeight: "480px",
+          zIndex: 99999,
           boxShadow:
             "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
         }}
@@ -165,120 +458,11 @@ const NotificationDropdown: React.FC = () => {
 
         {/* Notification List */}
         <div className="max-h-80 overflow-y-auto">
-          {isLoading ? (
-            <div className="p-8 text-center text-gray-500">
-              <Icon
-                icon="heroicons:arrow-path-20-solid"
-                className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-500"
-              />
-              <p className="text-sm">Đang tải thông báo...</p>
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <Icon
-                icon="heroicons:bell-slash-20-solid"
-                className="w-16 h-16 mx-auto mb-4 text-gray-300"
-              />
-              <p className="text-lg font-medium mb-2 text-gray-600">
-                Chưa có thông báo
-              </p>
-              <p className="text-sm text-gray-500">
-                Các thông báo mới sẽ xuất hiện ở đây
-              </p>
-            </div>
-          ) : (
-            <>
-              {notifications.map((notification, index) => {
-                return (
-                  <motion.div
-                    key={notification.id}
-                    // initial={{ opacity: 0, x: -20 }}
-                    // animate={{ opacity: 1, x: 0 }}
-                    // transition={{ delay: index * 0.05 }}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
-                      !notification.isRead
-                        ? "bg-blue-50 border-l-4 border-l-blue-500"
-                        : ""
-                    } ${
-                      index !== notifications.length - 1
-                        ? "border-b border-gray-100"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div
-                        className={`${getNotificationColor(
-                          notification.type
-                        )} flex-shrink-0 p-2 rounded-full bg-white shadow-sm`}
-                      >
-                        <Icon
-                          icon={getNotificationIcon(notification.type)}
-                          className="w-5 h-5"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-sm leading-5 ${
-                            !notification.isRead
-                              ? "font-medium text-gray-900"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1 flex items-center">
-                          <Icon
-                            icon="heroicons:clock-20-solid"
-                            className="w-3 h-3 mr-1"
-                          />
-                          {parseDateTime(notification.createdAt).fromNow()}
-                        </p>
-                      </div>
-                      {!notification.isRead && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
-                      )}
-                      {/* Hiển thị icon redirect nếu có URL */}
-                      {notification.redirectUrl && (
-                        <div className="flex-shrink-0 text-gray-400">
-                          <Icon
-                            icon="heroicons:arrow-top-right-on-square-20-solid"
-                            className="w-4 h-4"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-
-              {/* Load More Button */}
-              {hasMore && (
-                <div className="p-4 text-center bg-gray-50">
-                  <button
-                    onClick={loadMore}
-                    disabled={isLoading}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4 py-2 rounded-full hover:bg-blue-100"
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Icon
-                          icon="heroicons:arrow-path-20-solid"
-                          className="w-4 h-4 animate-spin"
-                        />
-                        Đang tải...
-                      </div>
-                    ) : (
-                      "Tải thêm thông báo"
-                    )}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+          <NotificationList />
         </div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

@@ -9,6 +9,7 @@ import FooterComponent from "@/components/FooterComponent";
 import { Icon } from "@iconify/react";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import { Tooltip } from "antd";
 
 // Danh sách các trang chỉ Admin được truy cập
 const ADMIN_ONLY_PATHS = [
@@ -185,12 +186,6 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:cash-minus",
           label: "Yêu cầu rút tiền",
         },
-        // {
-        //   key: "revenue",
-        //   path: "/admin/manage-final-contracts",
-        //   icon: "mdi:file-document-edit",
-        //   label: "Tất toán hợp đồng",
-        // },
         // Chỉ Admin mới thấy các menu này
         ...(isAdmin
           ? [
@@ -262,15 +257,58 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
       <section className="flex-1 w-full">
         <div className="flex min-h-screen w-full relative">
-          {/* Mobile sidebar toggle button - giữ nguyên */}
-          {/* <button
-            onClick={toggleSidebar}
-            className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
-          >
-            {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-          </button> */}
+          {/* Icon Sidebar - Chỉ hiển thị trên desktop */}
+          <div className="hidden md:block fixed top-0 left-0 h-full w-16 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-20 pt-4">
+            {/* Toggle button ở đầu sidebar */}
+            <button
+              onClick={toggleSidebar}
+              className="w-full flex items-center justify-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mb-4"
+              title="Menu"
+            >
+              <MenuOutlined className="text-gray-600 dark:text-gray-300 text-lg" />
+            </button>
 
-          {/* Sidebar - SỬA LẠI className để luôn ẩn mặc định */}
+            {/* Divider */}
+            <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 mb-4" />
+
+            {/* Icon navigation */}
+            <nav className="space-y-1">
+              {menuGroups.map((group, groupIndex) => (
+                <div key={group.title} className="mb-2">
+                  {group.items.map((item) => (
+                    <Tooltip
+                      key={item.key}
+                      title={item.label}
+                      placement="right"
+                    >
+                      <Link
+                        href={item.path}
+                        className={`flex items-center justify-center p-3 mx-2 mb-1 rounded-lg transition-all duration-200 ${
+                          currentPath === item.path
+                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        <Icon
+                          icon={item.icon}
+                          className={`w-5 h-5 ${
+                            currentPath === item.path
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      </Link>
+                    </Tooltip>
+                  ))}
+                  {groupIndex < menuGroups.length - 1 && (
+                    <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-2" />
+                  )}
+                </div>
+              ))}
+            </nav>
+          </div>
+
+          {/* Full Sidebar - Logic giữ nguyên hoàn toàn */}
           <div
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -362,8 +400,8 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             />
           )}
 
-          {/* Main content - luôn full width */}
-          <div className="flex-1 px-4 md:px-6 py-6 w-full">
+          {/* Main content - Thêm margin-left cho desktop khi có icon sidebar */}
+          <div className="flex-1 px-4 md:px-6 py-6 w-full md:ml-16">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full overflow-x-auto">
               {children}
             </div>

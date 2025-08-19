@@ -24,7 +24,7 @@ export const useNotifications = () => {
     },
     enabled: isAuthenticated,
     staleTime: 0,
-    gcTime: 30000,
+    //gcTime: 30000,
   });
 
   // Query cho danh sách notifications
