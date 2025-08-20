@@ -130,8 +130,9 @@ export default function ManageDiscountCodesPage() {
 
       setIsModalVisible(false);
     } catch (error) {
-      showError("Có lỗi xảy ra, vui lòng thử lại!");
-      console.error("Validation failed:", error);
+      //showError("Có lỗi xảy ra, vui lòng thử lại!");
+      //console.error("Validation failed:", error);
+      showApiError(error);
     }
   };
 
