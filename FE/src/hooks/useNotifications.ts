@@ -25,7 +25,7 @@ export const useNotifications = () => {
     refetchInterval: 5000,
     enabled: isAuthenticated,
     staleTime: 0,
-    //gcTime: 30000,
+    gcTime: 30000,
   });
 
   // Query cho danh sách notifications
