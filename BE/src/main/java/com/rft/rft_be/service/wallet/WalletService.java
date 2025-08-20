@@ -1,5 +1,6 @@
 package com.rft.rft_be.service.wallet;
 
+import com.rft.rft_be.dto.admin.WithdrawalDashboardResponse;
 import com.rft.rft_be.dto.wallet.CreateWithdrawalRequestDTO;
 import com.rft.rft_be.dto.wallet.UpdateWalletRequestDTO;
 import com.rft.rft_be.dto.wallet.WalletDTO;
@@ -7,6 +8,7 @@ import com.rft.rft_be.dto.wallet.WalletTransactionDTO;
 import com.rft.rft_be.entity.WalletTransaction;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface WalletService {
@@ -25,4 +27,6 @@ public interface WalletService {
     void cancelWithdrawalAsUser(String transactionId, String userId);
 
     List<WalletTransactionDTO> getApprovedWithdrawals();
+
+    WithdrawalDashboardResponse getWithdrawalDashboard(LocalDateTime from, LocalDateTime to);
 }

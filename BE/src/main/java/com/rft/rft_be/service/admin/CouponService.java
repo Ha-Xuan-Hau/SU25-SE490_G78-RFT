@@ -1,12 +1,15 @@
 package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.CouponDTO;
+import com.rft.rft_be.dto.admin.CouponDashboardResponse;
 import com.rft.rft_be.dto.coupon.CouponCreateDTO;
 import com.rft.rft_be.dto.coupon.CouponUseDTO;
 import com.rft.rft_be.entity.Coupon;
 import com.rft.rft_be.entity.User;
 import org.springframework.data.repository.query.Param;
+import org.springframework.lang.Nullable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface CouponService {
@@ -26,4 +29,6 @@ public interface CouponService {
     void assignCouponToActiveUsers(String couponId);
 
     CouponDTO createCoupon(CouponCreateDTO dto);
+
+    CouponDashboardResponse getCouponDashboard(@Nullable LocalDate from, @Nullable LocalDate to);
 }

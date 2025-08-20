@@ -1,5 +1,6 @@
 package com.rft.rft_be.service.report;
 
+import com.rft.rft_be.dto.admin.ReportDashboardResponse;
 import com.rft.rft_be.dto.report.ReportDTO;
 import com.rft.rft_be.dto.report.ReportDetailDTO;
 import com.rft.rft_be.dto.report.ReportGroupedByTargetDTO;
@@ -7,6 +8,7 @@ import com.rft.rft_be.dto.report.ReportRequest;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.UserReport;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ReportService {
@@ -34,5 +36,5 @@ public interface ReportService {
 
     ReportDetailDTO getGroupedReportDetail(String targetId, String type);
     ReportDetailDTO getSingleReportDetail(String reportId);
-
+    ReportDashboardResponse getDashboardReportStatistics(LocalDateTime from, LocalDateTime to);
 }
