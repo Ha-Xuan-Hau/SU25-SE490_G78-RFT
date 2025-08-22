@@ -192,7 +192,9 @@ export default function OrderHistoryCard() {
             <div>
               <p className="text-sm text-gray-600">Thời gian thuê trung bình</p>
               <p className="text-2xl font-bold text-gray-900">
-                {stats.avgDuration.toFixed(1)} ngày
+                {stats.avgDuration < 1
+                  ? `${(stats.avgDuration * 24).toFixed(1)} giờ`
+                  : `${stats.avgDuration.toFixed(1)} ngày`}
               </p>
             </div>
           </div>

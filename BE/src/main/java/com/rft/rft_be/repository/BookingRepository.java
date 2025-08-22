@@ -194,10 +194,10 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     // Thời gian thuê trung bình (ngày) cho booking COMPLETED trong tháng có time_booking_end
     // MySQL native để dùng TIMESTAMPDIFF(DAY, start, end)
     @Query(value = """
-           SELECT AVG(TIMESTAMPDIFF(DAY, b.time_booking_start, b.time_booking_end))
-           FROM bookings b
-           WHERE b.status = 'COMPLETED'
-             AND b.time_booking_end >= :start AND b.time_booking_end < :end
-           """, nativeQuery = true)
-    Double avgRentalDaysCompletedByEndBetween(LocalDateTime start, LocalDateTime end);
+       SELECT AVG(TIMESTAMPDIFF(HOUR, b.time_booking_start, b.time_booking_end))
+       FROM bookings b
+       WHERE b.status = 'COMPLETED'
+         AND b.time_booking_end >= :start AND b.time_booking_end < :end
+       """, nativeQuery = true)
+    Double avgRentalHoursCompletedByEndBetween(LocalDateTime start, LocalDateTime end);
 }
