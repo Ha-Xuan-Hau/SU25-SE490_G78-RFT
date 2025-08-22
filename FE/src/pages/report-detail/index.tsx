@@ -46,7 +46,7 @@ import ReportButton from "@/components/ReportComponent";
 import Link from "next/link";
 import { useUserState } from "@/recoils/user.state";
 import { translateENtoVI } from "@/lib/viDictionary";
-import { showError, showSuccess } from "@/utils/toast.utils";
+import { showApiError, showError, showSuccess } from "@/utils/toast.utils";
 import Paragraph from "antd/es/typography/Paragraph";
 
 const { Title, Text } = Typography;
@@ -147,7 +147,6 @@ export default function ReportDetailPage() {
         "VIOLENCE",
         "SPAM",
         "OTHERS",
-        "DIRTY_CAR",
         "MISLEADING_LISTING",
       ];
 
@@ -238,6 +237,7 @@ export default function ReportDetailPage() {
       "FAKE_ORDER",
       "DISPUTE_REFUND",
       "LATE_RETURN_NO_CONTACT",
+      "DIRTY_CAR",
     ];
 
     const nonSeriousReports: string[] = [
@@ -245,7 +245,6 @@ export default function ReportDetailPage() {
       "VIOLENCE",
       "SPAM",
       "OTHERS",
-      "DIRTY_CAR",
       "MISLEADING_LISTING",
     ];
 
@@ -267,7 +266,7 @@ export default function ReportDetailPage() {
     return false;
   };
 
-  const handleCreateStaffReport = (targetId: string) => {
+  const handleCreateStaffReport = () => {
     // Check null trước
     if (!reportDetail) {
       showError("Không tìm thấy thông tin báo cáo");
@@ -328,8 +327,8 @@ export default function ReportDetailPage() {
               `/report-detail?reportId=${response.staffReportId}&mode=single`
             );
           }
-        } catch (error) {
-          showError("Lỗi khi tạo yêu cầu");
+        } catch (error: any) {
+          showApiError(error, "Không thể tạo yêu cầu cung cấp bằng chứng");
         }
       },
     });
@@ -348,7 +347,7 @@ export default function ReportDetailPage() {
   const handleRejectAllReports = async () => {
     Modal.confirm({
       title: "Xác nhận báo cáo không chính xác",
-      content: "Báo cáo sẽ bị từ chối. Bạn chắc chắn?",
+      content: "Báo cáo sẽ bị từ chối. Bạn chắc chắn chưa?",
       onOk: async () => {
         try {
           if (mode === "grouped") {
@@ -730,11 +729,7 @@ export default function ReportDetailPage() {
                           type="primary"
                           danger
                           icon={<WarningOutlined />}
-                          onClick={() =>
-                            handleCreateStaffReport(
-                              reportDetail.reportedUser.id
-                            )
-                          }
+                          onClick={() => handleCreateStaffReport()}
                         >
                           Yêu cầu cung cấp bằng chứng
                         </Button>
@@ -1191,10 +1186,10 @@ export default function ReportDetailPage() {
                         {reportDetail.reportedUser.id}
                       </Text>
                     </Descriptions.Item>
-
+                    {/* 
                     <Descriptions.Item label="Trạng thái">
                       <Tag color="green">Đang hoạt động</Tag>
-                    </Descriptions.Item>
+                    </Descriptions.Item> */}
                   </>
                 )}
               </Descriptions>
@@ -1394,12 +1389,17 @@ export default function ReportDetailPage() {
                       ]
                     : []),
                 ]}
+                rowKey={(record) =>
+                  `${record.id}-${record.createdAt}-${record.reason?.substring(
+                    0,
+                    10
+                  )}`
+                }
                 pagination={{
                   pageSize: 10,
                   showSizeChanger: false,
                   showTotal: (total) => `Tổng ${total} báo cáo`,
                 }}
-                rowKey="id"
                 scroll={{ x: 1050 }}
                 style={{ marginTop: "16px" }}
               />

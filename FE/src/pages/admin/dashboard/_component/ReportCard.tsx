@@ -1,59 +1,69 @@
-// components/admin/WorldMap.tsx
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { AlertTriangle, AlertCircle, ChevronRight, Clock } from "lucide-react";
+import { dashboardAPI } from "@/apis/admin.api";
 
 export default function WorldMap() {
-  // Mock data cho báo cáo
-  const reportStats = {
-    violation: {
-      total: 24,
-      pending: 18,
-      resolved: 6,
-      recent: [
-        {
-          id: 1,
-          user: "Nguyễn Văn A",
-          type: "Hủy đơn liên tục",
-          time: "2 giờ trước",
-        },
-        {
-          id: 2,
-          user: "Trần Thị B",
-          type: "Phản hồi chậm",
-          time: "5 giờ trước",
-        },
-        {
-          id: 3,
-          user: "Lê Văn C",
-          type: "Thông tin sai lệch",
-          time: "1 ngày trước",
-        },
-      ],
+  const [loading, setLoading] = useState(true);
+  const [reportStats, setReportStats] = useState({
+    pendingTotal: 0,
+    nonSerious: {
+      total: 0,
+      pending: 0,
+      processed: 0,
     },
     serious: {
-      total: 8,
-      pending: 5,
-      resolved: 3,
-      recent: [
-        {
-          id: 1,
-          user: "Phạm Văn D",
-          type: "Xe không đúng mô tả",
-          time: "30 phút trước",
-        },
-        {
-          id: 2,
-          user: "Hoàng Thị E",
-          type: "Tai nạn không báo cáo",
-          time: "3 giờ trước",
-        },
-      ],
+      total: 0,
+      pending: 0,
+      processed: 0,
     },
+  });
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchReportData();
+  }, []);
+
+  const fetchReportData = async () => {
+    try {
+      setLoading(true);
+      // Lấy dữ liệu tháng hiện tại
+      const today = new Date();
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const from = startOfMonth.toISOString().split("T")[0];
+      const to = today.toISOString().split("T")[0];
+
+      const response = await dashboardAPI.getReportStatistics(from, to);
+      setReportStats(response);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching report data:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const totalPending =
-    reportStats.violation.pending + reportStats.serious.pending;
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-16 bg-gray-200 rounded"></div>
+            <div className="h-16 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="text-red-500 text-sm">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
@@ -62,7 +72,7 @@ export default function WorldMap() {
           Báo cáo từ người dùng
         </h3>
         <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded-full">
-          {totalPending} chờ xử lý
+          {reportStats.pendingTotal} chờ xử lý
         </span>
       </div>
 
@@ -77,12 +87,12 @@ export default function WorldMap() {
                 <span className="font-medium text-gray-700">Lỗi vi phạm</span>
               </div>
               <div className="text-2xl font-bold text-yellow-600">
-                {reportStats.violation.pending}
+                {reportStats.nonSerious.pending}
               </div>
             </div>
             <div className="text-right text-xs text-gray-600">
-              <div>Tổng: {reportStats.violation.total}</div>
-              <div>Đã xử lý: {reportStats.violation.resolved}</div>
+              <div>Tổng: {reportStats.nonSerious.total}</div>
+              <div>Đã xử lý: {reportStats.nonSerious.processed}</div>
             </div>
           </div>
         </div>
@@ -103,7 +113,7 @@ export default function WorldMap() {
             </div>
             <div className="text-right text-xs text-gray-600">
               <div>Tổng: {reportStats.serious.total}</div>
-              <div>Đã xử lý: {reportStats.serious.resolved}</div>
+              <div>Đã xử lý: {reportStats.serious.processed}</div>
             </div>
           </div>
         </div>

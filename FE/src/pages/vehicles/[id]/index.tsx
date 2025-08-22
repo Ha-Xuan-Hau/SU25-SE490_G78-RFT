@@ -1124,20 +1124,22 @@ export default function VehicleDetail() {
                 )}
               </div>
             </div>
-            <div className="lg:hidden mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Thông tin xe không chính xác?
-                </span>
-                <ReportButton
-                  targetId={vehicle.id}
-                  reportType="MISLEADING_LISTING"
-                  buttonText="Báo cáo"
-                  size="small"
-                  type="text"
-                />
+            {user && (user.role === "USER" || user.role === "PROVIDER") && (
+              <div className="lg:hidden mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Thông tin xe không chính xác?
+                  </span>
+                  <ReportButton
+                    targetId={vehicle.id}
+                    reportType="MISLEADING_LISTING"
+                    buttonText="Báo cáo"
+                    size="small"
+                    type="text"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* User reviews */}
             <div className="py-6 sm:py-10 my-6 sm:my-10 border-y border-dark/10 dark:border-white/20">
@@ -1197,15 +1199,19 @@ export default function VehicleDetail() {
                                   ))}
 
                                   {/* Report button - ngay cạnh rating */}
-                                  <ReportButton
-                                    targetId={comment.userId}
-                                    reportTypes={["SPAM", "INAPPROPRIATE"]}
-                                    showTypeSelector={true}
-                                    buttonText=""
-                                    size="small"
-                                    type="text"
-                                    icon={true}
-                                  />
+                                  {user &&
+                                    (user.role === "USER" ||
+                                      user.role === "PROVIDER") && (
+                                      <ReportButton
+                                        targetId={comment.userId}
+                                        reportTypes={["SPAM", "INAPPROPRIATE"]}
+                                        showTypeSelector={true}
+                                        buttonText=""
+                                        size="small"
+                                        type="text"
+                                        icon={true}
+                                      />
+                                    )}
                                 </div>
                               </div>
                             </div>
@@ -1687,20 +1693,22 @@ export default function VehicleDetail() {
               </div>
             )}
             {/* Nút báo cáo thông tin sai lệch */}
-            <div className="mt-6 pt-4  border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Thông tin xe không chính xác?
-                </span>
-                <ReportButton
-                  targetId={vehicle.id}
-                  reportType="MISLEADING_LISTING"
-                  buttonText="Báo cáo"
-                  size="small"
-                  type="text"
-                />
+            {user && (user.role === "USER" || user.role === "PROVIDER") && (
+              <div className="mt-6 pt-4  border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Thông tin xe không chính xác?
+                  </span>
+                  <ReportButton
+                    targetId={vehicle.id}
+                    reportType="MISLEADING_LISTING"
+                    buttonText="Báo cáo"
+                    size="small"
+                    type="text"
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

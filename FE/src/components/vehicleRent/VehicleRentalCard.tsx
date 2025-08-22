@@ -14,7 +14,7 @@ import { Button, Card, Tag, Modal } from "antd";
 import { CarOutlined, WarningOutlined } from "@ant-design/icons";
 
 // Import modals
-import RatingModal from "../RatingModal";
+import RatingModal from "./RatingModal";
 import PaymentModal from "../PaymentModal";
 import CancelBookingModal from "../CancelBookingModal";
 import ReturnVehicleModal from "./ReturnVehicleModal";
@@ -822,7 +822,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         width={600}
         footer={[
           <Button key="cancel" onClick={() => setReportGuideVisible(false)}>
-            Hủy
+            Đóng
           </Button>,
           <Button key="agree" type="primary" danger onClick={handleAgreeReport}>
             Đồng ý báo cáo

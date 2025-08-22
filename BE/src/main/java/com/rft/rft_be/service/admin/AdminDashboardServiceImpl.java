@@ -69,9 +69,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Override
     public AvgDurationResponse getAverageRentalDurationDays(YearMonth month) {
         var r = monthRange(month);
-        // Tính trên booking COMPLETED, dùng time_booking_end rơi trong tháng
-        Double avgDays = bookingRepo.avgRentalDaysCompletedByEndBetween(r.start(), r.end());
-        return new AvgDurationResponse(avgDays == null ? 0.0 : avgDays);
+        Double avgHours = bookingRepo.avgRentalHoursCompletedByEndBetween(r.start(), r.end());
+        return AvgDurationResponse.fromHours(avgHours);
     }
 
     @Override

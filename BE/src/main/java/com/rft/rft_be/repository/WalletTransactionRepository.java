@@ -41,13 +41,20 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
                                    @Param("from") LocalDateTime from,
                                    @Param("to") LocalDateTime to);
 
-    // Tổng tiền đã duyệt (lấy trị tuyệt đối vì amount đang lưu âm với rút tiền)
-    @Query("""
-           SELECT COALESCE(SUM(CASE WHEN t.amount < 0 THEN -t.amount ELSE t.amount END), 0)
-           FROM WalletTransaction t
-           WHERE t.status = com.rft.rft_be.entity.WalletTransaction.Status.APPROVED
-             AND t.createdAt BETWEEN :from AND :to
-           """)
-    BigDecimal sumApprovedAmountInRange(@Param("from") LocalDateTime from,
+    @Query("SELECT COUNT(wt) FROM WalletTransaction wt " +
+            "WHERE wt.status = :status " +
+            "AND wt.user IS NOT NULL " +
+            "AND wt.createdAt BETWEEN :from AND :to")
+    long countApprovedWithUserIdInRange(@Param("status") WalletTransaction.Status status,
+                                        @Param("from") LocalDateTime from,
                                         @Param("to") LocalDateTime to);
+
+    // Tổng tiền đã duyệt (lấy trị tuyệt đối vì amount đang lưu âm với rút tiền)
+    @Query("SELECT COALESCE(SUM(ABS(wt.amount)), 0) FROM WalletTransaction wt " +
+            "WHERE wt.status = :status " +
+            "AND wt.user IS NOT NULL " +
+            "AND wt.createdAt BETWEEN :from AND :to")
+    BigDecimal sumApprovedAmountWithUserIdInRange(@Param("status") WalletTransaction.Status status,
+                                                  @Param("from") LocalDateTime from,
+                                                  @Param("to") LocalDateTime to);
 }

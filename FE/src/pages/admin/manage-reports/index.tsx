@@ -227,10 +227,9 @@ export default function UserReportsPage() {
     const generalType = getGeneralTypeByTab(activeTab);
 
     if (generalType === "NON_SERIOUS_ERROR") {
-      // NON_SERIOUS: dùng targetId và type đầu tiên
-      const firstReport = record.reports?.[0] || record;
+      // NON_SERIOUS: dùng targetId và type cụ thể
       window.open(
-        `/report-detail?targetId=${record.targetId}&type=${firstReport.type}&mode=grouped`,
+        `/report-detail?targetId=${record.targetId}&type=${record.type}&mode=grouped`,
         "_blank"
       );
     } else if (
@@ -287,7 +286,7 @@ export default function UserReportsPage() {
   };
 
   // Columns cho NON_SERIOUS
-  const getNonSeriousColumns = (): ColumnsType<AggregatedNonSeriousReport> => [
+  const getNonSeriousColumns = (): ColumnsType<ReportGroupedByTargetDTO> => [
     {
       title: "STT",
       key: "index",
@@ -313,26 +312,18 @@ export default function UserReportsPage() {
     },
     {
       title: "Loại báo cáo",
-      key: "types",
+      key: "type",
       render: (record) => (
-        <div className="flex gap-1 flex-wrap">
-          {Array.from(record.types).map((type) => (
-            <Tag
-              key={String(type)}
-              color={getTypeColor(type as string)}
-              icon={getTypeIcon(type as string)}
-            >
-              {translateENtoVI(type as string)}
-            </Tag>
-          ))}
-        </div>
+        <Tag color={getTypeColor(record.type)} icon={getTypeIcon(record.type)}>
+          {translateENtoVI(record.type)}
+        </Tag>
       ),
     },
     {
-      title: "Tổng số báo cáo",
-      key: "totalCount",
+      title: "Số lượng báo cáo",
+      key: "count",
       render: (record) => (
-        <span className="font-semibold text-red-600">{record.totalCount}</span>
+        <span className="font-semibold text-red-600">{record.count}</span>
       ),
       align: "center",
     },
@@ -546,7 +537,6 @@ export default function UserReportsPage() {
         "VIOLENCE",
         "SPAM",
         "OTHERS",
-        "DIRTY_CAR",
         "MISLEADING_LISTING"
       );
     } else if (generalType === "SERIOUS_ERROR") {
@@ -565,6 +555,7 @@ export default function UserReportsPage() {
         "FAKE_DOCUMENT",
         "FAKE_ORDER",
         "DISPUTE_REFUND",
+        "DIRTY_CAR",
         "LATE_RETURN_NO_CONTACT"
       );
     } else if (generalType === "STAFF_ERROR") {
@@ -598,7 +589,7 @@ export default function UserReportsPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex-1 max-w-md">
             <Search
-              placeholder="Tìm kiếm theo tên người, biển số xe bị báo cáo"
+              placeholder="Tìm kiếm theo tên người, email, biển số xe bị báo cáo"
               allowClear
               enterButton={<SearchOutlined />}
               size="large"
@@ -660,12 +651,12 @@ export default function UserReportsPage() {
                     ? getMobileColumns("NON_SERIOUS")
                     : getNonSeriousColumns()
                 }
-                dataSource={transformNonSeriousReports(reports)}
-                rowKey="targetId"
+                dataSource={reports} // Sử dụng trực tiếp reports thay vì transformNonSeriousReports(reports)
+                rowKey={(record) => `${record.targetId}-${record.type}`} // Key unique cho mỗi combination
                 loading={loading && !isTabChanging}
                 pagination={{
                   pageSize: isMobile ? 5 : 10,
-                  showTotal: (total) => `${total} người vi phạm`,
+                  showTotal: (total) => `${total} báo cáo`, // Đổi từ "người vi phạm" thành "báo cáo"
                   showSizeChanger: !isMobile,
                   simple: isMobile,
                 }}
