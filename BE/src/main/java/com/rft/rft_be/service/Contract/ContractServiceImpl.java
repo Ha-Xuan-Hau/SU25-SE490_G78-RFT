@@ -106,9 +106,45 @@ public class ContractServiceImpl implements ContractService {
         try {
             Contract.Status contractStatus = Contract.Status.valueOf(status.toUpperCase());
             List<Contract> contracts = contractRepository.findByProviderIdAndStatus(providerId, contractStatus);
+
             List<ContractDTO> contractDTOs = contracts.stream()
-                    .map(contractMapper::toDTO)
+                    .map(contract -> {
+                        ContractDTO dto = contractMapper.toDTO(contract);
+
+                        // Enrich với thông tin từ booking và user
+                        if (contract.getBooking() != null) {
+                            Booking booking = contract.getBooking();
+
+                            // Set booking info
+                            dto.setBookingId(booking.getId());
+                            dto.setBookingStartTime(booking.getTimeBookingStart());
+                            dto.setBookingEndTime(booking.getTimeBookingEnd());
+                            dto.setBookingAddress(booking.getAddress());
+                            dto.setBookingTotalCost(booking.getTotalCost());
+                            dto.setBookingStatus(booking.getStatus() != null ? booking.getStatus().toString() : null);
+
+                            // Set user (customer) info từ booking
+                            if (booking.getUser() != null) {
+                                User customer = booking.getUser();
+                                dto.setUserId(customer.getId());
+                                dto.setUserName(customer.getFullName()); // hoặc getName() tùy thuộc entity User của bạn
+                                dto.setUserEmail(customer.getEmail());
+                                dto.setUserPhone(booking.getPhoneNumber()); // phone từ booking
+                                dto.setUserAddress(booking.getAddress()); // address từ booking
+                            }
+                        }
+
+                        // Set provider info từ contract.user
+                        if (contract.getUser() != null) {
+                            User provider = contract.getUser();
+                            dto.setProviderId(provider.getId());
+                            dto.setProviderName(provider.getFullName()); // hoặc getName()
+                        }
+
+                        return dto;
+                    })
                     .collect(Collectors.toList());
+
             // Nếu status là FINISHED thì lấy thêm timeFinish từ finalContracts
             if (contractStatus == Contract.Status.FINISHED) {
                 for (ContractDTO dto : contractDTOs) {
@@ -118,11 +154,14 @@ public class ContractServiceImpl implements ContractService {
                     }
                 }
             }
+
             return contractDTOs;
+
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid status: " + status + ". Valid values are: PROCESSING, RENTING, FINISHED, CANCELLED");
         }
     }
+
 
     @Override
     @Transactional

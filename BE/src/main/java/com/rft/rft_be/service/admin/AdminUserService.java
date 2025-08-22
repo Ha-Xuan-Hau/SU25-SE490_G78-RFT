@@ -64,6 +64,7 @@ public interface AdminUserService {
      * Ban người dùng:
      * - Nếu USER có booking chưa hoàn thành (≠ COMPLETED/CANCELLED) -> TEMP_BANNED, ngược lại INACTIVE.
      * - Nếu PROVIDER có contract đang RENTING -> TEMP_BANNED, ngược lại INACTIVE.
+     * * - Nếu PROVIDER có booking chưa hoàn thành (≠ COMPLETED/CANCELLED) -> TEMP_BANNED, ngược lại INACTIVE.
      * Trả về chi tiết user sau khi cập nhật.
      */
     AdminUserDetailDTO banUser(String userId);

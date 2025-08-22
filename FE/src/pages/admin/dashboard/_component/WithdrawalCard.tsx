@@ -1,23 +1,75 @@
-// components/admin/TopProductsTable.tsx
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { CreditCard, TrendingUp, Clock, CheckCircle } from "lucide-react";
+import { dashboardAPI } from "@/apis/admin.api";
 
 export default function TopProductsTable() {
-  // Mock data - chỉ số liệu thống kê
-  const stats = {
-    pending: 8, // Đang chờ xử lý
-    processed: 156, // Đã xử lý trong tháng
-    totalAmount: 285000000, // Tổng tiền đã xử lý
-    avgProcessTime: "2.5", // Thời gian xử lý trung bình (giờ)
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    waitingCount: 0,
+    approvedCount: 0,
+    totalApprovedAmount: 0,
+  });
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchWithdrawalData();
+  }, []);
+
+  const fetchWithdrawalData = async () => {
+    try {
+      setLoading(true);
+      // Lấy dữ liệu tháng hiện tại
+      const today = new Date();
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const from = startOfMonth.toISOString().split("T")[0];
+      const to = today.toISOString().split("T")[0];
+
+      const response = await dashboardAPI.getWithdrawalStats(from, to);
+      setStats(response);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching withdrawal data:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const formatCurrency = (amount: number) => {
+  interface WithdrawalStats {
+    waitingCount: number;
+    approvedCount: number;
+    totalApprovedAmount: number;
+  }
+
+  const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(amount);
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-20 bg-gray-200 rounded"></div>
+            <div className="h-20 bg-gray-200 rounded"></div>
+            <div className="h-20 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="text-red-500 text-sm">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
@@ -26,9 +78,9 @@ export default function TopProductsTable() {
           <h3 className="text-lg font-semibold text-gray-900">
             Yêu cầu rút tiền
           </h3>
-          {stats.pending > 0 && (
+          {stats.waitingCount > 0 && (
             <span className="bg-orange-100 text-orange-600 text-xs font-semibold px-2 py-1 rounded-full">
-              {stats.pending} chờ xử lý
+              {stats.waitingCount} chờ xử lý
             </span>
           )}
         </div>
@@ -46,7 +98,7 @@ export default function TopProductsTable() {
             <div>
               <p className="text-sm text-gray-600">Đang chờ xử lý</p>
               <p className="text-2xl font-bold text-gray-900">
-                {stats.pending}
+                {stats.waitingCount}
               </p>
             </div>
           </div>
@@ -62,7 +114,7 @@ export default function TopProductsTable() {
             <div>
               <p className="text-sm text-gray-600">Đã xử lý</p>
               <p className="text-2xl font-bold text-gray-900">
-                {stats.processed}
+                {stats.approvedCount}
               </p>
             </div>
           </div>
@@ -78,7 +130,7 @@ export default function TopProductsTable() {
             <div>
               <p className="text-sm text-gray-600">Tổng tiền đã xử lý</p>
               <p className="text-lg font-bold text-gray-900">
-                {formatCurrency(stats.totalAmount)}
+                {formatCurrency(stats.totalApprovedAmount)}
               </p>
             </div>
           </div>

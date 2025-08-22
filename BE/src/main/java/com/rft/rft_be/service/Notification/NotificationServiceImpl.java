@@ -327,7 +327,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void notifyVehicleReturnConfirmed(String userId, String bookingId) {
-        String redirectUrl = "/profile/booking-history";
+        String redirectUrl = "/provider/manage-accepted-bookings";
         createNotificationForUser(userId, NotificationMapper.VEHICLE_RETURN_CONFIRMED,
                 NotificationMapper.VEHICLE_RETURN_CONFIRMED_MSG, redirectUrl);
 

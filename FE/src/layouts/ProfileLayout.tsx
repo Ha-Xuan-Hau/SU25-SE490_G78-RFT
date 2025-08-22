@@ -21,6 +21,8 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   const [, , clearAccessToken] = useLocalStorage("access_token");
   const [userProfile, , clearUserProfile] = useLocalStorage("user_profile", "");
 
+  const isUser = userProfile?.role === "USER";
+
   // Check role authorization
   useEffect(() => {
     const checkAuthorization = () => {
@@ -253,7 +255,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                   {userProfile?.email || "user@example.com"}
                 </p>
                 <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  {userProfile?.role}
+                  {isUser ? "Người dùng" : "Chủ xe"}
                 </span>
               </div>
             </div>

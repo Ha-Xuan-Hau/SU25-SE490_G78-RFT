@@ -422,7 +422,6 @@ const BecomeProviderPage = () => {
 
   const renderServiceContent = () => (
     <div className="p-6 bg-white rounded-lg shadow">
-      {/* Wrap tất cả trong một Form */}
       <Form form={form} layout="vertical">
         <Title level={4}>Chọn dịch vụ cho thuê</Title>
         <Paragraph className="mb-4 text-gray-600">
@@ -454,9 +453,9 @@ const BecomeProviderPage = () => {
               <div className="flex items-center">
                 <Checkbox
                   checked={selectedServices.includes(service.id)}
-                  onChange={(e) =>
-                    onServiceChange(service.id, e.target.checked)
-                  }
+                  // BỎ onChange handler ở Checkbox
+                  // Chỉ giữ lại để hiển thị trạng thái
+                  style={{ pointerEvents: "none" }} // Disable click trên checkbox
                 />
                 <div className="ml-4">
                   <Title level={5} className="mb-0">
