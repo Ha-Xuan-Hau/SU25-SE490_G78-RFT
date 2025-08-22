@@ -9,7 +9,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -21,8 +23,17 @@ public class AdminVehicleApprovalController {
 
     // 1. Lấy danh sách xe chờ duyệt (PENDING)
     @GetMapping("/pending")
-    public Page<VehicleGetDTO> getPendingVehicles(@RequestParam Optional<String> type, @RequestParam Optional<String> sortBy, @RequestParam Optional<String> direction, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        return adminVehicleApprovalService.getPendingVehicles(type, sortBy, direction, page, size);
+    public ResponseEntity<Map<String, Object>> getPendingVehicles(@RequestParam Optional<String> type, @RequestParam Optional<String> sortBy, @RequestParam Optional<String> direction, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+
+        Page<VehicleGetDTO> pendingVehicles = adminVehicleApprovalService.getPendingVehicles(type, sortBy, direction, page, size);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", pendingVehicles.getContent());
+        response.put("currentPage", pendingVehicles.getNumber());
+        response.put("totalItems", pendingVehicles.getTotalElements());
+        response.put("totalPages", pendingVehicles.getTotalPages());
+
+        return ResponseEntity.ok(response);
     }
 
     // 2. Thống kê tổng số xe PENDING theo từng types
