@@ -349,14 +349,14 @@ public class WalletServiceImpl implements WalletService {
     //Screen withdraw on dashboard
     @Override
     public WithdrawalDashboardResponse getWithdrawalDashboard(LocalDateTime from, LocalDateTime to) {
-        var waitingStatuses = List.of(
-                WalletTransaction.Status.PENDING,
-                WalletTransaction.Status.PROCESSING
-        );
+//        var waitingStatuses = List.of(
+//                WalletTransaction.Status.PENDING,
+//                WalletTransaction.Status.PROCESSING
+//        );
 
-        long waiting = txRepository.countByStatusesAndDateRange(waitingStatuses, from, to);
-        long approved = txRepository.countByStatusAndDateRange(WalletTransaction.Status.APPROVED, from, to);
-        BigDecimal totalApproved = txRepository.sumApprovedAmountInRange(from, to);
+        long waiting = txRepository.countByStatusAndDateRange(WalletTransaction.Status.PENDING, from, to);
+        long approved = txRepository.countApprovedWithUserIdInRange(WalletTransaction.Status.APPROVED, from, to);
+        BigDecimal totalApproved = txRepository.sumApprovedAmountWithUserIdInRange(WalletTransaction.Status.APPROVED, from, to);
 
         return WithdrawalDashboardResponse.builder()
                 .waitingCount(waiting)

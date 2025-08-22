@@ -22,7 +22,7 @@ export const useNotifications = () => {
       const response = await notificationApi.getUnreadCount();
       return response.data;
     },
-    refetchInterval: 5000,
+    //refetchInterval: 5000,
     enabled: isAuthenticated,
     staleTime: 0,
     // gcTime: 30000,
