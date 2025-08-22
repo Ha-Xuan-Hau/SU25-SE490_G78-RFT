@@ -11,6 +11,7 @@ import {
   DatePicker,
   Row,
   Col,
+  Select,
 } from "antd";
 import {
   UserOutlined,
@@ -26,6 +27,12 @@ import { showError, showSuccess } from "@/utils/toast.utils";
 import { useRefreshUser } from "@/recoils/user.state";
 import { useAuth } from "@/context/AuthContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import {
+  getProvinces,
+  getDistrictsByProvinceCode,
+  getWardsByDistrictCode,
+  GeoUnit,
+} from "@/lib/vietnam-geo-data";
 
 // Custom DateInput Component
 const CustomDateInput: React.FC<{
@@ -238,6 +245,161 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const { refreshUserFromApi } = useAuth();
   const [, setUserProfile] = useLocalStorage("user_profile", "");
 
+  // State cho địa chỉ
+  const [provinces, setProvinces] = useState<GeoUnit[]>([]);
+  const [districts, setDistricts] = useState<GeoUnit[]>([]);
+  const [wards, setWards] = useState<GeoUnit[]>([]);
+  const [selectedProvince, setSelectedProvince] = useState<string>("");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  const [selectedWard, setSelectedWard] = useState<string>("");
+  const [detailAddress, setDetailAddress] = useState<string>("");
+
+  // Thêm useEffect để parse địa chỉ hiện tại
+  useEffect(() => {
+    if (openEditModal && currentUser) {
+      form.setFieldsValue({
+        fullName: currentUser.fullName,
+        email: currentUser.email,
+        phone: currentUser.phone,
+        dateOfBirth: currentUser.dateOfBirth
+          ? dayjs()
+              .set("year", currentUser.dateOfBirth[0])
+              .set("month", currentUser.dateOfBirth[1] - 1)
+              .set("date", currentUser.dateOfBirth[2])
+          : undefined,
+      });
+      setImageUrl(currentUser.profilePicture);
+
+      // Parse địa chỉ nếu có
+      if (currentUser.address) {
+        parseAndSetAddress(currentUser.address);
+      } else {
+        // Reset nếu không có địa chỉ
+        setDetailAddress("");
+        setSelectedProvince("");
+        setSelectedDistrict("");
+        setSelectedWard("");
+      }
+    }
+  }, [openEditModal, currentUser, form]);
+
+  // Thêm hàm parse địa chỉ
+  const parseAndSetAddress = async (fullAddress: string) => {
+    // Reset trước
+    setDetailAddress("");
+    setSelectedProvince("");
+    setSelectedDistrict("");
+    setSelectedWard("");
+
+    const addressParts = fullAddress.split(", ");
+
+    if (addressParts.length >= 4) {
+      // Format mong đợi: "Địa chỉ chi tiết, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố"
+      const [detail, ward, district, province] = addressParts;
+
+      // Set detail address ngay
+      setDetailAddress(detail || "");
+
+      // Tìm và set province
+      const foundProvince = provinces.find((p) => p.name === province);
+      if (foundProvince) {
+        setSelectedProvince(foundProvince.name);
+
+        // Load districts cho province này
+        try {
+          const districtsData = await getDistrictsByProvinceCode(
+            foundProvince.code
+          );
+          setDistricts(districtsData);
+
+          // Tìm và set district
+          const foundDistrict = districtsData.find((d) => d.name === district);
+          if (foundDistrict) {
+            setSelectedDistrict(foundDistrict.name);
+
+            // Load wards cho district này
+            const wardsData = await getWardsByDistrictCode(foundDistrict.code);
+            setWards(wardsData);
+
+            // Tìm và set ward
+            const foundWard = wardsData.find((w) => w.name === ward);
+            if (foundWard) {
+              setSelectedWard(foundWard.name);
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing address:", error);
+        }
+      }
+    } else {
+      // Nếu không đúng format, set toàn bộ vào detail
+      setDetailAddress(fullAddress);
+    }
+  };
+
+  // Load provinces khi component mount
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        const data = await getProvinces();
+        setProvinces(data);
+
+        // Nếu đã có currentUser và address, parse sau khi load provinces
+        if (openEditModal && currentUser?.address && data.length > 0) {
+          parseAndSetAddress(currentUser.address);
+        }
+      } catch (error) {
+        console.error("Load provinces error:", error);
+      }
+    };
+    loadProvinces();
+  }, [openEditModal]);
+
+  // Load districts khi chọn province
+  useEffect(() => {
+    if (selectedProvince) {
+      const loadDistricts = async () => {
+        try {
+          const provinceCode = provinces.find(
+            (p) => p.name === selectedProvince
+          )?.code;
+          if (provinceCode) {
+            const data = await getDistrictsByProvinceCode(provinceCode);
+            setDistricts(data);
+          }
+        } catch (error) {
+          setDistricts([]);
+        }
+      };
+      loadDistricts();
+    } else {
+      setDistricts([]);
+      setWards([]);
+    }
+  }, [selectedProvince, provinces]);
+
+  // Load wards khi chọn district
+  useEffect(() => {
+    if (selectedDistrict) {
+      const loadWards = async () => {
+        try {
+          const districtCode = districts.find(
+            (d) => d.name === selectedDistrict
+          )?.code;
+          if (districtCode) {
+            const data = await getWardsByDistrictCode(districtCode);
+            setWards(data);
+          }
+        } catch (error) {
+          setWards([]);
+        }
+      };
+      loadWards();
+    } else {
+      setWards([]);
+    }
+  }, [selectedDistrict, districts]);
+
   useEffect(() => {
     if (openEditModal && currentUser) {
       form.setFieldsValue({
@@ -314,44 +476,83 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     return Promise.resolve();
   };
 
+  const getFullAddress = () => {
+    const addressParts = [
+      detailAddress,
+      selectedWard,
+      selectedDistrict,
+      selectedProvince,
+    ].filter(Boolean);
+
+    return addressParts.join(", ");
+  };
+
   // Hàm xử lý cập nhật thông tin người dùng
   const handleUpdateProfile = async (values: FormValues) => {
+    // Validate địa chỉ
+    if (!selectedProvince) {
+      showError("Vui lòng chọn tỉnh/thành phố!");
+      return;
+    }
+    if (!selectedDistrict) {
+      showError("Vui lòng chọn quận/huyện!");
+      return;
+    }
+    if (!selectedWard) {
+      showError("Vui lòng chọn phường/xã!");
+      return;
+    }
+    if (!detailAddress || detailAddress.trim().length < 5) {
+      showError("Vui lòng nhập địa chỉ chi tiết (ít nhất 5 ký tự)!");
+      return;
+    }
+
     setLoading(true);
     const dateOfBirth = values.dateOfBirth
       ? values.dateOfBirth.format("YYYY-MM-DD")
       : undefined;
 
     try {
+      const fullAddress = getFullAddress();
+
       const updated = await updateUserProfile(currentUser?.id, {
         fullName: values.fullName,
         email: values.email,
         phone: values.phone,
-        address: values.address,
+        address: fullAddress,
         dateOfBirth,
         profilePicture: imageUrl,
       });
 
-      // CHỈ gọi callback, không tự update localStorage
       if (onUserUpdate) {
         await onUserUpdate(updated);
       }
 
       showSuccess("Cập nhật thành công");
+
+      // Reset form và đóng modal
+      form.resetFields();
+      setDetailAddress("");
+      setSelectedProvince("");
+      setSelectedDistrict("");
+      setSelectedWard("");
+      setDistricts([]);
+      setWards([]);
       handleCancleEditModal();
     } catch (err) {
+      console.error("Update profile error:", err);
       showError("Cập nhật thất bại");
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <Modal
       title="Cập Nhật Thông Tin"
       open={openEditModal}
       onCancel={handleCancleEditModal}
       footer={null}
-      width={600}
+      width={700} // Tăng width một chút
       centered
     >
       <Form
@@ -462,6 +663,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </Form.Item>
           </Col>
         </Row>
+
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
@@ -503,27 +705,118 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </Form.Item>
           </Col>
         </Row>
-        <Form.Item
-          label="Địa chỉ (Sử dụng địa chỉ trước sáp nhập)"
-          name="address"
-          required
-          rules={[
-            {
-              required: true,
-              message: "Vui lòng nhập địa chỉ!",
-            },
-            {
-              min: 10,
-              message: "Địa chỉ phải có ít nhất 10 ký tự!",
-            },
-            {
-              max: 200,
-              message: "Địa chỉ không được vượt quá 200 ký tự!",
-            },
-          ]}
-        >
-          <Input.TextArea placeholder="Nhập địa chỉ của bạn" rows={3} />
-        </Form.Item>
+
+        {/* Phần địa chỉ với dropdown */}
+        <div className="mb-4">
+          <label className="block text-sm  text-gray-700 mb-2">
+            <span className="text-red-500">*</span>
+            Địa chỉ (Khách vui lòng sử dụng địa chỉ trước khi sáp nhập)
+          </label>
+
+          {/* 3 Dropdowns */}
+          <Row gutter={16} className="mb-3">
+            <Col span={8}>
+              <Select
+                placeholder="Chọn tỉnh/thành phố"
+                size="middle"
+                value={selectedProvince || undefined}
+                onChange={(value) => {
+                  setSelectedProvince(value);
+                  setSelectedDistrict("");
+                  setSelectedWard("");
+                }}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children as unknown as string)
+                    ?.toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                className="w-full"
+              >
+                {provinces.map((p) => (
+                  <Select.Option key={p.code} value={p.name}>
+                    {p.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Col>
+
+            <Col span={8}>
+              <Select
+                placeholder="Chọn quận/huyện"
+                size="middle"
+                value={selectedDistrict || undefined}
+                onChange={(value) => {
+                  setSelectedDistrict(value);
+                  setSelectedWard("");
+                }}
+                disabled={!selectedProvince}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children as unknown as string)
+                    ?.toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                className="w-full"
+              >
+                {districts.map((d) => (
+                  <Select.Option key={d.code} value={d.name}>
+                    {d.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Col>
+
+            <Col span={8}>
+              <Select
+                placeholder="Chọn phường/xã"
+                size="middle"
+                value={selectedWard || undefined}
+                onChange={(value) => {
+                  setSelectedWard(value);
+                }}
+                disabled={!selectedDistrict}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children as unknown as string)
+                    ?.toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                className="w-full"
+              >
+                {wards.map((w) => (
+                  <Select.Option key={w.code} value={w.name}>
+                    {w.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Col>
+          </Row>
+
+          {/* Input địa chỉ chi tiết */}
+          <Input.TextArea
+            placeholder="Số nhà, tên đường, tòa nhà..."
+            rows={2}
+            value={detailAddress}
+            onChange={(e) => setDetailAddress(e.target.value)}
+          />
+
+          {/* Hiển thị địa chỉ đầy đủ */}
+          {(selectedProvince ||
+            selectedDistrict ||
+            selectedWard ||
+            detailAddress) && (
+            <div className="mt-2 p-2 bg-gray-50 rounded">
+              <span className="text-gray-600 text-sm">
+                Địa chỉ đầy đủ: {getFullAddress() || "Chưa có"}
+              </span>
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-end gap-3 mt-6">
           <Button onClick={handleCancleEditModal}>Hủy</Button>
           <Button
