@@ -402,6 +402,7 @@ export default function ManageContracts() {
         <div>
           <div className="font-semibold">{record.userName}</div>
           <div className="text-sm text-gray-500">{record.userPhone}</div>
+          <div className="text-sm text-gray-500">{record.userEmail}</div>
           <div
             className="text-xs text-gray-400 truncate"
             title={record.bookingAddress}
@@ -785,6 +786,7 @@ export default function ManageContracts() {
         <ReportButton
           targetId={selectedContractForReport.userId} // Báo cáo user
           reportType="FAKE_ORDER" // Chỉ có 1 loại báo cáo cho đơn bị hủy
+          booking={selectedContractForReport.bookingId}
           buttonText=""
           size="small"
           type="text"
