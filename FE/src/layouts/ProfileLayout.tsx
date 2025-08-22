@@ -9,7 +9,7 @@ import FooterComponent from "@/components/FooterComponent";
 import { Icon } from "@iconify/react";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { Avatar } from "antd";
+import { Avatar, Tooltip } from "antd";
 
 export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
@@ -167,16 +167,58 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
 
       <section className="flex-1 w-full">
         <div className="flex min-h-screen w-full relative">
-          {" "}
-          {/* Sửa h-screen thành min-h-screen */}
-          {/* Mobile sidebar toggle button */}
-          {/* <button
-            onClick={toggleSidebar}
-            className="md:hidden fixed top-20 left-4 z-30 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg transition-colors"
-          >
-            {sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-          </button> */}
-          {/* Sidebar */}
+          {/* Icon Sidebar - Chỉ hiển thị trên desktop */}
+          <div className="hidden md:block fixed top-0 left-0 h-full w-16 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-20 pt-4">
+            {/* Toggle button ở đầu sidebar */}
+            <button
+              onClick={toggleSidebar}
+              className="w-full flex items-center justify-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mb-4"
+              title="Menu"
+            >
+              <MenuOutlined className="text-gray-600 dark:text-gray-300 text-lg" />
+            </button>
+
+            {/* Divider */}
+            <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 mb-4" />
+
+            {/* Icon navigation */}
+            <nav className="space-y-1">
+              {menuGroups.map((group, groupIndex) => (
+                <div key={group.title} className="mb-2">
+                  {group.items.map((item) => (
+                    <Tooltip
+                      key={item.key}
+                      title={item.label}
+                      placement="right"
+                    >
+                      <Link
+                        href={item.path}
+                        className={`flex items-center justify-center p-3 mx-2 mb-1 rounded-lg transition-all duration-200 ${
+                          currentPath === item.path
+                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        <Icon
+                          icon={item.icon}
+                          className={`w-5 h-5 ${
+                            currentPath === item.path
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      </Link>
+                    </Tooltip>
+                  ))}
+                  {groupIndex < menuGroups.length - 1 && (
+                    <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-2" />
+                  )}
+                </div>
+              ))}
+            </nav>
+          </div>
+
+          {/* Full Sidebar - Logic giữ nguyên hoàn toàn */}
           <div
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -203,8 +245,6 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
 
             {/* User Profile Section */}
             <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700">
-              {" "}
-              {/* Đổi sang màu blue/indigo cho phù hợp */}
               <div className="flex flex-col items-center text-center">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate w-full">
                   {userProfile?.fullName || "Người dùng"}
@@ -213,9 +253,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                   {userProfile?.email || "user@example.com"}
                 </p>
                 <span className="inline-block px-2 py-1 mt-2 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  {" "}
-                  {/* Đổi sang màu blue */}
-                  Người dùng
+                  {userProfile?.role}
                 </span>
               </div>
             </div>
@@ -232,13 +270,11 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                   <ul className="space-y-1 px-3">
                     {group.items.map((item) => (
                       <li key={`${item.key}-${item.path}`}>
-                        {" "}
-                        {/* Thêm path vào key để tránh duplicate */}
                         <Link
                           href={item.path}
                           className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                             currentPath === item.path
-                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-600" /* Đổi sang màu blue */
+                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-600"
                               : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                           }`}
                         >
@@ -246,7 +282,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
                             icon={item.icon}
                             className={`w-5 h-5 flex-shrink-0 transition-colors ${
                               currentPath === item.path
-                                ? "text-blue-600 dark:text-blue-400" /* Đổi sang màu blue */
+                                ? "text-blue-600 dark:text-blue-400"
                                 : "text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300"
                             }`}
                           />
@@ -259,6 +295,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
               ))}
             </nav>
           </div>
+
           {/* Backdrop - hiển thị cho cả desktop và mobile khi sidebar mở */}
           {sidebarOpen && (
             <div
@@ -266,8 +303,9 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
               onClick={toggleSidebar}
             />
           )}
-          {/* Main content */}
-          <div className="flex-1 px-4 md:px-6 py-6 w-full">
+
+          {/* Main content - Thêm margin-left cho desktop khi có icon sidebar */}
+          <div className="flex-1 px-4 md:px-6 py-6 w-full md:ml-16">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full overflow-x-auto">
               {children}
             </div>

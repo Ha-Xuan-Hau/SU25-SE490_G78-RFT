@@ -72,6 +72,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.GET, "/api/reports/search/user").hasAnyRole("STAFF", "ADMIN")
                                 .requestMatchers(HttpMethod.GET, "/api/reports/search/vehicle").hasAnyRole("STAFF", "ADMIN")
                                 .requestMatchers("/api/adminmanageusers/**").hasAnyRole("ADMIN","STAFF")
+                                .requestMatchers(HttpMethod.POST, "/api/bookings").hasAnyRole("USER","PROVIDER")
 //                                .requestMatchers(HttpMethod.POST, "/api/bookings").authenticated()
 //                                .requestMatchers(HttpMethod.POST, "/api/bookings/**").authenticated()
 //                                .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ADMIN")
