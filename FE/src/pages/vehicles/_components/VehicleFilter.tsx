@@ -11,7 +11,6 @@ import {
   Search,
   RotateCcw,
   Settings,
-  Calendar,
 } from "lucide-react";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle";
 import {

@@ -387,7 +387,7 @@ const HeaderComponent: React.FC = () => {
               <div className="flex items-center gap-4">
                 {/* Notification Bell cho Desktop */}
                 <div className="relative">
-                  <NotificationBell />
+                  {isAuthenticated && <NotificationBell />}
                 </div>
 
                 <Dropdown

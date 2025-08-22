@@ -748,11 +748,27 @@ const VehicleDetailModal: React.FC<{
         </Button>,
       ]}
       width="95vw"
-      style={{ maxWidth: "1200px" }}
+      // ✅ CÁCH 2: Sửa style và bodyStyle để loại bỏ scroll riêng
+      style={{
+        maxWidth: "1200px",
+        top: 20,
+        maxHeight: "calc(100vh - 40px)",
+        overflow: "visible",
+      }}
+      // ✅ QUAN TRỌNG: Loại bỏ bodyStyle có scroll riêng
+      bodyStyle={{
+        overflow: "visible",
+        maxHeight: "none",
+        padding: "24px",
+      }}
+      // ✅ Thêm modalRender để control scroll
+      modalRender={(modal) => (
+        <div style={{ overflow: "visible" }}>{modal}</div>
+      )}
       className="top-4 sm:top-8"
-      bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
     >
-      <div className="pt-4 space-y-4 sm:space-y-6">
+      {/* ✅ LOẠI BỎ div wrapper có scroll, chỉ giữ nội dung */}
+      <div className="space-y-4 sm:space-y-6">
         {/* Vehicle Images */}
         <Card title="Hình ảnh xe" size="small">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">

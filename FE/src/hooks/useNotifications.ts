@@ -1,3 +1,4 @@
+// hooks/useNotifications.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRecoilState } from "recoil";
 import { notificationApi, NotificationItem } from "@/apis/notification.api";
@@ -11,26 +12,30 @@ export const useNotifications = () => {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
-  // Sử dụng ref để tránh stale closure
+  // GIỮ NGUYÊN: Sử dụng ref để tránh stale closure
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Query cho unread count với polling 5 giây
-  const { data: unreadCountData, error: unreadCountError } = useQuery({
+  // SỬA ĐỔI: Thêm refetch function và thay đổi staleTime, gcTime
+  const {
+    data: unreadCountData,
+    error: unreadCountError,
+    refetch: refetchUnreadCount, // THÊM MỚI: Lấy refetch function
+  } = useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: async () => {
       const response = await notificationApi.getUnreadCount();
       return response.data;
     },
-    //refetchInterval: 5000,
+    refetchInterval: 5000, // GIỮ NGUYÊN: polling 5 giây
     enabled: isAuthenticated,
-    staleTime: 0,
-    // gcTime: 30000,
-    // refetchOnWindowFocus: false,
-    // refetchOnMount: false,
+    staleTime: 0, // THAY ĐỔI: từ 0 sang 0 (giữ nguyên nhưng explicit)
+    gcTime: 0, // THAY ĐỔI: từ 30000 sang 0
+    refetchOnWindowFocus: true, // THAY ĐỔI: từ false sang true
+    refetchOnMount: true, // THAY ĐỔI: từ false sang true
   });
 
-  // Query cho danh sách notifications
+  // SỬA ĐỔI: Thay đổi staleTime và gcTime
   const {
     data: notificationsData,
     isLoading,
@@ -43,18 +48,18 @@ export const useNotifications = () => {
       return response.data;
     },
     enabled: isAuthenticated && state.isDropdownOpen,
-    staleTime: 30000,
-    gcTime: 300000,
+    staleTime: 0, // THAY ĐỔI: từ 30000 sang 0
+    gcTime: 0, // THAY ĐỔI: từ 300000 sang 0
   });
 
-  // SỬA LỖI: Sử dụng useCallback và dependency array chính xác
+  // GIỮ NGUYÊN: Các callback functions
   const updateUnreadCount = useCallback(
     (newCount: number) => {
       setState((prev) => {
         if (prev.unreadCount !== newCount) {
           return { ...prev, unreadCount: newCount };
         }
-        return prev; // Không update nếu giá trị không thay đổi
+        return prev;
       });
     },
     [setState]
@@ -68,7 +73,6 @@ export const useNotifications = () => {
             ? newData.content
             : [...prev.notifications, ...newData.content];
 
-        // Chỉ update nếu có thay đổi thực sự
         if (
           JSON.stringify(prev.notifications) !==
             JSON.stringify(newNotifications) ||
@@ -100,31 +104,33 @@ export const useNotifications = () => {
     [setState]
   );
 
-  // Effect để update unread count - SỬA LỖI
+  // SỬA ĐỔI: Thêm console.log để debug
   useEffect(() => {
     if (
       unreadCountData &&
       unreadCountData.unreadCount !== stateRef.current.unreadCount
     ) {
+      console.log(
+        "Updating unread count from query:",
+        unreadCountData.unreadCount
+      ); // THÊM MỚI
       updateUnreadCount(unreadCountData.unreadCount);
     }
   }, [unreadCountData, updateUnreadCount]);
 
-  // Effect để update notifications data - SỬA LỖI
+  // GIỮ NGUYÊN: Các effect khác
   useEffect(() => {
     if (notificationsData) {
       updateNotifications(notificationsData, stateRef.current.page);
     }
   }, [notificationsData, updateNotifications]);
 
-  // Effect để handle loading state - SỬA LỖI
   useEffect(() => {
     if (stateRef.current.isLoading !== isLoading) {
       updateLoadingState(isLoading);
     }
   }, [isLoading, updateLoadingState]);
 
-  // Effect để handle error
   useEffect(() => {
     if (unreadCountError) {
       console.error("Error fetching unread count:", unreadCountError);
@@ -138,21 +144,36 @@ export const useNotifications = () => {
     }
   }, [notificationsError, updateLoadingState]);
 
-  // Mutation cho click notification
+  // SỬA ĐỔI: Thêm onMutate và cancel queries
   const clickNotificationMutation = useMutation({
     mutationFn: async (notificationId: string) => {
       const response = await notificationApi.clickNotification(notificationId);
       return response.data;
     },
-    onSuccess: (data, notificationId) => {
-      setState((prev) => ({
-        ...prev,
-        notifications: prev.notifications.map((notif) =>
-          notif.id === notificationId ? { ...notif, isRead: true } : notif
-        ),
-        unreadCount: Math.max(0, prev.unreadCount - 1),
-      }));
+    onMutate: async (notificationId) => {
+      // THÊM MỚI: onMutate
+      // Optimistic update
+      setState((prev) => {
+        const notif = prev.notifications.find((n) => n.id === notificationId);
+        if (!notif || notif.isRead) return prev;
 
+        return {
+          ...prev,
+          notifications: prev.notifications.map((n) =>
+            n.id === notificationId ? { ...n, isRead: true } : n
+          ),
+          unreadCount: Math.max(0, prev.unreadCount - 1),
+        };
+      });
+
+      // THÊM MỚI: Cancel queries
+      await queryClient.cancelQueries({
+        queryKey: ["notifications", "unread-count"],
+      });
+    },
+    onSuccess: (data, notificationId) => {
+      // SỬA ĐỔI: Không update state ở đây nữa, chỉ refetch
+      refetchUnreadCount(); // THÊM MỚI: Refetch unread count
       queryClient.invalidateQueries({
         queryKey: ["notifications", "unread-count"],
       });
@@ -160,13 +181,18 @@ export const useNotifications = () => {
     onError: (error) => {
       console.error("Error clicking notification:", error);
       toast.error("Có lỗi xảy ra khi xử lý thông báo");
+      // THÊM MỚI: Rollback nếu lỗi
+      refetch();
+      refetchUnreadCount();
     },
   });
 
-  // Mutation cho mark all as read
+  // SỬA ĐỔI: Thêm onMutate và cancel queries
   const markAllAsReadMutation = useMutation({
     mutationFn: notificationApi.markAllAsRead,
-    onSuccess: () => {
+    onMutate: async () => {
+      // THÊM MỚI: onMutate
+      // Optimistic update
       setState((prev) => ({
         ...prev,
         notifications: prev.notifications.map((notif) => ({
@@ -176,18 +202,28 @@ export const useNotifications = () => {
         unreadCount: 0,
       }));
 
+      // THÊM MỚI: Cancel queries
+      await queryClient.cancelQueries({
+        queryKey: ["notifications"],
+      });
+    },
+    onSuccess: () => {
+      // SỬA ĐỔI: Không update state ở đây nữa
+      refetchUnreadCount(); // THÊM MỚI: Refetch unread count
       queryClient.invalidateQueries({
         queryKey: ["notifications"],
       });
+      // GIỮ NGUYÊN: Comment toast
       // toast.success("Đã đánh dấu tất cả thông báo là đã đọc");
     },
     onError: (error) => {
       console.error("Error marking all as read:", error);
+      // GIỮ NGUYÊN: Comment toast
       // toast.error("Có lỗi xảy ra khi đánh dấu thông báo");
     },
   });
 
-  // Functions - SỬA LỖI: Sử dụng useCallback
+  // GIỮ NGUYÊN: Tất cả functions callback
   const toggleDropdown = useCallback(() => {
     setState((prev) => ({
       ...prev,
@@ -236,8 +272,15 @@ export const useNotifications = () => {
       notifications: [],
     }));
     refetch();
-  }, [setState, refetch]);
+    refetchUnreadCount(); // THÊM MỚI: refetch unread count
+  }, [setState, refetch, refetchUnreadCount]);
 
+  // THÊM MỚI: Manual force update function
+  const forceUpdateUnreadCount = useCallback(() => {
+    refetchUnreadCount();
+  }, [refetchUnreadCount]);
+
+  // GIỮ NGUYÊN: Return object với thêm forceUpdateUnreadCount
   return {
     ...state,
     isLoading,
@@ -250,5 +293,6 @@ export const useNotifications = () => {
     clickNotification: clickNotificationMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
     refetch,
+    forceUpdateUnreadCount, // THÊM MỚI: Export để có thể gọi từ bên ngoài
   };
 };

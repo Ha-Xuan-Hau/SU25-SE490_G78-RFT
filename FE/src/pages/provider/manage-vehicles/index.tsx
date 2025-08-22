@@ -14,6 +14,7 @@ import {
   ExclamationCircleOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -27,12 +28,13 @@ import {
   Tag,
   Tabs,
   Checkbox,
+  message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 // --- Types for vehicle management ---
 import type { VehicleGroup } from "@/types/registerVehicleForm";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import type { Vehicle as VehicleType } from "@/types/vehicle";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import type { Vehicle } from "@/types/vehicle";
@@ -47,6 +49,18 @@ import {
   bulkToggleVehicleStatus,
 } from "@/apis/vehicle.api";
 import { showApiError, showApiSuccess } from "@/utils/toast.utils";
+
+// Debounce utility function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
 export default function UserRegisterVehicle() {
   const { Title, Text } = Typography;
@@ -69,15 +83,21 @@ export default function UserRegisterVehicle() {
   );
   const [groupDetail, setGroupDetail] = useState<VehicleGroup | null>(null);
   const [user] = useUserState();
-  const registeredVehicles = user?.registeredVehicles || [];
-  const [activeType, setActiveType] = useState<string>(
-    registeredVehicles.length > 0 ? registeredVehicles[0] : "CAR"
+
+  // Memoize registeredVehicles để tránh re-render không cần thiết
+  const registeredVehicles = useMemo(
+    () => user?.registeredVehicles || [],
+    [user?.registeredVehicles]
   );
+
+  const [activeType, setActiveType] = useState<string>("");
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
   const [groupList, setGroupList] = useState<VehicleGroup[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshLoading, setRefreshLoading] = useState(false);
   const [accessToken] = useLocalStorage("access_token");
 
   // State mới cho chọn nhiều xe
@@ -89,6 +109,50 @@ export default function UserRegisterVehicle() {
   const [pendingAction, setPendingAction] = useState<"create" | "edit" | null>(
     null
   );
+
+  // Retry mechanism
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const MAX_RETRY = 2;
+
+  // AbortController để cancel requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [similarVehicleData, setSimilarVehicleData] = useState<Vehicle | null>(
+    null
+  );
+
+  // Thêm function xử lý tạo xe cùng loại
+  const handleCreateSimilarVehicle = (vehicle: Vehicle) => {
+    setSimilarVehicleData(vehicle);
+    setPendingAction("create");
+    setRulesModal(true);
+  };
+
+  // Initialize activeType when registeredVehicles changes
+  useEffect(() => {
+    if (registeredVehicles.length > 0 && !activeType) {
+      setActiveType(registeredVehicles[0]);
+    } else if (
+      registeredVehicles.length > 0 &&
+      !registeredVehicles.includes(activeType)
+    ) {
+      setActiveType(registeredVehicles[0]);
+    }
+  }, [registeredVehicles, activeType]);
+
+  // Cleanup function
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Hàm helper để lấy tất cả xe có thể chọn (chỉ AVAILABLE và SUSPENDED)
   const getSelectableVehicles = () => {
@@ -108,40 +172,166 @@ export default function UserRegisterVehicle() {
     );
   };
 
-  // Fetch group vehicles by type
-  const fetchGroupVehicles = async (type: string) => {
-    setIsLoading(true);
-    try {
-      let apiFn;
-      if (type === "CAR") apiFn = getUserCars;
-      else if (type === "MOTORBIKE") apiFn = getUserMotorbike;
-      else if (type === "BICYCLE") apiFn = getUserBicycles;
-      else apiFn = getUserCars;
-      const res = await apiFn(page, size);
-      setGroupList(res?.data?.content || []);
-      setTotalElements(res?.data?.totalElements || 0);
-    } catch {
-      setGroupList([]);
-      setTotalElements(0);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (registeredVehicles.length > 0) {
-      if (!registeredVehicles.includes(activeType)) {
-        setActiveType(registeredVehicles[0]);
-        return;
+  // Enhanced fetch function with retry mechanism
+  const fetchGroupVehiclesWithRetry = useCallback(
+    async (
+      type: string,
+      currentPage: number = page,
+      currentSize: number = size,
+      retry: number = 0,
+      isInitial: boolean = false
+    ) => {
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-      fetchGroupVehicles(activeType);
+
+      // Clear any pending retry
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      try {
+        // Set appropriate loading state
+        if (isInitial) {
+          setInitialLoading(true);
+        } else if (retry === 0) {
+          setRefreshLoading(true);
+        }
+        setIsLoading(true);
+        setLastError(null);
+
+        let apiFn;
+        if (type === "CAR") apiFn = getUserCars;
+        else if (type === "MOTORBIKE") apiFn = getUserMotorbike;
+        else if (type === "BICYCLE") apiFn = getUserBicycles;
+        else apiFn = getUserCars;
+
+        const res = await apiFn(currentPage, currentSize);
+
+        // Only update state if request wasn't aborted
+        if (!abortController.signal.aborted) {
+          setGroupList(res?.data?.content || []);
+          setTotalElements(res?.data?.totalElements || 0);
+          setRetryCount(0);
+          setLastError(null);
+        }
+      } catch (error: any) {
+        // Don't handle aborted requests
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        console.error(`Fetch vehicles error (attempt ${retry + 1}):`, error);
+        setLastError(error?.message || "Lỗi không xác định");
+
+        // Retry logic
+        if (retry < MAX_RETRY) {
+          const nextRetry = retry + 1;
+          setRetryCount(nextRetry);
+
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, retry) * 1000;
+
+          retryTimeoutRef.current = setTimeout(() => {
+            fetchGroupVehiclesWithRetry(
+              type,
+              currentPage,
+              currentSize,
+              nextRetry,
+              isInitial
+            );
+          }, delay);
+        } else {
+          // Max retry reached
+          setRetryCount(0);
+          const errorMessage =
+            "Không thể tải dữ liệu sau nhiều lần thử. Vui lòng kiểm tra kết nối mạng.";
+          setLastError(errorMessage);
+
+          // Don't clear existing data, just show error
+          if (groupList.length === 0) {
+            // Only show error toast if there's no existing data
+            message.error(errorMessage);
+          }
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoading(false);
+          if (isInitial) {
+            setInitialLoading(false);
+          } else {
+            setRefreshLoading(false);
+          }
+        }
+      }
+    },
+    [page, size, groupList.length]
+  );
+
+  // Debounced fetch function
+  const debouncedFetch = useMemo(
+    () =>
+      debounce((type: string, currentPage: number, currentSize: number) => {
+        fetchGroupVehiclesWithRetry(type, currentPage, currentSize, 0, false);
+      }, 300),
+    [fetchGroupVehiclesWithRetry]
+  );
+
+  // Main fetch function
+  const fetchGroupVehicles = useCallback(
+    (type: string, isInitial: boolean = false) => {
+      if (isInitial) {
+        fetchGroupVehiclesWithRetry(type, page, size, 0, true);
+      } else {
+        debouncedFetch(type, page, size);
+      }
+    },
+    [fetchGroupVehiclesWithRetry, debouncedFetch, page, size]
+  );
+
+  // Effect for fetching data when activeType, page, or size changes
+  useEffect(() => {
+    if (activeType && registeredVehicles.includes(activeType)) {
+      const isInitial = groupList.length === 0 && initialLoading;
+      fetchGroupVehicles(activeType, isInitial);
     }
-  }, [activeType, page, size, registeredVehicles]);
+  }, [
+    activeType,
+    page,
+    size,
+    fetchGroupVehicles,
+    registeredVehicles,
+    groupList.length,
+    initialLoading,
+  ]);
+
+  // Thêm useEffect để control body scroll
+  useEffect(() => {
+    if (registerVehicleModal || rulesModal) {
+      // Ẩn scroll của body khi modal mở
+      document.body.style.overflow = "hidden";
+    } else {
+      // Khôi phục scroll khi modal đóng
+      document.body.style.overflow = "unset";
+    }
+
+    // Cleanup khi component unmount
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [registerVehicleModal, rulesModal]);
 
   const handleTabChange = (key: string) => {
     setActiveType(key);
     setPage(0);
     setSelectedVehicles([]); // Reset selection khi chuyển tab
+    setGroupList([]); // Clear current data
+    setInitialLoading(true); // Set initial loading for new tab
   };
 
   const handleAddVehicle = () => {
@@ -166,6 +356,15 @@ export default function UserRegisterVehicle() {
   const handleEditVehicle = (vehicleId: string) => {
     setEditVehicleId(vehicleId);
     setRegisterVehicleModal(true);
+  };
+
+  // Manual retry function
+  const handleManualRetry = () => {
+    if (activeType) {
+      setRetryCount(0);
+      setLastError(null);
+      fetchGroupVehicles(activeType, true);
+    }
   };
 
   // Hàm xử lý bulk toggle
@@ -521,36 +720,52 @@ export default function UserRegisterVehicle() {
     {
       title: "Thao tác",
       key: "action",
+      width: 120, // Thêm width cố định
       render: (_: unknown, record: VehicleGroup) => {
         if (record.vehicleNumber === 1) {
           const v = record.vehicle[0];
           return (
-            <Button
-              type="primary"
-              size="small"
-              className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
-              onClick={() => handleEditVehicle(v.id)}
-            >
-              <EditOutlined /> Chỉnh sửa
-            </Button>
+            <div className="flex flex-col gap-1">
+              <Button
+                type="primary"
+                size="small"
+                className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
+                onClick={() => handleEditVehicle(v.id)}
+                block // Làm nút full width
+              >
+                <EditOutlined /> Chỉnh sửa
+              </Button>
+
+              {/* Thêm nút "Tạo xe cùng loại" cho xe máy và xe đạp */}
+              {(activeType === "MOTORBIKE" || activeType === "BICYCLE") && (
+                <Button
+                  type="default"
+                  size="small"
+                  className="bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600 text-white"
+                  onClick={() => handleCreateSimilarVehicle(v)}
+                  block // Làm nút full width
+                >
+                  <PlusOutlined /> Tạo cùng loại
+                </Button>
+              )}
+            </div>
           );
         }
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="flex flex-col gap-1">
             <Button
               type="default"
               size="small"
-              className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
-              style={{ width: 100 }}
+              className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600 text-white"
               onClick={() => setGroupDetail(record)}
+              block
             >
-              Xem
+              Xem chi tiết
             </Button>
             <Button
               type="primary"
               size="small"
               className="bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600"
-              style={{ width: 100 }}
               onClick={() => {
                 setGroupEditModal({
                   open: true,
@@ -558,10 +773,23 @@ export default function UserRegisterVehicle() {
                   group: record,
                 });
               }}
+              block
             >
-              <EditOutlined />
-              Chỉnh sửa
+              <EditOutlined /> Chỉnh sửa
             </Button>
+
+            {/* Thêm nút "Tạo xe cùng loại" cho nhóm xe máy và xe đạp */}
+            {(activeType === "MOTORBIKE" || activeType === "BICYCLE") && (
+              <Button
+                type="default"
+                size="small"
+                className="bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600 text-white"
+                onClick={() => handleCreateSimilarVehicle(record.vehicle[0])} // Lấy xe đầu tiên
+                block
+              >
+                <PlusOutlined /> Tạo cùng loại
+              </Button>
+            )}
           </div>
         );
       },
@@ -577,9 +805,12 @@ export default function UserRegisterVehicle() {
       </div>
     ) : null;
 
+  // Show loading indicator when there are ongoing requests
+  const showTopLoadingBar = isLoading && !initialLoading;
+
   return (
     <div>
-      {isLoading && (
+      {showTopLoadingBar && (
         <div className="fixed top-0 left-0 right-0 h-1 bg-blue-500 animate-pulse z-50"></div>
       )}
 
@@ -593,6 +824,11 @@ export default function UserRegisterVehicle() {
               <Text className="text-gray-600">
                 Quản lý và theo dõi tình trạng các xe đã đăng ký
               </Text>
+              {retryCount > 0 && (
+                <div className="mt-2 text-orange-600 text-sm">
+                  Đang thử lại... ({retryCount}/{MAX_RETRY})
+                </div>
+              )}
             </div>
             {selectedInfo}
           </div>
@@ -609,34 +845,50 @@ export default function UserRegisterVehicle() {
         </div>
       </div>
 
-      {/* Phần còn lại giữ nguyên */}
-      <Tabs activeKey={activeType} onChange={handleTabChange} className="mb-4">
-        {registeredVehicles.includes("CAR") && <TabPane tab="Ô tô" key="CAR" />}
-        {registeredVehicles.includes("MOTORBIKE") && (
-          <TabPane tab="Xe máy" key="MOTORBIKE" />
-        )}
-        {registeredVehicles.includes("BICYCLE") && (
-          <TabPane tab="Xe đạp" key="BICYCLE" />
-        )}
-      </Tabs>
+      {registeredVehicles.length > 0 && (
+        <Tabs
+          activeKey={activeType}
+          onChange={handleTabChange}
+          className="mb-4"
+        >
+          {registeredVehicles.includes("CAR") && (
+            <TabPane tab="Ô tô" key="CAR" />
+          )}
+          {registeredVehicles.includes("MOTORBIKE") && (
+            <TabPane tab="Xe máy" key="MOTORBIKE" />
+          )}
+          {registeredVehicles.includes("BICYCLE") && (
+            <TabPane tab="Xe đạp" key="BICYCLE" />
+          )}
+        </Tabs>
+      )}
 
-      {/* Giữ nguyên phần còn lại của component */}
-      {isLoading ? (
+      {/* Main content area */}
+      {initialLoading ? (
         <div className="bg-white rounded-lg shadow-sm p-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite] -translate-x-full"></div>
           <div className="flex items-center justify-center mb-4">
-            <Spin size="small" className="mr-2" />
+            <Spin size="large" className="mr-3" />
+            <span className="text-lg">Đang tải danh sách xe...</span>
           </div>
           <Skeleton active paragraph={{ rows: 5 }} />
         </div>
       ) : groupList.length > 0 ? (
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden relative">
+          {refreshLoading && (
+            <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
+              <div className="bg-white p-4 rounded-lg shadow-lg flex items-center">
+                <Spin size="small" className="mr-2" />
+                <span>Đang cập nhật...</span>
+              </div>
+            </div>
+          )}
           <Table
             columns={columns}
             dataSource={groupList}
             rowKey={(record) => record.thumb + "-" + record.vehicleNumber}
             scroll={{ x: 1200 }}
-            loading={isLoading}
+            loading={false} // Disable built-in loading since we have custom loading overlay
             pagination={{
               current: page + 1,
               pageSize: size,
@@ -654,7 +906,7 @@ export default function UserRegisterVehicle() {
             }}
             className="vehicle-table"
             locale={{
-              emptyText: isLoading ? "Đang tải dữ liệu..." : "Không có dữ liệu",
+              emptyText: "Không có dữ liệu",
             }}
           />
         </div>
@@ -663,15 +915,38 @@ export default function UserRegisterVehicle() {
           <Empty
             description={
               <div className="animate-fadeIn">
-                <p className="mb-4 text-lg">Bạn chưa đăng ký xe nào</p>
-                <Button
-                  type="primary"
-                  onClick={handleAddVehicle}
-                  className="animate-bounce"
-                  size="large"
-                >
-                  Đăng ký xe ngay
-                </Button>
+                {lastError ? (
+                  <>
+                    <div className="mb-4">
+                      <div className="text-red-500 text-lg mb-2">
+                        Lỗi tải dữ liệu
+                      </div>
+                      <div className="text-gray-500 text-sm mb-4">
+                        {lastError}
+                      </div>
+                      <Button
+                        type="primary"
+                        onClick={handleManualRetry}
+                        loading={isLoading}
+                        icon={<ReloadOutlined />}
+                      >
+                        Thử lại
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-4 text-lg">Bạn chưa đăng ký xe nào</p>
+                    <Button
+                      type="primary"
+                      onClick={handleAddVehicle}
+                      className="animate-bounce"
+                      size="large"
+                    >
+                      Đăng ký xe ngay
+                    </Button>
+                  </>
+                )}
               </div>
             }
           />
@@ -1064,7 +1339,7 @@ export default function UserRegisterVehicle() {
       </Modal>
 
       {/* Modal đăng ký xe */}
-      <Modal
+      {/* <Modal
         open={registerVehicleModal}
         title={
           editVehicleId &&
@@ -1111,6 +1386,65 @@ export default function UserRegisterVehicle() {
             // Thêm callback mới cho việc thay đổi status
             onStatusChanged={() => {
               fetchGroupVehicles(activeType); // Refresh data ngay lập tức
+            }}
+          />
+        </Spin>
+      </Modal> */}
+
+      {/* Chỉ giữ lại Modal này */}
+      <Modal
+        open={registerVehicleModal}
+        title={
+          editVehicleId &&
+          typeof editVehicleId === "string" &&
+          editVehicleId.startsWith("GROUP-")
+            ? "Chỉnh sửa"
+            : editVehicleId
+            ? "Cập nhật thông tin xe"
+            : similarVehicleData
+            ? `Tạo xe cùng loại: ${similarVehicleData.thumb}`
+            : "Đăng ký xe mới"
+        }
+        width={1400}
+        style={{ top: 20 }}
+        destroyOnClose
+        footer={null}
+        onCancel={() => {
+          setRegisterVehicleModal(false);
+          setSimilarVehicleData(null);
+        }}
+        confirmLoading={false}
+      >
+        <Spin
+          spinning={editVehicleId ? isLoading : false}
+          tip="Đang tải thông tin xe..."
+        >
+          <RegisterVehicleForm
+            vehicleId={
+              editVehicleId &&
+              typeof editVehicleId === "string" &&
+              editVehicleId.startsWith("GROUP-")
+                ? undefined
+                : editVehicleId || undefined
+            }
+            groupEdit={
+              editVehicleId &&
+              typeof editVehicleId === "string" &&
+              editVehicleId.startsWith("GROUP-")
+                ? groupDetail || undefined // ✅ Chuyển null thành undefined
+                : undefined
+            }
+            similarVehicleData={similarVehicleData || undefined} // ✅ Chuyển null thành undefined
+            onOk={() => {
+              setRegisterVehicleModal(false);
+              setSimilarVehicleData(null);
+              fetchGroupVehicles(activeType);
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            }}
+            onStatusChanged={() => {
+              fetchGroupVehicles(activeType);
             }}
           />
         </Spin>

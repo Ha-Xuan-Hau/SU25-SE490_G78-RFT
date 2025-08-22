@@ -29,7 +29,8 @@
     ".next/types/**/*.ts",
     "src/recoils/user.state.ts",
     "src/recoils/provider.state.js",
-    "src/utils/jwt.js"
+    "src/utils/jwt.js",
+    "src/utils/NotificationStorage.js"
   ],
   "exclude": ["node_modules"]
 }

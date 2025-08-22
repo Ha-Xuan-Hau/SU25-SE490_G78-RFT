@@ -48,6 +48,7 @@ const { TabPane } = Tabs;
 const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
   vehicleId,
   onOk,
+  similarVehicleData,
   onStatusChanged,
 }) => {
   const [user] = useUserState();
@@ -290,6 +291,88 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
       }
     }
   }, [vehicleDetail.data, form]);
+
+  useEffect(() => {
+    if (similarVehicleData && !vehicleId) {
+      // Chỉ load khi tạo mới (không có vehicleId) và có similarVehicleData
+      const vehicle = similarVehicleData;
+
+      // Xác định loại xe
+      let type = VehicleType.CAR;
+      if (vehicle.vehicleType) {
+        if (
+          vehicle.vehicleType === "MOTORBIKE" ||
+          vehicle.vehicleType === "Motorbike"
+        ) {
+          type = VehicleType.MOTORBIKE;
+        } else if (
+          vehicle.vehicleType === "BICYCLE" ||
+          vehicle.vehicleType === "Bicycle"
+        ) {
+          type = VehicleType.BICYCLE;
+        }
+      } else {
+        if (!vehicle.numberSeat && !vehicle.licensePlate) {
+          type = VehicleType.BICYCLE;
+        } else if (!vehicle.numberSeat && vehicle.licensePlate) {
+          type = VehicleType.MOTORBIKE;
+        }
+      }
+      setVehicleType(type);
+
+      const allImages =
+        vehicle.vehicleImages?.map(
+          (img: { imageUrl: string }) => img.imageUrl
+        ) || [];
+
+      // Tách ảnh xe và ảnh giấy tờ
+      let vehicleImages, documentImage;
+      if (type === VehicleType.BICYCLE) {
+        vehicleImages = allImages.slice(0, 4);
+        documentImage = "";
+      } else {
+        vehicleImages = allImages.slice(0, 4);
+        documentImage = allImages[4] || "";
+      }
+
+      const featureNames =
+        vehicle.vehicleFeatures?.map(
+          (feature: { name: string }) => feature.name
+        ) || [];
+      const brand = brandOptions.find(
+        (b: any) => b.label === vehicle.brandName
+      );
+      const model = modelOptions.find(
+        (m: any) => m.label === vehicle.modelName
+      );
+
+      // Load data vào form, nhưng clear một số field cần thiết
+      form.setFieldsValue({
+        brandId: brand?.value,
+        modelId: model?.value,
+        brandName: vehicle.brandName,
+        modelName: vehicle.modelName,
+        thumb: `${vehicle.thumb}`,
+        numberSeat: vehicle.numberSeat?.toString(),
+        transmission: vehicle.transmission,
+        licensePlate: "", // Clear biển số để nhập mới
+        yearOfManufacture: vehicle.yearManufacture,
+        costPerDay: vehicle.costPerDay,
+        description: vehicle.description,
+        images: vehicleImages, // Load ảnh cũ làm mẫu
+        documents: documentImage, // Load ảnh giấy tờ cũ làm mẫu
+        vehicleFeatures: featureNames,
+        fuelType: vehicle.fuelType,
+        rentalRule: vehicle.penalty?.id,
+        isMultipleVehicles: false, // Mặc định là false
+        haveDriver: vehicle.haveDriver || "NO",
+        insuranceStatus: vehicle.insuranceStatus || "NO",
+        shipToAddress: vehicle.shipToAddress || "NO",
+      });
+
+      setIsMultipleVehicles(false);
+    }
+  }, [similarVehicleData, vehicleId, form, brandOptions, modelOptions]);
 
   const rentalRuleOptions = rentalRules.map((rule) => ({
     value: rule.id,
@@ -846,8 +929,7 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           onOk?.();
           form.resetFields();
         } catch (error) {
-          showError("Có lỗi xảy ra khi đăng ký xe");
-          console.error(error);
+          showApiError(error);
         } finally {
           setSubmitting(false);
         }
