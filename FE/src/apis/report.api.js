@@ -12,21 +12,10 @@ import { apiClient } from './client';
  * @returns {Promise} Response từ server
  */
 export const createReport = async (reportData) => {
-    try {
-        const response = await apiClient.post('/reports', reportData);
-        return response.data;
-    } catch (error) {
-        // Handle specific error cases
-        if (error.response?.status === 400) {
-            throw new Error('Dữ liệu báo cáo không hợp lệ');
-        } else if (error.response?.status === 401) {
-            throw new Error('Bạn cần đăng nhập để báo cáo');
-        } else if (error.response?.status === 429) {
-            throw new Error('Bạn đã báo cáo quá nhiều. Vui lòng thử lại sau');
-        }
-        throw error;
-    }
+    const response = await apiClient.post('/reports', reportData);
+    return response.data;
 };
+
 
 
 /**
@@ -92,13 +81,13 @@ export const getReportTypeMapping = () => ({
     'FAKE_ORDER': { generalType: 'SERIOUS_ERROR', label: 'Đặt đơn giả', color: 'error' },
     'DISPUTE_REFUND': { generalType: 'SERIOUS_ERROR', label: 'Tranh chấp hoàn tiền/phạt', color: 'error' },
     'LATE_RETURN_NO_CONTACT': { generalType: 'SERIOUS_ERROR', label: 'Không trả xe đúng hạn và mất liên lạc', color: 'error' },
+    'DIRTY_CAR': { generalType: 'SERIOUS_ERROR', label: 'Xe bẩn', color: 'orange' },
 
     // Non-serious Errors - Lỗi vi phạm
     'INAPPROPRIATE': { generalType: 'NON_SERIOUS_ERROR', label: 'Ngôn từ không phù hợp', color: 'red' },
     'VIOLENCE': { generalType: 'NON_SERIOUS_ERROR', label: 'Bạo lực', color: 'red' },
     'SPAM': { generalType: 'NON_SERIOUS_ERROR', label: 'Spam', color: 'orange' },
     'OTHERS': { generalType: 'NON_SERIOUS_ERROR', label: 'Khác', color: 'default' },
-    'DIRTY_CAR': { generalType: 'NON_SERIOUS_ERROR', label: 'Xe bẩn', color: 'orange' },
     'MISLEADING_LISTING': { generalType: 'NON_SERIOUS_ERROR', label: 'Thông tin sai trong bài đăng', color: 'red' },
 
     // Staff Errors - Lỗi gắn cờ
