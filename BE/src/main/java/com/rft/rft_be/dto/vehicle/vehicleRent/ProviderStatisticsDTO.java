@@ -26,6 +26,9 @@ public class ProviderStatisticsDTO {
     
     // Thống kê xe
     private Long totalVehicles;
+    private Long totalCars;
+    private Long totalMotorbikes;
+    private Long totalBicycles;
     
     // Thống kê contract trong tháng hiện tại
     private Long totalRentingContracts; // Trạng thái RENTING

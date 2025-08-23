@@ -1660,39 +1660,97 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         String userId = authentication.getToken().getClaim("userId");
         log.info("Lấy thống kê cho provider: {}", userId);
 
-        // Lấy thông tin provider
+        // 1. Lấy thông tin provider
         User provider = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy provider với id: " + userId));
 
-        // Lấy các dịch vụ đã đăng ký
+        // 2. Lấy các dịch vụ đã đăng ký
         List<String> registeredServices = userRegisterVehicleRepository.findByUserId(userId)
                 .stream()
                 .map(UserRegisterVehicle::getVehicleType)
                 .collect(Collectors.toList());
 
-        // Đếm tổng số xe
+        // 3. Đếm tổng số xe và thống kê theo loại xe
         Long totalVehicles = vehicleRepository.countByUserId(userId);
+        
+        // Lấy thống kê xe theo loại cho provider này
+        List<Object[]> vehicleTypeCounts = vehicleRepository.countByVehicleTypeAndProviderId(userId);
+        
+        // Xử lý dữ liệu thống kê xe theo loại
+        Long totalCars = 0L, totalMotorbikes = 0L, totalBicycles = 0L;
+        for (Object[] result : vehicleTypeCounts) {
+            Vehicle.VehicleType vehicleType = (Vehicle.VehicleType) result[0];
+            Long count = (Long) result[1];
+            
+            switch (vehicleType) {
+                case CAR -> totalCars = count;
+                case MOTORBIKE -> totalMotorbikes = count;
+                case BICYCLE -> totalBicycles = count;
+            }
+        }
 
-        // Đếm contract theo trạng thái trong tháng hiện tại
-        Long totalRentingContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.RENTING);
-        Long totalFinishedContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.FINISHED);
-        Long totalCancelledContracts = contractRepository.countByProviderIdAndStatusInCurrentMonth(userId, Contract.Status.CANCELLED);
+        // 4. Lấy thống kê contract theo trạng thái trong tháng hiện tại (1 lần gọi)
+        List<Object[]> contractStatusCounts = contractRepository.countByProviderIdAndStatusGroupInCurrentMonth(userId);
+        
+        // Xử lý dữ liệu contract status
+        Long totalRentingContracts = 0L, totalFinishedContracts = 0L, totalCancelledContracts = 0L;
+        for (Object[] result : contractStatusCounts) {
+            Contract.Status status = (Contract.Status) result[0];
+            Long count = (Long) result[1];
+            
+            switch (status) {
+                case RENTING -> totalRentingContracts = count;
+                case FINISHED -> totalFinishedContracts = count;
+                case CANCELLED -> totalCancelledContracts = count;
+            }
+        }
 
-        // Tính doanh thu từ final contract trong tháng hiện tại
-        BigDecimal totalRevenue = finalContractRepository.sumRevenueByProviderInCurrentMonth(userId);
-        Long totalFinalContracts = finalContractRepository.countFinalContractsByProviderInCurrentMonth(userId);
-
-        // Tạo dữ liệu thống kê theo tháng (12 tháng gần nhất)
+        // 5. Lấy dữ liệu thống kê theo tháng (12 tháng gần nhất) và doanh thu hiện tại - CHỈ 1 LẦN GỌI
         List<ProviderStatisticsDTO.MonthlyRevenueDTO> monthlyRevenue = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startDate = now.minusMonths(11).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endDate = now.plusMonths(1).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
         
+        List<Object[]> combinedData = finalContractRepository.getCurrentMonthAndMonthlyDataByProvider(userId, startDate, endDate);
+        
+        // Xử lý dữ liệu kết hợp
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        Long totalFinalContracts = 0L;
+        var monthlyDataMap = new java.util.HashMap<String, Object[]>();
+        
+        for (Object[] data : combinedData) {
+            String dataType = (String) data[0];
+            Integer month = (Integer) data[1];
+            Integer year = (Integer) data[2];
+            BigDecimal revenue = (BigDecimal) data[3];
+            Long count = (Long) data[4];
+            
+            if ("CURRENT".equals(dataType)) {
+                // Dữ liệu tháng hiện tại
+                totalRevenue = revenue;
+                totalFinalContracts = count;
+            } else {
+                // Dữ liệu các tháng khác
+                String key = year + "-" + String.format("%02d", month);
+                monthlyDataMap.put(key, new Object[]{revenue, count});
+            }
+        }
+        
+        // Tạo danh sách 12 tháng gần nhất
         for (int i = 11; i >= 0; i--) {
             LocalDateTime targetDate = now.minusMonths(i);
             int month = targetDate.getMonthValue();
             int year = targetDate.getYear();
+            String key = year + "-" + String.format("%02d", month);
             
-            BigDecimal monthRevenue = finalContractRepository.sumRevenueByProviderAndMonth(userId, month, year);
-            Long monthOrderCount = finalContractRepository.countFinalContractsByProviderAndMonth(userId, month, year);
+            BigDecimal monthRevenue = BigDecimal.ZERO;
+            Long monthOrderCount = 0L;
+            
+            if (monthlyDataMap.containsKey(key)) {
+                Object[] data = monthlyDataMap.get(key);
+                monthRevenue = (BigDecimal) data[0];
+                monthOrderCount = (Long) data[1];
+            }
             
             String monthName = targetDate.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH);
             
@@ -1713,6 +1771,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .closeTime(provider.getCloseTime())
                 .registeredServices(registeredServices)
                 .totalVehicles(totalVehicles)
+                .totalCars(totalCars)
+                .totalMotorbikes(totalMotorbikes)
+                .totalBicycles(totalBicycles)
                 .totalRentingContracts(totalRentingContracts)
                 .totalFinishedContracts(totalFinishedContracts)
                 .totalCancelledContracts(totalCancelledContracts)
