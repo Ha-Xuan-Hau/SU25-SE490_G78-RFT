@@ -83,11 +83,20 @@ const ListVehiclePage = () => {
       if (pagination) {
         setPaginationInfo(pagination);
         setCurrentPage(pagination.currentPage + 1);
+      } else {
+        setPaginationInfo({
+          totalElements: 0,
+          totalPages: 0,
+          currentPage: 0,
+          size: 12,
+        });
+        setCurrentPage(1);
       }
 
-      if (isAdvanced !== undefined && searchParams !== undefined) {
+      // ✅ Luôn lưu searchParams cho cả basic và advanced search
+      if (searchParams !== undefined) {
         setAdvancedSearchState({
-          isAdvancedSearch: isAdvanced,
+          isAdvancedSearch: isAdvanced || false,
           searchParams: searchParams,
         });
       }
@@ -119,26 +128,43 @@ const ListVehiclePage = () => {
         } else {
           const { basicSearchVehicles } = await import("@/apis/vehicle.api");
 
-          const searchParams = {
-            address: filters.city,
-            vehicleType: filters.vehicleType,
-            page: page - 1,
-            size: 12,
-          };
+          // ✅ Sử dụng searchParams đã lưu từ lần search trước
+          const lastSearchParams = advancedSearchState.searchParams;
+
+          // Chỉ build lại nếu chưa có searchParams (initial load)
+          const searchParams =
+            Object.keys(lastSearchParams).length > 0
+              ? {
+                  ...lastSearchParams,
+                  page: page - 1,
+                  size: 12,
+                }
+              : {
+                  // Build từ filters nếu chưa search lần nào
+                  address:
+                    [filters.ward, filters.district, filters.city]
+                      .filter(Boolean)
+                      .join(", ") || undefined,
+                  vehicleType: filters.vehicleType,
+                  pickupDateTime: filters.pickupDateTime,
+                  returnDateTime: filters.returnDateTime,
+                  page: page - 1,
+                  size: 12,
+                };
 
           result = await basicSearchVehicles(searchParams);
         }
 
         setVehicles(result.content || []);
 
-        const newPagination: PaginationInfo = {
+        // ✅ Luôn cập nhật paginationInfo đầy đủ
+        setPaginationInfo({
           totalElements: result.totalElements || 0,
-          totalPages: result.totalPages || 1,
-          currentPage: result.number || 0,
+          totalPages: result.totalPages || 0,
+          currentPage: result.currentPage || 0,
           size: result.size || 12,
-        };
+        });
 
-        setPaginationInfo(newPagination);
         scrollToTop();
       } catch (err) {
         console.error("Page change error:", err);
@@ -167,8 +193,8 @@ const ListVehiclePage = () => {
         setVehicles(result.content || []);
         setPaginationInfo({
           totalElements: result.totalElements || 0,
-          totalPages: result.totalPages || 1,
-          currentPage: result.number || 0,
+          totalPages: result.totalPages || 0,
+          currentPage: result.currentPage || 0,
           size: result.size || 12,
         });
       } catch (err) {

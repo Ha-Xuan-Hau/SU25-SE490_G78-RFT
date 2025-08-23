@@ -7,68 +7,41 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
 });
 
 interface StatisticsChartProps {
-  monthlyData?: Array<{
-    month: string;
+  dailyData?: Array<{
+    day: string | number;
     orderCount: number;
     revenue: number;
   }>;
 }
 
-export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
-  // Map tháng tiếng Anh sang số tháng
-  const monthToNumber: Record<string, number> = {
-    Jan: 1,
-    January: 1,
-    Feb: 2,
-    February: 2,
-    Mar: 3,
-    March: 3,
-    Apr: 4,
-    April: 4,
-    May: 5,
-    Jun: 6,
-    June: 6,
-    Jul: 7,
-    July: 7,
-    Aug: 8,
-    August: 8,
-    Sep: 9,
-    September: 9,
-    Oct: 10,
-    October: 10,
-    Nov: 11,
-    November: 11,
-    Dec: 12,
-    December: 12,
-  };
+export default function StatisticsChartMonth({
+  dailyData,
+}: StatisticsChartProps) {
+  // Lấy tháng hiện tại
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth(); // 0-11
+  const currentYear = currentDate.getFullYear();
 
-  // Luôn hiển thị 12 tháng
-  const months = [
-    "T1",
-    "T2",
-    "T3",
-    "T4",
-    "T5",
-    "T6",
-    "T7",
-    "T8",
-    "T9",
-    "T10",
-    "T11",
-    "T12",
-  ];
+  // Tính số ngày trong tháng hiện tại
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  // Tạo array các ngày trong tháng (1, 2, 3, ..., 30/31)
+  const days = Array.from({ length: daysInMonth }, (_, i) =>
+    (i + 1).toString()
+  );
 
   // Khởi tạo arrays cho orders và revenue
-  const orders = new Array(12).fill(0);
-  const revenue = new Array(12).fill(0);
+  const orders = new Array(daysInMonth).fill(0);
+  const revenue = new Array(daysInMonth).fill(0);
 
   // Nếu có data từ API, điền vào đúng vị trí
-  if (monthlyData && monthlyData.length > 0) {
-    monthlyData.forEach((item) => {
-      const monthNum = monthToNumber[item.month];
-      if (monthNum && monthNum >= 1 && monthNum <= 12) {
-        orders[monthNum - 1] = item.orderCount;
-        revenue[monthNum - 1] = Number(item.revenue);
+  if (dailyData && dailyData.length > 0) {
+    dailyData.forEach((item) => {
+      const dayNum =
+        typeof item.day === "string" ? parseInt(item.day) : item.day;
+      if (dayNum && dayNum >= 1 && dayNum <= daysInMonth) {
+        orders[dayNum - 1] = item.orderCount;
+        revenue[dayNum - 1] = Number(item.revenue);
       }
     });
   }
@@ -77,6 +50,22 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
   const maxOrders = Math.max(...orders, 10);
   const maxRevenue = Math.max(...revenue, 1000000);
 
+  // Tên tháng để hiển thị
+  const monthNames = [
+    "Tháng 1",
+    "Tháng 2",
+    "Tháng 3",
+    "Tháng 4",
+    "Tháng 5",
+    "Tháng 6",
+    "Tháng 7",
+    "Tháng 8",
+    "Tháng 9",
+    "Tháng 10",
+    "Tháng 11",
+    "Tháng 12",
+  ];
+
   const options: ApexOptions = {
     legend: {
       show: true,
@@ -84,7 +73,7 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
       horizontalAlign: "right",
       fontSize: "11px",
       markers: {
-        size: 8, // Sửa lỗi: dùng size thay vì width/height
+        size: 8,
         offsetX: 0,
         offsetY: 0,
       },
@@ -161,7 +150,10 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
         fontSize: "11px",
       },
       y: {
-        formatter: function (value, { seriesIndex }) {
+        formatter: function (
+          value: number,
+          { seriesIndex }: { seriesIndex: number }
+        ) {
           if (seriesIndex === 0) {
             return Math.round(value) + " đơn";
           }
@@ -171,7 +163,7 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
     },
     xaxis: {
       type: "category",
-      categories: months,
+      categories: days,
       axisBorder: {
         show: false,
       },
@@ -179,9 +171,18 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
         show: false,
       },
       labels: {
+        show: true,
         style: {
-          fontSize: "10px",
+          fontSize: "9px",
           colors: "#9CA3AF",
+        },
+        rotate: -45,
+        rotateAlways: false,
+        hideOverlappingLabels: true,
+        maxHeight: 60,
+        trim: false,
+        formatter: function (value: string): string {
+          return value;
         },
       },
     },
@@ -196,12 +197,12 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
             fontSize: "10px",
             colors: "#9CA3AF",
           },
-          formatter: function (value) {
+          formatter: function (value: number): string {
             return Math.round(value).toString();
           },
         },
         title: {
-          text: undefined, // Ẩn title để tiết kiệm không gian
+          text: undefined,
         },
       },
       {
@@ -215,7 +216,7 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
             fontSize: "10px",
             colors: "#9CA3AF",
           },
-          formatter: function (value) {
+          formatter: function (value: number): string {
             if (value >= 1000000000) {
               return (value / 1000000000).toFixed(0) + "B";
             } else if (value >= 1000000) {
@@ -227,7 +228,7 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
           },
         },
         title: {
-          text: undefined, // Ẩn title để tiết kiệm không gian
+          text: undefined,
         },
       },
     ],
@@ -236,10 +237,54 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
         breakpoint: 1024,
         options: {
           chart: {
-            height: 200,
+            height: 220,
           },
           legend: {
             fontSize: "10px",
+          },
+          xaxis: {
+            labels: {
+              style: {
+                fontSize: "8px",
+              },
+              rotate: -45,
+            },
+          },
+        },
+      },
+      {
+        breakpoint: 768,
+        options: {
+          chart: {
+            height: 200,
+          },
+          legend: {
+            show: false,
+          },
+          xaxis: {
+            labels: {
+              style: {
+                fontSize: "7px",
+              },
+              rotate: -45,
+              formatter: function (value: string): string {
+                const day = parseInt(value);
+                // Hiển thị ngày 1, 5, 10, 15, 20, 25, 30 và ngày cuối tháng
+                if (
+                  day === 1 ||
+                  day === 5 ||
+                  day === 10 ||
+                  day === 15 ||
+                  day === 20 ||
+                  day === 25 ||
+                  day === 30 ||
+                  day === daysInMonth
+                ) {
+                  return value;
+                }
+                return "";
+              },
+            },
           },
         },
       },
@@ -255,7 +300,25 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
           xaxis: {
             labels: {
               style: {
-                fontSize: "9px",
+                fontSize: "6px",
+              },
+              rotate: -45,
+              formatter: function (value: string): string {
+                const day = parseInt(value);
+                // Mobile: chỉ hiển thị ngày 1, 5, 10, 15, 20, 25, 30 và ngày cuối tháng
+                if (
+                  day === 1 ||
+                  day === 5 ||
+                  day === 10 ||
+                  day === 15 ||
+                  day === 20 ||
+                  day === 25 ||
+                  day === 30 ||
+                  day === daysInMonth
+                ) {
+                  return value;
+                }
+                return "";
               },
             },
           },
@@ -287,38 +350,16 @@ export default function StatisticsChart({ monthlyData }: StatisticsChartProps) {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-            Biểu đồ thống kê
+            Biểu đồ thống kê {monthNames[currentMonth]} {currentYear}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Theo dõi xu hướng 12 tháng
+            Theo dõi xu hướng theo ngày trong tháng
           </p>
         </div>
-
-        {/* Mini summary */}
-        {/* <div className="flex gap-4">
-          <div className="text-right">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Tổng đơn</p>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-              {totalOrders}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Tổng thu</p>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-              {totalRevenue >= 1000000000
-                ? (totalRevenue / 1000000000).toFixed(1) + "B"
-                : totalRevenue >= 1000000
-                ? (totalRevenue / 1000000).toFixed(1) + "M"
-                : totalRevenue >= 1000
-                ? (totalRevenue / 1000).toFixed(0) + "K"
-                : totalRevenue}
-            </p>
-          </div>
-        </div> */}
       </div>
 
-      {/* Chart container - Thu nhỏ chiều cao */}
-      <div className="h-[200px] sm:h-[220px] lg:h-[240px] xl:h-[260px]">
+      {/* Chart container */}
+      <div className="h-[240px] sm:h-[260px] lg:h-[280px] xl:h-[300px]">
         <ReactApexChart
           options={options}
           series={series}

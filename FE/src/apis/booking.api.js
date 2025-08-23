@@ -365,28 +365,91 @@ export const confirmBookingByProvider = async (bookingId) => {
  * @param {string} status - Status của booking (PENDING, CONFIRMED, etc.)
  * @returns {Promise<Object>} Response chứa danh sách bookings
  */
-export const getBookingsByProviderAndStatus = async (providerId, status) => {
+export const getBookingsByProviderAndStatus = async (providerId, status, page = 0, size = 10) => {
     try {
-        const response = await apiClient.get(`/bookings/provider/${providerId}/status/${status}`);
+        // ✅ Thêm query parameters cho pagination
+        const response = await apiClient.get(
+            `/bookings/provider/${providerId}/status/${status}`,
+            {
+                params: {
+                    page: page,
+                    size: size
+                }
+            }
+        );
 
-        // Kiểm tra và trả về data đúng format
-        if (response.data && response.data.content) {
-            // Nếu API trả về format phân trang
-            return response.data.content;
+        // ✅ Trả về đầy đủ response data bao gồm pagination info
+        if (response.data) {
+            // Nếu backend trả về format chuẩn của Spring Boot Page
+            if (response.data.content !== undefined) {
+                return {
+                    content: response.data.content || [],
+                    totalElements: response.data.totalElements || 0,
+                    totalPages: response.data.totalPages || 0,
+                    currentPage: response.data.number || 0,
+                    pageSize: response.data.size || size,
+                    hasNext: response.data.hasNext || false,
+                    hasPrevious: response.data.hasPrevious || false,
+                    first: response.data.first || false,
+                    last: response.data.last || false
+                };
+            }
+
+            // Nếu backend trả về array trực tiếp (fallback cho compatibility)
+            if (Array.isArray(response.data)) {
+                return {
+                    content: response.data,
+                    totalElements: response.data.length,
+                    totalPages: 1,
+                    currentPage: 0,
+                    pageSize: response.data.length,
+                    hasNext: false,
+                    hasPrevious: false,
+                    first: true,
+                    last: true
+                };
+            }
+
+            // Trường hợp khác
+            return {
+                content: [],
+                totalElements: 0,
+                totalPages: 0,
+                currentPage: 0,
+                pageSize: size,
+                hasNext: false,
+                hasPrevious: false,
+                first: true,
+                last: true
+            };
         }
 
-        // Nếu API trả về array trực tiếp
-        return response.data;
-    } catch (error) {
-        ////  console.error('Error fetching provider bookings:', error);
-
+        // Fallback nếu không có data
         return {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            currentPage: 0,
+            pageSize: size,
+            hasNext: false,
+            hasPrevious: false,
+            first: true,
+            last: true
+        };
+
+    } catch (error) {
+        console.error('Error fetching provider bookings:', error);
+
+        // ✅ Throw error để component có thể handle
+        throw {
             success: false,
             error: error.response?.data?.message || error.message,
-            statusCode: error.response?.status
+            statusCode: error.response?.status,
+            message: error.response?.data?.message || 'Lỗi khi tải dữ liệu đặt xe'
         };
     }
 };
+
 
 
 /**
