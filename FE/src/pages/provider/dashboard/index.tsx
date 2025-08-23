@@ -81,7 +81,7 @@ export default function ProviderDashboard() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
+                  group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-md transition-colors duration-200
                   ${
                     activeTab === tab.id
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"

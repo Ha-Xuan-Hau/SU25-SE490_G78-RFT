@@ -216,34 +216,37 @@ const formatXAxisLabel = (
     const hour = timestamp.getHours();
     const day = timestamp.getDate();
     const month = timestamp.getMonth() + 1;
-    return `${day}/${month} ${hour}h`;
+    // Format rõ ràng hơn
+    return `${day}/${month} - ${hour}:00`;
   } else if (timeFrame === "daily") {
-    return timestamp.getDate().toString();
-  } else if (timeFrame === "weekly") {
-    // Format: "Tuần 1 T5" hoặc "T1 05/12"
     const day = timestamp.getDate();
     const month = timestamp.getMonth() + 1;
-
-    // Tính tuần thứ mấy trong tháng
+    // Hiển thị cả tháng để rõ ràng hơn
+    return `${day}/${month}`;
+  } else if (timeFrame === "weekly") {
+    const day = timestamp.getDate();
+    const month = timestamp.getMonth() + 1;
     const weekOfMonth = Math.ceil(day / 7);
-
-    return `Tuần ${weekOfMonth} (${day}/${month})`;
+    // Format ngắn gọn hơn
+    return `T${weekOfMonth} (${day}/${month})`;
   } else {
     const monthNames = [
-      "Tháng 1",
-      "Tháng 2",
-      "Tháng 3",
-      "Tháng 4",
-      "Tháng 5",
-      "Tháng 6",
-      "Tháng 7",
-      "Tháng 8",
-      "Tháng 9",
-      "Tháng 10",
-      "Tháng 11",
-      "Tháng 12",
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "T7",
+      "T8",
+      "T9",
+      "T10",
+      "T11",
+      "T12",
     ];
-    return monthNames[timestamp.getMonth()];
+    const year = timestamp.getFullYear();
+    // Thêm năm nếu cần
+    return `${monthNames[timestamp.getMonth()]}/${year}`;
   }
 };
 
@@ -467,22 +470,20 @@ export default function DynamicStatisticsChart({
       labels: {
         show: true,
         style: {
-          fontSize: "10px",
-          colors: "#9CA3AF",
+          fontSize: "12px",
+          colors: "#374151",
+          fontWeight: 500,
         },
-        rotate: timeFrame === "hourly" || timeFrame === "weekly" ? -45 : 0,
+        rotate:
+          timeFrame === "hourly" ||
+          timeFrame === "weekly" ||
+          timeFrame === "daily"
+            ? -45
+            : 0, // Xoay cho daily nếu nhiều ngày
         formatter: function (value: string): string {
-          if (timeFrame === "daily" && categories.length > 15) {
-            const day = parseInt(value);
-            // Show every 5th day
-            if (
-              day % 5 === 0 ||
-              day === 1 ||
-              day === parseInt(categories[categories.length - 1])
-            ) {
-              return value;
-            }
-            return "";
+          // Với daily, LUÔN hiển thị TẤT CẢ các ngày
+          if (timeFrame === "daily") {
+            return value; // Hiển thị tất cả, không ẩn gì
           }
           return value;
         },
@@ -496,6 +497,15 @@ export default function DynamicStatisticsChart({
           chart: {
             height: 650,
           },
+          xaxis: {
+            labels: {
+              style: {
+                fontSize: "12px",
+                fontWeight: 500,
+              },
+              rotate: timeFrame === "daily" && categories.length > 20 ? -45 : 0,
+            },
+          },
         },
       },
       {
@@ -503,6 +513,15 @@ export default function DynamicStatisticsChart({
         options: {
           chart: {
             height: 600,
+          },
+          xaxis: {
+            labels: {
+              style: {
+                fontSize: "11px",
+                fontWeight: 500,
+              },
+              rotate: timeFrame === "daily" && categories.length > 15 ? -45 : 0,
+            },
           },
         },
       },
@@ -515,6 +534,15 @@ export default function DynamicStatisticsChart({
           legend: {
             position: "bottom",
             horizontalAlign: "center",
+          },
+          xaxis: {
+            labels: {
+              style: {
+                fontSize: "10px",
+                fontWeight: 500,
+              },
+              rotate: timeFrame === "daily" ? -45 : 0, // Luôn xoay cho daily trên tablet
+            },
           },
         },
       },
@@ -529,9 +557,10 @@ export default function DynamicStatisticsChart({
           },
           xaxis: {
             labels: {
-              rotate: -45,
+              rotate: -45, // Luôn xoay trên mobile
               style: {
-                fontSize: "8px",
+                fontSize: "9px",
+                fontWeight: 500,
               },
             },
           },
@@ -548,9 +577,10 @@ export default function DynamicStatisticsChart({
           },
           xaxis: {
             labels: {
-              rotate: -45,
+              rotate: -45, // Luôn xoay trên mobile
               style: {
-                fontSize: "7px",
+                fontSize: "8px",
+                fontWeight: 500,
               },
             },
           },
