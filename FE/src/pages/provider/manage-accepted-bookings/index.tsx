@@ -165,6 +165,24 @@ export default function ManageAcceptedBookings() {
   // Provider state
   const [provider] = useProviderState();
 
+  interface PaginationInfo {
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  }
+
+  // Thêm state để lưu pagination info
+  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo>({
+    totalElements: 0,
+    totalPages: 0,
+    currentPage: 0,
+    pageSize: 10,
+  });
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
   // Thêm state để quản lý checkbox
   const [deliveryChecklist, setDeliveryChecklist] = useState({
     licenseCheck: false,
@@ -184,6 +202,19 @@ export default function ManageAcceptedBookings() {
       vehicleConditionCheck: false,
       rulesGuidanceCheck: false,
     });
+  };
+
+  const handleTableChange = (pagination: any, filters: any, sorter: any) => {
+    // Handle other table changes if needed
+    console.log("Table changed:", pagination, filters, sorter);
+  };
+
+  const handlePaginationChange = (page: number, size?: number) => {
+    setCurrentPage(page - 1); // Convert to 0-based
+    if (size && size !== pageSize) {
+      setPageSize(size);
+      setCurrentPage(0); // Reset to first page
+    }
   };
 
   // Kiểm tra tất cả checkbox đã được check
@@ -246,7 +277,7 @@ export default function ManageAcceptedBookings() {
 
   // Load booking data from API
   const fetchBookings = useCallback(
-    async (forceRefresh = false) => {
+    async (forceRefresh = false, page = 0, size = 10) => {
       try {
         const providerId = getProviderIdFromState(provider);
 
@@ -257,9 +288,12 @@ export default function ManageAcceptedBookings() {
           return;
         }
 
-        // Fix duplicate calls - kiểm tra đã fetch chưa
-        if (!forceRefresh && hasFetchedRef.current === providerId) {
-          //console.log("Already fetched for this provider");
+        // Fix duplicate calls
+        if (
+          !forceRefresh &&
+          hasFetchedRef.current === providerId &&
+          page === 0
+        ) {
           return;
         }
 
@@ -272,53 +306,131 @@ export default function ManageAcceptedBookings() {
           "RETURNED",
         ];
 
-        // Gọi API song song thay vì tuần tự
-        const promises = statuses.map(async (status) => {
-          try {
-            const bookingData = await getBookingsByProviderAndStatus(
-              providerId,
-              status
-            );
-            return Array.isArray(bookingData) ? bookingData : [];
-          } catch (error: any) {
-            // Bỏ qua lỗi, trả về array rỗng
-            showApiError(error.message);
-            return [];
-          }
-        });
+        if (activeTab === "ALL") {
+          // ✅ Fetch tất cả status với pagination
+          const promises = statuses.map(async (status) => {
+            try {
+              const response = (await getBookingsByProviderAndStatus(
+                providerId,
+                status,
+                page, // Truyền page parameter
+                size // Truyền size parameter
+              )) as {
+                content: BookingData[];
+                totalElements?: number;
+                totalPages?: number;
+                [key: string]: any;
+              };
 
-        // Đợi tất cả API calls hoàn thành
-        const results = await Promise.all(promises);
-
-        // Gộp tất cả bookings
-        const allBookings = results.flat();
-
-        // SẮP XẾP THEO THỜI GIAN MỚI NHẤT
-        allBookings.sort((a, b) => {
-          // Sắp xếp theo updatedAt hoặc createdAt (mới nhất lên đầu)
-          const timeA = a.createdAt || [0];
-          const timeB = b.createdAt || [0];
-
-          // So sánh từ năm -> tháng -> ngày -> giờ -> phút
-          for (let i = 0; i < Math.min(timeA.length, timeB.length); i++) {
-            if (timeB[i] !== timeA[i]) {
-              return timeB[i] - timeA[i]; // Đảo ngược để mới nhất lên đầu
+              // Giả sử API trả về format: { content: [], totalElements: number, totalPages: number }
+              return {
+                bookings: Array.isArray(response.content)
+                  ? response.content
+                  : [],
+                totalElements: response.totalElements || 0,
+                totalPages: response.totalPages || 0,
+              };
+            } catch (error: any) {
+              showApiError(error.message);
+              return {
+                bookings: [],
+                totalElements: 0,
+                totalPages: 0,
+              };
             }
-          }
-          return 0;
-        });
+          });
 
-        console.log("Total bookings fetched:", allBookings.length);
-        setBookings(allBookings);
-        hasFetchedRef.current = providerId; // Đánh dấu đã fetch
+          const results = await Promise.all(promises);
+
+          // ✅ Gộp tất cả bookings
+          const allBookings = results.flatMap((result) => result.bookings);
+
+          // ✅ Tính tổng pagination info
+          const totalElements = results.reduce(
+            (sum, result) => sum + result.totalElements,
+            0
+          );
+          const maxTotalPages = Math.max(
+            ...results.map((result) => result.totalPages)
+          );
+
+          // ✅ Sắp xếp theo thời gian mới nhất
+          allBookings.sort((a, b) => {
+            const timeA = a.createdAt || [0];
+            const timeB = b.createdAt || [0];
+            for (let i = 0; i < Math.min(timeA.length, timeB.length); i++) {
+              if (timeB[i] !== timeA[i]) {
+                return timeB[i] - timeA[i];
+              }
+            }
+            return 0;
+          });
+
+          setBookings(allBookings);
+          setPaginationInfo({
+            totalElements,
+            totalPages: maxTotalPages,
+            currentPage: page,
+            pageSize: size,
+          });
+        } else {
+          // ✅ Fetch single status với pagination
+          try {
+            const response = (await getBookingsByProviderAndStatus(
+              providerId,
+              activeTab,
+              page,
+              size
+            )) as {
+              content: BookingData[];
+              totalElements?: number;
+              totalPages?: number;
+              [key: string]: any;
+            };
+
+            const bookings = Array.isArray(response.content)
+              ? response.content
+              : [];
+
+            // Sắp xếp
+            bookings.sort((a, b) => {
+              const timeA = a.createdAt || [0];
+              const timeB = b.createdAt || [0];
+              for (let i = 0; i < Math.min(timeA.length, timeB.length); i++) {
+                if (timeB[i] !== timeA[i]) {
+                  return timeB[i] - timeA[i];
+                }
+              }
+              return 0;
+            });
+
+            setBookings(bookings);
+            setPaginationInfo({
+              totalElements: response.totalElements || 0,
+              totalPages: response.totalPages || 0,
+              currentPage: page,
+              pageSize: size,
+            });
+          } catch (error: any) {
+            showApiError(error.message);
+            setBookings([]);
+            setPaginationInfo({
+              totalElements: 0,
+              totalPages: 0,
+              currentPage: 0,
+              pageSize: size,
+            });
+          }
+        }
+
+        hasFetchedRef.current = providerId;
       } catch (error: any) {
-        // Không log error
         showApiError(error.message);
       } finally {
         setLoading(false);
       }
     },
-    [provider, providerLoading]
+    [provider, providerLoading, activeTab]
   );
 
   // Thêm WebSocket listeners - ĐẶT SAU fetchBookings
@@ -468,17 +580,39 @@ export default function ManageAcceptedBookings() {
     setFilteredBookings(filtered);
   }, [bookings, activeTab, searchQuery]);
 
+  // Reset pagination khi chuyển tab
+  useEffect(() => {
+    setCurrentPage(0);
+    setPaginationInfo({
+      totalElements: 0,
+      totalPages: 0,
+      currentPage: 0,
+      pageSize: pageSize,
+    });
+
+    if (!providerLoading) {
+      fetchBookings(true, 0, pageSize);
+    }
+  }, [activeTab, fetchBookings, providerLoading, pageSize]);
+
+  // Load data khi thay đổi page
+  useEffect(() => {
+    if (!providerLoading && provider) {
+      fetchBookings(false, currentPage, pageSize);
+    }
+  }, [currentPage, pageSize, fetchBookings, providerLoading, provider]);
+
   // Update filtered bookings when bookings, activeTab, or searchQuery changes
   useEffect(() => {
     filterBookings();
   }, [filterBookings]);
 
   // Load booking data when provider is ready
-  useEffect(() => {
-    if (!providerLoading) {
-      fetchBookings();
-    }
-  }, [fetchBookings, providerLoading]);
+  // useEffect(() => {
+  //   if (!providerLoading) {
+  //     fetchBookings();
+  //   }
+  // }, [fetchBookings, providerLoading]);
 
   // Update status tag display function
   const getStatusTag = (status: string) => {
@@ -1171,7 +1305,7 @@ export default function ManageAcceptedBookings() {
   const tabItems = [
     {
       key: "ALL",
-      label: `Tất cả (${bookings.length})`,
+      label: `Tất cả (${paginationInfo.totalElements})`,
       children: null,
     },
     {
@@ -1520,25 +1654,47 @@ export default function ManageAcceptedBookings() {
 
               <Tabs
                 activeKey={activeTab}
-                onChange={setActiveTab}
+                onChange={(key) => {
+                  setActiveTab(key);
+                  // Reset search khi chuyển tab
+                  setSearchQuery("");
+                }}
                 items={tabItems}
                 size="large"
               />
             </div>
 
             <Table
-              onChange={handleChange}
+              onChange={handleTableChange}
               columns={columns}
               dataSource={filteredBookings}
               rowKey="id"
               loading={loading}
               scroll={{ x: 1200 }}
               pagination={{
-                pageSize: 10,
+                current: paginationInfo.currentPage + 1,
+                pageSize: paginationInfo.pageSize,
+                total: paginationInfo.totalElements,
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} của ${total} mục`,
+                showTotal: (total, range) => {
+                  if (activeTab === "ALL") {
+                    return `${range[0]}-${range[1]} của ${total} đơn hàng (tất cả trạng thái)`;
+                  }
+                  return `${range[0]}-${range[1]} của ${total} đơn hàng`;
+                },
+                onChange: (page, size) => {
+                  setCurrentPage(page - 1);
+                  if (size && size !== pageSize) {
+                    setPageSize(size);
+                    setCurrentPage(0);
+                  }
+                },
+                onShowSizeChange: (current, size) => {
+                  setPageSize(size);
+                  setCurrentPage(0);
+                },
+                pageSizeOptions: ["10", "20", "50", "100"],
               }}
               size="middle"
               locale={{
