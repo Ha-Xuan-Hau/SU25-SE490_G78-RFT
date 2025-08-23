@@ -121,23 +121,45 @@ export default function VehiclePendingPage() {
 
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadPendingStats();
-    loadPendingVehicles();
-  }, [activeTab]); // Load vehicles when the active tab changes
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   // Fetch Pending Vehicles
-  const loadPendingVehicles = async () => {
+  const loadPendingVehicles = async (page = 1, pageSize = 10) => {
     setLoading(true);
     try {
-      const response = await getPendingVehicles({ type: activeTab });
-      setVehicles(response.content); // Adjust based on the API response structure
+      const response = await getPendingVehicles({
+        type: activeTab,
+        page: page - 1, // 0-indexed
+        size: pageSize,
+      });
+
+      // Xử lý response format
+      setVehicles(response.content || []);
+      setPagination({
+        current: (response.currentPage || 0) + 1,
+        pageSize: pageSize,
+        total: response.totalItems || 0,
+      });
     } catch (error) {
       console.error("Error fetching vehicles:", error);
-      showApiError("Có lỗi xảy ra khi lấy danh sách xe chờ duyệt."); // Show error message
+      showApiError("Có lỗi xảy ra khi lấy danh sách xe chờ duyệt.");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Update useEffect
+  useEffect(() => {
+    loadPendingStats();
+    loadPendingVehicles(1, pagination.pageSize);
+  }, [activeTab]);
+
+  const handleTableChange = (newPagination: any) => {
+    loadPendingVehicles(newPagination.current, newPagination.pageSize);
   };
 
   // Fetch Pending Stats
@@ -508,10 +530,16 @@ export default function VehiclePendingPage() {
             loading={loading}
             rowKey="id"
             pagination={{
-              pageSize: 10,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} của ${total} xe`,
+              pageSizeOptions: ["10", "20", "50", "100"],
             }}
+            onChange={handleTableChange}
             scroll={{ x: 800 }}
             className="border-0"
           />
