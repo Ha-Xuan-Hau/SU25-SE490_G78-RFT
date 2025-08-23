@@ -1654,6 +1654,55 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         }
     }
 
+    // Helper methods for parsing Object[] data from database queries
+    private Long parseToLong(Object obj) {
+        if (obj == null) {
+            return 0L;
+        }
+        if (obj instanceof Long) {
+            return (Long) obj;
+        }
+        if (obj instanceof Integer) {
+            return ((Integer) obj).longValue();
+        }
+        if (obj instanceof Number) {
+            return ((Number) obj).longValue();
+        }
+        try {
+            return Long.parseLong(obj.toString());
+        } catch (NumberFormatException e) {
+            log.warn("Không thể parse {} thành Long, trả về 0", obj);
+            return 0L;
+        }
+    }
+
+    private BigDecimal parseToBigDecimal(Object obj) {
+        if (obj == null) {
+            return BigDecimal.ZERO;
+        }
+        if (obj instanceof BigDecimal) {
+            return (BigDecimal) obj;
+        }
+        if (obj instanceof Double) {
+            return BigDecimal.valueOf((Double) obj);
+        }
+        if (obj instanceof Float) {
+            return BigDecimal.valueOf((Float) obj);
+        }
+        if (obj instanceof Long) {
+            return BigDecimal.valueOf((Long) obj);
+        }
+        if (obj instanceof Integer) {
+            return BigDecimal.valueOf((Integer) obj);
+        }
+        try {
+            return new BigDecimal(obj.toString());
+        } catch (NumberFormatException e) {
+            log.warn("Không thể parse {} thành BigDecimal, trả về 0", obj);
+            return BigDecimal.ZERO;
+        }
+    }
+
     @Override
     public ProviderStatisticsDTO getProviderStatistics() {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -1689,12 +1738,12 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             }
         }
 
-        // 4. Lấy thống kê contract theo trạng thái trong tháng hiện tại (1 lần gọi)
-        List<Object[]> contractStatusCounts = contractRepository.countByProviderIdAndStatusGroupInCurrentMonth(userId);
+        // 4. Lấy thống kê FinalContract theo Contract status trong tháng hiện tại (1 lần gọi)
+        List<Object[]> finalContractStatusCounts = finalContractRepository.countFinalContractsByProviderAndStatusInCurrentMonth(userId);
         
-        // Xử lý dữ liệu contract status
+        // Xử lý dữ liệu FinalContract status
         Long totalRentingContracts = 0L, totalFinishedContracts = 0L, totalCancelledContracts = 0L;
-        for (Object[] result : contractStatusCounts) {
+        for (Object[] result : finalContractStatusCounts) {
             Contract.Status status = (Contract.Status) result[0];
             Long count = (Long) result[1];
             
@@ -1713,6 +1762,16 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         
         List<Object[]> combinedData = finalContractRepository.getCurrentMonthAndMonthlyDataByProvider(userId, startDate, endDate);
         
+        // Log để debug
+        log.info("=== DEBUG getCurrentMonthAndMonthlyDataByProvider ===");
+        log.info("Start date: {}, End date: {}", startDate, endDate);
+        log.info("Tháng hiện tại: {}", now.getMonthValue());
+        log.info("Kết quả query: {} records", combinedData.size());
+        for (Object[] data : combinedData) {
+            log.info("Data: type={}, month={}, year={}, revenue={}, count={}", 
+                    data[0], data[1], data[2], data[3], data[4]);
+        }
+        
         // Xử lý dữ liệu kết hợp
         BigDecimal totalRevenue = BigDecimal.ZERO;
         Long totalFinalContracts = 0L;
@@ -1729,6 +1788,9 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 // Dữ liệu tháng hiện tại
                 totalRevenue = revenue;
                 totalFinalContracts = count;
+                // Thêm vào monthlyDataMap để hiển thị trong monthlyRevenue
+                String key = year + "-" + String.format("%02d", month);
+                monthlyDataMap.put(key, new Object[]{revenue, count});
             } else {
                 // Dữ liệu các tháng khác
                 String key = year + "-" + String.format("%02d", month);
@@ -1780,6 +1842,85 @@ public class VehicleRentServiceImpl implements VehicleRentService {
                 .totalRevenue(totalRevenue)
                 .totalFinalContracts(totalFinalContracts)
                 .monthlyRevenue(monthlyRevenue)
+                .build();
+    }
+
+    @Override
+    public MonthlyStatisticsDTO getMonthlyStatistics(int month, int year) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getToken().getClaim("userId");
+        log.info("Lấy thống kê theo tháng cho provider: {}, tháng: {}, năm: {}", userId, month, year);
+
+        // Lấy thống kê từ database
+        Object[] statistics = finalContractRepository.getMonthlyStatisticsByProvider(userId, month, year);
+        
+        // Log để debug
+        log.info("=== BẮT ĐẦU THỐNG KÊ THEO THÁNG ===");
+        log.info("Kết quả từ DB: {}", statistics != null ? "Có dữ liệu, độ dài: " + statistics.length : "Null");
+        
+        if (statistics != null && statistics.length > 0) {
+            log.info("Chi tiết dữ liệu thống kê: {}", java.util.Arrays.toString(statistics));
+            for (int i = 0; i < statistics.length; i++) {
+                log.info("statistics[{}] = {} (type: {})", i, statistics[i], 
+                        statistics[i] != null ? statistics[i].getClass().getSimpleName() : "null");
+            }
+        }
+        
+        if (statistics == null) {
+            // Trả về dữ liệu mặc định nếu không có dữ liệu
+            return MonthlyStatisticsDTO.builder()
+                    .month(month)
+                    .year(year)
+                    .totalCustomersWithFinalContract(0L)
+                    .totalRevenueFromFinalContracts(BigDecimal.ZERO)
+                    .customersWithCompletedContracts(0L)
+                    .revenueFromCompletedContracts(BigDecimal.ZERO)
+                    .averageRevenuePerCustomer(BigDecimal.ZERO)
+                    .totalFinalContracts(0L)
+                    .completedFinalContracts(0L)
+                    .cancelledFinalContracts(0L)
+                    .build();
+        }
+
+        // Xử lý dữ liệu - kiểm tra xem có phải mảng 2 chiều không
+        Object[] dataArray;
+        if (statistics.length > 0 && statistics[0] instanceof Object[]) {
+            // Trường hợp mảng 2 chiều - lấy phần tử đầu tiên
+            dataArray = (Object[]) statistics[0];
+            log.info("Phát hiện mảng 2 chiều - sử dụng dữ liệu từ statistics[0], độ dài: {}", dataArray.length);
+        } else {
+            // Trường hợp mảng 1 chiều - sử dụng trực tiếp
+            dataArray = statistics;
+            log.info("Sử dụng dữ liệu từ mảng 1 chiều, độ dài: {}", dataArray.length);
+        }
+
+        // Parse dữ liệu từ Object[] - xử lý an toàn với các kiểu dữ liệu khác nhau
+        // Kiểm tra độ dài mảng để tránh IndexOutOfBoundsException
+        Long totalCustomersWithFinalContract = dataArray.length > 0 ? parseToLong(dataArray[0]) : 0L;
+        BigDecimal totalRevenueFromFinalContracts = dataArray.length > 1 ? parseToBigDecimal(dataArray[1]) : BigDecimal.ZERO;
+        Long customersWithCompletedContracts = dataArray.length > 2 ? parseToLong(dataArray[2]) : 0L;
+        BigDecimal revenueFromCompletedContracts = dataArray.length > 3 ? parseToBigDecimal(dataArray[3]) : BigDecimal.ZERO;
+        Long totalFinalContracts = dataArray.length > 4 ? parseToLong(dataArray[4]) : 0L;
+        Long completedFinalContracts = dataArray.length > 5 ? parseToLong(dataArray[5]) : 0L;
+        Long cancelledFinalContracts = dataArray.length > 6 ? parseToLong(dataArray[6]) : 0L;
+
+        // Tính doanh thu trung bình trên đầu người
+        BigDecimal averageRevenuePerCustomer = BigDecimal.ZERO;
+        if (customersWithCompletedContracts != null && customersWithCompletedContracts > 0 && revenueFromCompletedContracts != null) {
+            averageRevenuePerCustomer = revenueFromCompletedContracts.divide(BigDecimal.valueOf(customersWithCompletedContracts), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        return MonthlyStatisticsDTO.builder()
+                .month(month)
+                .year(year)
+                .totalCustomersWithFinalContract(totalCustomersWithFinalContract != null ? totalCustomersWithFinalContract : 0L)
+                .totalRevenueFromFinalContracts(totalRevenueFromFinalContracts != null ? totalRevenueFromFinalContracts : BigDecimal.ZERO)
+                .customersWithCompletedContracts(customersWithCompletedContracts != null ? customersWithCompletedContracts : 0L)
+                .revenueFromCompletedContracts(revenueFromCompletedContracts != null ? revenueFromCompletedContracts : BigDecimal.ZERO)
+                .averageRevenuePerCustomer(averageRevenuePerCustomer)
+                .totalFinalContracts(totalFinalContracts != null ? totalFinalContracts : 0L)
+                .completedFinalContracts(completedFinalContracts != null ? completedFinalContracts : 0L)
+                .cancelledFinalContracts(cancelledFinalContracts != null ? cancelledFinalContracts : 0L)
                 .build();
     }
 }
