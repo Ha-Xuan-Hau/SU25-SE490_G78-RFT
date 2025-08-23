@@ -70,6 +70,17 @@ public interface ContractRepository extends JpaRepository<Contract, String> {
            "AND YEAR(c.createdAt) = YEAR(CURRENT_DATE)")
     long countByProviderIdInCurrentMonth(@Param("providerId") String providerId);
 
+    // Dashboard aggregation queries
+    @Query("SELECT c.status, COUNT(c) FROM Contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND MONTH(c.createdAt) = MONTH(CURRENT_DATE) " +
+           "AND YEAR(c.createdAt) = YEAR(CURRENT_DATE) " +
+           "GROUP BY c.status")
+    List<Object[]> countByProviderIdAndStatusGroupInCurrentMonth(@Param("providerId") String providerId);
+
 //
 //    // Find all contracts by vehicle owner ID (all statuses)
 //    @Query("SELECT c FROM Contract c " +

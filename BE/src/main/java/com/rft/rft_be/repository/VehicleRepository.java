@@ -172,4 +172,8 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
 
     @Query("SELECT v.vehicleType, COUNT(v), COUNT(DISTINCT v.user.id) FROM Vehicle v GROUP BY v.vehicleType")
     List<Object[]> countByVehicleTypeGroup();
+
+    // Thống kê xe theo loại cho provider cụ thể
+    @Query("SELECT v.vehicleType, COUNT(v) FROM Vehicle v WHERE v.user.id = :providerId GROUP BY v.vehicleType")
+    List<Object[]> countByVehicleTypeAndProviderId(@Param("providerId") String providerId);
 }
