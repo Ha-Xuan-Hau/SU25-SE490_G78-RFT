@@ -1,15 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Button,
-  Modal,
-  Form,
-  Input,
-  Select,
-  notification,
-  Tooltip,
-} from "antd";
+import { Button, Modal, Form, Input, Select } from "antd";
 import {
   FlagOutlined,
   CloseOutlined,
@@ -18,6 +10,12 @@ import {
 } from "@ant-design/icons";
 import { createReport } from "@/apis/report.api";
 import { useAuth } from "@/context/AuthContext";
+import {
+  showApiError,
+  showError,
+  showSuccess,
+  showWarning,
+} from "@/utils/toast.utils";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -189,6 +187,14 @@ export default function ReportButton({
           placeholder:
             "Vui lòng mô tả chi tiết về tranh chấp liên quan đến hoàn tiền hoặc phí phạt...",
         };
+      case "DIRTY_CAR":
+        return {
+          generalType: "SERIOUS_ERROR",
+          type: "DIRTY_CAR",
+          displayText: "Xe bẩn",
+          placeholder:
+            "Vui lòng mô tả chi tiết về tình trạng xe bẩn khi trả lại...",
+        };
       case "LATE_RETURN_NO_CONTACT":
         return {
           generalType: "SERIOUS_ERROR",
@@ -227,14 +233,6 @@ export default function ReportButton({
           type: "OTHERS",
           displayText: "Khác",
           placeholder: "Vui lòng mô tả chi tiết về vấn đề khác...",
-        };
-      case "DIRTY_CAR":
-        return {
-          generalType: "NON_SERIOUS_ERROR",
-          type: "DIRTY_CAR",
-          displayText: "Xe bẩn",
-          placeholder:
-            "Vui lòng mô tả chi tiết về tình trạng xe bẩn khi trả lại...",
         };
       case "MISLEADING_LISTING":
         return {
@@ -277,11 +275,12 @@ export default function ReportButton({
   // Handle click report button
   const handleReportClick = () => {
     if (!isAuthenticated || !user) {
-      notification.warning({
-        message: "Yêu cầu đăng nhập",
-        description: "Bạn cần đăng nhập để có thể báo cáo vi phạm.",
-        duration: 4,
-      });
+      // notification.warning({
+      //   message: "Yêu cầu đăng nhập",
+      //   description: "Bạn cần đăng nhập để có thể báo cáo vi phạm.",
+      //   duration: 4,
+      // });
+      showWarning("Bạn cần đăng nhập để có thể báo cáo vi phạm.");
       return;
     }
 
@@ -330,44 +329,20 @@ export default function ReportButton({
 
       await createReport(reportData);
 
-      notification.success({
-        message: "Báo cáo thành công",
-        description:
-          "Chúng tôi sẽ xem xét báo cáo của bạn trong thời gian sớm nhất.",
-        duration: 4,
-      });
+      // notification.success({
+      //   message: "Báo cáo thành công",
+      //   description:
+      //     "Chúng tôi sẽ xem xét báo cáo của bạn trong thời gian sớm nhất.",
+      //   duration: 4,
+      // });
+      showSuccess("Báo cáo thành công");
 
       setIsModalVisible(false);
       form.resetFields();
       onModalClose?.();
-    } catch (error) {
-      console.error("Error creating report:", error);
-
-      let errorMessage = "Không thể gửi báo cáo. Vui lòng thử lại sau.";
-
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof (error as any).response === "object" &&
-        (error as any).response !== null &&
-        "status" in (error as any).response
-      ) {
-        const status = (error as any).response.status;
-        if (status === 401) {
-          errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
-        } else if (status === 429) {
-          errorMessage = "Bạn đã báo cáo quá nhiều. Vui lòng thử lại sau.";
-        } else if (status === 400) {
-          errorMessage = "Dữ liệu báo cáo không hợp lệ.";
-        }
-      }
-
-      notification.error({
-        message: "Lỗi",
-        description: errorMessage,
-        duration: 4,
-      });
+    } catch (error: any) {
+      showApiError(error);
+      //showError("Có lỗi xảy ra. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }
@@ -461,22 +436,54 @@ export default function ReportButton({
               <span>Link bằng chứng (Tùy chọn)</span>
             </div>
           }
-          initialValue={evidenceUrl} // Set giá trị ban đầu từ props
+          initialValue={evidenceUrl}
           rules={[
             {
-              type: "url",
-              message: "Vui lòng nhập đúng định dạng URL",
-            },
-            {
-              pattern: /^https?:\/\/.+/,
-              message: "Link phải bắt đầu bằng http:// hoặc https://",
+              validator: (_, value) => {
+                if (!value) return Promise.resolve(); // Cho phép trường rỗng
+
+                // Kiểm tra có nhiều http:// hoặc https:// không
+                const httpCount = (value.match(/https?:\/\//g) || []).length;
+                if (httpCount > 1) {
+                  return Promise.reject(
+                    new Error("Chỉ được phép nhập 1 link duy nhất")
+                  );
+                }
+
+                // Kiểm tra định dạng URL cơ bản
+                const urlRegex = /^https?:\/\/.+/;
+                if (!urlRegex.test(value)) {
+                  return Promise.reject(
+                    new Error(
+                      "Vui lòng nhập đúng định dạng URL (bắt đầu bằng http:// hoặc https://)"
+                    )
+                  );
+                }
+
+                // Kiểm tra độ dài
+                if (value.length > 500) {
+                  return Promise.reject(
+                    new Error("Link không được vượt quá 500 ký tự")
+                  );
+                }
+
+                // Kiểm tra URL hợp lệ
+                try {
+                  new URL(value);
+                  return Promise.resolve();
+                } catch {
+                  return Promise.reject(
+                    new Error("Vui lòng nhập đúng định dạng URL")
+                  );
+                }
+              },
             },
           ]}
         >
           <Input
-            prefix={<LinkOutlined className="text-gray-400" />}
-            placeholder="https://drive.google.com/..."
-            className="w-full"
+            placeholder="Nhập một link bằng chứng"
+            maxLength={500}
+            showCount
           />
         </Form.Item>
 

@@ -340,13 +340,20 @@ public class AdminUserServiceImpl implements AdminUserService {
                     user.getId(),
                     Contract.Status.RENTING
             );
-            user.setStatus(renting > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
+            long unfinished = bookingRepository.countUnfinishedByUserId(
+                    user.getId(),
+                    Booking.Status.COMPLETED,
+                    Booking.Status.CANCELLED
+            );
+            long activities = renting + unfinished;
+            user.setStatus(activities > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
         } // STAFF/ADMIN: giữ nguyên
 
         userRepository.save(user);
         // Trả về chi tiết để FE có đủ thông tin cập nhật
         return getUserDetail(user.getId());
     }
+
 
     // Create Staff by Admin
     @Override

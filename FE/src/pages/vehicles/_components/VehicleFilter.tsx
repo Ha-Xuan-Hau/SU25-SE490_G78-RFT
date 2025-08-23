@@ -11,7 +11,6 @@ import {
   Search,
   RotateCcw,
   Settings,
-  Calendar,
 } from "lucide-react";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle";
 import {
@@ -152,8 +151,16 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     try {
       const { basicSearchVehicles } = await import("@/apis/vehicle.api");
 
+      const addressParts = [
+        filters.ward,
+        filters.district,
+        filters.city,
+      ].filter(Boolean);
+      const fullAddress =
+        addressParts.length > 0 ? addressParts.join(", ") : undefined;
+
       const searchParams = {
-        address: filters.city,
+        address: fullAddress,
         vehicleType: filters.vehicleType,
         pickupDateTime: pickupDateTime || undefined,
         returnDateTime: returnDateTime || undefined,
@@ -168,7 +175,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       const paginationInfo: PaginationInfo = {
         totalElements: result.totalElements,
         totalPages: result.totalPages,
-        currentPage: result.number,
+        currentPage: result.currentPage,
         size: result.size,
       };
 
@@ -210,9 +217,9 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       // Build addresses array from current location filters
       const addresses = [];
       if (filters.city) {
-        let address = filters.city;
-        if (filters.district) address += `, ${filters.district}`;
-        if (filters.ward) address += `, ${filters.ward}`;
+        const address = [filters.ward, filters.district, filters.city]
+          .filter(Boolean)
+          .join(", ");
         addresses.push(address);
       }
 
@@ -233,7 +240,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
       const paginationInfo: PaginationInfo = {
         totalElements: result.totalElements,
         totalPages: result.totalPages,
-        currentPage: result.number,
+        currentPage: result.currentPage,
         size: result.size,
       };
 

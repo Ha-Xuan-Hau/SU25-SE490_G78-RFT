@@ -456,7 +456,7 @@ export function AuthPopup({
             value={formData.email}
             onChange={handleInputChange}
             disabled={isOtpSent}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+            className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 ${
               errors.email ? "border-red-500" : "border-gray-300"
             } ${isOtpSent ? "bg-gray-100" : ""}`}
             required
@@ -476,7 +476,7 @@ export function AuthPopup({
             value={formData.phone}
             onChange={handleInputChange}
             disabled={isOtpSent}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+            className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 ${
               errors.phone ? "border-red-500" : "border-gray-300"
             } ${isOtpSent ? "bg-gray-100" : ""}`}
             required
@@ -497,7 +497,7 @@ export function AuthPopup({
               value={formData.password}
               onChange={handleInputChange}
               disabled={isOtpSent}
-              className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
+              className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 pr-10 ${
                 errors.password ? "border-red-500" : "border-gray-300"
               } ${isOtpSent ? "bg-gray-100" : ""}`}
               required
@@ -533,7 +533,7 @@ export function AuthPopup({
               value={formData.confirmPassword}
               onChange={handleInputChange}
               disabled={isOtpSent}
-              className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
+              className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 pr-10 ${
                 errors.confirmPassword ? "border-red-500" : "border-gray-300"
               } ${isOtpSent ? "bg-gray-100" : ""}`}
               required
@@ -644,7 +644,7 @@ export function AuthPopup({
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 ${
                   errors.phone ? "border-red-500" : "border-gray-300"
                 }`}
                 required
@@ -663,7 +663,7 @@ export function AuthPopup({
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                  className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 ${
                     errors.password ? "border-red-500" : "border-gray-300"
                   }`}
                   required
@@ -754,7 +754,7 @@ export function AuthPopup({
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 ${
+                    className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 ${
                       errors.email ? "border-red-500" : "border-gray-300"
                     }`}
                     placeholder="Nhập email đã đăng ký"
@@ -825,7 +825,7 @@ export function AuthPopup({
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
+                      className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 pr-10 ${
                         errors.newPassword
                           ? "border-red-500"
                           : "border-gray-300"
@@ -862,7 +862,7 @@ export function AuthPopup({
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 pr-10 ${
+                      className={`mt-1 block w-full rounded-md shadow-sm py-2.5 px-3 focus:ring-green-500 focus:border-green-500 pr-10 ${
                         errors.confirmPassword
                           ? "border-red-500"
                           : "border-gray-300"

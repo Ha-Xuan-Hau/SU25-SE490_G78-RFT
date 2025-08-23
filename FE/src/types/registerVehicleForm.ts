@@ -24,8 +24,9 @@ export interface VehicleGroup {
 import type { Vehicle } from "./vehicle";
 export interface RegisterVehicleFormProps {
   vehicleId?: string;
+  groupEdit?: VehicleGroup;
+  similarVehicleData?: Vehicle; // Thêm prop mới
   onOk?: () => void;
-  groupEdit?: VehicleGroup | null;
   onStatusChanged?: () => void;
 }
 

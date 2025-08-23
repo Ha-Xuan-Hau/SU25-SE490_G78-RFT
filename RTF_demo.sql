@@ -78,7 +78,7 @@ CREATE TABLE `vehicles` (
   `ship_to_address` enum('YES','NO') DEFAULT 'NO',
   `number_seat` int DEFAULT NULL,
   `year_manufacture` int DEFAULT NULL,
-  `transmission` enum('MANUAL','AUTOMATIC') DEFAULT NULL,
+  `transmission` enum('MANUAL','AUTOMATIC', 'CLUTCH') DEFAULT NULL,
   `fuel_type` enum('GASOLINE','ELECTRIC') DEFAULT NULL,
   `description` text,
   `number_vehicle` int DEFAULT 1,

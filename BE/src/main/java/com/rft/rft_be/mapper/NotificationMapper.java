@@ -44,7 +44,8 @@ public class NotificationMapper {
  //   public static final String ORDER_CANCELED_MSG = "Đơn hàng đã bị hủy. Lý do: %s";
     public static final String VEHICLE_HANDOVER_MSG = "Xe %s đã sẵn sàng để bàn giao tại %s";
     public static final String VEHICLE_PICKUP_CONFIRMED_MSG = "Khách hàng %s đã xác nhận nhận xe";
-    public static final String VEHICLE_RETURN_CONFIRMED_MSG = "Chủ xe đã xác nhận việc trả xe của bạn";
+//    public static final String VEHICLE_RETURN_CONFIRMED_MSG = "Chủ xe đã xác nhận việc trả xe của bạn";
+public static final String VEHICLE_RETURN_CONFIRMED_MSG = "Khách đã trả xe";
     public static final String USER_RETURN_VEHICLE_MSG = "Khách hàng %s đã trả xe";
     public static final String TOPUP_SUCCESSFUL_MSG = "Nạp tiền %.0f VND thành công";
     public static final String WITHDRAWAL_APPROVED_MSG = "Yêu cầu rút %.0f VND đã được phê duyệt";

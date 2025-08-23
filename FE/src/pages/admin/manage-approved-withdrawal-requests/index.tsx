@@ -218,10 +218,10 @@ export default function WithdrawalRequestsPage() {
     <div className="space-y-6">
       <div>
         <Title level={2} className="!mb-2">
-          Yêu cầu rút tiền
+          Yêu cầu rút tiền đã duyệt
         </Title>
         <p className="text-gray-600">
-          Quản lý các yêu cầu rút tiền từ ví của người dùng
+          Quản lý các yêu cầu rút tiền đã được duyệt từ ví của người dùng
         </p>
       </div>
 

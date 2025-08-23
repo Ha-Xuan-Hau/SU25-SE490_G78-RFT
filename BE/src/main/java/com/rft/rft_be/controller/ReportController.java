@@ -33,6 +33,10 @@ public class ReportController {
         JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userId = auth.getToken().getClaim("userId");
 
+//        if (userId.equals(request.getTargetId())) {
+//            throw new RuntimeException("Không thể tự báo cáo chính mình");
+//        }
+
         User reporter = userRepo.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         reportService.report(reporter, request);

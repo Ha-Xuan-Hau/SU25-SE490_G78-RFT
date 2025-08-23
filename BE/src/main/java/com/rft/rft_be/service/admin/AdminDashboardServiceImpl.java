@@ -69,9 +69,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Override
     public AvgDurationResponse getAverageRentalDurationDays(YearMonth month) {
         var r = monthRange(month);
-        // Tính trên booking COMPLETED, dùng time_booking_end rơi trong tháng
-        Double avgDays = bookingRepo.avgRentalDaysCompletedByEndBetween(r.start(), r.end());
-        return new AvgDurationResponse(avgDays == null ? 0.0 : avgDays);
+        Double avgHours = bookingRepo.avgRentalHoursCompletedByEndBetween(r.start(), r.end());
+        return AvgDurationResponse.fromHours(avgHours);
     }
 
     @Override
@@ -101,52 +100,92 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         var current = monthRange(month);
         var previous = monthRange(month == null ? YearMonth.now().minusMonths(1) : month.minusMonths(1));
 
-        long totalVehicles = vehicleRepo.count();
-        long activeVehicles = vehicleRepo.findByStatus(Vehicle.Status.AVAILABLE).size();
-        long pendingVehicles = vehicleRepo.findByStatus(Vehicle.Status.PENDING).size();
+        // 1. Lấy tất cả thống kê vehicle trong 1 lần gọi
+        List<Object[]> vehicleStatusCounts = vehicleRepo.countByStatusGroup();
+        List<Object[]> vehicleTypeStatusCounts = vehicleRepo.countByVehicleTypeAndStatusGroup();
+        List<Object[]> vehicleTypeCounts = vehicleRepo.countByVehicleTypeGroup();
 
-        long pendingPrev = vehicleRepo.findByStatus(Vehicle.Status.PENDING).size(); // không có lịch sử trạng thái, tạm thời dùng số hiện tại
-        double pendingChange = calcChangePercent(pendingPrev, pendingVehicles);
+        // 2. Lấy thống kê user trong 1 lần gọi
+        List<Object[]> userRoleCounts = userRepo.countByRoleGroup();
 
-        // Users
-        long totalUsers = userRepo.count();
-        long totalProviders = userRepo.countByRole(User.Role.PROVIDER);
+        // 3. Lấy thông tin user theo thời gian (3 lần gọi)
         long newUsersThisMonth = userRepo.countByCreatedAtBetween(current.start(), current.end());
         long newUsersPrevMonth = userRepo.countByCreatedAtBetween(previous.start(), previous.end());
-        double usersChange = calcChangePercent(newUsersPrevMonth, newUsersThisMonth);
-
+        long newUsersLast30Days = userRepo.countByCreatedAtBetween(
+            java.time.LocalDateTime.now().minusDays(30), 
+            java.time.LocalDateTime.now()
+        );
         long newProvidersThisMonth = userRepo.countByRoleAndCreatedAtBetween(User.Role.PROVIDER, current.start(), current.end());
         long newProvidersPrevMonth = userRepo.countByRoleAndCreatedAtBetween(User.Role.PROVIDER, previous.start(), previous.end());
-        double providersChange = calcChangePercent(newProvidersPrevMonth, newProvidersThisMonth);
 
-        long newUsersLast30Days = userRepo.countByCreatedAtBetween(java.time.LocalDateTime.now().minusDays(30), java.time.LocalDateTime.now());
+        // Xử lý dữ liệu vehicle status
+        long totalVehicles = 0, activeVehicles = 0, pendingVehicles = 0, suspendedVehicles = 0, deletedVehicles = 0;
+        for (Object[] result : vehicleStatusCounts) {
+            Vehicle.Status status = (Vehicle.Status) result[0];
+            long count = (Long) result[1];
+            totalVehicles += count;
+            
+            switch (status) {
+                case AVAILABLE -> activeVehicles = count;
+                case PENDING -> pendingVehicles = count;
+                case SUSPENDED -> suspendedVehicles = count;
+                case UNAVAILABLE -> deletedVehicles = count;
+            }
+        }
 
-        // Vehicle status summary
-        long vsActive = vehicleRepo.findByStatus(Vehicle.Status.AVAILABLE).size();
-        long vsPending = vehicleRepo.findByStatus(Vehicle.Status.PENDING).size();
-        long vsSuspended = vehicleRepo.findByStatus(Vehicle.Status.SUSPENDED).size();
-        long vsDeleted = vehicleRepo.findByStatus(Vehicle.Status.UNAVAILABLE).size();
+        // Xử lý dữ liệu user role
+        long totalUsers = 0, totalProviders = 0;
+        for (Object[] result : userRoleCounts) {
+            User.Role role = (User.Role) result[0];
+            long count = (Long) result[1];
+            totalUsers += count;
+            
+            if (role == User.Role.PROVIDER) {
+                totalProviders = count;
+            }
+        }
 
-        // Vehicle types
+        // Xử lý dữ liệu vehicle type
         var typeItems = new java.util.ArrayList<AdminDashboardSummaryDTO.VehicleTypeItem>();
-        typeItems.add(AdminDashboardSummaryDTO.VehicleTypeItem.builder()
-                .type("CAR")
-                .active(vehicleRepo.countByVehicleTypeAndStatus(Vehicle.VehicleType.CAR, Vehicle.Status.AVAILABLE))
-                .total(vehicleRepo.findByVehicleType(Vehicle.VehicleType.CAR).size())
-                .providers(vehicleRepo.countDistinctUserByVehicleType(Vehicle.VehicleType.CAR))
-                .build());
-        typeItems.add(AdminDashboardSummaryDTO.VehicleTypeItem.builder()
-                .type("MOTORBIKE")
-                .active(vehicleRepo.countByVehicleTypeAndStatus(Vehicle.VehicleType.MOTORBIKE, Vehicle.Status.AVAILABLE))
-                .total(vehicleRepo.findByVehicleType(Vehicle.VehicleType.MOTORBIKE).size())
-                .providers(vehicleRepo.countDistinctUserByVehicleType(Vehicle.VehicleType.MOTORBIKE))
-                .build());
-        typeItems.add(AdminDashboardSummaryDTO.VehicleTypeItem.builder()
-                .type("BICYCLE")
-                .active(vehicleRepo.countByVehicleTypeAndStatus(Vehicle.VehicleType.BICYCLE, Vehicle.Status.AVAILABLE))
-                .total(vehicleRepo.findByVehicleType(Vehicle.VehicleType.BICYCLE).size())
-                .providers(vehicleRepo.countDistinctUserByVehicleType(Vehicle.VehicleType.BICYCLE))
-                .build());
+        var vehicleTypeMap = new java.util.HashMap<Vehicle.VehicleType, java.util.Map<Vehicle.Status, Long>>();
+        
+        // Tạo map cho vehicle type và status
+        for (Object[] result : vehicleTypeStatusCounts) {
+            Vehicle.VehicleType type = (Vehicle.VehicleType) result[0];
+            Vehicle.Status status = (Vehicle.Status) result[1];
+            long count = (Long) result[2];
+            
+            vehicleTypeMap.computeIfAbsent(type, k -> new java.util.HashMap<>()).put(status, count);
+        }
+
+        // Tạo map cho vehicle type và provider count
+        var vehicleTypeProviderMap = new java.util.HashMap<Vehicle.VehicleType, Long>();
+        for (Object[] result : vehicleTypeCounts) {
+            Vehicle.VehicleType type = (Vehicle.VehicleType) result[0];
+            long totalCount = (Long) result[1];
+            long providerCount = (Long) result[2];
+            vehicleTypeProviderMap.put(type, providerCount);
+        }
+
+        // Tạo vehicle type items
+        for (Vehicle.VehicleType type : Vehicle.VehicleType.values()) {
+            var statusMap = vehicleTypeMap.getOrDefault(type, new java.util.HashMap<>());
+            long active = statusMap.getOrDefault(Vehicle.Status.AVAILABLE, 0L);
+            long total = statusMap.values().stream().mapToLong(Long::longValue).sum();
+            long providers = vehicleTypeProviderMap.getOrDefault(type, 0L);
+            
+            typeItems.add(AdminDashboardSummaryDTO.VehicleTypeItem.builder()
+                    .type(type.name())
+                    .active(active)
+                    .total(total)
+                    .providers(providers)
+                    .build());
+        }
+
+        // Tính toán phần trăm thay đổi
+        double pendingChange = calcChangePercent(pendingVehicles, pendingVehicles); // Không có lịch sử, dùng hiện tại
+        double usersChange = calcChangePercent(newUsersPrevMonth, newUsersThisMonth);
+        double providersChange = calcChangePercent(newProvidersPrevMonth, newProvidersThisMonth);
 
         double totalVehiclesD = totalVehicles == 0 ? 1.0 : (double) totalVehicles;
 
@@ -165,15 +204,15 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                         .providersChangePercent(providersChange)
                         .build())
                 .vehicles(AdminDashboardSummaryDTO.Vehicles.builder()
-                        .active(vsActive)
-                        .pending(vsPending)
-                        .suspended(vsSuspended)
-                        .deleted(vsDeleted)
+                        .active(activeVehicles)
+                        .pending(pendingVehicles)
+                        .suspended(suspendedVehicles)
+                        .deleted(deletedVehicles)
                         .total(totalVehicles)
-                        .activePercent(vsActive / totalVehiclesD * 100.0)
-                        .pendingPercent(vsPending / totalVehiclesD * 100.0)
-                        .suspendedPercent(vsSuspended / totalVehiclesD * 100.0)
-                        .deletedPercent(vsDeleted / totalVehiclesD * 100.0)
+                        .activePercent(activeVehicles / totalVehiclesD * 100.0)
+                        .pendingPercent(pendingVehicles / totalVehiclesD * 100.0)
+                        .suspendedPercent(suspendedVehicles / totalVehiclesD * 100.0)
+                        .deletedPercent(deletedVehicles / totalVehiclesD * 100.0)
                         .build())
                 .vehicleTypes(typeItems)
                 .build();

@@ -1,6 +1,5 @@
 import { apiClient } from './client';
 
-// const API_URL = '/adminmanageusers';
 
 // User Management API Endpoints
 export const getUsers = async (params) => {
@@ -111,4 +110,74 @@ export const getAllVehicles = async (params) => {
 export const getVehicleDetailAll = async (vehicleId) => {
     const response = await apiClient.get(`/vehicles/detail/${vehicleId}`);
     return response.data;
+};
+
+
+//admin dashboard
+export const dashboardAPI = {
+    // Lấy tổng hợp đồng tất toán
+    getTotalSettlements: async (month) => {
+        const params = month ? { month } : {};
+        const response = await apiClient.get('/admin/dashboard/settlements/total', { params });
+        return response.data;
+    },
+
+    // Lấy tổng giá trị tất toán
+    getTotalSettlementAmount: async (month) => {
+        const params = month ? { month } : {};
+        const response = await apiClient.get('/admin/dashboard/settlements/amount', { params });
+        return response.data;
+    },
+
+    // Lấy thời gian thuê trung bình
+    getAverageRentalDuration: async (month) => {
+        const params = month ? { month } : {};
+        const response = await apiClient.get('/admin/dashboard/rentals/avg-duration', { params });
+        return response.data;
+    },
+
+    // Lấy tổng kết đơn đặt xe trong tháng
+    getMonthlyBookingSummary: async (month) => {
+        const params = month ? { month } : {};
+        const response = await apiClient.get('/admin/dashboard/bookings/monthly', { params });
+        return response.data;
+    },
+
+    // Lấy tổng số đơn đặt xe
+    getMonthlyTotalBookings: async (month) => {
+        const params = month ? { month } : {};
+        const response = await apiClient.get('/admin/dashboard/bookings/total', { params });
+        return response.data;
+    },
+    getReportStatistics: async (from, to) => {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const response = await apiClient.get('/admin/dashboard/reports', { params });
+        return response.data;
+    },
+
+    // Lấy thống kê yêu cầu rút tiền
+    getWithdrawalStats: async (from, to) => {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const response = await apiClient.get('/admin/dashboard/withdrawals', { params });
+        return response.data;
+    },
+
+    // Lấy danh sách mã giảm giá
+    getCoupons: async (from, to) => {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const response = await apiClient.get('/admin/dashboard/coupons', { params });
+        return response.data;
+    },
+    getVehicleUserSummary: async (month) => {
+        const params = month ? { month } : {};
+        const response = await apiClient.get('/admin/dashboard/vehicle_User', { params });
+        return response.data;
+    }
+
 };

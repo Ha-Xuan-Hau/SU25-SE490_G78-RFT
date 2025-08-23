@@ -3,13 +3,16 @@ package com.rft.rft_be.service.booking;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import com.rft.rft_be.cleanUp.BookingCleanupTask;
+import com.rft.rft_be.dto.booking.*;
 import com.rft.rft_be.dto.vehicle.VehicleForBookingDTO;
 import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.NotificationMapper;
@@ -27,18 +30,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.rft.rft_be.dto.booking.BookingDTO;
-import com.rft.rft_be.dto.booking.BookingRequestDTO;
-import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import com.rft.rft_be.dto.booking.CancelBookingRequestDTO;
-import com.rft.rft_be.dto.booking.CancelBookingResponseDTO;
 import com.rft.rft_be.dto.contract.CreateFinalContractDTO;
 import com.rft.rft_be.mapper.BookingMapper;
 import com.rft.rft_be.mapper.BookingResponseMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 import com.rft.rft_be.service.Contract.FinalContractService;
 import com.rft.rft_be.util.BookingCalculationUtils;
-
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
@@ -625,27 +622,61 @@ public class BookingServiceImpl implements BookingService {
         notificationService.notifyBookingCompleted(booking.getUser().getId(), booking.getId());
 
         // RENTER: unfinished từ bookings (≠ COMPLETED/CANCELLED)
-        User renter = booking.getUser();
-        if (renter != null && renter.getStatus() == User.Status.TEMP_BANNED) {
-            long renterUnfinished = bookingRepository.countUnfinishedByUserId(
-                    renter.getId(), Booking.Status.COMPLETED, Booking.Status.CANCELLED);
-            if (renterUnfinished == 0) {
-                renter.setStatus(User.Status.INACTIVE);
-                userRepository.save(renter);
-            }
-        }
+//        User renter = booking.getUser();
+//        if (renter != null && renter.getStatus() == User.Status.TEMP_BANNED) {
+//            long renterUnfinished = bookingRepository.countUnfinishedByUserId(
+//                    renter.getId(), Booking.Status.COMPLETED, Booking.Status.CANCELLED);
+//            if (renterUnfinished == 0) {
+//                renter.setStatus(User.Status.INACTIVE);
+//                userRepository.save(renter);
+//            }
+//        }
 
-// PROVIDER: unfinished từ contracts (status = RENTING)
+        // PROVIDER: unfinished từ contracts (status = RENTING)
+//        if (!booking.getBookingDetails().isEmpty()) {
+//            User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
+//            if (provider != null && provider.getStatus() == User.Status.TEMP_BANNED) {
+//                long providerRenting = contractRepository.countByProviderIdAndStatus(
+//                        provider.getId(), Contract.Status.RENTING);
+//                if (providerRenting == 0) {
+//                    provider.setStatus(User.Status.INACTIVE);
+//                    userRepository.save(provider);
+//                }
+//            }
+//        }
+        checkAndUpdateBanStatus(booking.getUser()); // Check renter
+
         if (!booking.getBookingDetails().isEmpty()) {
             User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
-            if (provider != null && provider.getStatus() == User.Status.TEMP_BANNED) {
-                long providerRenting = contractRepository.countByProviderIdAndStatus(
-                        provider.getId(), Contract.Status.RENTING);
-                if (providerRenting == 0) {
-                    provider.setStatus(User.Status.INACTIVE);
-                    userRepository.save(provider);
-                }
-            }
+            checkAndUpdateBanStatus(provider); // Check provider
+        }
+    }
+
+    private void checkAndUpdateBanStatus(User user) {
+        if (user == null || user.getStatus() != User.Status.TEMP_BANNED) {
+            return;
+        }
+
+        // Check booking đang thuê
+        long unfinishedBookings = bookingRepository.countUnfinishedByUserId(
+                user.getId(),
+                Booking.Status.COMPLETED,
+                Booking.Status.CANCELLED
+        );
+
+        // Check contract đang cho thuê (nếu là PROVIDER)
+        long activeContracts = 0;
+        if (user.getRole() == User.Role.PROVIDER) {
+            activeContracts = contractRepository.countByProviderIdAndStatus(
+                    user.getId(),
+                    Contract.Status.RENTING
+            );
+        }
+
+        // Nếu không còn booking/contract nào → chuyển sang INACTIVE
+        if (unfinishedBookings == 0 && activeContracts == 0) {
+            user.setStatus(User.Status.INACTIVE);
+            userRepository.save(user);
         }
     }
 
@@ -1065,5 +1096,76 @@ public class BookingServiceImpl implements BookingService {
                 LocalDateTime.now(), // không dùng Clock
                 effective
         );
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public ProviderTodaySummaryResponse getProviderTodaySummary(String token) {
+        String providerId = jwtUtil.extractUserIdFromToken(token);
+
+
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+
+        LocalDateTime start = cal.toInstant()
+                .atZone(TimeZone.getTimeZone("Etc/GMT+7").toZoneId())
+                .toLocalDateTime();
+
+        cal.add(Calendar.DAY_OF_MONTH, 1);
+        LocalDateTime end = cal.toInstant()
+                .atZone(TimeZone.getTimeZone("Etc/GMT+7").toZoneId())
+                .toLocalDateTime();
+
+        LocalDate today = start.toLocalDate();
+
+        // Lấy dữ liệu theo từng nhóm
+        List<Booking> startToday = bookingRepository.findByProviderIdAndStartBetween(providerId, start, end);
+        List<Booking> endToday   = bookingRepository.findByProviderIdAndEndBetween(providerId, start, end);
+        List<Booking> cancelled  = bookingRepository.findCancelledByProviderIdAndUpdatedAtBetween(providerId, start, end);
+        List<Booking> allTouched = bookingRepository.findProviderBookingsTouchedToday(providerId, start, end);
+
+        // Nhóm “phải giao hôm nay”: dựa vào thời gian đặt (start) + trạng thái cần giao
+        // => CONFIRMED (chưa giao)
+        List<Booking> toDeliver = startToday.stream()
+                .filter(b -> b.getStatus() == Booking.Status.CONFIRMED)
+                .toList();
+
+        // Nhóm “nhận lại hôm nay”: dựa vào end + đang ở trạng thái đang thuê
+        // => RECEIVED_BY_CUSTOMER (đến hạn để trả/nhận lại)
+        List<Booking> toReceive = endToday.stream()
+                .filter(b -> b.getStatus() == Booking.Status.RECEIVED_BY_CUSTOMER)
+                .toList();
+
+        // Đảm bảo tổng là duy nhất theo bookingId
+        Set<String> deliverIds = toDeliver.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
+        Set<String> receiveIds = toReceive.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
+        Set<String> cancelIds  = cancelled.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
+        Set<String> allIds     = allTouched.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
+
+        int total = allIds.size();
+        int toDeliverCount = deliverIds.size();
+        int toReceiveCount = receiveIds.size();
+        int cancelledCount = cancelIds.size();
+        int resolvedCount  = Math.max(0, total - toDeliverCount - toReceiveCount - cancelledCount);
+
+        // resolved = all − (deliver ∪ receive ∪ cancel)
+        Set<String> unresolvedIds = new java.util.HashSet<>();
+        unresolvedIds.addAll(deliverIds);
+        unresolvedIds.addAll(receiveIds);
+        unresolvedIds.addAll(cancelIds);
+        Set<String> resolvedIds = new java.util.HashSet<>(allIds);
+        resolvedIds.removeAll(unresolvedIds);
+
+
+        return ProviderTodaySummaryResponse.builder()
+                .date(today)
+                .totalOrders(total)
+                .toDeliverCount(toDeliverCount)
+                .toReceiveCount(toReceiveCount)
+                .cancelledCount(cancelledCount)
+                .resolvedCount(resolvedCount)
+                .build();
     }
 }
