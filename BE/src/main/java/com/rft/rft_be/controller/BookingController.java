@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.rft.rft_be.dto.booking.*;
 import com.rft.rft_be.entity.Booking;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -24,12 +25,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.rft.rft_be.dto.booking.BookingDTO;
-import com.rft.rft_be.dto.booking.BookingRequestDTO;
-import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import com.rft.rft_be.dto.booking.CancelBookingRequestDTO;
-import com.rft.rft_be.dto.booking.CancelBookingResponseDTO;
-import com.rft.rft_be.dto.booking.CompleteBookingRequestDTO;
 import com.rft.rft_be.service.booking.BookingService;
 
 import lombok.RequiredArgsConstructor;
@@ -210,5 +205,12 @@ public class BookingController {
 
         long count = bookingService.countOverdueDeliveryByProvider(providerId, statuses);
         return ResponseEntity.ok(count);
+    }
+    @GetMapping("/today-summary")
+    public ProviderTodaySummaryResponse getTodaySummary(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        String token = authorizationHeader.replace("Bearer ", "").trim();
+        return bookingService.getProviderTodaySummary(token);
     }
 }

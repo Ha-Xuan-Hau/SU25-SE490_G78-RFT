@@ -200,4 +200,60 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
          AND b.time_booking_end >= :start AND b.time_booking_end < :end
        """, nativeQuery = true)
     Double avgRentalHoursCompletedByEndBetween(LocalDateTime start, LocalDateTime end);
+    @Query("""
+    SELECT DISTINCT b FROM Booking b
+    JOIN b.bookingDetails bd
+    JOIN bd.vehicle v
+    JOIN v.user u
+    WHERE u.id = :providerId
+      AND b.timeBookingStart >= :start AND b.timeBookingStart < :end
+    ORDER BY b.timeBookingStart ASC
+""")
+    List<Booking> findByProviderIdAndStartBetween(@Param("providerId") String providerId,
+                                                  @Param("start") LocalDateTime start,
+                                                  @Param("end") LocalDateTime end);
+
+    @Query("""
+    SELECT DISTINCT b FROM Booking b
+    JOIN b.bookingDetails bd
+    JOIN bd.vehicle v
+    JOIN v.user u
+    WHERE u.id = :providerId
+      AND b.timeBookingEnd >= :start AND b.timeBookingEnd < :end
+    ORDER BY b.timeBookingEnd ASC
+""")
+    List<Booking> findByProviderIdAndEndBetween(@Param("providerId") String providerId,
+                                                @Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end);
+
+    @Query("""
+    SELECT DISTINCT b FROM Booking b
+    JOIN b.bookingDetails bd
+    JOIN bd.vehicle v
+    JOIN v.user u
+    WHERE u.id = :providerId
+      AND b.status = 'CANCELLED'
+      AND b.updatedAt >= :start AND b.updatedAt < :end
+    ORDER BY b.updatedAt DESC
+""")
+    List<Booking> findCancelledByProviderIdAndUpdatedAtBetween(@Param("providerId") String providerId,
+                                                               @Param("start") LocalDateTime start,
+                                                               @Param("end") LocalDateTime end);
+
+    @Query("""
+    SELECT DISTINCT b FROM Booking b
+    JOIN b.bookingDetails bd
+    JOIN bd.vehicle v
+    JOIN v.user u
+    WHERE u.id = :providerId
+      AND (
+            (b.timeBookingStart >= :start AND b.timeBookingStart < :end)
+         OR (b.timeBookingEnd   >= :start AND b.timeBookingEnd   < :end)
+         OR (b.updatedAt        >= :start AND b.updatedAt        < :end)
+      )
+    ORDER BY COALESCE(b.updatedAt, b.createdAt) DESC
+""")
+    List<Booking> findProviderBookingsTouchedToday(@Param("providerId") String providerId,
+                                                   @Param("start") LocalDateTime start,
+                                                   @Param("end") LocalDateTime end);
 }
