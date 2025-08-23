@@ -674,69 +674,75 @@ public class BookingServiceImpl implements BookingService {
         }
 
         BigDecimal penalty = BigDecimal.ZERO;
-        BigDecimal refundAmount = booking.getTotalCost(); // Mặc định: hoàn toàn bộ
+        BigDecimal refundAmount = BigDecimal.ZERO;
 
-        if (isRenter) {
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime startDate = booking.getTimeBookingStart();
-            Integer minCancelHour = booking.getMinCancelHour();
+        // Chỉ xử lý hoàn tiền nếu đơn đã được thanh toán
+        boolean isPaid = booking.getStatus() != Booking.Status.UNPAID;
 
-            if (startDate != null && minCancelHour != null) {
-                long hoursBeforeStart = ChronoUnit.HOURS.between(now, startDate);
-                if (hoursBeforeStart < minCancelHour) {
-                    penalty = calculatePenalty(booking);
-                    booking.setPenaltyValue(penalty);
-                    refundAmount = booking.getTotalCost().subtract(penalty);
+        if (isPaid) {
+            refundAmount = booking.getTotalCost(); // Mặc định: hoàn toàn bộ
+            if (isRenter) {
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime startDate = booking.getTimeBookingStart();
+                Integer minCancelHour = booking.getMinCancelHour();
+
+                if (startDate != null && minCancelHour != null) {
+                    long hoursBeforeStart = ChronoUnit.HOURS.between(now, startDate);
+                    if (hoursBeforeStart < minCancelHour) {
+                        penalty = calculatePenalty(booking);
+                        booking.setPenaltyValue(penalty);
+                        refundAmount = booking.getTotalCost().subtract(penalty);
+                    } else {
+                        booking.setPenaltyValue(BigDecimal.ZERO);
+                    }
                 } else {
                     booking.setPenaltyValue(BigDecimal.ZERO);
                 }
-            } else {
+            } else if (isProvider) {
                 booking.setPenaltyValue(BigDecimal.ZERO);
             }
-        } else if (isProvider) {
-            booking.setPenaltyValue(BigDecimal.ZERO);
-        }
 
-        // 1. Hoàn tiền cho người thuê (nếu có)
-        if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
-            Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
-            renterWallet.setBalance(renterWallet.getBalance().add(refundAmount));
-            walletRepository.save(renterWallet);
+            // 1. Hoàn tiền cho người thuê (nếu có)
+            if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+                Wallet renterWallet = walletRepository.findByUserId(booking.getUser().getId())
+                        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví người thuê."));
+                renterWallet.setBalance(renterWallet.getBalance().add(refundAmount));
+                walletRepository.save(renterWallet);
 
-            WalletTransaction refundTx = WalletTransaction.builder()
-                    .wallet(renterWallet)
-                    .amount(refundAmount)
-                    .status(WalletTransaction.Status.APPROVED)
-                    .build();
-            walletTransactionRepository.save(refundTx);
+                WalletTransaction refundTx = WalletTransaction.builder()
+                        .wallet(renterWallet)
+                        .amount(refundAmount)
+                        .status(WalletTransaction.Status.APPROVED)
+                        .build();
+                walletTransactionRepository.save(refundTx);
 
-            notificationService.notifyRefundAfterCancellation(
-                    booking.getUser().getId(),
-                    bookingId,
-                    refundAmount.doubleValue()
-            );
-        }
+                notificationService.notifyRefundAfterCancellation(
+                        booking.getUser().getId(),
+                        bookingId,
+                        refundAmount.doubleValue()
+                );
+            }
 
-        // 2. Trả phí phạt cho chủ xe (nếu có)
-        if (penalty.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
-            Wallet providerWallet = walletRepository.findByUserId(providerId)
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
-            providerWallet.setBalance(providerWallet.getBalance().add(penalty));
-            walletRepository.save(providerWallet);
+            // 2. Trả phí phạt cho chủ xe (nếu có)
+            if (penalty.compareTo(BigDecimal.ZERO) > 0 && isRenter) {
+                Wallet providerWallet = walletRepository.findByUserId(providerId)
+                        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ví chủ xe."));
+                providerWallet.setBalance(providerWallet.getBalance().add(penalty));
+                walletRepository.save(providerWallet);
 
-            WalletTransaction penaltyTx = WalletTransaction.builder()
-                    .wallet(providerWallet)
-                    .amount(penalty)
-                    .status(WalletTransaction.Status.APPROVED)
-                    .build();
-            walletTransactionRepository.save(penaltyTx);
+                WalletTransaction penaltyTx = WalletTransaction.builder()
+                        .wallet(providerWallet)
+                        .amount(penalty)
+                        .status(WalletTransaction.Status.APPROVED)
+                        .build();
+                walletTransactionRepository.save(penaltyTx);
 
-            notificationService.notifyPenaltyReceivedAfterCancellation(
-                    providerId,
-                    bookingId,
-                    penalty.doubleValue()
-            );
+                notificationService.notifyPenaltyReceivedAfterCancellation(
+                        providerId,
+                        bookingId,
+                        penalty.doubleValue()
+                );
+            }
         }
 
         // 3. Cập nhật trạng thái booking & xoá slot đã đặt

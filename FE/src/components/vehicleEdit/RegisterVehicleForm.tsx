@@ -846,8 +846,9 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           onOk?.();
           form.resetFields();
         } catch (error) {
-          showError("Có lỗi xảy ra khi đăng ký xe");
-          console.error(error);
+          // showError("Có lỗi xảy ra khi đăng ký xe");
+          // console.error(error);
+          showApiError(error);
         } finally {
           setSubmitting(false);
         }
