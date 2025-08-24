@@ -34,6 +34,9 @@ export interface Vehicle {
   closeTime?: string; // Closing time for the vehicle rental
   deliveryRadius?: number; // Delivery radius in kilometers
 
+  haveDriver?: string;
+  insuranceStatus?: string;
+
   penalty?: {
     id: string;
     userId?: string | null;

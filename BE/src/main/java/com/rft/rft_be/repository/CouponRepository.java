@@ -19,4 +19,7 @@ public interface CouponRepository extends JpaRepository<Coupon, String> {
 
     // Optional – dùng cho lọc theo thời gian tạo (dashboard filter)
     List<Coupon> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
+
+    boolean existsByName(String name);
+    boolean existsByNameAndIdNot(String name, String id);
 }

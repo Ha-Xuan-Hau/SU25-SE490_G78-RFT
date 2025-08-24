@@ -103,6 +103,54 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
                                               @Param("month") int month, 
                                               @Param("year") int year);
 
+    // Dashboard aggregation queries
+    @Query("SELECT MONTH(fc.timeFinish), YEAR(fc.timeFinish), " +
+           "COALESCE(SUM(fc.costSettlement), 0), COUNT(fc) " +
+           "FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND fc.timeFinish >= :startDate " +
+           "AND fc.timeFinish < :endDate " +
+           "GROUP BY MONTH(fc.timeFinish), YEAR(fc.timeFinish) " +
+           "ORDER BY YEAR(fc.timeFinish), MONTH(fc.timeFinish)")
+    List<Object[]> getMonthlyRevenueAndCountByProvider(@Param("providerId") String providerId,
+                                                       @Param("startDate") LocalDateTime startDate,
+                                                       @Param("endDate") LocalDateTime endDate);
+
+    // Combined aggregation query for current month revenue and monthly data
+    @Query("SELECT " +
+           "CASE " +
+           "  WHEN MONTH(fc.timeFinish) = MONTH(CURRENT_DATE) AND YEAR(fc.timeFinish) = YEAR(CURRENT_DATE) " +
+           "  THEN 'CURRENT' " +
+           "  ELSE 'MONTHLY' " +
+           "END as data_type, " +
+           "MONTH(fc.timeFinish) as month, " +
+           "YEAR(fc.timeFinish) as year, " +
+           "COALESCE(SUM(fc.costSettlement), 0) as revenue, " +
+           "COUNT(fc) as count " +
+           "FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND fc.timeFinish >= :startDate " +
+           "AND fc.timeFinish < :endDate " +
+           "GROUP BY " +
+           "  CASE " +
+           "    WHEN MONTH(fc.timeFinish) = MONTH(CURRENT_DATE) AND YEAR(fc.timeFinish) = YEAR(CURRENT_DATE) " +
+           "    THEN 'CURRENT' " +
+           "    ELSE 'MONTHLY' " +
+           "  END, " +
+           "MONTH(fc.timeFinish), YEAR(fc.timeFinish) " +
+           "ORDER BY YEAR(fc.timeFinish), MONTH(fc.timeFinish)")
+    List<Object[]> getCurrentMonthAndMonthlyDataByProvider(@Param("providerId") String providerId,
+                                                          @Param("startDate") LocalDateTime startDate,
+                                                          @Param("endDate") LocalDateTime endDate);
+
     long countByTimeFinishBetween(LocalDateTime start, LocalDateTime end);
 
     // CHỈ tính các hợp đồng có Contract.status = FINISHED

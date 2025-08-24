@@ -51,16 +51,16 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
         if (user.role === "ADMIN" || user.role === "STAFF") {
           if (user.role === "STAFF" && ADMIN_ONLY_PATHS.includes(currentPath)) {
-            router.push("/404");
+            router.push("/not-found");
             return;
           }
           setIsAuthorized(true);
         } else {
-          router.push("/404");
+          router.push("/not-found");
         }
       } catch (error) {
         console.error("Error parsing user profile:", error);
-        router.push("/404");
+        router.push("/not-found");
       } finally {
         setIsLoading(false);
       }
@@ -195,14 +195,14 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                 icon: "mdi:credit-card-outline",
                 label: "Quản lý giao dịch rút tiền",
               },
-              {
-                key: "finalized-contracts",
-                path: "/admin/manage-finalized-contracts",
-                icon: "mdi:file-document-edit-outline",
-                label: "Quản lý hợp đồng tất toán",
-              },
             ]
           : []),
+        {
+          key: "finalized-contracts",
+          path: "/admin/manage-finalized-contracts",
+          icon: "mdi:file-document-edit-outline",
+          label: "Quản lý hợp đồng tất toán",
+        },
       ],
     },
     {

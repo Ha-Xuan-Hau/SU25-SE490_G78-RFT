@@ -14,8 +14,11 @@ import com.rft.rft_be.repository.VehicleRepository;
 import com.rft.rft_be.service.Notification.NotificationService;
 import com.rft.rft_be.service.admin.AdminUserService;
 import com.rft.rft_be.service.mail.EmailSenderService;
+import com.rft.rft_be.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,17 +41,18 @@ public class ReportServiceImpl implements ReportService {
     private final BookingRepository bookingRepository;
     private final AdminUserService adminUserService;
     private final NotificationService notificationService;
+    final JwtUtil jwtUtil;
 
     private final List<String> seriousReport = List.of(
             "DAMAGED_VEHICLE", "FRAUD", "MISLEADING_INFO", "OWNER_NO_SHOW",
             "OWNER_CANCEL_UNREASONABLY", "DOCUMENT_ISSUE", "TECHNICAL_ISSUE",
             "UNSAFE_VEHICLE", "FUEL_LEVEL_INCORRECT", "NO_INSURANCE",
             "EXPIRED_INSURANCE", "FAKE_DOCUMENT", "FAKE_ORDER",
-            "DISPUTE_REFUND", "LATE_RETURN_NO_CONTACT"
+            "DISPUTE_REFUND", "LATE_RETURN_NO_CONTACT", "DIRTY_CAR"
     );
 
     private final List<String> nonSeriousReport = List.of(
-            "INAPPROPRIATE", "VIOLENCE", "SPAM", "OTHERS", "DIRTY_CAR", "MISLEADING_LISTING"
+            "INAPPROPRIATE", "VIOLENCE", "SPAM", "OTHERS", "MISLEADING_LISTING"
     );
 
     private final List<String> staffReport = List.of("STAFF_REPORT");
@@ -61,6 +65,13 @@ public class ReportServiceImpl implements ReportService {
         if ("APPEAL".equals(type)) {
             processAppeal(reporter, request);
             return;
+        }
+
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth.getToken().getClaim("userId");
+
+        if (userId.equals(request.getTargetId())) {
+            throw new RuntimeException("Không thể tự báo cáo chính mình");
         }
 
         // Logic cho các report thông thường
@@ -158,7 +169,20 @@ public class ReportServiceImpl implements ReportService {
         reportRepo.save(flag);
     }
 
-    private void checkAndExecuteBan(String userId) {
+    private void checkAndExecuteBan(String targetId) {
+        String userId = targetId;
+
+        Optional<User> userOpt = userRepo.findById(targetId);
+        if (!userOpt.isPresent()) {
+            // Nếu không phải user, check vehicle
+            Optional<Vehicle> vehicleOpt = vehicleRepo.findById(targetId);
+            if (vehicleOpt.isPresent()) {
+                userId = vehicleOpt.get().getUser().getId();
+            } else {
+                return; // Không tìm thấy user hay vehicle
+            }
+        }
+
         long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
                 userId, "STAFF_REPORT", UserReport.Status.APPROVED);
 
@@ -176,6 +200,7 @@ public class ReportServiceImpl implements ReportService {
         }
     }
 
+    //đang set mỗi 1h
     @Scheduled(fixedDelay = 3600000)
     @Transactional
     public void autoApproveExpiredFlags() {
@@ -232,7 +257,7 @@ public class ReportServiceImpl implements ReportService {
             throw new IllegalArgumentException("Báo cáo đã được xử lý");
         }
 
-        report.setStatus(UserReport.Status.APPROVED);
+        report.setStatus(UserReport.Status.REJECTED);
         reportRepo.save(report);
     }
 
@@ -277,11 +302,48 @@ public class ReportServiceImpl implements ReportService {
     @Override
     @Transactional
     public String createStaffReport(User staff, ReportRequest request) {
+        // Kiểm tra targetId là User hay Vehicle
+        String targetUserId = null;
+
+        Optional<User> userOpt = userRepo.findById(request.getTargetId());
+        if (userOpt.isPresent()) {
+            // Là User - check status
+            User targetUser = userOpt.get();
+
+            if (targetUser.getStatus().equals(User.Status.INACTIVE)) {
+                throw new RuntimeException("Người dùng đã bị ban khỏi hệ thống. Không cần tạo thêm báo cáo");
+            }
+            if (targetUser.getStatus().equals(User.Status.TEMP_BANNED)) {
+                throw new RuntimeException("Người dùng đã sắp bị ban khỏi hệ thống. Không cần tạo thêm báo cáo");
+            }
+
+            targetUserId = request.getTargetId();
+        } else {
+            // Không phải user, check vehicle
+            Optional<Vehicle> vehicleOpt = vehicleRepo.findById(request.getTargetId());
+            if (vehicleOpt.isPresent()) {
+                // Lấy owner của vehicle và check status
+                User owner = vehicleOpt.get().getUser();
+
+                if (owner.getStatus().equals(User.Status.INACTIVE)) {
+                    throw new RuntimeException("Chủ xe đã bị ban khỏi hệ thống. Không cần tạo thêm báo cáo");
+                }
+                if (owner.getStatus().equals(User.Status.TEMP_BANNED)) {
+                    throw new RuntimeException("Chủ xe đã sắp bị ban khỏi hệ thống. Không cần tạo thêm báo cáo");
+                }
+
+                targetUserId = owner.getId();
+            } else {
+                throw new RuntimeException("Không tìm thấy người dùng hoặc phương tiện với ID: " + request.getTargetId());
+            }
+        }
+
         request.setGeneralType("STAFF_ERROR");
         request.setType("STAFF_REPORT");
 
         UserReport staffFlag = reportMapper.toEntity(request);
         staffFlag.setReporter(staff);
+        staffFlag.setReportedId(targetUserId);
         staffFlag.setCreatedAt(LocalDateTime.now());
         staffFlag.setStatus(UserReport.Status.PENDING);
 
@@ -292,16 +354,16 @@ public class ReportServiceImpl implements ReportService {
 
         UserReport saved = reportRepo.save(staffFlag);
 
-
-        // TODO: Send notification to user
+        // Send notification
         String reportUrl = "/report-detail?reportId=" + saved.getId() + "&mode=single";
-        notificationService.notifyUserBeingReportedByStaff(request.getTargetId(), reportUrl);
-        String userBanId = request.getTargetId();
+        notificationService.notifyUserBeingReportedByStaff(targetUserId, reportUrl);
+
         long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
-                userBanId, "STAFF_REPORT", UserReport.Status.APPROVED);
+                targetUserId, "STAFF_REPORT", UserReport.Status.APPROVED);
         if (flagCount >= 3) {
-            notificationService.notifyUserTemporaryBan(userBanId);
+            notificationService.notifyUserTemporaryBan(targetUserId);
         }
+
         return saved.getId();
     }
 

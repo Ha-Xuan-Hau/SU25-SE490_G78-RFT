@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ProfileLayout } from "@/layouts/ProfileLayout";
-import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
+import { useRealtimeEvents } from "@/hooks/useRealtimeEvents";
 import { VehicleRentalCard } from "@/components/vehicleRent/VehicleRentalCard";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { getUserBookings, getBookingDetail } from "@/apis/booking.api";
@@ -10,7 +10,7 @@ import { BookingDetail } from "@/types/booking";
 
 import { showError, showSuccess } from "@/utils/toast.utils";
 import { Empty, Spin } from "antd";
-import RatingModal from "@/components/RatingModal";
+import RatingModal from "@/components/vehicleRent/RatingModal";
 import VehicleSelectionModal from "@/components/vehicleRent/VehicleSelectionModal";
 
 // Vehicle type từ BookingDetail
@@ -506,8 +506,8 @@ export default function BookingHistoryPage() {
   useEffect(() => {
     if (!userId) return;
 
-    const unsubscribe = on('BOOKING_STATUS_CHANGE', (event) => {
-      console.log('Booking status changed:', event);
+    const unsubscribe = on("BOOKING_STATUS_CHANGE", (event) => {
+      console.log("Booking status changed:", event);
       // Đảm bảo gọi đúng function
       fetchBookingHistory(); // không cần await ở đây
     });
@@ -517,26 +517,28 @@ export default function BookingHistoryPage() {
 
   useEffect(() => {
     if (!userId) {
-      console.log('No userId, skipping WebSocket setup');
+      console.log("No userId, skipping WebSocket setup");
       return;
     }
 
-    console.log('Setting up WebSocket listeners for user:', userId);
+    console.log("Setting up WebSocket listeners for user:", userId);
 
-    const unsubscribe = on('BOOKING_STATUS_CHANGE', (event) => {
-      console.log('User - Booking status changed:', event);
-      console.log('Event payload:', event.payload);
-      console.log('Calling fetchBookingHistory...');
+    const unsubscribe = on("BOOKING_STATUS_CHANGE", (event) => {
+      console.log("User - Booking status changed:", event);
+      console.log("Event payload:", event.payload);
+      console.log("Calling fetchBookingHistory...");
 
-      fetchBookingHistory().then(() => {
-        console.log('fetchBookingHistory completed');
-      }).catch((error) => {
-        console.error('fetchBookingHistory error:', error);
-      });
+      fetchBookingHistory()
+        .then(() => {
+          console.log("fetchBookingHistory completed");
+        })
+        .catch((error) => {
+          console.error("fetchBookingHistory error:", error);
+        });
     });
 
     return () => {
-      console.log('Cleaning up WebSocket listener');
+      console.log("Cleaning up WebSocket listener");
       unsubscribe();
     };
   }, [userId, on, fetchBookingHistory]);

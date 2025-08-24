@@ -83,7 +83,13 @@ public class CouponServiceImpl implements CouponService {
     public CouponDTO updateCoupon(String id, CouponDTO dto) {
         Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không thấy mã giảm giá!!"));
-
+        String newName = dto.getName() == null ? null : dto.getName().trim();
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Tên mã giảm giá không được để trống");
+        }
+        if (couponRepository.existsByNameAndIdNot(newName, id)) {
+            throw new IllegalArgumentException("Tên mã giảm giá đã tồn tại");
+        }
         coupon.setName(dto.getName());
         coupon.setDiscount(dto.getDiscount());
         coupon.setDescription(dto.getDescription());
@@ -168,6 +174,13 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public CouponDTO createCoupon(CouponCreateDTO dto) {
+        String name = dto.getName() == null ? null : dto.getName().trim();
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("Tên mã giảm giá không được để trống");
+        }
+        if (couponRepository.existsByName(name)) {
+            throw new IllegalArgumentException("Tên mã giảm giá đã tồn tại: " + name);
+        }
         Coupon coupon = new Coupon();
         coupon.setName(dto.getName());
         coupon.setDiscount(dto.getDiscount());
@@ -176,7 +189,6 @@ public class CouponServiceImpl implements CouponService {
         coupon.setStatus(Coupon.CouponStatus.VALID);
         coupon.setCreatedAt(LocalDateTime.now());
         coupon.setUpdatedAt(LocalDateTime.now());
-
         Coupon saved = couponRepository.saveAndFlush(coupon);
         return couponMapper.toDTO(saved);
     }

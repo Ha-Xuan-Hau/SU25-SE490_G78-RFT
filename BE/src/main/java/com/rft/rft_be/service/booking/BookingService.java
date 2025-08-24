@@ -4,11 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.rft.rft_be.dto.booking.BookingDTO;
-import com.rft.rft_be.dto.booking.BookingRequestDTO;
-import com.rft.rft_be.dto.booking.BookingResponseDTO;
-import com.rft.rft_be.dto.booking.CancelBookingRequestDTO;
-import com.rft.rft_be.dto.booking.CancelBookingResponseDTO;
+import com.rft.rft_be.dto.booking.*;
 import org.springframework.data.domain.Page;
 
 public interface BookingService {
@@ -51,4 +47,5 @@ public interface BookingService {
 
     long countOverdueDeliveryByProvider(String providerId, java.util.List<com.rft.rft_be.entity.Booking.Status> statuses);
 
+    ProviderTodaySummaryResponse getProviderTodaySummary(String token);
 }

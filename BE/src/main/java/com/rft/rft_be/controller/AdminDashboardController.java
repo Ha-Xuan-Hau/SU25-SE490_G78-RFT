@@ -58,7 +58,7 @@ public class AdminDashboardController {
     public MonthlyBookingSummaryResponse getMonthlyBookingSummary(@RequestParam(value = "month", required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
         return service.getMonthlyBookingSummary(month);
     }
-
+    //toltal
     // 5) Tổng số đơn đặt xe (để FE tự so sánh với tháng trước)
     @GetMapping("/bookings/total")
     public CountResponse getMonthlyTotalBookings(@RequestParam(value = "month", required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {

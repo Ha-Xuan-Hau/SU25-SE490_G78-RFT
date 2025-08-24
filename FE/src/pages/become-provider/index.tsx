@@ -5,6 +5,12 @@ import { useUserState, useRefreshUser } from "@/recoils/user.state";
 import { useEffect } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import {
+  getProvinces,
+  getDistrictsByProvinceCode,
+  getWardsByDistrictCode,
+  GeoUnit,
+} from "@/lib/vietnam-geo-data";
 dayjs.extend(isSameOrAfter);
 
 import {
@@ -21,6 +27,7 @@ import {
   theme,
   TimePicker,
   Modal,
+  Select,
 } from "antd";
 import {
   PhoneOutlined,
@@ -67,6 +74,119 @@ const BecomeProviderPage = () => {
   const [countdown, setCountdown] = useState(10);
 
   const refreshUser = useRefreshUser();
+
+  // Thêm các state cho địa chỉ
+  const [provinces, setProvinces] = useState<GeoUnit[]>([]);
+  const [districts, setDistricts] = useState<GeoUnit[]>([]);
+  const [wards, setWards] = useState<GeoUnit[]>([]);
+  const [selectedProvince, setSelectedProvince] = useState<string>("");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  const [selectedWard, setSelectedWard] = useState<string>("");
+  const [detailAddress, setDetailAddress] = useState<string>("");
+
+  // Load provinces khi component mount
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        const data = await getProvinces();
+        setProvinces(data);
+      } catch (error) {
+        console.error("Load provinces error:", error);
+      }
+    };
+    loadProvinces();
+  }, []);
+
+  // Load districts khi chọn province
+  useEffect(() => {
+    if (selectedProvince) {
+      const loadDistricts = async () => {
+        try {
+          const provinceCode = provinces.find(
+            (p) => p.name === selectedProvince
+          )?.code;
+          if (provinceCode) {
+            const data = await getDistrictsByProvinceCode(provinceCode);
+            setDistricts(data);
+          }
+        } catch (error) {
+          setDistricts([]);
+        }
+      };
+      loadDistricts();
+    } else {
+      setDistricts([]);
+      setWards([]);
+    }
+  }, [selectedProvince, provinces]);
+
+  // Load wards khi chọn district
+  useEffect(() => {
+    if (selectedDistrict) {
+      const loadWards = async () => {
+        try {
+          const districtCode = districts.find(
+            (d) => d.name === selectedDistrict
+          )?.code;
+          if (districtCode) {
+            const data = await getWardsByDistrictCode(districtCode);
+            setWards(data);
+          }
+        } catch (error) {
+          setWards([]);
+        }
+      };
+      loadWards();
+    } else {
+      setWards([]);
+    }
+  }, [selectedDistrict, districts]);
+
+  // Load địa chỉ hiện tại của user vào form
+  useEffect(() => {
+    if (user?.address) {
+      // Parse địa chỉ hiện tại (giả sử format: "Số nhà, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố")
+      const addressParts = user.address.split(", ");
+      if (addressParts.length >= 4) {
+        setDetailAddress(addressParts[0] || "");
+        setSelectedWard(addressParts[1] || "");
+        setSelectedDistrict(addressParts[2] || "");
+        setSelectedProvince(addressParts[3] || "");
+      } else {
+        // Nếu địa chỉ không đúng format, set toàn bộ vào detail
+        setDetailAddress(user.address);
+      }
+    }
+  }, [user]);
+
+  // Hàm tạo địa chỉ đầy đủ
+  const getFullAddress = () => {
+    const addressParts = [
+      detailAddress,
+      selectedWard,
+      selectedDistrict,
+      selectedProvince,
+    ].filter(Boolean); // Loại bỏ các giá trị rỗng
+
+    return addressParts.join(", ");
+  };
+
+  useEffect(() => {
+    if (user?.registeredVehicles && user.registeredVehicles.length > 0) {
+      // Tự động thêm các dịch vụ đã đăng ký vào selectedServices
+      setSelectedServices((prev) => {
+        const newSelected = [...prev];
+        if (user.registeredVehicles) {
+          user.registeredVehicles.forEach((vehicleType) => {
+            if (!newSelected.includes(vehicleType)) {
+              newSelected.push(vehicleType);
+            }
+          });
+        }
+        return newSelected;
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     if (current === 3) {
@@ -125,20 +245,30 @@ const BecomeProviderPage = () => {
     form
       .validateFields()
       .then(async (values) => {
+        // Validate địa chỉ
+        if (
+          !selectedProvince ||
+          !selectedDistrict ||
+          !selectedWard ||
+          !detailAddress
+        ) {
+          showError("Vui lòng điền đầy đủ thông tin địa chỉ!");
+          return;
+        }
+
         setSavingProfile(true);
         try {
-          // Gọi API update profile
+          // Tạo địa chỉ đầy đủ
+          const fullAddress = getFullAddress();
+
           const updateData = {
             fullName: values.fullname,
             phone: values.phone,
-            address: values.address,
+            address: fullAddress, // Địa chỉ đầy đủ với format: "Số nhà, Phường, Quận, Thành phố"
           };
 
           await updateUserProfile(user?.id, updateData);
-
-          // Refresh user data
           await refreshUser();
-
           showSuccess("Cập nhật thông tin thành công!");
         } catch (error) {
           console.error("Error updating profile:", error);
@@ -162,9 +292,22 @@ const BecomeProviderPage = () => {
     }
 
     if (current === 1) {
+      // Validate địa chỉ
+      if (
+        !selectedProvince ||
+        !selectedDistrict ||
+        !selectedWard ||
+        !detailAddress
+      ) {
+        showError("Vui lòng điền đầy đủ thông tin địa chỉ!");
+        return;
+      }
+
       form
         .validateFields()
         .then(() => {
+          // Update form với địa chỉ đầy đủ
+          form.setFieldValue("address", getFullAddress());
           setCurrent(current + 1);
         })
         .catch((info) => {
@@ -409,66 +552,237 @@ const BecomeProviderPage = () => {
           />
         </Form.Item>
 
-        <Form.Item
-          name="address"
-          label="Địa chỉ"
-          rules={[{ required: true, message: "Vui lòng nhập địa chỉ!" }]}
-        >
-          <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} size="large" />
-        </Form.Item>
+        {/* Phần địa chỉ với dropdown */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-700 mb-2">
+            <span className="text-red-500">* </span>
+            Địa chỉ (Khách vui lòng sử dụng địa chỉ trước khi sáp nhập)
+          </label>
+
+          {/* 3 Dropdowns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            {/* Tỉnh/Thành phố */}
+            <Select
+              placeholder="Chọn tỉnh/thành phố"
+              size="large"
+              value={selectedProvince || undefined}
+              onChange={(value) => {
+                setSelectedProvince(value);
+                setSelectedDistrict("");
+                setSelectedWard("");
+                form.setFieldValue("province", value);
+                form.setFieldValue("district", undefined);
+                form.setFieldValue("ward", undefined);
+              }}
+              showSearch
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                (option?.children as unknown as string)
+                  ?.toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            >
+              {provinces.map((p) => (
+                <Select.Option key={p.code} value={p.name}>
+                  {p.name}
+                </Select.Option>
+              ))}
+            </Select>
+
+            {/* Quận/Huyện */}
+            <Select
+              placeholder="Chọn quận/huyện"
+              size="large"
+              value={selectedDistrict || undefined}
+              onChange={(value) => {
+                setSelectedDistrict(value);
+                setSelectedWard("");
+                form.setFieldValue("district", value);
+                form.setFieldValue("ward", undefined);
+              }}
+              disabled={!selectedProvince}
+              showSearch
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                (option?.children as unknown as string)
+                  ?.toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            >
+              {districts.map((d) => (
+                <Select.Option key={d.code} value={d.name}>
+                  {d.name}
+                </Select.Option>
+              ))}
+            </Select>
+
+            {/* Phường/Xã */}
+            <Select
+              placeholder="Chọn phường/xã"
+              size="large"
+              value={selectedWard || undefined}
+              onChange={(value) => {
+                setSelectedWard(value);
+                form.setFieldValue("ward", value);
+              }}
+              disabled={!selectedDistrict}
+              showSearch
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                (option?.children as unknown as string)
+                  ?.toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            >
+              {wards.map((w) => (
+                <Select.Option key={w.code} value={w.name}>
+                  {w.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Input địa chỉ chi tiết */}
+          <Input.TextArea
+            placeholder="Số nhà, tên đường, tòa nhà..."
+            autoSize={{ minRows: 2, maxRows: 3 }}
+            size="large"
+            value={detailAddress}
+            onChange={(e) => {
+              setDetailAddress(e.target.value);
+              form.setFieldValue("detailAddress", e.target.value);
+            }}
+          />
+
+          {/* Hiển thị địa chỉ đầy đủ */}
+          {(selectedProvince ||
+            selectedDistrict ||
+            selectedWard ||
+            detailAddress) && (
+            <div className="mt-2 p-2 bg-gray-50 rounded">
+              <Text type="secondary" className="text-sm">
+                Địa chỉ đầy đủ: {getFullAddress() || "Chưa có"}
+              </Text>
+            </div>
+          )}
+        </div>
       </Form>
     </div>
   );
 
   const renderServiceContent = () => (
     <div className="p-6 bg-white rounded-lg shadow">
-      {/* Wrap tất cả trong một Form */}
       <Form form={form} layout="vertical">
         <Title level={4}>Chọn dịch vụ cho thuê</Title>
+
+        {/* ✅ Thêm thông báo cho user đã có registeredVehicles */}
+        {user?.registeredVehicles && user.registeredVehicles.length > 0 && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <CheckCircleOutlined className="text-blue-500 mt-1" />
+              <div>
+                <Text className="font-medium text-blue-800">
+                  Bạn đã đăng ký các dịch vụ sau:
+                </Text>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {user.registeredVehicles.map((vehicleType) => {
+                    const service = rentalServices.find(
+                      (s) => s.id === vehicleType
+                    );
+                    return (
+                      <span
+                        key={vehicleType}
+                        className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium"
+                      >
+                        ✓ {service?.name}
+                      </span>
+                    );
+                  })}
+                </div>
+                <Text className="text-blue-600 text-sm mt-2 block">
+                  Các dịch vụ đã đăng ký không thể bỏ chọn, bạn chỉ có thể đăng
+                  ký thêm dịch vụ mới.
+                </Text>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Paragraph className="mb-4 text-gray-600">
-          Vui lòng chọn (các) dịch vụ cho thuê xe bạn muốn cung cấp trên nền
-          tảng RFT
+          {user?.registeredVehicles && user.registeredVehicles.length > 0
+            ? "Bạn có thể đăng ký thêm các dịch vụ cho thuê xe khác trên nền tảng RFT"
+            : "Vui lòng chọn (các) dịch vụ cho thuê xe bạn muốn cung cấp trên nền tảng RFT"}
         </Paragraph>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-8">
-          {rentalServices.map((service) => (
-            <Card
-              key={service.id}
-              className={`cursor-pointer transition-all ${
-                selectedServices.includes(service.id)
-                  ? `border-2 border-[${token.colorPrimary}] shadow-md`
-                  : "border border-gray-200"
-              }`}
-              onClick={() =>
-                onServiceChange(
-                  service.id,
-                  !selectedServices.includes(service.id)
-                )
-              }
-              style={{
-                borderColor: selectedServices.includes(service.id)
-                  ? token.colorPrimary
-                  : undefined,
-              }}
-            >
-              <div className="flex items-center">
-                <Checkbox
-                  checked={selectedServices.includes(service.id)}
-                  onChange={(e) =>
-                    onServiceChange(service.id, e.target.checked)
+          {rentalServices.map((service) => {
+            // ✅ Check xem service này đã được đăng ký chưa
+            const isAlreadyRegistered = user?.registeredVehicles?.includes(
+              service.id
+            );
+            const isSelected = selectedServices.includes(service.id);
+
+            return (
+              <Card
+                key={service.id}
+                className={`transition-all ${
+                  isAlreadyRegistered
+                    ? `border-2 border-green-400 bg-green-50 cursor-not-allowed` // Đã đăng ký - màu xanh, không click được
+                    : isSelected
+                    ? `cursor-pointer border-2 border-[${token.colorPrimary}] shadow-md` // Đang chọn - màu primary
+                    : "cursor-pointer border border-gray-200 hover:border-gray-300" // Chưa chọn - có thể click
+                }`}
+                onClick={() => {
+                  // ✅ Chỉ cho phép click nếu chưa đăng ký
+                  if (!isAlreadyRegistered) {
+                    onServiceChange(service.id, !isSelected);
                   }
-                />
-                <div className="ml-4">
-                  <Title level={5} className="mb-0">
-                    {service.name}
-                  </Title>
-                  <Text type="secondary">{service.description}</Text>
+                }}
+                style={{
+                  borderColor: isAlreadyRegistered
+                    ? "#4ade80" // green-400
+                    : isSelected
+                    ? token.colorPrimary
+                    : undefined,
+                }}
+              >
+                <div className="flex items-center">
+                  <Checkbox
+                    checked={isSelected || isAlreadyRegistered} // ✅ Checked nếu đã chọn HOẶC đã đăng ký
+                    disabled={isAlreadyRegistered} // ✅ Disable nếu đã đăng ký
+                    style={{ pointerEvents: "none" }}
+                  />
+                  <div className="ml-4 flex-1">
+                    <div className="flex items-center justify-between">
+                      <Title
+                        level={5}
+                        className={`mb-0 ${
+                          isAlreadyRegistered ? "text-green-700" : ""
+                        }`}
+                      >
+                        {service.name}
+                      </Title>
+                      {/* ✅ Hiển thị badge "Đã đăng ký" */}
+                      {isAlreadyRegistered && (
+                        <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                          Đã đăng ký
+                        </span>
+                      )}
+                    </div>
+                    <Text
+                      type="secondary"
+                      className={isAlreadyRegistered ? "text-green-600" : ""}
+                    >
+                      {service.description}
+                    </Text>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
 
+        {/* Phần phạm vi giao xe và thời gian hoạt động giữ nguyên */}
         {/* PHẦN PHẠM VI GIAO XE - Đặt trong Form */}
         <div className="mb-8">
           <Title level={4}>Phạm vi giao xe tận nơi</Title>
@@ -558,7 +872,10 @@ const BecomeProviderPage = () => {
                   onChange={setOpenTime}
                   format="HH:mm"
                   minuteStep={30}
-                  placeholder="Giờ mở cửa"
+                  placeholder="Chọn giờ"
+                  showNow={false}
+                  allowClear={true}
+                  defaultOpenValue={dayjs().minute(0).second(0)}
                 />
               </div>
               <div>
@@ -570,7 +887,10 @@ const BecomeProviderPage = () => {
                   onChange={setCloseTime}
                   format="HH:mm"
                   minuteStep={30}
-                  placeholder="Giờ đóng cửa"
+                  placeholder="Chọn giờ"
+                  showNow={false}
+                  allowClear={true}
+                  defaultOpenValue={dayjs().minute(0).second(0)}
                 />
               </div>
             </div>
@@ -582,7 +902,6 @@ const BecomeProviderPage = () => {
       </Form>
     </div>
   );
-
   const renderCompletedContent = () => (
     <div className="p-8 bg-white rounded-lg shadow text-center">
       <div className="text-green-500 text-6xl mb-4">
@@ -688,30 +1007,45 @@ const BecomeProviderPage = () => {
             loading={loading}
             onClick={handleConfirmRegistration}
           >
-            Xác nhận đăng ký
+            {user?.role === "PROVIDER"
+              ? "Cập nhật dịch vụ"
+              : "Xác nhận đăng ký"}
           </Button>,
         ]}
         width={600}
       >
         <div className="space-y-4">
           <div>
-            <Title level={5}>Dịch vụ cung cấp:</Title>
+            <Title level={5}>
+              {user?.role === "PROVIDER"
+                ? "Dịch vụ hiện tại:"
+                : "Dịch vụ cung cấp:"}
+            </Title>
             <div className="flex flex-wrap gap-2">
               {selectedServices.map((serviceId) => {
                 const service = rentalServices.find((s) => s.id === serviceId);
+                const isAlreadyRegistered =
+                  user?.registeredVehicles?.includes(serviceId);
+
                 return (
                   <span
                     key={serviceId}
-                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      isAlreadyRegistered
+                        ? "bg-green-100 text-green-800 border border-green-300"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
                   >
+                    {isAlreadyRegistered && "✓ "}
                     {service?.name}
+                    {isAlreadyRegistered && " (Đã có)"}
                   </span>
                 );
               })}
             </div>
           </div>
 
-          {/* THÊM HIỂN THỊ PHẠM VI GIAO XE */}
+          {/* Phần còn lại giữ nguyên */}
           <div>
             <Title level={5}>Phạm vi giao xe:</Title>
             <Text>{form.getFieldValue("deliveryRadius")} km</Text>
@@ -731,7 +1065,9 @@ const BecomeProviderPage = () => {
           <Divider />
 
           <Text type="secondary">
-            Vui lòng kiểm tra lại thông tin trước khi xác nhận đăng ký.
+            {user?.role === "PROVIDER"
+              ? "Vui lòng kiểm tra lại thông tin trước khi cập nhật dịch vụ."
+              : "Vui lòng kiểm tra lại thông tin trước khi xác nhận đăng ký."}
           </Text>
         </div>
       </Modal>

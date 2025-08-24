@@ -1,26 +1,83 @@
-// components/admin/ProductSoldMap.tsx
+// app/admin/dashboard/_component/BookingCard.tsx
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { dashboardAPI } from "@/apis/admin.api";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function ProductSoldMap() {
-  // Mock data cho đơn đặt xe
-  const totalRenting = 125; // Đang chạy
-  const totalFinished = 2896; // Hoàn thành
-  const totalCancelled = 400; // Đã hủy
-  const totalOrders = totalRenting + totalFinished + totalCancelled;
+  const [loading, setLoading] = useState(true);
+  const [bookingData, setBookingData] = useState({
+    running: 0,
+    completed: 0,
+    canceled: 0,
+    total: 0,
+  });
+  const [previousMonthTotal, setPreviousMonthTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  // Tính phần trăm tăng trưởng so với tháng trước
-  const growthPercentage = 28.5;
+  useEffect(() => {
+    fetchBookingData();
+  }, []);
+
+  const fetchBookingData = async () => {
+    try {
+      setLoading(true);
+
+      // Lấy dữ liệu tháng hiện tại
+      const currentMonth = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
+      const summaryResponse = await dashboardAPI.getMonthlyBookingSummary(
+        currentMonth
+      );
+
+      // Lấy dữ liệu tháng trước để tính tăng trưởng
+      const previousMonth = new Date();
+      previousMonth.setMonth(previousMonth.getMonth() - 1);
+      const previousMonthStr = previousMonth.toISOString().slice(0, 7);
+      const previousResponse = await dashboardAPI.getMonthlyTotalBookings(
+        previousMonthStr
+      );
+
+      setBookingData(summaryResponse);
+      setPreviousMonthTotal(previousResponse.total);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching booking data:", err);
+      setError("Không thể tải dữ liệu");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Tính phần trăm tăng trưởng - LOGIC MỚI
+  const calculateGrowthPercentage = () => {
+    if (previousMonthTotal === 0 && bookingData.total === 0) {
+      return "0";
+    } else if (previousMonthTotal === 0 && bookingData.total > 0) {
+      return "100"; // Tháng trước = 0, tháng này > 0 => +100%
+    } else if (previousMonthTotal > 0 && bookingData.total === 0) {
+      return "-100"; // Tháng trước > 0, tháng này = 0 => -100%
+    } else {
+      return (
+        ((bookingData.total - previousMonthTotal) / previousMonthTotal) *
+        100
+      ).toFixed(1);
+    }
+  };
+
+  const growthPercentage = parseFloat(calculateGrowthPercentage());
 
   const chartData = {
     labels: ["Đang chạy", "Hoàn thành", "Đã hủy"],
     datasets: [
       {
-        data: [totalRenting, totalFinished, totalCancelled],
+        data: [
+          bookingData.running,
+          bookingData.completed,
+          bookingData.canceled,
+        ],
         backgroundColor: ["#36A2EB", "#4CAF50", "#FF6384"],
         hoverBackgroundColor: ["#36A2EB", "#4CAF50", "#FF6384"],
         borderWidth: 0,
@@ -37,6 +94,25 @@ export default function ProductSoldMap() {
       tooltip: { enabled: true },
     },
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-3"></div>
+          <div className="h-28 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="text-red-500 text-sm">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm">
@@ -61,7 +137,7 @@ export default function ProductSoldMap() {
             <Doughnut data={chartData} options={options} />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <div className="text-lg font-bold text-gray-800">
-                {totalOrders.toLocaleString("vi-VN")}
+                {bookingData.total.toLocaleString("vi-VN")}
               </div>
               <div className="text-[10px] text-gray-500">Tổng đơn</div>
             </div>
@@ -76,7 +152,7 @@ export default function ProductSoldMap() {
               <span className="text-xs text-gray-600">Đang chạy</span>
             </div>
             <span className="text-xs font-semibold text-gray-800">
-              {totalRenting}
+              {bookingData.running}
             </span>
           </div>
 
@@ -86,7 +162,7 @@ export default function ProductSoldMap() {
               <span className="text-xs text-gray-600">Hoàn thành</span>
             </div>
             <span className="text-xs font-semibold text-gray-800">
-              {totalFinished.toLocaleString("vi-VN")}
+              {bookingData.completed.toLocaleString("vi-VN")}
             </span>
           </div>
 
@@ -96,12 +172,13 @@ export default function ProductSoldMap() {
               <span className="text-xs text-gray-600">Đã hủy</span>
             </div>
             <span className="text-xs font-semibold text-gray-800">
-              {totalCancelled}
+              {bookingData.canceled}
             </span>
           </div>
 
           <div className="text-[10px] text-gray-500 pt-1">
-            Tăng {Math.abs(growthPercentage)}% so với tháng trước
+            {growthPercentage >= 0 ? "Tăng" : "Giảm"}{" "}
+            {Math.abs(growthPercentage)}% so với tháng trước
           </div>
         </div>
       </div>
