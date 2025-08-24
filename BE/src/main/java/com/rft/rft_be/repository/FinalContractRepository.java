@@ -258,4 +258,22 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
            ORDER BY fc.createdAt DESC
            """)
     List<Object[]> getAllFinalContractsByProvider(@Param("providerId") String providerId);
+
+    @Query("SELECT fc FROM FinalContract fc WHERE fc.createdAt >= :startDate AND fc.createdAt < :endDate")
+    List<FinalContract> findByCreatedAtBetween(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    @Query("""
+        SELECT fc FROM FinalContract fc 
+        JOIN fc.contract c 
+        WHERE fc.createdAt >= :startDate 
+        AND fc.createdAt < :endDate 
+        AND c.status = com.rft.rft_be.entity.Contract.Status.FINISHED
+    """)
+    List<FinalContract> findCompletedByCreatedAtBetween(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }
