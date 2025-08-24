@@ -19,6 +19,7 @@ import PaymentModal from "../PaymentModal";
 import CancelBookingModal from "../CancelBookingModal";
 import ReturnVehicleModal from "./ReturnVehicleModal";
 import VehicleSelectionModal from "./VehicleSelectionModal";
+import dayjs from "dayjs";
 
 // Import booking APIs
 import { updateBookingStatus, cancelBooking } from "@/apis/booking.api";
@@ -348,18 +349,41 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   };
 
   // Calculate rental duration
-  const startDate = moment(info?.timeBookingStart);
-  const endDate = moment(info?.timeBookingEnd);
-  const durationDays = endDate.diff(startDate, "days");
-  const durationHours = endDate.diff(startDate, "hours");
+  // Calculate rental duration với logic giống utils
+  const startDate = dayjs(info?.timeBookingStart);
+  const endDate = dayjs(info?.timeBookingEnd);
+
+  const totalHours = endDate.diff(startDate, "hour", true); // true để lấy số thập phân
+  const totalMinutes = endDate.diff(startDate, "minute");
 
   let durationText = "";
-  if (durationDays > 0) {
-    durationText = `${durationDays} ngày`;
-  } else if (durationHours > 0) {
-    durationText = `${durationHours} giờ`;
+
+  // Logic tính toán theo quy tắc của utils
+  if (totalHours <= 8) {
+    // Tính theo giờ + phút (≤ 8 giờ)
+    const hours = Math.floor(totalHours);
+    const minutes = Math.round(totalMinutes % 60);
+
+    if (minutes > 0) {
+      durationText = `${hours} giờ ${minutes} phút`;
+    } else if (hours > 0) {
+      durationText = `${hours} giờ`;
+    } else {
+      durationText = "Dưới 1 giờ";
+    }
   } else {
-    durationText = "Dưới 1 giờ";
+    // Tính theo ngày (> 8 giờ)
+    let billingDays;
+
+    if (totalHours <= 24) {
+      // > 8 giờ nhưng ≤ 24 giờ = 1 ngày
+      billingDays = 1;
+    } else {
+      // > 24 giờ = làm tròn lên ngày
+      billingDays = Math.ceil(totalHours / 24);
+    }
+
+    durationText = `${billingDays} ngày`;
   }
 
   // Kiểm tra có thể báo cáo không và loại báo cáo nào
@@ -906,35 +930,6 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
         )}
       </Modal>
 
-      {/* ReportButton Modal - CHỈ RENDER KHI CẦN VÀ ẨN BUTTON */}
-      {/* {reportModalVisible && selectedReportTypes.length > 0 && (
-        <div style={{ display: "none" }}>
-          {selectedReportTypes.length === 1 ? (
-            <ReportButton
-              targetId={info.vehicleId._id}
-              reportType={selectedReportTypes[0]}
-              buttonText=""
-              size="small"
-              type="text"
-              icon={false}
-              autoOpen={true}
-              onModalClose={handleReportModalClose}
-            />
-          ) : (
-            <ReportButton
-              targetId={info.vehicleId._id}
-              reportTypes={selectedReportTypes}
-              showTypeSelector={true}
-              buttonText=""
-              size="small"
-              type="text"
-              icon={false}
-              autoOpen={true}
-              onModalClose={handleReportModalClose}
-            />
-          )}
-        </div>
-      )} */}
       {/* Thay vì dùng display: none */}
       {reportModalVisible &&
         selectedReportTypes.length > 0 &&

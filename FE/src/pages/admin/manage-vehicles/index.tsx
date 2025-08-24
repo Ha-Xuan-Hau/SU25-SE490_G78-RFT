@@ -25,6 +25,9 @@ const { Title } = Typography;
 const { Search } = Input;
 const { Option } = Select;
 
+// Define vehicle type as union type
+type VehicleType = "CAR" | "MOTORBIKE" | "BICYCLE";
+
 interface VehicleFeature {
   name: string;
 }
@@ -93,13 +96,24 @@ interface Vehicle {
   updatedAt?: string;
 }
 
+// Type for vehicle counts
+type VehicleCounts = {
+  [key in VehicleType]: number;
+};
+
+// Type for all vehicles storage
+type AllVehicles = {
+  [key in VehicleType]: Vehicle[];
+};
+
 export default function VehicleManagementPage() {
-  const [activeTab, setActiveTab] = useState("CAR");
+  const [activeTab, setActiveTab] = useState<VehicleType>("CAR");
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [vehicleDetailModal, setVehicleDetailModal] = useState<{
     open: boolean;
     vehicle: Vehicle | null;
@@ -108,33 +122,119 @@ export default function VehicleManagementPage() {
     vehicle: null,
   });
 
+  // States với type đúng
+  const [vehicleCounts, setVehicleCounts] = useState<VehicleCounts>({
+    CAR: 0,
+    MOTORBIKE: 0,
+    BICYCLE: 0,
+  });
+
+  const [allVehicles, setAllVehicles] = useState<AllVehicles>({
+    CAR: [],
+    MOTORBIKE: [],
+    BICYCLE: [],
+  });
+
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
+  // Fetch tất cả vehicles khi component mount
   useEffect(() => {
-    loadVehicles();
-  }, [activeTab, statusFilter]);
+    fetchAllVehicleTypes();
+  }, []);
 
-  // Fetch All Vehicles - Cách 1 với path variable
-  const loadVehicles = async () => {
+  // Update vehicles khi activeTab hoặc statusFilter thay đổi
+  useEffect(() => {
+    filterVehicles();
+  }, [activeTab, statusFilter, allVehicles]);
+
+  // Fetch tất cả 3 loại xe
+  const fetchAllVehicleTypes = async () => {
     setLoading(true);
     try {
-      const { type, ...otherParams } = { type: activeTab };
-      const params: Record<string, unknown> = {};
+      // Fetch song song cả 3 loại xe
+      const [carResponse, motorbikeResponse, bicycleResponse] =
+        await Promise.all([
+          getAllVehicles({ type: "CAR" }),
+          getAllVehicles({ type: "MOTORBIKE" }),
+          getAllVehicles({ type: "BICYCLE" }),
+        ]);
 
-      if (statusFilter !== "ALL") {
-        params.status = statusFilter;
-      }
+      const carData = carResponse.content || carResponse || [];
+      const motorbikeData =
+        motorbikeResponse.content || motorbikeResponse || [];
+      const bicycleData = bicycleResponse.content || bicycleResponse || [];
 
-      const response = await getAllVehicles({
-        type: activeTab,
-        ...params,
+      // Lưu tất cả vehicles
+      setAllVehicles({
+        CAR: carData,
+        MOTORBIKE: motorbikeData,
+        BICYCLE: bicycleData,
       });
-      setVehicles(response.content || response);
+
+      // Cập nhật counts
+      setVehicleCounts({
+        CAR: carData.length,
+        MOTORBIKE: motorbikeData.length,
+        BICYCLE: bicycleData.length,
+      });
+
+      // Set vehicles cho tab hiện tại
+      filterVehicles("CAR", statusFilter, {
+        CAR: carData,
+        MOTORBIKE: motorbikeData,
+        BICYCLE: bicycleData,
+      });
     } catch (error) {
-      console.error("Error fetching vehicles:", error);
+      //console.error("Error fetching vehicles:", error);
       showApiError("Có lỗi xảy ra khi lấy danh sách xe.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Filter vehicles theo tab và status
+  const filterVehicles = (
+    tab: VehicleType = activeTab,
+    status: string = statusFilter,
+    vehicleData: AllVehicles = allVehicles
+  ) => {
+    let filteredVehicles = vehicleData[tab] || [];
+
+    // Filter theo status nếu không phải ALL
+    if (status !== "ALL") {
+      filteredVehicles = filteredVehicles.filter(
+        (v: Vehicle) => v.status === status
+      );
+    }
+
+    setVehicles(filteredVehicles);
+  };
+
+  // Refresh data cho một loại xe cụ thể
+  const refreshVehicleType = async (type: VehicleType) => {
+    try {
+      const response = await getAllVehicles({ type });
+      const data = response.content || response || [];
+
+      setAllVehicles((prev) => ({
+        ...prev,
+        [type]: data,
+      }));
+
+      setVehicleCounts((prev) => ({
+        ...prev,
+        [type]: data.length,
+      }));
+
+      // Nếu đang xem tab này thì update vehicles
+      if (type === activeTab) {
+        filterVehicles(type, statusFilter, {
+          ...allVehicles,
+          [type]: data,
+        });
+      }
+    } catch (error) {
+      console.error(`Error refreshing ${type} vehicles:`, error);
     }
   };
 
@@ -154,6 +254,7 @@ export default function VehicleManagementPage() {
     setVehicleDetailModal({ open: true, vehicle: vehicleDetails });
   };
 
+  // Filter theo search text
   const filteredData = vehicles.filter((item) => {
     const matchesSearch =
       item.thumb.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -216,9 +317,36 @@ export default function VehicleManagementPage() {
   };
 
   // Count vehicles by status for current tab
-  const getVehicleCount = () => {
-    const tabVehicles = vehicles.filter((v) => v.vehicleType === activeTab);
-    return tabVehicles.length;
+  const getStatusCount = (status: string) => {
+    const tabVehicles = allVehicles[activeTab] || [];
+    if (status === "ALL") return tabVehicles.length;
+    return tabVehicles.filter((v: Vehicle) => v.status === status).length;
+  };
+
+  // Handle tab change
+  const handleTabChange = (key: string) => {
+    // Type guard để đảm bảo key là VehicleType
+    if (key === "CAR" || key === "MOTORBIKE" || key === "BICYCLE") {
+      setActiveTab(key);
+      setSearchText(""); // Clear search when changing tab
+      setSelectedVehicles([]); // Clear selected vehicles
+      setCurrentPage(1); // Reset về trang 1
+    }
+  };
+
+  // Handle status filter change
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1); // Reset về trang 1
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    setCurrentPage(1); // Reset về trang 1
+  };
+
+  const handlePageChange = (page: number, pageSize?: number) => {
+    setCurrentPage(page);
   };
 
   // Columns for the vehicle table
@@ -230,7 +358,6 @@ export default function VehicleManagementPage() {
       render: (_, __, index) => index + 1,
       align: "center",
     },
-
     {
       title: "Hình ảnh",
       key: "image",
@@ -273,7 +400,6 @@ export default function VehicleManagementPage() {
           },
         ]
       : []),
-
     {
       title: "Chủ xe",
       key: "owner",
@@ -293,20 +419,6 @@ export default function VehicleManagementPage() {
         </div>
       ),
     },
-    // {
-    //   title: "Đánh giá",
-    //   key: "rating",
-    //   render: (_, record) => (
-    //     <div className="text-center">
-    //       <div className="font-medium">
-    //         {record.rating ? `${record.rating.toFixed(1)} ⭐` : "Chưa có"}
-    //       </div>
-    //       <div className="text-xs text-gray-500">
-    //         ({record.totalRatings} đánh giá)
-    //       </div>
-    //     </div>
-    //   ),
-    // },
     {
       title: "Trạng thái",
       key: "status",
@@ -357,21 +469,40 @@ export default function VehicleManagementPage() {
               enterButton={<SearchOutlined />}
               size="large"
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)} // Dùng handleSearch
               className="max-w-md"
             />
             <Select
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={handleStatusFilterChange}
               className="w-40"
               size="large"
             >
-              <Option value="ALL">Tất cả</Option>
-              <Option value="PENDING">Chờ duyệt</Option>
-              <Option value="AVAILABLE">Đang hoạt động</Option>
-              <Option value="UNAVAILABLE">Không khả dụng</Option>
-              <Option value="SUSPENDED">Tạm ngưng</Option>
+              <Option value="ALL">Tất cả ({getStatusCount("ALL")})</Option>
+              <Option value="PENDING">
+                Chờ duyệt ({getStatusCount("PENDING")})
+              </Option>
+              <Option value="AVAILABLE">
+                Đang hoạt động ({getStatusCount("AVAILABLE")})
+              </Option>
+              <Option value="UNAVAILABLE">
+                Không khả dụng ({getStatusCount("UNAVAILABLE")})
+              </Option>
+              <Option value="SUSPENDED">
+                Tạm ngưng ({getStatusCount("SUSPENDED")})
+              </Option>
             </Select>
+          </div>
+
+          {/* Tổng số xe */}
+          <div className="text-sm text-gray-600">
+            Tổng số:{" "}
+            <span className="font-semibold">
+              {vehicleCounts.CAR +
+                vehicleCounts.MOTORBIKE +
+                vehicleCounts.BICYCLE}
+            </span>{" "}
+            xe
           </div>
         </div>
       </div>
@@ -379,15 +510,16 @@ export default function VehicleManagementPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={[
             {
               key: "CAR",
               label: (
                 <span>
                   Xe ô tô
-                  {/* (
-                  {vehicles.filter((v) => v.vehicleType === "CAR").length}) */}
+                  <span className="ml-2 text-gray-500">
+                    ({vehicleCounts.CAR})
+                  </span>
                 </span>
               ),
             },
@@ -396,9 +528,9 @@ export default function VehicleManagementPage() {
               label: (
                 <span>
                   Xe máy
-                  {/* (
-                  {vehicles.filter((v) => v.vehicleType === "MOTORBIKE").length}
-                  ) */}
+                  <span className="ml-2 text-gray-500">
+                    ({vehicleCounts.MOTORBIKE})
+                  </span>
                 </span>
               ),
             },
@@ -407,8 +539,9 @@ export default function VehicleManagementPage() {
               label: (
                 <span>
                   Xe đạp
-                  {/* (
-                  {vehicles.filter((v) => v.vehicleType === "BICYCLE").length}) */}
+                  <span className="ml-2 text-gray-500">
+                    ({vehicleCounts.BICYCLE})
+                  </span>
                 </span>
               ),
             },
@@ -419,13 +552,15 @@ export default function VehicleManagementPage() {
         <div className="px-6 pb-6">
           <Table
             columns={vehicleColumns}
-            dataSource={filteredData.filter((v) => v.vehicleType === activeTab)}
+            dataSource={filteredData}
             loading={loading}
             rowKey="id"
             pagination={{
+              current: currentPage, // Control current page
               pageSize: 10,
               showSizeChanger: true,
               showQuickJumper: true,
+              onChange: handlePageChange, // Handle page change
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} xe`,
             }}
@@ -494,19 +629,13 @@ const VehicleDetailModal: React.FC<{
         </Button>,
       ]}
       width="95vw"
+      destroyOnClose
       style={{
         maxWidth: "1200px",
         top: 20,
         maxHeight: "calc(100vh - 40px)",
         overflow: "visible",
       }}
-      // ✅ QUAN TRỌNG: Loại bỏ bodyStyle có scroll riêng
-      bodyStyle={{
-        overflow: "visible",
-        maxHeight: "none",
-        padding: "24px",
-      }}
-      // ✅ Thêm modalRender để control scroll
       modalRender={(modal) => (
         <div style={{ overflow: "visible" }}>{modal}</div>
       )}

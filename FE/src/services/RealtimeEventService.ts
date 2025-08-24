@@ -30,6 +30,8 @@ class RealtimeEventService {
   private currentUserId: string | null = null;
   private connectionPromise: Promise<void> | null = null;
 
+  websocketUrl: string = process.env.NEXT_PUBLIC_WS_URL || "";
+
   connect(userId: string): Promise<void> {
     // Nếu đã connected với cùng userId
     if (this.client?.connected && this.currentUserId === userId) {
@@ -58,7 +60,7 @@ class RealtimeEventService {
       this.client = new Client({
         // SỬA: Dùng SockJS thay vì WebSocket thuần
         webSocketFactory: () => {
-          return new SockJS("http://localhost:8080/ws");
+          return new SockJS(this.websocketUrl);
         },
 
         connectHeaders: {
