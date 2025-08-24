@@ -353,7 +353,7 @@ public class WalletServiceImpl implements WalletService {
 //                WalletTransaction.Status.PENDING,
 //                WalletTransaction.Status.PROCESSING
 //        );
-
+        //call repo
         long waiting = txRepository.countByStatusAndDateRange(WalletTransaction.Status.PENDING, from, to);
         long approved = txRepository.countApprovedWithUserIdInRange(WalletTransaction.Status.APPROVED, from, to);
         BigDecimal totalApproved = txRepository.sumApprovedAmountWithUserIdInRange(WalletTransaction.Status.APPROVED, from, to);
