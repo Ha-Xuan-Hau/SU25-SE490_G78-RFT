@@ -232,6 +232,12 @@ const GroupEditVehicleModal: React.FC<GroupEditVehicleModalProps> = ({
       onCancel={onCancel}
       footer={null}
       destroyOnClose
+      styles={{
+        body: {
+          overflow: "visible", // ✅ Không có scrollbar
+          maxHeight: "none",
+        },
+      }}
     >
       <Form form={form} layout="vertical" onFinish={onOk}>
         <Card title={<span>{getCardTitle()}</span>} className="mb-4">
