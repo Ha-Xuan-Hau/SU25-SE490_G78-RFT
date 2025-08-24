@@ -48,7 +48,6 @@ const MOTORBIKE_TRANSMISSIONS = [
 
 const FUEL_TYPES = [
   { value: "GASOLINE", label: "Xăng" },
-  { value: "DIESEL", label: "Dầu diesel" },
   { value: "ELECTRIC", label: "Điện" },
 ];
 
