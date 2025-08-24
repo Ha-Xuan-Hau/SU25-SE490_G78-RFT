@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import StatisticsChartMonth from "./statistic-chart-month";
 import DynamicStatisticsChart from "./dynamic-statistics-chart";
+import { DateRangePicker } from "@/components/antd";
+import dayjs, { Dayjs } from "dayjs";
+import { RangePickerProps } from "antd/es/date-picker";
+import { Download } from "lucide-react";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -28,6 +31,7 @@ interface MetricItem {
   label: string;
   sublabel?: string;
   color: string;
+  tooltip?: string;
 }
 
 // Constants
@@ -43,7 +47,11 @@ const COLORS = {
 const MAX_SELECTED_METRICS = 4;
 
 const ALL_ORDERS_METRICS: MetricItem[] = [
-  { id: "customers", label: "Khách hàng", color: COLORS.secondary },
+  {
+    id: "customers",
+    label: "Khách hàng",
+    color: COLORS.secondary,
+  },
   { id: "bookings", label: "Đơn đặt xe", color: COLORS.tertiary },
   { id: "revenue", label: "Doanh số", color: COLORS.quaternary },
 ];
@@ -87,7 +95,10 @@ const getDateRange = () => {
 export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   const dateConfig = getDateRange();
   const [dateRange, setDateRange] = useState(dateConfig.default);
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["revenue"]);
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [dateRangeValue, setDateRangeValue] = useState<
+    [Dayjs | null, Dayjs | null]
+  >([dayjs(dateConfig.default.startDate), dayjs(dateConfig.default.endDate)]);
 
   // Data processing
   const analyticsData = {
@@ -152,8 +163,15 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   };
 
   // Event handlers
-  const handleDateChange = (field: "startDate" | "endDate", value: string) => {
-    setDateRange((prev) => ({ ...prev, [field]: value }));
+  const handleDateRangeChange: RangePickerProps["onChange"] = (values) => {
+    if (values && values[0] && values[1]) {
+      const [startDate, endDate] = values;
+      setDateRangeValue([startDate, endDate]);
+      setDateRange({
+        startDate: startDate.format("YYYY-MM-DD"),
+        endDate: endDate.format("YYYY-MM-DD"),
+      });
+    }
   };
 
   const handleMetricToggle = (metricId: string) => {
@@ -169,50 +187,55 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   };
 
   // Component parts
-  const DateRangePicker = () => (
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Bắt đầu từ ngày
+  const DashboardDateRangePicker = () => (
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-4">
+        <label className="text-base font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+          Khung thời gian:
         </label>
-        <input
-          type="date"
-          value={dateRange.startDate}
-          min={dateConfig.min}
-          max={dateRange.endDate}
-          onChange={(e) => handleDateChange("startDate", e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-        />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Đến cuối ngày
-        </label>
-        <input
-          type="date"
-          value={dateRange.endDate}
-          min={dateRange.startDate}
-          max={dateConfig.max}
-          onChange={(e) => handleDateChange("endDate", e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+        <DateRangePicker
+          value={dateRangeValue}
+          onChange={handleDateRangeChange}
+          format="DD/MM/YYYY"
+          placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+          className="min-w-[380px]"
+          size="large" // Thêm size large
+          style={{
+            minWidth: 380,
+            fontSize: "14px",
+          }}
+          popupClassName="custom-date-picker-dropdown" // Để custom dropdown nếu cần
+          disabledDate={(current) => {
+            if (!current) return false;
+            // Không cho chọn ngày tương lai
+            if (current.isAfter(dayjs())) return true;
+            // Không cho chọn quá 4 tháng trước
+            if (current.isBefore(dayjs(dateConfig.min))) return true;
+            return false;
+          }}
+          presets={[
+            {
+              label: "7 ngày qua",
+              value: [dayjs().subtract(7, "day"), dayjs()],
+            },
+            {
+              label: "30 ngày qua",
+              value: [dayjs().subtract(30, "day"), dayjs()],
+            },
+            { label: "Tháng này", value: [dayjs().startOf("month"), dayjs()] },
+            {
+              label: "Tháng trước",
+              value: [
+                dayjs().subtract(1, "month").startOf("month"),
+                dayjs().subtract(1, "month").endOf("month"),
+              ],
+            },
+          ]}
         />
       </div>
 
       <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
+        <Download className="w-4 h-4" />
         Tải dữ liệu
       </button>
     </div>
@@ -284,23 +307,10 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           <span className="text-sm font-medium text-gray-900 dark:text-white">
             {metric.label}
           </span>
-          <svg
-            className="w-3 h-3 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
         </div>
-        {metric.sublabel && (
+        {metric.tooltip && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {metric.sublabel}
+            {metric.tooltip}
           </p>
         )}
       </div>
@@ -311,7 +321,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <DateRangePicker />
+        <DashboardDateRangePicker />
       </div>
 
       {/* Overview Section */}

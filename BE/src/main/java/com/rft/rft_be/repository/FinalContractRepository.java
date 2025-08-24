@@ -103,6 +103,54 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
                                               @Param("month") int month, 
                                               @Param("year") int year);
 
+    // Dashboard aggregation queries
+    @Query("SELECT MONTH(fc.timeFinish), YEAR(fc.timeFinish), " +
+           "COALESCE(SUM(fc.costSettlement), 0), COUNT(fc) " +
+           "FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND fc.timeFinish >= :startDate " +
+           "AND fc.timeFinish < :endDate " +
+           "GROUP BY MONTH(fc.timeFinish), YEAR(fc.timeFinish) " +
+           "ORDER BY YEAR(fc.timeFinish), MONTH(fc.timeFinish)")
+    List<Object[]> getMonthlyRevenueAndCountByProvider(@Param("providerId") String providerId,
+                                                       @Param("startDate") LocalDateTime startDate,
+                                                       @Param("endDate") LocalDateTime endDate);
+
+    // Combined aggregation query for current month revenue and monthly data
+    @Query("SELECT " +
+           "CASE " +
+           "  WHEN MONTH(fc.createdAt) = MONTH(CURRENT_DATE) AND YEAR(fc.createdAt) = YEAR(CURRENT_DATE) " +
+           "  THEN 'CURRENT' " +
+           "  ELSE 'MONTHLY' " +
+           "END as data_type, " +
+           "MONTH(fc.createdAt) as month, " +
+           "YEAR(fc.createdAt) as year, " +
+           "COALESCE(SUM(CASE WHEN c.status = 'FINISHED' THEN fc.costSettlement ELSE 0 END), 0) as revenue, " +
+           "COUNT(CASE WHEN c.status = 'FINISHED' THEN fc.id END) as count " +
+           "FROM FinalContract fc " +
+           "JOIN fc.contract c " +
+           "JOIN c.booking b " +
+           "JOIN b.bookingDetails bd " +
+           "JOIN bd.vehicle v " +
+           "WHERE v.user.id = :providerId " +
+           "AND fc.createdAt >= :startDate " +
+           "AND fc.createdAt < :endDate " +
+           "GROUP BY " +
+           "  CASE " +
+           "    WHEN MONTH(fc.createdAt) = MONTH(CURRENT_DATE) AND YEAR(fc.createdAt) = YEAR(CURRENT_DATE) " +
+           "    THEN 'CURRENT' " +
+           "    ELSE 'MONTHLY' " +
+           "  END, " +
+           "MONTH(fc.createdAt), YEAR(fc.createdAt) " +
+           "ORDER BY YEAR(fc.createdAt), MONTH(fc.createdAt)")
+    List<Object[]> getCurrentMonthAndMonthlyDataByProvider(@Param("providerId") String providerId,
+                                                          @Param("startDate") LocalDateTime startDate,
+                                                          @Param("endDate") LocalDateTime endDate);
+
     long countByTimeFinishBetween(LocalDateTime start, LocalDateTime end);
 
     // CHỈ tính các hợp đồng có Contract.status = FINISHED
@@ -115,4 +163,99 @@ public interface FinalContractRepository extends JpaRepository<FinalContract, St
            """)
     BigDecimal sumCostSettlementByTimeFinishAndContractStatus(
             LocalDateTime start, LocalDateTime end, Contract.Status status);
+
+    // Thống kê theo tháng cho provider
+    @Query("""
+           SELECT 
+               COUNT(DISTINCT c.booking.user.id) as totalCustomersWithFinalContract,
+               COALESCE(SUM(fc.costSettlement), 0) as totalRevenueFromFinalContracts,
+               COUNT(DISTINCT CASE WHEN c.status = 'FINISHED' THEN c.booking.user.id END) as customersWithCompletedContracts,
+               COALESCE(SUM(CASE WHEN c.status = 'FINISHED' THEN fc.costSettlement ELSE 0 END), 0) as revenueFromCompletedContracts,
+               COUNT(fc.id) as totalFinalContracts,
+               COUNT(CASE WHEN c.status = 'FINISHED' THEN fc.id END) as completedFinalContracts,
+               COUNT(CASE WHEN c.status = 'CANCELLED' THEN fc.id END) as cancelledFinalContracts
+           FROM FinalContract fc
+           JOIN fc.contract c
+           JOIN c.booking b
+           JOIN b.bookingDetails bd
+           JOIN bd.vehicle v
+           WHERE v.user.id = :providerId
+             AND MONTH(fc.createdAt) = :month
+             AND YEAR(fc.createdAt) = :year
+           """)
+    Object[] getMonthlyStatisticsByProvider(@Param("providerId") String providerId,
+                                           @Param("month") int month,
+                                           @Param("year") int year);
+
+    // Query để kiểm tra có FinalContract nào trong tháng của provider không
+    @Query("""
+           SELECT COUNT(fc)
+           FROM FinalContract fc
+           JOIN fc.contract c
+           JOIN c.booking b
+           JOIN b.bookingDetails bd
+           JOIN bd.vehicle v
+           WHERE v.user.id = :providerId
+             AND MONTH(fc.createdAt) = :month
+             AND YEAR(fc.createdAt) = :year
+           """)
+    long countFinalContractsByProviderInMonth(@Param("providerId") String providerId,
+                                            @Param("month") int month,
+                                            @Param("year") int year);
+
+    // Query để đếm FinalContract theo Contract status trong tháng hiện tại
+    @Query("""
+           SELECT c.status, COUNT(fc)
+           FROM FinalContract fc
+           JOIN fc.contract c
+           JOIN c.booking b
+           JOIN b.bookingDetails bd
+           JOIN bd.vehicle v
+           WHERE v.user.id = :providerId
+             AND MONTH(fc.createdAt) = MONTH(CURRENT_DATE)
+             AND YEAR(fc.createdAt) = YEAR(CURRENT_DATE)
+           GROUP BY c.status
+           """)
+    List<Object[]> countFinalContractsByProviderAndStatusInCurrentMonth(@Param("providerId") String providerId);
+
+    // Query đơn giản hơn để test dữ liệu theo tháng
+    @Query("""
+           SELECT 
+               fc.id,
+               fc.costSettlement,
+               c.status,
+               c.booking.user.id,
+               fc.createdAt
+           FROM FinalContract fc
+           JOIN fc.contract c
+           JOIN c.booking b
+           JOIN b.bookingDetails bd
+           JOIN bd.vehicle v
+           WHERE v.user.id = :providerId
+             AND MONTH(fc.createdAt) = :month
+             AND YEAR(fc.createdAt) = :year
+           """)
+    List<Object[]> getFinalContractDetailsByProviderAndMonth(@Param("providerId") String providerId,
+                                                           @Param("month") int month,
+                                                           @Param("year") int year);
+
+    // Query debug để kiểm tra tất cả FinalContract của provider theo tháng
+    @Query("""
+           SELECT 
+               fc.id,
+               fc.costSettlement,
+               c.status,
+               c.booking.user.id,
+               fc.createdAt,
+               MONTH(fc.createdAt) as month,
+               YEAR(fc.createdAt) as year
+           FROM FinalContract fc
+           JOIN fc.contract c
+           JOIN c.booking b
+           JOIN b.bookingDetails bd
+           JOIN bd.vehicle v
+           WHERE v.user.id = :providerId
+           ORDER BY fc.createdAt DESC
+           """)
+    List<Object[]> getAllFinalContractsByProvider(@Param("providerId") String providerId);
 }

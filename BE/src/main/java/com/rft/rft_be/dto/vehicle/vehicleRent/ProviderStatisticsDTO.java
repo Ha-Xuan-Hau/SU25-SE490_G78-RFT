@@ -26,15 +26,18 @@ public class ProviderStatisticsDTO {
     
     // Thống kê xe
     private Long totalVehicles;
+    private Long totalCars;
+    private Long totalMotorbikes;
+    private Long totalBicycles;
     
-    // Thống kê contract trong tháng hiện tại
-    private Long totalRentingContracts; // Trạng thái RENTING
-    private Long totalFinishedContracts; // Trạng thái FINISHED
-    private Long totalCancelledContracts; // Trạng thái CANCELLED
+    // Thống kê FinalContract theo Contract status trong tháng hiện tại
+    private Long totalRentingContracts; // FinalContract có Contract status = RENTING
+    private Long totalFinishedContracts; // FinalContract có Contract status = FINISHED
+    private Long totalCancelledContracts; // FinalContract có Contract status = CANCELLED
     
     // Thống kê doanh thu từ final contract trong tháng hiện tại
     private BigDecimal totalRevenue; // Tổng doanh thu
-    private Long totalFinalContracts; // Tổng số final contract
+    private Long totalFinalContracts; // Tổng số final contract gồm tất cả status
     
     // Thống kê theo tháng (cho biểu đồ)
     private List<MonthlyRevenueDTO> monthlyRevenue;
