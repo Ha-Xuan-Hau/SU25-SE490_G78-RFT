@@ -8,6 +8,7 @@ import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentCreateDTO;
 import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleRentUpdateDTO;
 import com.rft.rft_be.dto.vehicle.vehicleRent.VehicleThumbGroupDTO;
 import com.rft.rft_be.dto.vehicle.vehicleRent.ProviderStatisticsDTO;
+import com.rft.rft_be.dto.vehicle.vehicleRent.MonthlyStatisticsDTO;
 
 import java.util.List;
 
@@ -37,4 +38,12 @@ public interface VehicleRentService {
      * @return ProviderStatisticsDTO chứa thông tin thống kê
      */
     ProviderStatisticsDTO getProviderStatistics();
+
+    /**
+     * Lấy thống kê theo tháng cho provider hiện tại
+     * @param month tháng (1-12)
+     * @param year năm
+     * @return MonthlyStatisticsDTO chứa thông tin thống kê theo tháng
+     */
+    MonthlyStatisticsDTO getMonthlyStatistics(int month, int year);
 }
