@@ -1,4 +1,3 @@
-// pages/provider/dashboard/index.tsx
 "use client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +6,7 @@ import OrderIncomeCard from "./_component/order-income-card";
 import BusinessRegistrationCard from "./_component/business-registration-card";
 import AnalyticsDashboard from "./_component/analytics-dashboard";
 import ProviderLayout from "@/layouts/ProviderLayout";
-import { getProviderStatistics } from "@/apis/provider.api";
+import { getProviderStatistics, getTodoWork } from "@/apis/provider.api";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import StatisticsChartYear from "./_component/statistic-chart-year";
 import StatisticsChartMonth from "./_component/statistic-chart-month";
@@ -24,9 +23,19 @@ export default function ProviderDashboard() {
     queryFn: getProviderStatistics,
   });
 
-  if (isLoading) return <LoadingSpinner />;
+  // Thêm query mới cho getTodoWork
+  const {
+    data: todoWork,
+    isLoading: isTodoLoading,
+    error: todoError,
+  } = useQuery({
+    queryKey: ["provider-todo-work"],
+    queryFn: getTodoWork,
+  });
 
-  if (error) {
+  if (isLoading || isTodoLoading) return <LoadingSpinner />;
+
+  if (error || todoError) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center py-8 text-red-500">
@@ -49,10 +58,12 @@ export default function ProviderDashboard() {
 
   const renderGeneralTab = () => (
     <div className="h-full flex flex-col gap-4 lg:gap-6">
-      {/* Top section - Cards */}
+      {/* Top section - 4 Cards in one row */}
+      <UserProfileCard todoWork={todoWork} />
+
+      {/* Second section */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
-        <div className="xl:col-span-7 space-y-4 lg:space-y-6">
-          <UserProfileCard statistics={statistics} />
+        <div className="xl:col-span-7">
           <OrderIncomeCard statistics={statistics} />
         </div>
         <div className="xl:col-span-5">
@@ -60,7 +71,7 @@ export default function ProviderDashboard() {
         </div>
       </div>
 
-      {/* Bottom section - Chart */}
+      {/* Bottom section - Charts */}
       <div className="flex-1 min-h-[400px] space-y-6">
         <StatisticsChartMonth />
         <StatisticsChartYear monthlyData={statistics?.monthlyRevenue} />
@@ -90,16 +101,6 @@ export default function ProviderDashboard() {
                 `}
                 aria-current={activeTab === tab.id ? "page" : undefined}
               >
-                <span
-                  className={`
-                  transition-colors duration-200
-                  ${
-                    activeTab === tab.id
-                      ? "text-blue-500 dark:text-blue-400"
-                      : "text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300"
-                  }
-                `}
-                ></span>
                 {tab.label}
               </button>
             ))}

@@ -151,6 +151,12 @@ const EditSingleVehicleInGroupModal: React.FC<
       footer={null}
       destroyOnClose
       width={600}
+      styles={{
+        body: {
+          overflow: "visible", // ✅ Không có scrollbar
+          maxHeight: "none",
+        },
+      }}
     >
       <Form
         form={form}

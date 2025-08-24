@@ -902,23 +902,126 @@ const BecomeProviderPage = () => {
       </Form>
     </div>
   );
-  const renderCompletedContent = () => (
-    <div className="p-8 bg-white rounded-lg shadow text-center">
-      <div className="text-green-500 text-6xl mb-4">
-        <CheckCircleOutlined style={{ color: token.colorSuccess }} />
+  const renderCompletedContent = () => {
+    const isProviderUpdate = user?.role === "PROVIDER";
+    const newServices = selectedServices.filter(
+      (serviceId) => !user?.registeredVehicles?.includes(serviceId)
+    );
+    const existingServices = selectedServices.filter((serviceId) =>
+      user?.registeredVehicles?.includes(serviceId)
+    );
+
+    return (
+      <div className="p-8 bg-white rounded-lg shadow">
+        <div className="text-center">
+          <div className="text-green-500 text-6xl mb-4">
+            <CheckCircleOutlined style={{ color: token.colorSuccess }} />
+          </div>
+
+          <Title level={3} style={{ color: token.colorSuccess }}>
+            {isProviderUpdate
+              ? "Cập nhật dịch vụ thành công!"
+              : "Đăng ký thành công!"}
+          </Title>
+
+          <Paragraph className="text-lg mb-6">
+            {isProviderUpdate ? (
+              <>
+                Tài khoản của bạn đã được cập nhật với{" "}
+                <strong>{newServices.length} dịch vụ mới</strong>.
+                <br />
+                Bạn có thể tiếp tục cung cấp dịch vụ cho thuê xe trên nền tảng
+                RFT.
+              </>
+            ) : (
+              <>
+                Cảm ơn bạn đã đăng ký làm người cho thuê xe trên nền tảng RFT.
+                <br />
+                Bây giờ bạn có thể bắt đầu cung cấp dịch vụ cho thuê xe và kiếm
+                thêm thu nhập.
+              </>
+            )}
+          </Paragraph>
+        </div>
+
+        {/* Chi tiết dịch vụ */}
+        <div className="mt-6 space-y-4">
+          {isProviderUpdate && existingServices.length > 0 && (
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <Text className="text-blue-700 font-medium block mb-2">
+                Dịch vụ đã có:
+              </Text>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {existingServices.map((serviceId) => {
+                  const service = rentalServices.find(
+                    (s) => s.id === serviceId
+                  );
+                  return (
+                    <span
+                      key={serviceId}
+                      className="px-3 py-1 bg-white text-blue-600 rounded-full text-sm border border-blue-200"
+                    >
+                      ✓ {service?.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {isProviderUpdate && newServices.length > 0 && (
+            <div className="p-4 bg-green-50 rounded-lg">
+              <Text className="text-green-700 font-medium block mb-2">
+                Dịch vụ mới thêm:
+              </Text>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {newServices.map((serviceId) => {
+                  const service = rentalServices.find(
+                    (s) => s.id === serviceId
+                  );
+                  return (
+                    <span
+                      key={serviceId}
+                      className="px-3 py-1 bg-white text-green-600 rounded-full text-sm border border-green-200 font-medium"
+                    >
+                      + {service?.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {!isProviderUpdate && (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <Text className="text-gray-700 font-medium block mb-2">
+                Dịch vụ đã đăng ký:
+              </Text>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {selectedServices.map((serviceId) => {
+                  const service = rentalServices.find(
+                    (s) => s.id === serviceId
+                  );
+                  return (
+                    <span
+                      key={serviceId}
+                      className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium"
+                    >
+                      {service?.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Paragraph className="text-gray-500 text-center mt-6">
+          Bạn sẽ được chuyển về trang chủ trong vòng {countdown} giây.
+        </Paragraph>
       </div>
-      <Title level={3} style={{ color: token.colorSuccess }}>
-        Đăng ký thành công!
-      </Title>
-      <Paragraph className="text-lg mb-6">
-        Cảm ơn bạn đã đăng ký làm người cho thuê xe trên nền tảng RFT. Bây giờ
-        bạn có thể bắt đầu cung cấp dịch vụ cho thuê xe và kiếm thêm thu nhập.
-      </Paragraph>
-      <Paragraph className="text-gray-500">
-        Bạn sẽ được chuyển về trang chủ trong vòng {countdown} giây.
-      </Paragraph>
-    </div>
-  );
+    );
+  };
 
   const renderContent = () => {
     switch (current) {

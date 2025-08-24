@@ -8,6 +8,7 @@ import { DateRangePicker } from "@/components/antd";
 import dayjs, { Dayjs } from "dayjs";
 import { RangePickerProps } from "antd/es/date-picker";
 import { Download } from "lucide-react";
+import { Select } from "antd";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -92,10 +93,38 @@ const getDateRange = () => {
   };
 };
 
+// Generate month options
+const generateMonthOptions = () => {
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+  const currentYear = new Date().getFullYear();
+  const months = [
+    "Tháng 1",
+    "Tháng 2",
+    "Tháng 3",
+    "Tháng 4",
+    "Tháng 5",
+    "Tháng 6",
+    "Tháng 7",
+    "Tháng 8",
+    "Tháng 9",
+    "Tháng 10",
+    "Tháng 11",
+    "Tháng 12",
+  ];
+
+  return months.slice(0, currentMonth).map((month, index) => ({
+    label: `${month}/${currentYear}`,
+    value: index + 1,
+  }));
+};
+
 export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   const dateConfig = getDateRange();
   const [dateRange, setDateRange] = useState(dateConfig.default);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
   const [dateRangeValue, setDateRangeValue] = useState<
     [Dayjs | null, Dayjs | null]
   >([dayjs(dateConfig.default.startDate), dayjs(dateConfig.default.endDate)]);
@@ -132,7 +161,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
         data: [
           analyticsData.successfulOrders,
           analyticsData.cancelledOrders,
-          0, // Có thể thêm trạng thái khác nếu cần
+          0,
         ],
         backgroundColor: ["#10B981", "#EF4444", "#FCD34D"],
         borderWidth: 2,
@@ -174,6 +203,12 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     }
   };
 
+  const handleMonthChange = (value: number) => {
+    setSelectedMonth(value);
+    // TODO: Gọi API để lấy data của tháng được chọn
+    console.log(`Selected month: ${value}`);
+  };
+
   const handleMetricToggle = (metricId: string) => {
     if (selectedMetrics.includes(metricId)) {
       setSelectedMetrics(selectedMetrics.filter((id) => id !== metricId));
@@ -187,60 +222,6 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   };
 
   // Component parts
-  const DashboardDateRangePicker = () => (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-4">
-        <label className="text-base font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
-          Khung thời gian:
-        </label>
-        <DateRangePicker
-          value={dateRangeValue}
-          onChange={handleDateRangeChange}
-          format="DD/MM/YYYY"
-          placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
-          className="min-w-[380px]"
-          size="large" // Thêm size large
-          style={{
-            minWidth: 380,
-            fontSize: "14px",
-          }}
-          popupClassName="custom-date-picker-dropdown" // Để custom dropdown nếu cần
-          disabledDate={(current) => {
-            if (!current) return false;
-            // Không cho chọn ngày tương lai
-            if (current.isAfter(dayjs())) return true;
-            // Không cho chọn quá 4 tháng trước
-            if (current.isBefore(dayjs(dateConfig.min))) return true;
-            return false;
-          }}
-          presets={[
-            {
-              label: "7 ngày qua",
-              value: [dayjs().subtract(7, "day"), dayjs()],
-            },
-            {
-              label: "30 ngày qua",
-              value: [dayjs().subtract(30, "day"), dayjs()],
-            },
-            { label: "Tháng này", value: [dayjs().startOf("month"), dayjs()] },
-            {
-              label: "Tháng trước",
-              value: [
-                dayjs().subtract(1, "month").startOf("month"),
-                dayjs().subtract(1, "month").endOf("month"),
-              ],
-            },
-          ]}
-        />
-      </div>
-
-      <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-        <Download className="w-4 h-4" />
-        Tải dữ liệu
-      </button>
-    </div>
-  );
-
   const MetricCard = ({
     title,
     value,
@@ -319,18 +300,38 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <DashboardDateRangePicker />
-      </div>
-
-      {/* Overview Section */}
+      {/* Overview Section với Month Selector */}
       <div className="bg-card border border-border rounded-xl p-8 shadow-sm">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-foreground mb-2">
-            Tổng Quan về Doanh Số
-          </h2>
-          <div className="w-12 h-1 bg-primary rounded-full"></div>
+        {/* Header với Month Selector */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Tổng Quan về Doanh Số
+            </h2>
+            <div className="w-12 h-1 bg-primary rounded-full"></div>
+          </div>
+
+          {/* Month Selector và Export Button nằm cùng một div */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Chọn tháng:
+              </label>
+              <Select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                options={generateMonthOptions()}
+                size="large"
+                style={{ minWidth: 150 }}
+                placeholder="Chọn tháng"
+              />
+            </div>
+
+            <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
+              <Download className="w-4 h-4" />
+              Xuất báo cáo
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -404,7 +405,6 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
             </div>
           </div>
 
-          {/* Success Rate Chart */}
           {/* Success Rate Chart */}
           <div className="xl:col-span-1">
             <div className="bg-gradient-to-b from-primary/5 to-secondary/5 rounded-lg p-6 border border-primary/20 h-full">
@@ -548,22 +548,72 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
         </div>
       </div>
 
-      {/* Trend Analysis */}
+      {/* Trend Analysis với Date Range Picker */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Xu hướng số liệu
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Chọn tối đa {MAX_SELECTED_METRICS} chỉ số để so sánh xu hướng
-              </p>
+          {/* Header với Date Range Picker */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Xu hướng số liệu
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Chọn tối đa {MAX_SELECTED_METRICS} chỉ số để so sánh xu hướng
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  Đã chọn: {selectedMetrics.length}/{MAX_SELECTED_METRICS}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                Đã chọn: {selectedMetrics.length}/{MAX_SELECTED_METRICS}
-              </span>
+
+            {/* Date Range Picker */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  Khung thời gian:
+                </label>
+                <DateRangePicker
+                  value={dateRangeValue}
+                  onChange={handleDateRangeChange}
+                  format="DD/MM/YYYY"
+                  placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                  className="min-w-[300px]"
+                  size="middle"
+                  style={{
+                    minWidth: 300,
+                  }}
+                  disabledDate={(current) => {
+                    if (!current) return false;
+                    if (current.isAfter(dayjs())) return true;
+                    if (current.isBefore(dayjs(dateConfig.min))) return true;
+                    return false;
+                  }}
+                  presets={[
+                    {
+                      label: "7 ngày qua",
+                      value: [dayjs().subtract(7, "day"), dayjs()],
+                    },
+                    {
+                      label: "30 ngày qua",
+                      value: [dayjs().subtract(30, "day"), dayjs()],
+                    },
+                    {
+                      label: "Tháng này",
+                      value: [dayjs().startOf("month"), dayjs()],
+                    },
+                    {
+                      label: "Tháng trước",
+                      value: [
+                        dayjs().subtract(1, "month").startOf("month"),
+                        dayjs().subtract(1, "month").endOf("month"),
+                      ],
+                    },
+                  ]}
+                />
+              </div>
             </div>
           </div>
 

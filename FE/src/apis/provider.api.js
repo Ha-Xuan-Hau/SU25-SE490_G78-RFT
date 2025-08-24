@@ -39,3 +39,13 @@ export async function getProviderStatistics() {
     const { data } = await apiClient.get("/vehicle-rent/statistics");
     return data;
 }
+
+export async function getProviderMonthlyStatistics() {
+    const { data } = await apiClient.get("/vehicle-rent/statistics/monthly");
+    return data;
+}
+
+export async function getTodoWork() {
+    const { data } = await apiClient.get("/bookings/today-summary");
+    return data;
+}

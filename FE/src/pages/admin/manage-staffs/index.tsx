@@ -29,8 +29,6 @@ import {
   getUsers,
   updateUserStatus,
   getUserDetail,
-  searchUsersByName,
-  searchUsersByEmail,
   createStaff,
 } from "@/apis/admin.api";
 import { sendOtpRegister } from "@/apis/auth.api";
@@ -38,7 +36,6 @@ import { showApiError, showApiSuccess } from "@/utils/toast.utils";
 import type { ColumnsType } from "antd/es/table";
 
 const { Title } = Typography;
-const { Search } = Input;
 const { Option } = Select;
 
 interface User {
@@ -55,6 +52,16 @@ interface User {
   updatedAt: number[];
 }
 
+interface UserResponse {
+  users: User[];
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
 interface CreateStaffFormValues {
   email: string;
   fullName: string;
@@ -64,14 +71,28 @@ interface CreateStaffFormValues {
 
 export default function ManageStaffPage() {
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("STAFF");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [searchType, setSearchType] = useState("name");
-  const [users, setUsers] = useState<User[]>([]);
-  const [currentPage, setCurrentPage] = useState(0);
+
+  // Search states
+  const [searchName, setSearchName] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
+  const [searchStatus, setSearchStatus] = useState<User["status"] | undefined>(
+    undefined
+  );
+
+  // Data state
+  const [currentData, setCurrentData] = useState<UserResponse>({
+    users: [],
+    totalElements: 0,
+    totalPages: 0,
+    currentPage: 0,
+    pageSize: 10,
+    hasNext: false,
+    hasPrevious: false,
+  });
+
   const [form] = Form.useForm();
 
   // States cho form tạo nhân viên
@@ -82,22 +103,42 @@ export default function ManageStaffPage() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpCountdown, setOtpCountdown] = useState(0);
 
-  const fetchUsers = async (page = 0, search = "") => {
+  // Fetch data với filters
+  const fetchData = async (
+    page = 0,
+    name?: string,
+    email?: string,
+    status?: User["status"]
+  ) => {
     setLoading(true);
     try {
-      const response = await getUsers({ page, size: 10, name: search });
-      setUsers(response.users || []);
-      setCurrentPage(response.currentPage || 0);
+      const params: any = {
+        page,
+        size: 10,
+        role: "STAFF", // Chỉ lấy STAFF
+        sortBy: "createdAt",
+        sortDirection: "DESC",
+      };
+
+      // Add filters if provided
+      if (name && name.trim()) params.name = name.trim();
+      if (email && email.trim()) params.email = email.trim();
+      if (status) params.status = status;
+
+      const response: UserResponse = await getUsers(params);
+      setCurrentData(response);
     } catch (error) {
+      console.error("Error fetching data:", error);
       showApiError(error, "Không thể tải danh sách nhân viên");
     } finally {
       setLoading(false);
     }
   };
 
+  // Initial load
   useEffect(() => {
-    fetchUsers(currentPage, searchText);
-  }, [currentPage]);
+    fetchData(0);
+  }, []);
 
   // Countdown cho OTP
   useEffect(() => {
@@ -106,6 +147,25 @@ export default function ManageStaffPage() {
       return () => clearTimeout(timer);
     }
   }, [otpCountdown]);
+
+  // Handle search
+  const handleSearch = () => {
+    // Reset to page 0 when searching
+    fetchData(0, searchName, searchEmail, searchStatus);
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchName("");
+    setSearchEmail("");
+    setSearchStatus(undefined);
+    fetchData(0);
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    fetchData(page - 1, searchName, searchEmail, searchStatus);
+  };
 
   // Xử lý gửi OTP
   const handleSendOtp = async () => {
@@ -154,43 +214,13 @@ export default function ManageStaffPage() {
       setOtpCountdown(0);
 
       // Refresh danh sách
-      await fetchUsers(0, "");
-      setCurrentPage(0);
+      await fetchData(0, searchName, searchEmail, searchStatus);
     } catch (error) {
       showApiError(error, "Không thể tạo tài khoản nhân viên");
     } finally {
       setCreateLoading(false);
     }
   };
-
-  const handleSearch = async (value: string) => {
-    setSearchText(value);
-    setCurrentPage(0);
-
-    if (value.trim() === "") {
-      fetchUsers(0, "");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      let response;
-      if (searchType === "name") {
-        response = await searchUsersByName(value, 0, 10);
-      } else if (searchType === "email") {
-        response = await searchUsersByEmail(value, 0, 10);
-      }
-      setUsers(response?.users || []);
-    } catch (error) {
-      showApiError(error, "Không thể tìm kiếm");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredUsers = users.filter((user) => {
-    return activeTab === "STAFF" && user.role === "STAFF";
-  });
 
   const handleViewDetails = async (user: User) => {
     setSelectedUser(user);
@@ -212,15 +242,23 @@ export default function ManageStaffPage() {
   const confirmToggleUserStatus = async () => {
     if (!selectedUser) return;
 
-    const newStatus = selectedUser.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    // Khai báo type rõ ràng
+    const newStatus: "ACTIVE" | "INACTIVE" =
+      selectedUser.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
 
     try {
       await updateUserStatus(selectedUser.id, newStatus);
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === selectedUser.id ? { ...user, status: newStatus } : user
-        )
+
+      // Update local state
+      const updatedUsers = currentData.users.map((user) =>
+        user.id === selectedUser.id ? { ...user, status: newStatus } : user
       );
+
+      setCurrentData({
+        ...currentData,
+        users: updatedUsers,
+      });
+
       setSelectedUser({ ...selectedUser, status: newStatus });
       showApiSuccess("Cập nhật trạng thái thành công");
     } catch (error) {
@@ -269,7 +307,7 @@ export default function ManageStaffPage() {
       title: "STT",
       key: "index",
       width: 60,
-      render: (_, __, index) => index + 1 + currentPage * 10,
+      render: (_, __, index) => index + 1 + currentData.currentPage * 10,
       align: "center",
     },
     {
@@ -287,6 +325,7 @@ export default function ManageStaffPage() {
       title: "Số điện thoại",
       dataIndex: "phone",
       key: "phone",
+      render: (phone) => phone || "Chưa cập nhật",
     },
     {
       title: "Vai trò",
@@ -303,11 +342,6 @@ export default function ManageStaffPage() {
       render: (status) => (
         <Tag color={getStatusColor(status)}>{getStatusText(status)}</Tag>
       ),
-      filters: [
-        { text: "Hoạt động", value: "ACTIVE" },
-        { text: "Ngưng hoạt động", value: "INACTIVE" },
-      ],
-      onFilter: (value, record) => record.status === value,
       align: "center",
     },
     {
@@ -340,71 +374,96 @@ export default function ManageStaffPage() {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1 max-w-md flex items-center">
-            <Select
-              defaultValue="name"
-              onChange={(value) => setSearchType(value)}
-              style={{ width: 120, marginRight: 10 }}
-            >
-              <Option value="name">Tên</Option>
-              <Option value="email">Email</Option>
-            </Select>
-            <Search
-              placeholder="Tìm kiếm theo tên, email"
-              allowClear
-              enterButton={<SearchOutlined />}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="text-sm font-medium text-gray-700">
+              Tìm kiếm và lọc
+            </div>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
               size="large"
-              value={searchText}
-              onChange={(e) => handleSearch(e.target.value)}
-            />
+              onClick={() => {
+                setIsCreateModalVisible(true);
+                setOtpSent(false);
+                setOtpCountdown(0);
+              }}
+            >
+              Tạo nhân viên mới
+            </Button>
           </div>
 
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            size="large"
-            onClick={() => {
-              setIsCreateModalVisible(true);
-              setOtpSent(false);
-              setOtpCountdown(0);
-            }}
-          >
-            Tạo nhân viên mới
-          </Button>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Input
+              placeholder="Tìm theo tên..."
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              size="large"
+            />
+
+            <Input
+              placeholder="Tìm theo email..."
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              size="large"
+            />
+
+            <Select
+              placeholder="Lọc theo trạng thái"
+              value={searchStatus}
+              onChange={setSearchStatus}
+              allowClear
+              size="large"
+              style={{ width: "100%" }}
+            >
+              <Option value="ACTIVE">Hoạt động</Option>
+              <Option value="INACTIVE">Ngưng hoạt động</Option>
+            </Select>
+
+            <Space>
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                onClick={handleSearch}
+                size="large"
+              >
+                Tìm kiếm
+              </Button>
+
+              <Button onClick={handleClearSearch} size="large">
+                Xóa lọc
+              </Button>
+            </Space>
+          </div>
         </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            {
-              key: "STAFF",
-              label: `Nhân viên (${
-                users.filter((u) => u.role === "STAFF").length
-              })`,
-            },
-          ]}
-          className="px-6 pt-4"
-        />
+        <div className="px-6 pt-4">
+          <div className="text-lg font-medium">
+            Danh sách nhân viên ({currentData.totalElements})
+          </div>
+        </div>
 
         <div className="px-6 pb-6">
           <Table
             columns={columns}
-            dataSource={filteredUsers}
+            dataSource={currentData.users}
             rowKey="id"
             loading={loading}
             pagination={{
-              current: currentPage + 1,
-              pageSize: 10,
+              current: currentData.currentPage + 1,
+              pageSize: currentData.pageSize,
+              total: currentData.totalElements,
               showSizeChanger: false,
               showQuickJumper: true,
-              total: filteredUsers.length,
-              onChange: (page) => setCurrentPage(page - 1),
+              onChange: handlePageChange,
               showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} người dùng`,
+                `${range[0]}-${range[1]} của ${total} nhân viên`,
             }}
             scroll={{ x: 800 }}
             className="border-0"
@@ -435,6 +494,7 @@ export default function ManageStaffPage() {
           layout="vertical"
           onFinish={handleCreateStaff}
           className="mt-4"
+          autoComplete="off" // Thêm dòng này
         >
           <Form.Item
             name="fullName"
@@ -448,6 +508,7 @@ export default function ManageStaffPage() {
               prefix={<UserOutlined />}
               placeholder="Nhập họ và tên nhân viên"
               size="large"
+              autoComplete="off" // Thêm dòng này
             />
           </Form.Item>
 
@@ -464,6 +525,7 @@ export default function ManageStaffPage() {
               placeholder="Nhập email nhân viên"
               size="large"
               disabled={otpSent}
+              autoComplete="new-email" // Dùng giá trị đặc biệt
             />
           </Form.Item>
 
@@ -484,6 +546,7 @@ export default function ManageStaffPage() {
               prefix={<LockOutlined />}
               placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
               size="large"
+              autoComplete="new-password" // Dùng giá trị đặc biệt
             />
           </Form.Item>
 
@@ -504,6 +567,7 @@ export default function ManageStaffPage() {
                   size="large"
                   style={{ width: "calc(100% - 120px)" }}
                   maxLength={6}
+                  autoComplete="off" // Thêm dòng này
                 />
               </Form.Item>
               <Button
@@ -562,7 +626,7 @@ export default function ManageStaffPage() {
               size={40}
             />
             <div>
-              <div className="font-semibold text-lg">Chi tiết người dùng</div>
+              <div className="font-semibold text-lg">Chi tiết nhân viên</div>
               <div className="text-sm text-gray-500">
                 {selectedUser?.fullName}
               </div>
@@ -589,8 +653,8 @@ export default function ManageStaffPage() {
               onClick={handleToggleUserStatus}
             >
               {selectedUser?.status === "ACTIVE"
-                ? "Ẩn người dùng"
-                : "Kích hoạt người dùng"}
+                ? "Vô hiệu hóa nhân viên"
+                : "Kích hoạt nhân viên"}
             </Button>
           ),
         ]}
@@ -623,6 +687,15 @@ export default function ManageStaffPage() {
                 </label>
                 <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
                   {selectedUser.phone || "Chưa cập nhật"}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Địa chỉ
+                </label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  {selectedUser.address || "Chưa cập nhật"}
                 </div>
               </div>
 
@@ -697,6 +770,7 @@ export default function ManageStaffPage() {
           <Button
             key="confirm"
             type="primary"
+            danger={selectedUser?.status === "ACTIVE"}
             onClick={confirmToggleUserStatus}
           >
             Xác nhận
@@ -705,9 +779,15 @@ export default function ManageStaffPage() {
       >
         <p>
           Bạn có chắc chắn muốn{" "}
-          {selectedUser?.status === "ACTIVE" ? "ẩn" : "kích hoạt"} người dùng{" "}
-          <strong>{selectedUser?.fullName}</strong>?
+          {selectedUser?.status === "ACTIVE" ? "vô hiệu hóa" : "kích hoạt"} nhân
+          viên <strong>{selectedUser?.fullName}</strong>?
         </p>
+        {selectedUser?.status === "ACTIVE" && (
+          <div style={{ color: "#d4380d", marginTop: 12, fontWeight: 500 }}>
+            Nhân viên sẽ không thể đăng nhập và sử dụng hệ thống cho đến khi
+            được kích hoạt lại!
+          </div>
+        )}
       </Modal>
     </div>
   );
