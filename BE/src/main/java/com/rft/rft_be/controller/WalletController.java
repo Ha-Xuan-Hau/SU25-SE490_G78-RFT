@@ -111,6 +111,7 @@ public class WalletController {
         return ResponseEntity.ok().build();
     }
 
+    //API endpoint to retrieve all approved withdrawal transactions.
     @GetMapping("/staff/withdrawals/approved")
     public ResponseEntity<List<WalletTransactionDTO>> getApprovedWithdrawal() {
         return ResponseEntity.ok(walletService.getApprovedWithdrawals());
