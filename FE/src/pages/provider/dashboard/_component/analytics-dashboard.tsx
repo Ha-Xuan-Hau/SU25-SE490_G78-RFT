@@ -1,6 +1,5 @@
-// pages/provider/dashboard/_component/analytics-dashboard.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import DynamicStatisticsChart from "./dynamic-statistics-chart";
@@ -8,6 +7,10 @@ import { DateRangePicker } from "@/components/antd";
 import dayjs, { Dayjs } from "dayjs";
 import { RangePickerProps } from "antd/es/date-picker";
 import { Download } from "lucide-react";
+import { Select } from "antd";
+import { getMonthlyStatistics, calculateGrowthRate } from "@/apis/provider.api";
+import { message } from "antd";
+import { showApiError } from "@/utils/toast.utils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -34,6 +37,32 @@ interface MetricItem {
   tooltip?: string;
 }
 
+interface MonthlyStatistics {
+  month: number;
+  year: number;
+  totalCustomersWithFinalContract: number;
+  customersWithCompletedContracts: number;
+  totalRevenueFromFinalContracts: number;
+  revenueFromCompletedContracts: number;
+  averageRevenuePerCustomer: number;
+  totalFinalContracts: number;
+  completedFinalContracts: number;
+  cancelledFinalContracts: number;
+}
+
+interface ComparisonData {
+  current: MonthlyStatistics;
+  previous?: MonthlyStatistics;
+  growthRates: {
+    customers: number;
+    revenue: number;
+    orders: number;
+    successCustomers: number;
+    successRevenue: number;
+    avgRevenue: number;
+  };
+}
+
 // Constants
 const COLORS = {
   primary: "#4682A9",
@@ -58,7 +87,7 @@ const ALL_ORDERS_METRICS: MetricItem[] = [
 
 const SUCCESS_ORDERS_METRICS: MetricItem[] = [
   { id: "successCustomers", label: "Khách hàng", color: COLORS.primary },
-  { id: "successBooking", label: "Đơn đặt xe", color: COLORS.secondary },
+  { id: "successBookings", label: "Đơn đặt xe", color: COLORS.secondary },
   { id: "successRevenue", label: "Doanh số", color: COLORS.quaternary },
   {
     id: "avgRevenue",
@@ -92,24 +121,177 @@ const getDateRange = () => {
   };
 };
 
+// Generate month options
+const generateMonthOptions = () => {
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+  const currentYear = new Date().getFullYear();
+  const months = [
+    "Tháng 1",
+    "Tháng 2",
+    "Tháng 3",
+    "Tháng 4",
+    "Tháng 5",
+    "Tháng 6",
+    "Tháng 7",
+    "Tháng 8",
+    "Tháng 9",
+    "Tháng 10",
+    "Tháng 11",
+    "Tháng 12",
+  ];
+
+  return months.slice(0, currentMonth).map((month, index) => ({
+    label: `${month}/${currentYear}`,
+    value: index + 1,
+  }));
+};
+
 export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   const dateConfig = getDateRange();
   const [dateRange, setDateRange] = useState(dateConfig.default);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
   const [dateRangeValue, setDateRangeValue] = useState<
     [Dayjs | null, Dayjs | null]
   >([dayjs(dateConfig.default.startDate), dayjs(dateConfig.default.endDate)]);
 
-  // Data processing
-  const analyticsData = {
-    customers: data?.customers || 0,
-    revenue: data?.revenue || 0,
-    successCustomerss: data?.successCustomerss || 0,
-    successRevenue: data?.successRevenue || 0,
-    avgRevenue: data?.avgRevenue || 0,
-    successfulOrders: data?.successfulOrders || 15,
-    cancelledOrders: data?.cancelledOrders || 3,
+  // Thêm states mới cho monthly statistics
+  const [monthlyData, setMonthlyData] = useState<ComparisonData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchMonthlyStatistics();
+  }, [selectedMonth]);
+
+  const fetchMonthlyStatistics = async () => {
+    try {
+      setLoading(true);
+      const currentYear = new Date().getFullYear();
+
+      // Fetch current month
+      const currentMonthData = await getMonthlyStatistics(
+        selectedMonth,
+        currentYear
+      );
+
+      // Fetch previous month
+      let previousMonthData = null;
+      let previousMonth = selectedMonth - 1;
+      let previousYear = currentYear;
+
+      if (previousMonth === 0) {
+        previousMonth = 12;
+        previousYear = currentYear - 1;
+      }
+
+      try {
+        previousMonthData = await getMonthlyStatistics(
+          previousMonth,
+          previousYear
+        );
+      } catch (error) {
+        console.log("No data for previous month");
+      }
+
+      // Calculate growth rates với xử lý chia cho 0
+      const growthRates = {
+        customers: previousMonthData?.totalCustomersWithFinalContract
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.totalCustomersWithFinalContract,
+                previousMonthData.totalCustomersWithFinalContract
+              )
+            )
+          : currentMonthData.totalCustomersWithFinalContract > 0
+          ? 100
+          : 0,
+        revenue: previousMonthData?.totalRevenueFromFinalContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.totalRevenueFromFinalContracts,
+                previousMonthData.totalRevenueFromFinalContracts
+              )
+            )
+          : currentMonthData.totalRevenueFromFinalContracts > 0
+          ? 100
+          : 0,
+        orders: previousMonthData?.totalFinalContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.totalFinalContracts,
+                previousMonthData.totalFinalContracts
+              )
+            )
+          : currentMonthData.totalFinalContracts > 0
+          ? 100
+          : 0,
+        successCustomers: previousMonthData?.customersWithCompletedContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.customersWithCompletedContracts,
+                previousMonthData.customersWithCompletedContracts
+              )
+            )
+          : currentMonthData.customersWithCompletedContracts > 0
+          ? 100
+          : 0,
+        successRevenue: previousMonthData?.revenueFromCompletedContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.revenueFromCompletedContracts,
+                previousMonthData.revenueFromCompletedContracts
+              )
+            )
+          : currentMonthData.revenueFromCompletedContracts > 0
+          ? 100
+          : 0,
+        avgRevenue: previousMonthData?.averageRevenuePerCustomer
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.averageRevenuePerCustomer,
+                previousMonthData.averageRevenuePerCustomer
+              )
+            )
+          : currentMonthData.averageRevenuePerCustomer > 0
+          ? 100
+          : 0,
+      };
+
+      setMonthlyData({
+        current: currentMonthData,
+        previous: previousMonthData,
+        growthRates,
+      });
+    } catch (error) {
+      showApiError(error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Data processing - sử dụng data từ API thay vì mock data
+  const analyticsData = monthlyData
+    ? {
+        customers: monthlyData.current.totalCustomersWithFinalContract || 0,
+        revenue: monthlyData.current.totalRevenueFromFinalContracts || 0,
+        successCustomerss:
+          monthlyData.current.customersWithCompletedContracts || 0,
+        successRevenue: monthlyData.current.revenueFromCompletedContracts || 0,
+        avgRevenue: monthlyData.current.averageRevenuePerCustomer || 0,
+        successfulOrders: monthlyData.current.completedFinalContracts || 0,
+        cancelledOrders: monthlyData.current.cancelledFinalContracts || 0,
+      }
+    : {
+        customers: 0,
+        revenue: 0,
+        successCustomerss: 0,
+        successRevenue: 0,
+        avgRevenue: 0,
+        successfulOrders: 0,
+        cancelledOrders: 0,
+      };
 
   const totalOrders =
     analyticsData.successfulOrders + analyticsData.cancelledOrders;
@@ -132,7 +314,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
         data: [
           analyticsData.successfulOrders,
           analyticsData.cancelledOrders,
-          0, // Có thể thêm trạng thái khác nếu cần
+          0,
         ],
         backgroundColor: ["#10B981", "#EF4444", "#FCD34D"],
         borderWidth: 2,
@@ -174,6 +356,10 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     }
   };
 
+  const handleMonthChange = (value: number) => {
+    setSelectedMonth(value);
+  };
+
   const handleMetricToggle = (metricId: string) => {
     if (selectedMetrics.includes(metricId)) {
       setSelectedMetrics(selectedMetrics.filter((id) => id !== metricId));
@@ -187,60 +373,6 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   };
 
   // Component parts
-  const DashboardDateRangePicker = () => (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-4">
-        <label className="text-base font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
-          Khung thời gian:
-        </label>
-        <DateRangePicker
-          value={dateRangeValue}
-          onChange={handleDateRangeChange}
-          format="DD/MM/YYYY"
-          placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
-          className="min-w-[380px]"
-          size="large" // Thêm size large
-          style={{
-            minWidth: 380,
-            fontSize: "14px",
-          }}
-          popupClassName="custom-date-picker-dropdown" // Để custom dropdown nếu cần
-          disabledDate={(current) => {
-            if (!current) return false;
-            // Không cho chọn ngày tương lai
-            if (current.isAfter(dayjs())) return true;
-            // Không cho chọn quá 4 tháng trước
-            if (current.isBefore(dayjs(dateConfig.min))) return true;
-            return false;
-          }}
-          presets={[
-            {
-              label: "7 ngày qua",
-              value: [dayjs().subtract(7, "day"), dayjs()],
-            },
-            {
-              label: "30 ngày qua",
-              value: [dayjs().subtract(30, "day"), dayjs()],
-            },
-            { label: "Tháng này", value: [dayjs().startOf("month"), dayjs()] },
-            {
-              label: "Tháng trước",
-              value: [
-                dayjs().subtract(1, "month").startOf("month"),
-                dayjs().subtract(1, "month").endOf("month"),
-              ],
-            },
-          ]}
-        />
-      </div>
-
-      <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-        <Download className="w-4 h-4" />
-        Tải dữ liệu
-      </button>
-    </div>
-  );
-
   const MetricCard = ({
     title,
     value,
@@ -248,6 +380,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     borderColor,
     titleColor,
     isRevenue = false,
+    growthRate = 0,
   }: {
     title: string;
     value: number;
@@ -255,6 +388,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     borderColor: string;
     titleColor: string;
     isRevenue?: boolean;
+    growthRate?: number;
   }) => (
     <div
       className="rounded-lg p-6 border transition-colors hover:border-opacity-40"
@@ -268,9 +402,31 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           {title}
         </p>
         <p className="text-3xl font-bold text-gray-900">
-          {isRevenue ? `₫ ${formatNumber(value)}` : formatNumber(value)}
+          {loading ? (
+            <span className="inline-block animate-pulse bg-gray-200 rounded w-32 h-8"></span>
+          ) : isRevenue ? (
+            `₫ ${formatNumber(value)}`
+          ) : (
+            formatNumber(value)
+          )}
         </p>
-        <p className="text-xs text-gray-500">so với thời gian trước: 0.00%</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">So với tháng trước:</span>
+          {growthRate !== 0 && (
+            <span
+              className={`text-xs font-semibold ${
+                growthRate > 0
+                  ? "text-green-600"
+                  : growthRate < 0
+                  ? "text-red-600"
+                  : "text-gray-500"
+              }`}
+            >
+              {growthRate > 0 ? "↑" : growthRate < 0 ? "↓" : ""}{" "}
+              {Math.abs(growthRate)}%
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -319,18 +475,42 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <DashboardDateRangePicker />
-      </div>
-
-      {/* Overview Section */}
+      {/* Overview Section với Month Selector */}
       <div className="bg-card border border-border rounded-xl p-8 shadow-sm">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-foreground mb-2">
-            Tổng Quan về Doanh Số
-          </h2>
-          <div className="w-12 h-1 bg-primary rounded-full"></div>
+        {/* Header với Month Selector */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Tổng Quan về Doanh Số
+            </h2>
+            <div className="w-12 h-1 bg-primary rounded-full"></div>
+          </div>
+
+          {/* Month Selector và Export Button nằm cùng một div */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Chọn tháng:
+              </label>
+              <Select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                options={generateMonthOptions()}
+                size="large"
+                style={{ minWidth: 150 }}
+                placeholder="Chọn tháng"
+                loading={loading}
+              />
+            </div>
+
+            <button
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+              disabled={loading}
+            >
+              <Download className="w-4 h-4" />
+              Xuất báo cáo
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -350,17 +530,19 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                 <MetricCard
                   title="Khách hàng"
                   value={analyticsData.customers}
-                  bgColor={`${COLORS.primary}0D`}
+                  bgColor={`linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.secondary}0D 100%)`}
                   borderColor={`${COLORS.primary}33`}
                   titleColor={COLORS.primary}
+                  growthRate={monthlyData?.growthRates.customers || 0}
                 />
                 <MetricCard
                   title="Doanh số"
                   value={analyticsData.revenue}
-                  bgColor={`${COLORS.secondary}0D`}
+                  bgColor={`linear-gradient(135deg, ${COLORS.secondary}1A 0%, ${COLORS.primary}0D 100%)`}
                   borderColor={`${COLORS.secondary}33`}
                   titleColor={COLORS.secondary}
                   isRevenue
+                  growthRate={monthlyData?.growthRates.revenue || 0}
                 />
               </div>
             </div>
@@ -383,6 +565,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   bgColor={`linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.secondary}0D 100%)`}
                   borderColor={`${COLORS.primary}33`}
                   titleColor={COLORS.primary}
+                  growthRate={monthlyData?.growthRates.successCustomers || 0}
                 />
                 <MetricCard
                   title="Doanh số"
@@ -391,6 +574,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   borderColor={`${COLORS.secondary}33`}
                   titleColor={COLORS.secondary}
                   isRevenue
+                  growthRate={monthlyData?.growthRates.successRevenue || 0}
                 />
                 <MetricCard
                   title="Doanh số trên mỗi khách hàng"
@@ -399,12 +583,12 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   borderColor={COLORS.warningBorder}
                   titleColor="#f59e0b"
                   isRevenue
+                  growthRate={monthlyData?.growthRates.avgRevenue || 0}
                 />
               </div>
             </div>
           </div>
 
-          {/* Success Rate Chart */}
           {/* Success Rate Chart */}
           <div className="xl:col-span-1">
             <div className="bg-gradient-to-b from-primary/5 to-secondary/5 rounded-lg p-6 border border-primary/20 h-full">
@@ -526,7 +710,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   </div>
                 </div>
 
-                <div
+                {/* <div
                   className="pt-4 border-t"
                   style={{ borderColor: `${COLORS.primary}33` }}
                 >
@@ -541,29 +725,79 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                       {successRate}%
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Trend Analysis */}
+      {/* Trend Analysis với Date Range Picker */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Xu hướng số liệu
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Chọn tối đa {MAX_SELECTED_METRICS} chỉ số để so sánh xu hướng
-              </p>
+          {/* Header với Date Range Picker */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Xu hướng số liệu
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Chọn tối đa {MAX_SELECTED_METRICS} chỉ số để so sánh xu hướng
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  Đã chọn: {selectedMetrics.length}/{MAX_SELECTED_METRICS}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                Đã chọn: {selectedMetrics.length}/{MAX_SELECTED_METRICS}
-              </span>
+
+            {/* Date Range Picker */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  Khung thời gian:
+                </label>
+                <DateRangePicker
+                  value={dateRangeValue}
+                  onChange={handleDateRangeChange}
+                  format="DD/MM/YYYY"
+                  placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                  className="min-w-[300px]"
+                  size="middle"
+                  style={{
+                    minWidth: 300,
+                  }}
+                  disabledDate={(current) => {
+                    if (!current) return false;
+                    if (current.isAfter(dayjs())) return true;
+                    if (current.isBefore(dayjs(dateConfig.min))) return true;
+                    return false;
+                  }}
+                  presets={[
+                    {
+                      label: "7 ngày qua",
+                      value: [dayjs().subtract(7, "day"), dayjs()],
+                    },
+                    {
+                      label: "30 ngày qua",
+                      value: [dayjs().subtract(30, "day"), dayjs()],
+                    },
+                    {
+                      label: "Tháng này",
+                      value: [dayjs().startOf("month"), dayjs()],
+                    },
+                    {
+                      label: "Tháng trước",
+                      value: [
+                        dayjs().subtract(1, "month").startOf("month"),
+                        dayjs().subtract(1, "month").endOf("month"),
+                      ],
+                    },
+                  ]}
+                />
+              </div>
             </div>
           </div>
 

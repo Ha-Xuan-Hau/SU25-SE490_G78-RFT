@@ -1147,20 +1147,21 @@ public class BookingServiceImpl implements BookingService {
         // Đảm bảo tổng là duy nhất theo bookingId
         Set<String> deliverIds = toDeliver.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
         Set<String> receiveIds = toReceive.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
-        Set<String> cancelIds  = cancelled.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
+        //Set<String> cancelIds  = cancelled.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
         Set<String> allIds     = allTouched.stream().map(Booking::getId).collect(java.util.stream.Collectors.toSet());
 
         int total = allIds.size();
         int toDeliverCount = deliverIds.size();
         int toReceiveCount = receiveIds.size();
-        int cancelledCount = cancelIds.size();
-        int resolvedCount  = Math.max(0, total - toDeliverCount - toReceiveCount - cancelledCount);
+        //int cancelledCount = cancelIds.size();
+        //int resolvedCount  = Math.max(0, total - toDeliverCount - toReceiveCount - cancelledCount);
+        int resolvedCount  = Math.max(0, total - toDeliverCount - toReceiveCount );
 
         // resolved = all − (deliver ∪ receive ∪ cancel)
         Set<String> unresolvedIds = new java.util.HashSet<>();
         unresolvedIds.addAll(deliverIds);
         unresolvedIds.addAll(receiveIds);
-        unresolvedIds.addAll(cancelIds);
+        //unresolvedIds.addAll(cancelIds);
         Set<String> resolvedIds = new java.util.HashSet<>(allIds);
         resolvedIds.removeAll(unresolvedIds);
 
@@ -1170,7 +1171,7 @@ public class BookingServiceImpl implements BookingService {
                 .totalOrders(total)
                 .toDeliverCount(toDeliverCount)
                 .toReceiveCount(toReceiveCount)
-                .cancelledCount(cancelledCount)
+                //.cancelledCount(cancelledCount)
                 .resolvedCount(resolvedCount)
                 .build();
     }

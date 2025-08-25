@@ -463,72 +463,117 @@ const HeaderComponent: React.FC = () => {
             </button>
           </div>
         </nav>
+      </header>
 
-        {/* Mobile Menu - Slide từ phải */}
-        <div
-          className={`fixed top-0 right-0 h-full w-[280px] sm:w-[320px] bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${
-            navbarOpen ? "translate-x-0" : "translate-x-full"
-          } lg:hidden`}
-        >
-          {/* Mobile Menu Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary/5 to-primary/10">
-            <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
-            <button
-              onClick={() => setNavbarOpen(false)}
-              className="p-2 rounded-md hover:bg-white/50 transition-colors"
-            >
-              <Icon
-                icon="heroicons:x-mark-20-solid"
-                width={24}
-                height={24}
-                className="text-gray-700"
-              />
-            </button>
-          </div>
+      {/* Mobile Menu - Slide từ phải */}
+      <div
+        className={`fixed top-0 right-0 h-full w-[280px] sm:w-[320px] bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${
+          navbarOpen ? "translate-x-0" : "translate-x-full"
+        } lg:hidden`}
+      >
+        {/* Mobile Menu Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary/5 to-primary/10">
+          <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+          <button
+            onClick={() => setNavbarOpen(false)}
+            className="p-2 rounded-md hover:bg-white/50 transition-colors"
+          >
+            <Icon
+              icon="heroicons:x-mark-20-solid"
+              width={24}
+              height={24}
+              className="text-gray-700"
+            />
+          </button>
+        </div>
 
-          {/* Mobile Menu Content */}
-          <div className="flex flex-col h-[calc(100%-72px)] overflow-y-auto">
-            {/* User Info Section if logged in */}
-            {isAuthenticated && user && (
-              <div className="p-4 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  {user?.profilePicture ? (
-                    <Avatar src={user.profilePicture} size={48} />
-                  ) : (
-                    <Avatar
-                      icon={<UserOutlined />}
-                      size={48}
-                      style={{
-                        backgroundColor:
-                          user?.role === "ADMIN"
-                            ? "#ef4444"
-                            : user?.role === "STAFF"
-                            ? "#3b82f6"
-                            : user?.role === "PROVIDER"
-                            ? "#10b981"
-                            : "#6b7280",
-                      }}
-                    />
-                  )}
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900 text-base">
-                      {user?.fullName || "User"}
-                    </div>
-                    <div className="text-sm text-gray-500">{user?.email}</div>
-                  </div>
-                </div>
-                {user?.role && (
-                  <div className="mt-3">{getRoleBadge(user.role)}</div>
+        {/* Mobile Menu Content */}
+        <div className="flex flex-col h-[calc(100%-72px)] overflow-y-auto">
+          {/* User Info Section if logged in */}
+          {isAuthenticated && user && (
+            <div className="p-4 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                {user?.profilePicture ? (
+                  <Avatar src={user.profilePicture} size={48} />
+                ) : (
+                  <Avatar
+                    icon={<UserOutlined />}
+                    size={48}
+                    style={{
+                      backgroundColor:
+                        user?.role === "ADMIN"
+                          ? "#ef4444"
+                          : user?.role === "STAFF"
+                          ? "#3b82f6"
+                          : user?.role === "PROVIDER"
+                          ? "#10b981"
+                          : "#6b7280",
+                    }}
+                  />
                 )}
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 text-base">
+                    {user?.fullName || "User"}
+                  </div>
+                  <div className="text-sm text-gray-500">{user?.email}</div>
+                </div>
               </div>
+              {user?.role && (
+                <div className="mt-3">{getRoleBadge(user.role)}</div>
+              )}
+            </div>
+          )}
+
+          {/* Navigation Links */}
+          <div className="flex-1 py-4">
+            {/* Common Navigation */}
+            {(!isAuthenticated ||
+              user?.role === "USER" ||
+              user?.role === "PROVIDER") && (
+              <>
+                <Link
+                  href="/about-us"
+                  className={`block px-6 py-3 text-base font-medium ${
+                    pathname === "/about-us"
+                      ? "text-primary bg-primary/5 border-l-4 border-primary"
+                      : "text-gray-700 hover:bg-gray-50"
+                  } transition-colors`}
+                  onClick={() => setNavbarOpen(false)}
+                >
+                  Về RFT
+                </Link>
+
+                <Link
+                  href="/vehicles"
+                  className={`block px-6 py-3 text-base font-medium ${
+                    pathname === "/vehicles"
+                      ? "text-primary bg-primary/5 border-l-4 border-primary"
+                      : "text-gray-700 hover:bg-gray-50"
+                  } transition-colors`}
+                  onClick={() => setNavbarOpen(false)}
+                >
+                  Danh sách xe
+                </Link>
+
+                {isAuthenticated && user?.role === "USER" && (
+                  <Link
+                    href="/become-provider"
+                    className={`block px-6 py-3 text-base font-medium ${
+                      pathname === "/become-provider"
+                        ? "text-primary bg-primary/5 border-l-4 border-primary"
+                        : "text-gray-700 hover:bg-gray-50"
+                    } transition-colors`}
+                    onClick={() => setNavbarOpen(false)}
+                  >
+                    Trở thành chủ xe
+                  </Link>
+                )}
+              </>
             )}
 
-            {/* Navigation Links */}
-            <div className="flex-1 py-4">
-              {/* Common Navigation */}
-              {(!isAuthenticated ||
-                user?.role === "USER" ||
-                user?.role === "PROVIDER") && (
+            {/* Admin/Staff Navigation */}
+            {isAuthenticated &&
+              (user?.role === "ADMIN" || user?.role === "STAFF") && (
                 <>
                   <Link
                     href="/about-us"
@@ -542,171 +587,16 @@ const HeaderComponent: React.FC = () => {
                     Về RFT
                   </Link>
 
-                  <Link
-                    href="/vehicles"
-                    className={`block px-6 py-3 text-base font-medium ${
-                      pathname === "/vehicles"
-                        ? "text-primary bg-primary/5 border-l-4 border-primary"
-                        : "text-gray-700 hover:bg-gray-50"
-                    } transition-colors`}
-                    onClick={() => setNavbarOpen(false)}
-                  >
-                    Danh sách xe
-                  </Link>
-
-                  {isAuthenticated && user?.role === "USER" && (
-                    <Link
-                      href="/become-provider"
-                      className={`block px-6 py-3 text-base font-medium ${
-                        pathname === "/become-provider"
-                          ? "text-primary bg-primary/5 border-l-4 border-primary"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } transition-colors`}
-                      onClick={() => setNavbarOpen(false)}
-                    >
-                      Trở thành chủ xe
-                    </Link>
-                  )}
-                </>
-              )}
-
-              {/* Admin/Staff Navigation */}
-              {isAuthenticated &&
-                (user?.role === "ADMIN" || user?.role === "STAFF") && (
-                  <>
-                    <Link
-                      href="/about-us"
-                      className={`block px-6 py-3 text-base font-medium ${
-                        pathname === "/about-us"
-                          ? "text-primary bg-primary/5 border-l-4 border-primary"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } transition-colors`}
-                      onClick={() => setNavbarOpen(false)}
-                    >
-                      Về RFT
-                    </Link>
-
-                    <div className="border-t border-gray-200 my-2"></div>
-
-                    <div className="px-6 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Quản lý hệ thống
-                    </div>
-
-                    <Link
-                      href="/admin/dashboard"
-                      className={`block px-6 py-3 ${
-                        pathname === "/admin/dashboard"
-                          ? "text-primary bg-primary/5 border-l-4 border-primary"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } transition-colors`}
-                      onClick={() => setNavbarOpen(false)}
-                    >
-                      <div className="flex items-center">
-                        <DashboardOutlined className="mr-3 text-blue-600" />
-                        <span className="text-base font-medium">
-                          {user?.role === "ADMIN"
-                            ? "Quản trị hệ thống"
-                            : "Bảng điều khiển"}
-                        </span>
-                      </div>
-                    </Link>
-
-                    {user?.role === "ADMIN" && (
-                      <Link
-                        href="/admin/manage-users"
-                        className={`block px-6 py-3 ${
-                          pathname === "/admin/manage-users"
-                            ? "text-primary bg-primary/5 border-l-4 border-primary"
-                            : "text-gray-700 hover:bg-gray-50"
-                        } transition-colors`}
-                        onClick={() => setNavbarOpen(false)}
-                      >
-                        <div className="flex items-center">
-                          <TeamOutlined className="mr-3 text-green-600" />
-                          <span className="text-base font-medium">
-                            Quản lý người dùng
-                          </span>
-                        </div>
-                      </Link>
-                    )}
-
-                    <Link
-                      href="/admin/manage-vehicles"
-                      className={`block px-6 py-3 ${
-                        pathname === "/admin/manage-vehicles"
-                          ? "text-primary bg-primary/5 border-l-4 border-primary"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } transition-colors`}
-                      onClick={() => setNavbarOpen(false)}
-                    >
-                      <div className="flex items-center">
-                        <CarOutlined className="mr-3 text-purple-600" />
-                        <span className="text-base font-medium">
-                          Quản lý phương tiện
-                        </span>
-                      </div>
-                    </Link>
-
-                    <Link
-                      href="/admin/manage-bookings"
-                      className={`block px-6 py-3 ${
-                        pathname === "/admin/manage-bookings"
-                          ? "text-primary bg-primary/5 border-l-4 border-primary"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } transition-colors`}
-                      onClick={() => setNavbarOpen(false)}
-                    >
-                      <div className="flex items-center">
-                        <FileTextOutlined className="mr-3 text-orange-600" />
-                        <span className="text-base font-medium">
-                          Quản lý đặt xe
-                        </span>
-                      </div>
-                    </Link>
-
-                    <Link
-                      href="/admin/manage-transactions"
-                      className={`block px-6 py-3 ${
-                        pathname === "/admin/manage-transactions"
-                          ? "text-primary bg-primary/5 border-l-4 border-primary"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } transition-colors`}
-                      onClick={() => setNavbarOpen(false)}
-                    >
-                      <div className="flex items-center">
-                        <WalletOutlined className="mr-3 text-red-600" />
-                        <span className="text-base font-medium">
-                          Quản lý giao dịch
-                        </span>
-                      </div>
-                    </Link>
-                  </>
-                )}
-
-              {/* Provider Dashboard Link */}
-              {isAuthenticated && user?.role === "PROVIDER" && (
-                <>
                   <div className="border-t border-gray-200 my-2"></div>
+
+                  <div className="px-6 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Quản lý hệ thống
+                  </div>
+
                   <Link
-                    href="/profile"
+                    href="/admin/dashboard"
                     className={`block px-6 py-3 ${
-                      pathname === "/profile"
-                        ? "text-primary bg-primary/5 border-l-4 border-primary"
-                        : "text-gray-700 hover:bg-gray-50"
-                    } transition-colors`}
-                    onClick={() => setNavbarOpen(false)}
-                  >
-                    <div className="flex items-center">
-                      <UserOutlined className="mr-3 text-blue-600" />
-                      <span className="text-base font-medium">
-                        Kênh người dùng
-                      </span>
-                    </div>
-                  </Link>
-                  <Link
-                    href="/provider/dashboard"
-                    className={`block px-6 py-3 ${
-                      pathname === "/provider/dashboard"
+                      pathname === "/admin/dashboard"
                         ? "text-primary bg-primary/5 border-l-4 border-primary"
                         : "text-gray-700 hover:bg-gray-50"
                     } transition-colors`}
@@ -715,86 +605,196 @@ const HeaderComponent: React.FC = () => {
                     <div className="flex items-center">
                       <DashboardOutlined className="mr-3 text-blue-600" />
                       <span className="text-base font-medium">
-                        Quản lý cho thuê
+                        {user?.role === "ADMIN"
+                          ? "Quản trị hệ thống"
+                          : "Bảng điều khiển"}
                       </span>
                     </div>
                   </Link>
-                </>
-              )}
 
-              {/* User Profile Link */}
-              {isAuthenticated && user?.role === "USER" && (
-                <>
-                  <div className="border-t border-gray-200 my-2"></div>
+                  {user?.role === "ADMIN" && (
+                    <Link
+                      href="/admin/manage-users"
+                      className={`block px-6 py-3 ${
+                        pathname === "/admin/manage-users"
+                          ? "text-primary bg-primary/5 border-l-4 border-primary"
+                          : "text-gray-700 hover:bg-gray-50"
+                      } transition-colors`}
+                      onClick={() => setNavbarOpen(false)}
+                    >
+                      <div className="flex items-center">
+                        <TeamOutlined className="mr-3 text-green-600" />
+                        <span className="text-base font-medium">
+                          Quản lý người dùng
+                        </span>
+                      </div>
+                    </Link>
+                  )}
+
                   <Link
-                    href="/profile"
+                    href="/admin/manage-vehicles"
                     className={`block px-6 py-3 ${
-                      pathname === "/profile"
+                      pathname === "/admin/manage-vehicles"
                         ? "text-primary bg-primary/5 border-l-4 border-primary"
                         : "text-gray-700 hover:bg-gray-50"
                     } transition-colors`}
                     onClick={() => setNavbarOpen(false)}
                   >
                     <div className="flex items-center">
-                      <UserOutlined className="mr-3" />
+                      <CarOutlined className="mr-3 text-purple-600" />
                       <span className="text-base font-medium">
-                        Thông tin cá nhân
+                        Quản lý phương tiện
+                      </span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/admin/manage-bookings"
+                    className={`block px-6 py-3 ${
+                      pathname === "/admin/manage-bookings"
+                        ? "text-primary bg-primary/5 border-l-4 border-primary"
+                        : "text-gray-700 hover:bg-gray-50"
+                    } transition-colors`}
+                    onClick={() => setNavbarOpen(false)}
+                  >
+                    <div className="flex items-center">
+                      <FileTextOutlined className="mr-3 text-orange-600" />
+                      <span className="text-base font-medium">
+                        Quản lý đặt xe
+                      </span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/admin/manage-transactions"
+                    className={`block px-6 py-3 ${
+                      pathname === "/admin/manage-transactions"
+                        ? "text-primary bg-primary/5 border-l-4 border-primary"
+                        : "text-gray-700 hover:bg-gray-50"
+                    } transition-colors`}
+                    onClick={() => setNavbarOpen(false)}
+                  >
+                    <div className="flex items-center">
+                      <WalletOutlined className="mr-3 text-red-600" />
+                      <span className="text-base font-medium">
+                        Quản lý giao dịch
                       </span>
                     </div>
                   </Link>
                 </>
               )}
-            </div>
 
-            {/* Bottom Actions */}
-            <div className="border-t border-gray-200 p-4 bg-gray-50">
-              {!isAuthenticated ? (
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      setNavbarOpen(false);
-                      openAuthPopup("login");
-                    }}
-                    className="w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm"
-                  >
-                    Đăng nhập
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNavbarOpen(false);
-                      openAuthPopup("register");
-                    }}
-                    className="w-full py-3 px-4 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-white transition-colors"
-                  >
-                    Đăng ký
-                  </button>
-                </div>
-              ) : (
+            {/* Provider Dashboard Link */}
+            {isAuthenticated && user?.role === "PROVIDER" && (
+              <>
+                <div className="border-t border-gray-200 my-2"></div>
+                <Link
+                  href="/profile"
+                  className={`block px-6 py-3 ${
+                    pathname === "/profile"
+                      ? "text-primary bg-primary/5 border-l-4 border-primary"
+                      : "text-gray-700 hover:bg-gray-50"
+                  } transition-colors`}
+                  onClick={() => setNavbarOpen(false)}
+                >
+                  <div className="flex items-center">
+                    <UserOutlined className="mr-3 text-blue-600" />
+                    <span className="text-base font-medium">
+                      Kênh người dùng
+                    </span>
+                  </div>
+                </Link>
+                <Link
+                  href="/provider/dashboard"
+                  className={`block px-6 py-3 ${
+                    pathname === "/provider/dashboard"
+                      ? "text-primary bg-primary/5 border-l-4 border-primary"
+                      : "text-gray-700 hover:bg-gray-50"
+                  } transition-colors`}
+                  onClick={() => setNavbarOpen(false)}
+                >
+                  <div className="flex items-center">
+                    <DashboardOutlined className="mr-3 text-blue-600" />
+                    <span className="text-base font-medium">
+                      Quản lý cho thuê
+                    </span>
+                  </div>
+                </Link>
+              </>
+            )}
+
+            {/* User Profile Link */}
+            {isAuthenticated && user?.role === "USER" && (
+              <>
+                <div className="border-t border-gray-200 my-2"></div>
+                <Link
+                  href="/profile"
+                  className={`block px-6 py-3 ${
+                    pathname === "/profile"
+                      ? "text-primary bg-primary/5 border-l-4 border-primary"
+                      : "text-gray-700 hover:bg-gray-50"
+                  } transition-colors`}
+                  onClick={() => setNavbarOpen(false)}
+                >
+                  <div className="flex items-center">
+                    <UserOutlined className="mr-3" />
+                    <span className="text-base font-medium">
+                      Thông tin cá nhân
+                    </span>
+                  </div>
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Bottom Actions */}
+          <div className="border-t border-gray-200 p-4 bg-gray-50">
+            {!isAuthenticated ? (
+              <div className="space-y-3">
                 <button
                   onClick={() => {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    logout();
-                    window.location.href = "/";
+                    setNavbarOpen(false);
+                    openAuthPopup("login");
                   }}
-                  className="w-full py-3 px-4 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors flex items-center justify-center shadow-sm"
+                  className="w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm"
                 >
-                  <LogoutOutlined className="mr-2" />
-                  Đăng xuất
+                  Đăng nhập
                 </button>
-              )}
-            </div>
+                <button
+                  onClick={() => {
+                    setNavbarOpen(false);
+                    openAuthPopup("register");
+                  }}
+                  className="w-full py-3 px-4 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-white transition-colors"
+                >
+                  Đăng ký
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  logout();
+                  window.location.href = "/";
+                }}
+                className="w-full py-3 px-4 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors flex items-center justify-center shadow-sm"
+              >
+                <LogoutOutlined className="mr-2" />
+                Đăng xuất
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Background overlay khi mở mobile menu */}
-        {navbarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={() => setNavbarOpen(false)}
-          />
-        )}
-      </header>
+      {/* Background overlay khi mở mobile menu */}
+      {navbarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setNavbarOpen(false)}
+        />
+      )}
 
       {/* Render NotificationDropdown một lần duy nhất */}
       {isAuthenticated && <NotificationDropdown />}

@@ -130,6 +130,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:wallet",
           label: "Ví của tôi",
         },
+        {
+          key: "reports",
+          path: "/provider/my-reports",
+          icon: "mdi:chart-box",
+          label: "Lịch sử vi phạm",
+        },
       ],
     },
     {

@@ -2,6 +2,8 @@ package com.rft.rft_be.repository;
 
 import com.rft.rft_be.entity.UserReport;
 import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import com.rft.rft_be.entity.UserReport.Status;
@@ -36,4 +38,13 @@ import java.util.List;
                                                @Param("from") LocalDateTime from,
                                                @Param("to") LocalDateTime to);
 
+        Page<UserReport> findByReportedIdAndTypeOrderByCreatedAtDesc(
+                String reportedId, String type, Pageable pageable);
+
+        // Với multiple IDs (user + vehicles)
+        @Query("SELECT ur FROM UserReport ur WHERE ur.reportedId IN :targetIds AND ur.type = :type")
+        Page<UserReport> findByReportedIdInAndTypeOrderByCreatedAtDesc(
+                @Param("targetIds") List<String> targetIds,
+                @Param("type") String type,
+                Pageable pageable);
 }

@@ -256,4 +256,15 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     List<Booking> findProviderBookingsTouchedToday(@Param("providerId") String providerId,
                                                    @Param("start") LocalDateTime start,
                                                    @Param("end") LocalDateTime end);
+
+    // Method mới để đếm booking theo provider và status
+    @Query("""
+    SELECT COUNT(DISTINCT b) FROM Booking b
+    JOIN b.bookingDetails bd
+    JOIN bd.vehicle v
+    JOIN v.user u
+    WHERE u.id = :providerId AND b.status IN :statuses
+""")
+    long countByProviderIdAndStatusIn(@Param("providerId") String providerId,
+                                     @Param("statuses") List<Booking.Status> statuses);
 }

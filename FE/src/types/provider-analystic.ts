@@ -1,4 +1,3 @@
-// Endpoint: POST /api/analytics/overview
 interface OverviewRequest {
   startDate: string; // "2024-01-01"
   endDate: string; // "2024-01-31"
@@ -22,7 +21,6 @@ interface OverviewResponse {
   };
 }
 
-// Endpoint: POST /api/analytics/trends
 interface TrendsRequest {
   startDate: string; // "2024-01-01"
   endDate: string; // "2024-01-31"

@@ -318,4 +318,26 @@ public class VehicleRentController {
             return ResponseEntity.internalServerError().body(error);
         }
     }
+
+    /**
+     * Lấy thống kê theo tháng cho provider hiện tại
+     * @param month tháng (1-12)
+     * @param year năm
+     * @return MonthlyStatisticsDTO chứa thông tin thống kê theo tháng
+     */
+    @GetMapping("/statistics/monthly")
+    public ResponseEntity<?> getMonthlyStatistics(
+            @RequestParam int month,
+            @RequestParam int year) {
+        try {
+            log.info("Nhận yêu cầu lấy thống kê theo tháng cho provider, tháng: {}, năm: {}", month, year);
+            MonthlyStatisticsDTO statistics = vehicleRentService.getMonthlyStatistics(month, year);
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy thống kê theo tháng: {}", e.getMessage(), e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy thống kê theo tháng: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
 }

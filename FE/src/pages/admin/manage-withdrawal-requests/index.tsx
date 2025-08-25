@@ -127,7 +127,7 @@ export default function WithdrawalRequestsPage() {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(amount);
+    }).format(Math.abs(amount));
   };
 
   const formatTimestamp = (

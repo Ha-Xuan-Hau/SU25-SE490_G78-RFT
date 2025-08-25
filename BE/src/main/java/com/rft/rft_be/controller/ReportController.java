@@ -6,6 +6,10 @@ import com.rft.rft_be.entity.UserReport;
 import com.rft.rft_be.repository.UserRepository;
 import com.rft.rft_be.service.report.ReportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -207,5 +211,20 @@ public class ReportController {
 
         reportService.processAppealDecision(id, false);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/my-staff-reports")
+    public ResponseEntity<Page<StaffReportDTO>> getMyStaffReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+
+        JwtAuthenticationToken auth = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth.getToken().getClaim("userId");
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<StaffReportDTO> reports = reportService.getStaffReportsByUserId(userId, pageable);
+
+        return ResponseEntity.ok(reports);
     }
 }

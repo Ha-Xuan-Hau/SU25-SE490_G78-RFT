@@ -212,19 +212,14 @@ const ListVehiclePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+      {/* Main Content */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20  shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
                 Danh sách xe
               </h1>
-              {/* {paginationInfo.totalElements > 0 && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Tìm thấy {paginationInfo.totalElements} xe phù hợp
-                </p>
-              )} */}
             </div>
 
             {/* Mobile Filter Button */}
@@ -238,8 +233,6 @@ const ListVehiclePage = () => {
           </div>
         </div>
       </div>
-
-      {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
         <div className="flex gap-6">
           {/* Desktop Filter Sidebar */}

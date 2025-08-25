@@ -1843,7 +1843,9 @@ export default function VehicleDetail() {
                         {vehicleItem.yearManufacture})
                       </h4>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-600 mt-1">
-                        <span>Biển số: {vehicleItem.licensePlate}</span>
+                        {vehicleItem.vehicleType === "CAR" && (
+                          <span>Biển số: {vehicleItem.licensePlate}</span>
+                        )}
                         <span className="text-blue-600 font-medium">
                           {vehicleItem.costPerDay?.toLocaleString("vi-VN")}
                           ₫/ngày
