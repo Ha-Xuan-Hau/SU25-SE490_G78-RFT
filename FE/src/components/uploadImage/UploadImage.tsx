@@ -30,66 +30,68 @@ export const UploadImage = ({ onChange }: UploadImageProps) => {
 
   const handleUpload = async (file: File) => {
     setLoading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", uploadPreset);
 
     try {
-      // Upload image to Cloudinary
-      const { data } = await axios.post(endpoint, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      // ✅ Bước 1: Đọc base64 từ file TRƯỚC
+      const base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
 
-      setImage(data?.url); // Set the image URL after upload
+      // ✅ Bước 2: Phân tích với Google Vision
+      const analysisResult = await analyzeImageFromBase64(base64String);
 
-      // Gọi API Google Vision để phân tích hình ảnh
-      const analysisResult = await analyzeImage(data?.url);
+      // ✅ Bước 3: Nếu hợp lệ, mới upload lên Cloudinary
+      if (analysisResult.licenseNumber && analysisResult.licenseClass) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", uploadPreset);
 
-      // Chỉ trả về JSON chuẩn theo yêu cầu
-      const { licenseNumber, licenseClass } = analysisResult;
+        const { data } = await axios.post(endpoint, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
 
-      // Kiểm tra kết quả phân tích
-      if (licenseNumber && licenseClass) {
+        // ✅ Sử dụng secure_url
+        const imageUrl = data?.secure_url || data?.url;
+        setImage(imageUrl);
+
         if (onChange) {
-          onChange(licenseNumber, licenseClass, data?.url); // truyền thêm image url
+          onChange(
+            analysisResult.licenseNumber,
+            analysisResult.licenseClass,
+            imageUrl
+          );
         }
       } else {
         messageApi.error(
           "Hình ảnh không hợp lệ hoặc không chứa thông tin bằng lái."
         );
         if (onChange) {
-          onChange("", "", ""); // reset cả image
+          onChange("", "", "");
         }
       }
     } catch (error) {
-      showApiError(String(error));
+      console.error("Upload error:", error);
+      showApiError("Lỗi khi tải ảnh lên");
     } finally {
       setLoading(false);
     }
   };
 
-  const analyzeImage = async (imageUrl: string) => {
-    // Chuyển đổi ảnh thành base64
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
-    const reader = new FileReader();
-    const base64 = await new Promise<string>((resolve, reject) => {
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
+  const analyzeImageFromBase64 = async (base64String: string) => {
     const requestBody = {
       requests: [
         {
           image: {
-            content: base64.split(",")[1], // Phần base64 của chuỗi
+            content: base64String.split(",")[1], // Lấy phần base64
           },
           features: [
             {
-              type: "TEXT_DETECTION", // Sử dụng TEXT_DETECTION để trích xuất văn bản
+              type: "TEXT_DETECTION",
               maxResults: 1,
             },
           ],
@@ -98,39 +100,35 @@ export const UploadImage = ({ onChange }: UploadImageProps) => {
     };
 
     try {
-      const analysisResponse = await axios.post(
+      const response = await axios.post(
         `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
         requestBody
       );
 
-      const textAnnotations =
-        analysisResponse.data.responses[0].textAnnotations;
+      const textAnnotations = response.data.responses[0].textAnnotations;
+
       if (textAnnotations && textAnnotations.length > 0) {
-        // Kiểm tra nội dung văn bản
         const detectedText = textAnnotations[0].description;
 
-        // Kiểm tra xem văn bản có chứa "GIẤY PHÉP LÁI XE" hoặc "DRIVER'S LICENSE" hay không
         if (
           detectedText.includes("GIẤY PHÉP LÁI XE") ||
           detectedText.includes("DRIVER'S LICENSE")
         ) {
-          // Sử dụng biểu thức chính quy để tìm số GPLX 12 chữ số
           const licenseNumberMatch = detectedText.match(/(\d{12})/);
-          // Tìm kiếm hạng bằng từ chuỗi "CLASS: A1" hoặc tương tự
           const classFieldMatch = detectedText.match(/CLASS:\s*(\w+)/i);
 
-          const licenseNumber = licenseNumberMatch
-            ? licenseNumberMatch[0]
-            : null;
-          const licenseClass = classFieldMatch ? classFieldMatch[1] : null;
-
-          return { licenseNumber, licenseClass };
+          return {
+            licenseNumber: licenseNumberMatch ? licenseNumberMatch[0] : null,
+            licenseClass: classFieldMatch ? classFieldMatch[1] : null,
+          };
         }
       }
-      return { licenseNumber: null, licenseClass: null }; // Nếu không tìm thấy
+
+      return { licenseNumber: null, licenseClass: null };
     } catch (error) {
-      messageApi.error("Đã xảy ra lỗi khi gọi Google Vision API");
-      return { licenseNumber: null, licenseClass: null }; // Trả về null nếu có lỗi
+      console.error("Google Vision API error:", error);
+      messageApi.error("Lỗi khi phân tích hình ảnh");
+      return { licenseNumber: null, licenseClass: null };
     }
   };
 
