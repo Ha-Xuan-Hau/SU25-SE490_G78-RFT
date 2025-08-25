@@ -153,6 +153,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:pencil-box-multiple",
           label: "Quy định thuê xe",
         },
+        {
+          key: "reports",
+          path: "/profile/my-reports",
+          icon: "mdi:chart-box",
+          label: "Lịch sử vi phạm",
+        },
       ],
     },
     {
