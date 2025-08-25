@@ -21,7 +21,8 @@ import {
 import { toast } from "react-toastify";
 import AdvancedSearchModal from "@/components/AdvancedSearchModal";
 import { DateRangePicker } from "@/components/antd";
-import dayjs, { Dayjs } from "dayjs";
+import dayjs from "@/utils/dayjs";
+import { Dayjs } from "@/utils/dayjs";
 import { RangePickerProps } from "antd/es/date-picker";
 
 interface PaginationInfo {
@@ -268,23 +269,26 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     }
   };
 
+  // const resetFilters = useCallback(() => {
+  //   setFilters({
+  //     vehicleType: undefined,
+  //     maxRating: undefined,
+  //     shipToAddress: false,
+  //     hasDriver: false,
+  //     city: undefined,
+  //     district: undefined,
+  //     ward: undefined,
+  //     minPrice: 0,
+  //     maxPrice: 3000000,
+  //   });
+  //   setPickupDateTime("");
+  //   setReturnDateTime("");
+  //   setDateRange([null, null]);
+  //   onSearchResults([], false, null, undefined, false, {});
+  // }, [setFilters, onSearchResults]);
   const resetFilters = useCallback(() => {
-    setFilters({
-      vehicleType: undefined,
-      maxRating: undefined,
-      shipToAddress: false,
-      hasDriver: false,
-      city: undefined,
-      district: undefined,
-      ward: undefined,
-      minPrice: 0,
-      maxPrice: 3000000,
-    });
-    setPickupDateTime("");
-    setReturnDateTime("");
-    setDateRange([null, null]);
-    onSearchResults([], false, null, undefined, false, {});
-  }, [setFilters, onSearchResults]);
+    window.location.reload();
+  }, []);
 
   // Load geographic data
   useEffect(() => {

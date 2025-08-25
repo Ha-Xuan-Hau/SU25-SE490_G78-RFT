@@ -27,7 +27,7 @@ import {
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { showApiError, showError, showSuccess } from "@/utils/toast.utils";
 import { translateENtoVI } from "@/lib/viDictionary";

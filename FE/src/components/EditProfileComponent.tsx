@@ -19,7 +19,8 @@ import {
   CameraOutlined,
   CalendarOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
+
+import dayjs from "@/utils/dayjs";
 import type { RcFile, UploadProps } from "antd/es/upload/interface";
 import { User } from "@/types/user";
 import { updateUserProfile } from "@/apis/user.api";

@@ -40,55 +40,67 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
         <div className="p-4 flex-1 flex flex-col">
           <div className="mb-3">
             <Link href={`/vehicles/${id}`}>
-              {/* THAY ĐỔI: Thêm min-height để giữ chiều cao cố định cho 2 dòng */}
               <h3 className="text-lg font-medium text-black dark:text-white duration-300 group-hover:text-primary line-clamp-2 mb-1 min-h-[3.5rem]">
                 {thumb}
               </h3>
             </Link>
-            {/* Địa chỉ cũng cần min-height để đồng nhất */}
             <p className="text-sm font-normal text-black/50 dark:text-white/50 line-clamp-1 min-h-[1.25rem]">
               {address}
             </p>
           </div>
 
-          {/* Chỉ hiển thị thông tin xe khi vehicleType không phải là BICYCLE */}
-          {vehicleType !== "BICYCLE" && (
-            <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
-              <div className="flex flex-col items-center text-center">
-                <Icon
-                  icon={"solar:transmission-bold"}
-                  width={16}
-                  height={16}
-                  className="mb-1"
-                />
-                <p className="text-black dark:text-white truncate w-full">
-                  {translateENtoVI(transmission)}
-                </p>
+          {/* Container cố định chiều cao cho phần thông tin xe */}
+          <div className="h-[60px] mb-3">
+            {vehicleType !== "BICYCLE" ? (
+              <div className="grid grid-cols-3 gap-2 text-xs h-full">
+                <div className="flex flex-col items-center text-center justify-center">
+                  <Icon
+                    icon={"solar:transmission-bold"}
+                    width={16}
+                    height={16}
+                    className="mb-1"
+                  />
+                  <p className="text-black dark:text-white truncate w-full">
+                    {translateENtoVI(transmission)}
+                  </p>
+                </div>
+                <div className="flex flex-col items-center text-center justify-center">
+                  <Icon
+                    icon={"mdi:car-seat"}
+                    width={16}
+                    height={16}
+                    className="mb-1"
+                  />
+                  <p className="text-black dark:text-white truncate w-full">
+                    {numberSeat} chỗ
+                  </p>
+                </div>
+                <div className="flex flex-col items-center text-center justify-center">
+                  <Icon
+                    icon={"mdi:fuel"}
+                    width={16}
+                    height={16}
+                    className="mb-1"
+                  />
+                  <p className="text-black dark:text-white truncate w-full">
+                    {translateENtoVI(fuelType)}
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col items-center text-center">
-                <Icon
-                  icon={"mdi:car-seat"}
-                  width={16}
-                  height={16}
-                  className="mb-1"
-                />
-                <p className="text-black dark:text-white truncate w-full">
-                  {numberSeat} chỗ
-                </p>
+            ) : (
+              // Placeholder cho xe đạp - có thể thêm thông tin khác hoặc để trống
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center text-center">
+                  <Icon
+                    icon={"mdi:bicycle"}
+                    width={24}
+                    height={24}
+                    className="mb-1 text-primary"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col items-center text-center">
-                <Icon
-                  icon={"mdi:fuel"}
-                  width={16}
-                  height={16}
-                  className="mb-1"
-                />
-                <p className="text-black dark:text-white truncate w-full">
-                  {translateENtoVI(fuelType)}
-                </p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <hr className="my-3 border-t border-black/10 dark:border-white/10" />
 

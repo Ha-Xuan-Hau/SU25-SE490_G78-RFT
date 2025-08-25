@@ -23,7 +23,7 @@ import AdminLayout from "@/layouts/AdminLayout";
 import { getAllWithdrawals, updateWithdrawalStatus } from "@/apis/wallet.api";
 import type { ColumnsType } from "antd/es/table";
 import { translateENtoVI } from "@/lib/viDictionary";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import { showApiError, showError, showSuccess } from "@/utils/toast.utils";
 
 const { Title } = Typography;

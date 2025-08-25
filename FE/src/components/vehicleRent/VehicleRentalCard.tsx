@@ -19,7 +19,7 @@ import PaymentModal from "../PaymentModal";
 import CancelBookingModal from "../CancelBookingModal";
 import ReturnVehicleModal from "./ReturnVehicleModal";
 import VehicleSelectionModal from "./VehicleSelectionModal";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 
 // Import booking APIs
 import { updateBookingStatus, cancelBooking } from "@/apis/booking.api";

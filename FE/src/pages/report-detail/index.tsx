@@ -30,7 +30,7 @@ import {
   InfoCircleOutlined,
   CarOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import {
   getGroupedReportDetail,
   getSingleReportDetail,

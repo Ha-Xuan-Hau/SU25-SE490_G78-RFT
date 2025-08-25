@@ -44,7 +44,8 @@ import {
 import { Vehicle, VehicleFeature, VehicleImage } from "@/types/vehicle";
 import { Comment as VehicleComment } from "@/types/vehicle";
 import { formatCurrency } from "@/lib/format-currency";
-import dayjs, { Dayjs } from "dayjs";
+import dayjs from "@/utils/dayjs";
+import { Dayjs } from "@/utils/dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { RangePickerProps } from "antd/es/date-picker";

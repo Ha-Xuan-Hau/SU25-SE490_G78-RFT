@@ -22,7 +22,7 @@ import {
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import { showError, showSuccess } from "@/utils/toast.utils";
 import { DriverLicense } from "@/types/driverLicense";
 import {
