@@ -14,18 +14,18 @@ interface CouponItem {
 }
 
 interface CouponSummary {
-  totalActive: number;
-  totalExpired: number;
-  totalAll: number;
+  activeCount: number;
+  expiredCount: number;
+  totalCount: number;
 }
 
 export default function CouponCard() {
   const [loading, setLoading] = useState(true);
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [summary, setSummary] = useState<CouponSummary>({
-    totalActive: 0,
-    totalExpired: 0,
-    totalAll: 0,
+    activeCount: 0,
+    expiredCount: 0,
+    totalCount: 0,
   });
   const [error, setError] = useState(null);
 
@@ -53,9 +53,9 @@ export default function CouponCard() {
           response.items?.filter((c: CouponItem) => c.status === "EXPIRED") ||
           [];
         setSummary({
-          totalActive: activeCoupons.length,
-          totalExpired: expiredCoupons.length,
-          totalAll: response.items?.length || 0,
+          activeCount: activeCoupons.length,
+          expiredCount: expiredCoupons.length,
+          totalCount: response.items?.length || 0,
         });
       }
 
@@ -119,18 +119,20 @@ export default function CouponCard() {
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="text-center p-2 bg-blue-50 rounded-lg">
           <p className="text-xl font-bold text-blue-600">
-            {summary.totalActive}
+            {summary.activeCount}
           </p>
           <p className="text-xs text-gray-600">Đang hoạt động</p>
         </div>
         <div className="text-center p-2 bg-orange-50 rounded-lg">
           <p className="text-xl font-bold text-orange-600">
-            {summary.totalExpired}
+            {summary.expiredCount}
           </p>
           <p className="text-xs text-gray-600">Đã hết hạn</p>
         </div>
         <div className="text-center p-2 bg-green-50 rounded-lg">
-          <p className="text-xl font-bold text-green-600">{summary.totalAll}</p>
+          <p className="text-xl font-bold text-green-600">
+            {summary.totalCount}
+          </p>
           <p className="text-xs text-gray-600">Tổng cộng</p>
         </div>
       </div>
@@ -152,7 +154,7 @@ export default function CouponCard() {
                 className={`p-3 rounded-lg border transition-all hover:shadow-sm ${
                   isExpiringSoon
                     ? "border-orange-200 bg-orange-50"
-                    : "border-green-200 bg-green-50"
+                    : "border-blue-200 bg-blue-50"
                 }`}
               >
                 {/* Coupon Header */}
@@ -160,12 +162,12 @@ export default function CouponCard() {
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        isExpiringSoon ? "bg-orange-100" : "bg-green-100"
+                        isExpiringSoon ? "bg-orange-100" : "bg-blue-100"
                       }`}
                     >
                       <Gift
                         className={`w-4 h-4 ${
-                          isExpiringSoon ? "text-orange-600" : "text-green-600"
+                          isExpiringSoon ? "text-orange-600" : "text-blue-600"
                         }`}
                       />
                     </div>
