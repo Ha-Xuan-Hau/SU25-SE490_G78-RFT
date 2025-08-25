@@ -31,6 +31,7 @@ export const viDictionary: Record<string, string> = {
   VALID: "Còn hiệu lực",
   INVALID: "Không còn hiệu lực",
   FINISHED: "Đã hoàn thành",
+  EXPIRED: "Đã hết hạn",
 
   APPROVED: "Đã duyệt",
 

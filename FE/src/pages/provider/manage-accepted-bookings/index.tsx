@@ -37,7 +37,7 @@ import {
 import type { InputRef } from "antd";
 import type { ColumnType } from "antd/es/table";
 import Highlighter from "react-highlight-words";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import {
   getBookingsByProviderAndStatus,
   updateBookingStatus,
