@@ -10,6 +10,7 @@ import { Icon } from "@iconify/react";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Avatar, Tooltip } from "antd";
+import { User } from "lucide-react";
 
 export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
@@ -120,12 +121,16 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:account-circle",
           label: "Thông tin cá nhân",
         },
-        {
-          key: "change-password",
-          path: "/profile/change-password",
-          icon: "mdi:key-variant",
-          label: "Đổi mật khẩu",
-        },
+        ...(userProfile?.status === "TEMP_BANNED"
+          ? []
+          : [
+              {
+                key: "change-password",
+                path: "/profile/change-password",
+                icon: "mdi:key-variant",
+                label: "Đổi mật khẩu",
+              },
+            ]),
         {
           key: "user-wallet",
           path: "/profile/wallets",
@@ -145,17 +150,22 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           : []),
       ],
     },
-    {
-      title: "Quản lý giấy tờ",
-      items: [
-        {
-          key: "driver-licenses",
-          path: "/profile/driver-licenses",
-          icon: "mdi:card-account-details",
-          label: "Giấy phép lái xe",
-        },
-      ],
-    },
+    ...(userProfile?.status === "TEMP_BANNED"
+      ? []
+      : [
+          {
+            title: "Quản lý giấy tờ",
+            items: [
+              {
+                key: "driver-licenses",
+                path: "/profile/driver-licenses",
+                icon: "mdi:card-account-details",
+                label: "Giấy phép lái xe",
+              },
+            ],
+          },
+        ]),
+
     {
       title: "Lịch sử hoạt động",
       items: [
