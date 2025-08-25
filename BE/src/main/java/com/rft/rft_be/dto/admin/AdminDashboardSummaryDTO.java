@@ -64,6 +64,8 @@ public class AdminDashboardSummaryDTO {
         private String type;   // CAR/MOTORBIKE/BICYCLE
         private long active;   // số đang hoạt động
         private long total;    // tổng theo loại
+        private long pending;  // số đang chờ duyệt
+        private long suspended; // số bị đình chỉ
         private Long providers; // số chủ có loại xe này (optional)
     }
 }
