@@ -16,6 +16,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -154,7 +155,8 @@ public class AuthenticationService {
 
         String template;
         try {
-            template = Files.readString(Path.of("src/main/resources/templates/otp_template.html"));
+            ClassPathResource resource = new ClassPathResource("templates/otp_template.html");
+            template = new String(resource.getInputStream().readAllBytes());
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }
@@ -171,7 +173,8 @@ public class AuthenticationService {
 
         String template;
         try {
-            template = Files.readString(Path.of("src/main/resources/templates/otp_register_template.html"));
+            ClassPathResource resource = new ClassPathResource("templates/otp_register_template.html");
+            template = new String(resource.getInputStream().readAllBytes());
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }
