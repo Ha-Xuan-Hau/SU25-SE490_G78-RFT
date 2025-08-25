@@ -112,7 +112,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   // menuGroups - GIỮ NGUYÊN
   const menuGroups = [
     {
-      title: "Tài khoản cá nhân",
+      title: "Thông tin cá nhân",
       items: [
         {
           key: "profile",
@@ -126,6 +126,23 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:key-variant",
           label: "Đổi mật khẩu",
         },
+        {
+          key: "user-wallet",
+          path: "/profile/wallets",
+          icon: "mdi:wallet-outline",
+          label: "Ví của tôi",
+        },
+        // Chỉ hiện "Lịch sử vi phạm" nếu là USER
+        ...(isUser
+          ? [
+              {
+                key: "reports",
+                path: "/profile/my-reports",
+                icon: "mdi:chart-box",
+                label: "Lịch sử vi phạm",
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -140,17 +157,6 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
       ],
     },
     {
-      title: "Tài chính & Giao dịch",
-      items: [
-        {
-          key: "user-wallet",
-          path: "/profile/wallets",
-          icon: "mdi:wallet-outline",
-          label: "Ví của tôi",
-        },
-      ],
-    },
-    {
       title: "Lịch sử hoạt động",
       items: [
         {
@@ -159,17 +165,6 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:history",
           label: "Lịch sử đặt xe",
         },
-        // Chỉ hiện "Lịch sử vi phạm" nếu là USER
-        ...(isUser
-          ? [
-              {
-                key: "reports",
-                path: "/profile/my-reports",
-                icon: "mdi:chart-box",
-                label: "Lịch sử vi phạm",
-              },
-            ]
-          : []),
       ],
     },
   ];
