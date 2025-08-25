@@ -161,9 +161,19 @@ export default function MyStaffReportsPage() {
   };
 
   // Calculate time remaining for appeal
-  const getTimeRemaining = (deadline: string) => {
+  const getTimeRemaining = (deadline: string | number[]) => {
     const now = new Date();
-    const deadlineDate = new Date(deadline);
+    let deadlineDate: Date;
+
+    // Xử lý nếu deadline là array [year, month, day, hour, minute, second]
+    if (Array.isArray(deadline)) {
+      const [year, month, day, hour, minute, second = 0] = deadline;
+      deadlineDate = new Date(year, month - 1, day, hour, minute, second);
+    } else {
+      // Xử lý nếu deadline là string
+      deadlineDate = new Date(deadline);
+    }
+
     const diff = deadlineDate.getTime() - now.getTime();
 
     if (diff <= 0) return "Hết hạn";
@@ -253,14 +263,6 @@ export default function MyStaffReportsPage() {
               Còn {getTimeRemaining(record.appealDeadline)}
             </Text>
           </div>
-          <Button
-            size="small"
-            type="primary"
-            danger
-            onClick={() => handleAppeal(record)}
-          >
-            Kháng cáo ngay
-          </Button>
         </div>
       );
     } else {
