@@ -20,7 +20,7 @@ public class BookingMetricStrategy implements MetricStrategy {
     private final FinalContractRepository finalContractRepository;
 
     @Override
-    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame) {
+    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame, String providerId) {
         List<DataPoint> dataPoints = new ArrayList<>();
         int total = 0;
         Integer min = null;
@@ -30,7 +30,7 @@ public class BookingMetricStrategy implements MetricStrategy {
             LocalDateTime periodStart = timePoints.get(i);
             LocalDateTime periodEnd = timePoints.get(i + 1);
 
-            int value = calculateBookings(periodStart, periodEnd, metric);
+            int value = calculateBookings(periodStart, periodEnd, metric, providerId);
 
             dataPoints.add(DataPoint.builder()
                     .timestamp(periodStart.format(DateTimeFormatter.ISO_DATE_TIME) + "Z")
@@ -59,13 +59,13 @@ public class BookingMetricStrategy implements MetricStrategy {
                 .build();
     }
 
-    private int calculateBookings(LocalDateTime start, LocalDateTime end, String metric) {
+    private int calculateBookings(LocalDateTime start, LocalDateTime end, String metric, String providerId) {
         switch (metric) {
             case "bookings":
-                return finalContractRepository.findByCreatedAtBetween(start, end).size();
+                return finalContractRepository.findByCreatedAtBetweenAndProvider(start, end, providerId).size();
 
             case "successBookings":
-                return finalContractRepository.findCompletedByCreatedAtBetween(start, end).size();
+                return finalContractRepository.findCompletedByCreatedAtBetweenAndProvider(start, end, providerId).size();
 
             default:
                 return 0;

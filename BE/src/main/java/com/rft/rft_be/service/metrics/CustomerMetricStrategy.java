@@ -20,7 +20,7 @@ public class CustomerMetricStrategy implements MetricStrategy {
     private final FinalContractRepository finalContractRepository;
 
     @Override
-    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame) {
+    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame, String providerId) {
         List<DataPoint> dataPoints = new ArrayList<>();
         int total = 0;
         Integer min = null;
@@ -30,7 +30,8 @@ public class CustomerMetricStrategy implements MetricStrategy {
             LocalDateTime periodStart = timePoints.get(i);
             LocalDateTime periodEnd = timePoints.get(i + 1);
 
-            int value = calculateCustomers(periodStart, periodEnd, metric);
+            int value = calculateCustomers(periodStart, periodEnd, metric
+                    , providerId);
 
             dataPoints.add(DataPoint.builder()
                     .timestamp(periodStart.format(DateTimeFormatter.ISO_DATE_TIME) + "Z")
@@ -59,17 +60,17 @@ public class CustomerMetricStrategy implements MetricStrategy {
                 .build();
     }
 
-    private int calculateCustomers(LocalDateTime start, LocalDateTime end, String metric) {
+    private int calculateCustomers(LocalDateTime start, LocalDateTime end, String metric, String providerId) {
         switch (metric) {
             case "customers":
-                List<FinalContract> allContracts = finalContractRepository.findByCreatedAtBetween(start, end);
+                List<FinalContract> allContracts = finalContractRepository.findByCreatedAtBetweenAndProvider(start, end, providerId);
                 return (int) allContracts.stream()
                         .map(fc -> fc.getContract().getBooking().getUser().getId())
                         .distinct()
                         .count();
 
             case "successCustomers":
-                List<FinalContract> completedContracts = finalContractRepository.findCompletedByCreatedAtBetween(start, end);
+                List<FinalContract> completedContracts = finalContractRepository.findCompletedByCreatedAtBetweenAndProvider(start, end, providerId);
                 return (int) completedContracts.stream()
                         .map(fc -> fc.getContract().getBooking().getUser().getId())
                         .distinct()

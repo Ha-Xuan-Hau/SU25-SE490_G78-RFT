@@ -20,7 +20,7 @@ public class ConversionRateStrategy implements MetricStrategy {
     private final FinalContractRepository finalContractRepository;
 
     @Override
-    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame) {
+    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame, String providerId) {
         List<DataPoint> dataPoints = new ArrayList<>();
         double total = 0;
         Double min = null;
@@ -30,7 +30,7 @@ public class ConversionRateStrategy implements MetricStrategy {
             LocalDateTime periodStart = timePoints.get(i);
             LocalDateTime periodEnd = timePoints.get(i + 1);
 
-            double value = calculateConversionRate(periodStart, periodEnd);
+            double value = calculateConversionRate(periodStart, periodEnd, providerId);
 
             dataPoints.add(DataPoint.builder()
                     .timestamp(periodStart.format(DateTimeFormatter.ISO_DATE_TIME) + "Z")
@@ -58,11 +58,11 @@ public class ConversionRateStrategy implements MetricStrategy {
                 .build();
     }
 
-    private double calculateConversionRate(LocalDateTime start, LocalDateTime end) {
+    private double calculateConversionRate(LocalDateTime start, LocalDateTime end, String providerId) {
         List<FinalContract> allContracts =
-                finalContractRepository.findByCreatedAtBetween(start, end);
+                finalContractRepository.findByCreatedAtBetweenAndProvider(start, end, providerId);
         List<FinalContract> completedContracts =
-                finalContractRepository.findCompletedByCreatedAtBetween(start, end);
+                finalContractRepository.findCompletedByCreatedAtBetweenAndProvider(start, end, providerId);
 
         if (allContracts.isEmpty()) return 0.0;
 

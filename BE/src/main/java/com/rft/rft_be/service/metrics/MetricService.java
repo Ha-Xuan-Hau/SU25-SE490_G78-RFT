@@ -8,6 +8,8 @@ import com.rft.rft_be.dto.metric.MetricResponse;
 import com.rft.rft_be.service.metrics.MetricStrategy;
 import com.rft.rft_be.service.metrics.MetricStrategyFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -23,6 +25,8 @@ public class MetricService {
     private final MetricStrategyFactory strategyFactory;
 
     public MetricResponse getMetric(MetricRequest request) {
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        String providerId = authentication.getToken().getClaim("userId");
         LocalDate startDate = LocalDate.parse(request.getStartDate());
         LocalDate endDate = LocalDate.parse(request.getEndDate());
 
@@ -31,7 +35,7 @@ public class MetricService {
 
         MetricStrategy strategy = strategyFactory.getStrategy(request.getMetric());
 
-        return strategy.calculate(timePoints, request.getMetric(), timeFrame);
+        return strategy.calculate(timePoints, request.getMetric(), timeFrame, providerId);
     }
 
     private String determineTimeFrame(LocalDate startDate, LocalDate endDate, String groupBy) {
