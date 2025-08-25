@@ -1,10 +1,5 @@
 {
   "framework": "nextjs",
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "TZ='Asia/Ho_Chi_Minh' npm run build",
-  "env": {
-    "TZ": "Asia/Ho_Chi_Minh",
-    "NEXT_PUBLIC_TZ": "Asia/Ho_Chi_Minh"
-  },
-  "regions": ["sin1"]
+  "buildCommand": "npm run build"
 }
