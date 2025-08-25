@@ -271,8 +271,8 @@ export default function WithdrawalRequestsPage() {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
+            showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+            showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
           }}
         />
       </div>

@@ -566,7 +566,8 @@ export default function MyStaffReportsPage() {
                   phạm
                 </span>
               ),
-              showSizeChanger: !isMobile,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               simple: isMobile,
             }}
             onChange={handleTableChange}

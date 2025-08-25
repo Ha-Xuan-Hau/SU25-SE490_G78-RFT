@@ -1728,8 +1728,8 @@ export default function ManageAcceptedBookings() {
                 current: paginationInfo.currentPage + 1,
                 pageSize: paginationInfo.pageSize,
                 total: paginationInfo.totalElements,
-                showSizeChanger: true,
-                showQuickJumper: true,
+                showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+                showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
                 showTotal: (total, range) => {
                   if (activeTab === "ALL") {
                     return `${range[0]}-${range[1]} của ${total} đơn hàng (tất cả trạng thái)`;

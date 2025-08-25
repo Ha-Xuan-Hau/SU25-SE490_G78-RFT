@@ -576,8 +576,8 @@ export default function ManageBookingsPage() {
               current: currentPage,
               pageSize: pageSize,
               total: total || filteredBookings.length,
-              showSizeChanger: true,
-              showQuickJumper: true,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               onChange: (page, size) => {
                 setCurrentPage(page);
                 setPageSize(size || 10);
