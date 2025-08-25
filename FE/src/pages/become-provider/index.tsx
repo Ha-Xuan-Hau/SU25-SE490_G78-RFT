@@ -3,7 +3,9 @@ import { useRouter } from "next/router";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { useUserState, useRefreshUser } from "@/recoils/user.state";
 import { useEffect } from "react";
-import dayjs, { Dayjs } from "dayjs";
+// import dayjs, { Dayjs } from "dayjs";
+import dayjs from "@/utils/dayjs";
+import { Dayjs } from "@/utils/dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import {
   getProvinces,

@@ -23,7 +23,7 @@ import {
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import { showApiError, showError, showSuccess } from "@/utils/toast.utils";
 import { coupon as Coupon, couponRequest } from "@/types/userCoupon";
 import { getAllCoupons, updateCoupon, createCoupon } from "@/apis/coupon.api";
@@ -127,7 +127,7 @@ export default function ManageDiscountCodesPage() {
         setCoupons((prev) => [created, ...prev]);
         showSuccess("Thêm mã giảm giá thành công!");
       }
-      setIsModalVisible(false)
+      setIsModalVisible(false);
     } catch (error: any) {
       // showError("Có lỗi xảy ra, vui lòng thử lại!");
       showApiError(error);
@@ -321,8 +321,8 @@ export default function ManageDiscountCodesPage() {
             loading={loading}
             pagination={{
               pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} mã giảm giá`,
             }}

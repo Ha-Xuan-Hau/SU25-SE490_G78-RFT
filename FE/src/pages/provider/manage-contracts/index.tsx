@@ -682,8 +682,8 @@ export default function ManageContracts() {
             scroll={{ x: 1200 }}
             pagination={{
               pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} mục`,
             }}
