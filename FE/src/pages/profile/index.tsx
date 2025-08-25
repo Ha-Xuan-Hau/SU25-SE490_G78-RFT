@@ -18,6 +18,7 @@ import EditProfileModal from "@/components/EditProfileComponent";
 import type { User } from "@/types/user";
 import { showError } from "@/utils/toast.utils";
 import ProfileLayout from "@/layouts/ProfileLayout";
+import useLocalStorage from "@/hooks/useLocalStorage";
 
 const { Title } = Typography;
 
@@ -25,6 +26,8 @@ export default function UserAccountPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const showModalEdit = () => setOpenEditModal(true);
   const handleCancleEditModal = () => setOpenEditModal(false);
+
+  const [userProfile, , clearUserProfile] = useLocalStorage("user_profile", "");
 
   const [user, setUser] = useUserState();
   const refreshUser = useRefreshUser();
@@ -193,14 +196,25 @@ export default function UserAccountPage() {
                 </div>
               </div>
 
+              {userProfile?.status !== "TEMP_BANNED" && (
+                // Edit Button
+                <button
+                  onClick={showModalEdit}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md font-open-sans text-sm sm:text-base flex-shrink-0 mt-2 lg:mt-0"
+                >
+                  <EditIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span>Chỉnh sửa</span>
+                </button>
+              )}
+
               {/* Edit Button */}
-              <button
+              {/* <button
                 onClick={showModalEdit}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md font-open-sans text-sm sm:text-base flex-shrink-0 mt-2 lg:mt-0"
               >
                 <EditIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>Chỉnh sửa</span>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
