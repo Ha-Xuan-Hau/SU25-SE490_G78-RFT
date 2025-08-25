@@ -75,6 +75,12 @@ public class BookingServiceImpl implements BookingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
 
+        if (user.getStatus() == User.Status.TEMP_BANNED){
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Tài khoản của bạn đang bị tạm khóa, không thể đặt xe"
+            );
+        }
+
         Penalty vehiclePenaly = penaltyRepository.findById(request.getPenaltyId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng với ID: " + userId));
 
