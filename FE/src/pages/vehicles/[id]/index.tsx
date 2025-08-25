@@ -490,6 +490,17 @@ export default function VehicleDetail() {
         return;
       }
 
+      if (startDate.isSame(endDate, "minute")) {
+        message.error("Giờ nhận xe và giờ trả xe không được trùng nhau");
+        return;
+      }
+
+      // Validate giờ trả phải sau giờ nhận
+      if (endDate.isBefore(startDate)) {
+        message.error("Giờ trả xe phải sau giờ nhận xe");
+        return;
+      }
+
       setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
       setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));
 
@@ -762,6 +773,7 @@ export default function VehicleDetail() {
                       value={formattedDates}
                       placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
                       allowClear={true}
+                      //defaultOpenValue={dayjs().minute(0).second(0)}
                     />
 
                     {validationMessage && (
