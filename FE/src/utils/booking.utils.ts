@@ -1,4 +1,4 @@
-import dayjs from "./dayjs";
+import dayjs, { VN_TZ } from "./dayjs";
 import { Dayjs } from "./dayjs";
 import duration from "dayjs/plugin/duration";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -31,46 +31,45 @@ const getCurrentVNTime = (): Dayjs => {
 export const parseBackendTime = (
   timeData: string | number[] | Dayjs
 ): Dayjs => {
+  // Force VN timezone cho mọi trường hợp
+
   if (dayjs.isDayjs(timeData)) {
-    // Nếu đã là Dayjs, chỉ cần ensure timezone
-    return timeData.tz("Asia/Ho_Chi_Minh");
+    // Nếu đã là Dayjs, ensure nó ở VN timezone
+    return timeData.tz(VN_TZ);
   }
 
   if (Array.isArray(timeData)) {
-    const [year, month, day, hour, minute] = timeData;
+    const [year, month, day, hour = 0, minute = 0, second = 0] = timeData;
 
-    // Build ISO format string với timezone info
-    const monthStr = String(month).padStart(2, "0");
-    const dayStr = String(day).padStart(2, "0");
-    const hourStr = String(hour).padStart(2, "0");
-    const minuteStr = String(minute).padStart(2, "0");
+    // QUAN TRỌNG: Tạo date string với timezone offset
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(
+      day
+    ).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(
+      minute
+    ).padStart(2, "0")}:${String(second).padStart(2, "0")}+07:00`;
 
-    // Format: YYYY-MM-DDTHH:mm:ss
-    const dateTimeStr = `${year}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}:00`;
-
-    // Parse với timezone VN
-    // dayjs.tz() sẽ parse string này như thời gian local ở VN
-    return dayjs.tz(dateTimeStr, "Asia/Ho_Chi_Minh");
+    // Parse với timezone
+    return dayjs(dateStr).tz(VN_TZ);
   }
 
-  // Với string input
   if (typeof timeData === "string") {
-    // Nếu string đã có timezone info (có Z hoặc +07:00)
+    // Nếu không có timezone info, assume là VN time
     if (
-      timeData.includes("Z") ||
-      timeData.includes("+") ||
-      timeData.includes("-")
+      !timeData.includes("Z") &&
+      !timeData.includes("+") &&
+      !timeData.includes("-")
     ) {
-      // Parse bình thường rồi convert sang VN
-      return dayjs(timeData).tz("Asia/Ho_Chi_Minh");
+      // Thêm +07:00 vào string
+      const cleanTime = timeData.replace(" ", "T");
+      return dayjs(`${cleanTime}+07:00`).tz(VN_TZ);
     }
 
-    // Nếu string không có timezone, assume nó là VN time
-    return dayjs.tz(timeData, "Asia/Ho_Chi_Minh");
+    // Có timezone info -> parse và convert
+    return dayjs(timeData).tz(VN_TZ);
   }
 
   // Fallback
-  return dayjs(timeData).tz("Asia/Ho_Chi_Minh");
+  return dayjs().tz(VN_TZ);
 };
 
 /**
