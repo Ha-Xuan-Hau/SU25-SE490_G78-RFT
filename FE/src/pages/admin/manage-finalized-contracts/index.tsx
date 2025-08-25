@@ -26,7 +26,7 @@ import {
 } from "@ant-design/icons";
 import AdminLayout from "@/layouts/AdminLayout";
 import type { ColumnsType } from "antd/es/table";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { translateENtoVI } from "@/lib/viDictionary";
 import { getAllFinalContracts } from "@/apis/admin.api";
@@ -295,8 +295,8 @@ export default function FinalContractsPage() {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
+            showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+            showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} của ${total} hợp đồng`,
           }}

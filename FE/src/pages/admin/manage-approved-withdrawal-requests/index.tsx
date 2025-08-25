@@ -23,7 +23,7 @@ import AdminLayout from "@/layouts/AdminLayout";
 import { getApprovedWithdrawals } from "@/apis/wallet.api";
 import type { ColumnsType } from "antd/es/table";
 import { translateENtoVI } from "@/lib/viDictionary";
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjs";
 import { showApiError, showError } from "@/utils/toast.utils";
 
 const { Title } = Typography;
@@ -257,8 +257,8 @@ export default function WithdrawalRequestsPage() {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
+            showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+            showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
           }}
         />
       </div>

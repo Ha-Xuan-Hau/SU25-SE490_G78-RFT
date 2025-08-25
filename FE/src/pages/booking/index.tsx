@@ -19,7 +19,8 @@ import {
   AutoComplete,
 } from "antd";
 import Image from "next/image";
-import dayjs, { Dayjs } from "dayjs";
+import dayjs from "@/utils/dayjs";
+import { Dayjs } from "@/utils/dayjs";
 import { RangePickerProps } from "antd/es/date-picker";
 import { translateENtoVI } from "@/lib/viDictionary";
 import {

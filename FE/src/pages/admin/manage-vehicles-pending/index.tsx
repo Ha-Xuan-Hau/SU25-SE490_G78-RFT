@@ -615,8 +615,8 @@ export default function VehiclePendingPage() {
               current: pagination.current,
               pageSize: pagination.pageSize,
               total: pagination.total,
-              showSizeChanger: true,
-              showQuickJumper: true,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} xe`,
               pageSizeOptions: ["10", "20", "50", "100"],

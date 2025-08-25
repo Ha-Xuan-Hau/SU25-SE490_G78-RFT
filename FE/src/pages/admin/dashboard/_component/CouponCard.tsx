@@ -77,8 +77,14 @@ export default function CouponCard() {
     }
   };
 
-  // Lọc chỉ lấy coupons đang hoạt động
-  const activeCoupons = coupons.filter((c) => c.status === "VALID");
+  // Lọc chỉ lấy coupons đang hoạt động// Sắp xếp: sắp hết hạn lên trước
+  const activeCoupons = coupons
+    .filter((c) => c.status === "VALID")
+    .sort((a, b) => {
+      if (a.daysLeft === null) return 1;
+      if (b.daysLeft === null) return -1;
+      return a.daysLeft - b.daysLeft;
+    });
 
   if (loading) {
     return (

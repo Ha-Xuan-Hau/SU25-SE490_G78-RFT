@@ -132,8 +132,9 @@ export const calculateRentalDuration = (
 
   if (totalHours <= PRICING_RULES.HOURLY_THRESHOLD) {
     // Tính theo giờ + phút
-    const hours = Math.floor(totalHours);
-    const minutes = Math.round(totalMinutes % 60);
+    const totalMinutesExact = Math.floor(totalDuration.asMinutes());
+    const hours = Math.floor(totalMinutesExact / 60);
+    const minutes = totalMinutesExact % 60; // Sẽ cho kết quả chính xác
 
     result = {
       totalHours,

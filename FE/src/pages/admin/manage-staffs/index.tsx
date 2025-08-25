@@ -459,8 +459,8 @@ export default function ManageStaffPage() {
               current: currentData.currentPage + 1,
               pageSize: currentData.pageSize,
               total: currentData.totalElements,
-              showSizeChanger: false,
-              showQuickJumper: true,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               onChange: handlePageChange,
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} nhân viên`,
