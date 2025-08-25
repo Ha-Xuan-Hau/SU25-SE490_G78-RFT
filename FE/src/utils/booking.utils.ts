@@ -8,6 +8,20 @@ dayjs.extend(duration);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
+// Helper để đảm bảo timezone VN
+const ensureVNTimezone = (date: Dayjs): Dayjs => {
+  if (!date.isValid()) {
+    console.warn("Invalid date provided to ensureVNTimezone");
+    return dayjs().tz("Asia/Ho_Chi_Minh");
+  }
+  return date.tz("Asia/Ho_Chi_Minh");
+};
+
+// Helper để get current time ở VN
+const getCurrentVNTime = (): Dayjs => {
+  return dayjs().tz("Asia/Ho_Chi_Minh");
+};
+
 /**
  * Helper function to parse time from backend LocalDateTime
  * Backend can send LocalDateTime as:
@@ -18,25 +32,45 @@ export const parseBackendTime = (
   timeData: string | number[] | Dayjs
 ): Dayjs => {
   if (dayjs.isDayjs(timeData)) {
-    return timeData;
+    // Nếu đã là Dayjs, chỉ cần ensure timezone
+    return timeData.tz("Asia/Ho_Chi_Minh");
   }
 
   if (Array.isArray(timeData)) {
-    // Handle array format: [year, month, day, hour, minute]
-    // Note: JavaScript month is 0-based, but backend sends 1-based month
     const [year, month, day, hour, minute] = timeData;
-    return dayjs()
-      .year(year)
-      .month(month - 1)
-      .date(day)
-      .hour(hour)
-      .minute(minute)
-      .second(0)
-      .millisecond(0);
+
+    // Build ISO format string với timezone info
+    const monthStr = String(month).padStart(2, "0");
+    const dayStr = String(day).padStart(2, "0");
+    const hourStr = String(hour).padStart(2, "0");
+    const minuteStr = String(minute).padStart(2, "0");
+
+    // Format: YYYY-MM-DDTHH:mm:ss
+    const dateTimeStr = `${year}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}:00`;
+
+    // Parse với timezone VN
+    // dayjs.tz() sẽ parse string này như thời gian local ở VN
+    return dayjs.tz(dateTimeStr, "Asia/Ho_Chi_Minh");
   }
 
-  // Handle string format: "yyyy-MM-dd'T'HH:mm:ss"
-  return dayjs(timeData);
+  // Với string input
+  if (typeof timeData === "string") {
+    // Nếu string đã có timezone info (có Z hoặc +07:00)
+    if (
+      timeData.includes("Z") ||
+      timeData.includes("+") ||
+      timeData.includes("-")
+    ) {
+      // Parse bình thường rồi convert sang VN
+      return dayjs(timeData).tz("Asia/Ho_Chi_Minh");
+    }
+
+    // Nếu string không có timezone, assume nó là VN time
+    return dayjs.tz(timeData, "Asia/Ho_Chi_Minh");
+  }
+
+  // Fallback
+  return dayjs(timeData).tz("Asia/Ho_Chi_Minh");
 };
 
 /**
@@ -44,8 +78,8 @@ export const parseBackendTime = (
  * Backend expects LocalDateTime in format "yyyy-MM-dd'T'HH:mm:ss" (Vietnam time)
  */
 export const formatTimeForBackend = (time: Dayjs): string => {
-  // Format as ISO LocalDateTime without timezone (backend treats as Vietnam time)
-  return time.format("YYYY-MM-DDTHH:mm:ss");
+  // Đảm bảo time ở timezone VN trước khi format
+  return time.tz("Asia/Ho_Chi_Minh").format("YYYY-MM-DDTHH:mm:ss");
 };
 
 /**
@@ -225,6 +259,9 @@ export const checkBufferTimeConflict = (
     (booking) => booking.status !== "CANCELLED"
   );
 
+  const vnNewStartDate = ensureVNTimezone(newStartDate);
+  const vnNewEndDate = ensureVNTimezone(newEndDate);
+
   const bufferRule = BUFFER_TIME_RULES[vehicleType];
 
   for (const booking of activeBookings) {
@@ -233,7 +270,7 @@ export const checkBufferTimeConflict = (
 
     // Kiểm tra overlap trực tiếp
     const hasDirectOverlap =
-      newStartDate.isBefore(bookingEnd) && newEndDate.isAfter(bookingStart);
+      vnNewStartDate.isBefore(bookingEnd) && vnNewEndDate.isAfter(bookingStart);
 
     if (hasDirectOverlap) {
       conflictBookings.push(booking);
@@ -289,11 +326,12 @@ export const isDateDisabled = (
   openTime: string,
   closeTime: string
 ): boolean => {
-  const today = dayjs().startOf("day");
-  const dateStr = date.format("YYYY-MM-DD");
+  const vnDate = ensureVNTimezone(date);
+  const today = dayjs().tz("Asia/Ho_Chi_Minh").startOf("day");
+  const dateStr = vnDate.format("YYYY-MM-DD");
 
   // Disable ngày trong quá khứ
-  if (date.isBefore(today)) {
+  if (vnDate.isBefore(today)) {
     return true;
   }
 
@@ -479,8 +517,10 @@ export const createDisabledTimeFunction = (
     }
 
     const disabledHours: number[] = [];
-    const today = dayjs();
-    const isToday = current.isSame(today, "day");
+    // Đảm bảo current ở VN timezone
+    const vnCurrent = ensureVNTimezone(current);
+    const today = dayjs().tz("Asia/Ho_Chi_Minh");
+    const isToday = vnCurrent.isSame(today, "day");
     const currentHour = today.hour();
     const selectedDateStr = current.format("YYYY-MM-DD");
 
