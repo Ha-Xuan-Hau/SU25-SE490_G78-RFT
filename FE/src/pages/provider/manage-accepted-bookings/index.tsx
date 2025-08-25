@@ -252,7 +252,72 @@ export default function ManageAcceptedBookings() {
     return "";
   };
 
-  // Debug provider state and handle loading timeout
+  // Thêm state để lưu count cho từng status
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({
+    CONFIRMED: 0,
+    DELIVERED: 0,
+    RECEIVED_BY_CUSTOMER: 0,
+    RETURNED: 0,
+  });
+
+  // Thêm function fetch counts riêng
+  const fetchStatusCounts = useCallback(async () => {
+    const providerId = getProviderIdFromState(provider);
+    if (!providerId) return;
+
+    const statuses = [
+      "CONFIRMED",
+      "DELIVERED",
+      "RECEIVED_BY_CUSTOMER",
+      "RETURNED",
+    ];
+
+    try {
+      const countPromises = statuses.map(async (status) => {
+        try {
+          const response = (await getBookingsByProviderAndStatus(
+            providerId,
+            status,
+            0,
+            1
+          )) as { totalElements?: number };
+
+          return {
+            status,
+            count: response.totalElements || 0,
+          };
+        } catch (error) {
+          console.error(`Error fetching count for ${status}:`, error);
+          return { status, count: 0 };
+        }
+      });
+
+      const results = await Promise.all(countPromises);
+      const counts = results.reduce((acc, { status, count }) => {
+        acc[status] = count;
+        return acc;
+      }, {} as Record<string, number>);
+
+      setStatusCounts(counts);
+    } catch (error) {
+      console.error("Error fetching status counts:", error);
+    }
+  }, [provider]);
+
+  useEffect(() => {
+    if (!providerLoading && provider) {
+      // Fetch counts khi component mount hoặc provider thay đổi
+      fetchStatusCounts();
+
+      // Set interval để refresh counts mỗi 30 giây (optional)
+      // const interval = setInterval(() => {
+      //   fetchStatusCounts();
+      // }, 30000);
+
+      // return () => clearInterval(interval);
+    }
+  }, [providerLoading, provider]); // Debug provider state and handle loading timeout
+
   useEffect(() => {
     console.log("Provider state:", provider);
     // Set provider loading to false once we have determined the provider state
@@ -433,41 +498,61 @@ export default function ManageAcceptedBookings() {
     [provider, providerLoading, activeTab]
   );
 
-  // Thêm WebSocket listeners - ĐẶT SAU fetchBookings
+  // Initial load
+  useEffect(() => {
+    if (!providerLoading && provider) {
+      fetchStatusCounts();
+    }
+  }, [providerLoading, provider, fetchStatusCounts]);
+
+  // Khi chuyển tab
+  useEffect(() => {
+    setCurrentPage(0);
+    if (!providerLoading && provider) {
+      // Fetch counts và data mới
+      fetchStatusCounts();
+      fetchBookings(true, 0, pageSize);
+    }
+  }, [
+    activeTab,
+    fetchStatusCounts,
+    fetchBookings,
+    providerLoading,
+    provider,
+    pageSize,
+  ]);
+
   useEffect(() => {
     if (!provider) return;
 
-    console.log("WebSocket connected:", isConnected());
+    const handleBookingUpdate = async () => {
+      console.log("WebSocket event received, updating...");
 
-    // Listen to booking status changes
-    const unsubscribeBookingStatus = on("BOOKING_STATUS_CHANGE", (event) => {
-      console.log("Provider - Booking status changed:", event);
+      // Thêm delay nhỏ để đảm bảo backend đã cập nhật xong
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Gọi fetchBookings trực tiếp
-      fetchBookings(true);
+      // Fetch counts trước
+      await fetchStatusCounts();
+
+      // Sau đó mới fetch bookings
+      await fetchBookings(true, currentPage, pageSize);
+    };
+
+    const unsubscribeBookingStatus = on("BOOKING_STATUS_CHANGE", async () => {
+      await handleBookingUpdate();
     });
 
-    // Listen to booking updates
-    const unsubscribeBookingUpdate = on("BOOKING_UPDATE", (event) => {
-      console.log("Provider - Booking updated:", event);
-
-      // Gọi fetchBookings trực tiếp
-      fetchBookings(true);
+    const unsubscribeBookingUpdate = on("BOOKING_UPDATE", async () => {
+      await handleBookingUpdate();
     });
 
-    // Listen to payment updates
-    const unsubscribePayment = on("PAYMENT_UPDATE", (event) => {
-      console.log("Provider - Payment updated:", event);
-
+    const unsubscribePayment = on("PAYMENT_UPDATE", async (event) => {
       if (event.payload?.status === "COMPLETED") {
-        fetchBookings(true);
+        await handleBookingUpdate();
       }
     });
 
-    // Listen to notifications
-    const unsubscribeNotification = on("NOTIFICATION", (event) => {
-      console.log("Provider - New notification:", event);
-
+    const unsubscribeNotification = on("NOTIFICATION", async (event) => {
       const bookingRelatedTypes = [
         "PROVIDER_RECEIVED_BOOKING",
         "VEHICLE_PICKUP_CONFIRMED",
@@ -480,83 +565,17 @@ export default function ManageAcceptedBookings() {
         event.payload?.type &&
         bookingRelatedTypes.includes(event.payload.type)
       ) {
-        fetchBookings(true);
+        await handleBookingUpdate();
       }
     });
 
-    // Cleanup function
     return () => {
       unsubscribeBookingStatus();
       unsubscribeBookingUpdate();
       unsubscribePayment();
       unsubscribeNotification();
     };
-  }, [provider, on, isConnected, fetchBookings]); // Thêm fetchBookings vào dependencies
-
-  // Log WebSocket connection status
-  useEffect(() => {
-    const checkConnection = setInterval(() => {
-      console.log("WebSocket connection status:", isConnected());
-    }, 5000);
-
-    return () => clearInterval(checkConnection);
-  }, [isConnected]);
-
-  // Thêm log để debug
-  useEffect(() => {
-    if (!provider) return;
-
-    console.log("Setting up WebSocket listeners for provider:", provider);
-
-    const unsubscribeBookingStatus = on("BOOKING_STATUS_CHANGE", (event) => {
-      // console.log("Provider - Booking status changed:", event);
-      // console.log("Event payload:", event.payload);
-      // console.log("Calling fetchBookings...");
-
-      // Gọi fetchBookings
-      fetchBookings(true)
-        .then(() => {
-          console.log("fetchBookings completed");
-        })
-        .catch((error) => {
-          console.error("fetchBookings error:", error);
-        });
-    });
-
-    const unsubscribeBookingUpdate = on("BOOKING_UPDATE", (event) => {
-      // console.log("Provider - Booking updated:", event);
-      // console.log("Event payload:", event.payload);
-
-      fetchBookings(true)
-        .then(() => {
-          console.log("fetchBookings completed");
-        })
-        .catch((error) => {
-          console.error("fetchBookings error:", error);
-        });
-    });
-
-    const unsubscribePayment = on("PAYMENT_UPDATE", (event) => {
-      console.log("Provider - Payment updated:", event);
-
-      if (event.payload?.status === "COMPLETED") {
-        fetchBookings(true)
-          .then(() => {
-            console.log("fetchBookings completed after payment");
-          })
-          .catch((error) => {
-            console.error("fetchBookings error:", error);
-          });
-      }
-    });
-
-    return () => {
-      console.log("Cleaning up WebSocket listeners");
-      unsubscribeBookingStatus();
-      unsubscribeBookingUpdate();
-      unsubscribePayment();
-    };
-  }, [provider, on, fetchBookings]);
+  }, [provider, on, currentPage, pageSize]);
 
   // Filter bookings based on active tab and search query
   const filterBookings = useCallback(() => {
@@ -593,7 +612,7 @@ export default function ManageAcceptedBookings() {
     if (!providerLoading) {
       fetchBookings(true, 0, pageSize);
     }
-  }, [activeTab, fetchBookings, providerLoading, pageSize]);
+  }, [activeTab]);
 
   // Load data khi thay đổi page
   useEffect(() => {
@@ -606,13 +625,6 @@ export default function ManageAcceptedBookings() {
   useEffect(() => {
     filterBookings();
   }, [filterBookings]);
-
-  // Load booking data when provider is ready
-  // useEffect(() => {
-  //   if (!providerLoading) {
-  //     fetchBookings();
-  //   }
-  // }, [fetchBookings, providerLoading]);
 
   // Update status tag display function
   const getStatusTag = (status: string) => {
@@ -667,6 +679,32 @@ export default function ManageAcceptedBookings() {
   };
 
   // Cancel contract function using API with reason
+  // const cancelContract = async (reason: string) => {
+  //   if (!selectedBookingId) return;
+
+  //   setLoading(true);
+  //   try {
+  //     const result = (await cancelBooking(
+  //       selectedBookingId,
+  //       reason,
+  //       "provider"
+  //     )) as any;
+  //     if (result.success) {
+  //       showApiSuccess("Đơn hàng đã được hủy thành công");
+  //       setCancelModalVisible(false);
+  //       setSelectedBookingId(null);
+  //       await fetchBookings(true); // Force refresh data
+  //     } else {
+  //       showApiError(result.error || "Lỗi khi hủy đơn");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error canceling contract:", error);
+  //     showApiError("Lỗi khi hủy đơn");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const cancelContract = async (reason: string) => {
     if (!selectedBookingId) return;
 
@@ -681,7 +719,12 @@ export default function ManageAcceptedBookings() {
         showApiSuccess("Đơn hàng đã được hủy thành công");
         setCancelModalVisible(false);
         setSelectedBookingId(null);
-        await fetchBookings(true); // Force refresh data
+
+        // Fetch lại CẢ HAI counts và bookings
+        await Promise.all([
+          fetchStatusCounts(),
+          fetchBookings(true, currentPage, pageSize),
+        ]);
       } else {
         showApiError(result.error || "Lỗi khi hủy đơn");
       }
@@ -733,7 +776,12 @@ export default function ManageAcceptedBookings() {
       showApiSuccess("Đã hủy đơn do khách không xuất hiện");
       setNoShowModalVisible(false);
       setSelectedNoShowBookingId(null);
-      await fetchBookings(true); // Force refresh data
+
+      // Update CẢ HAI counts và bookings
+      await Promise.all([
+        fetchStatusCounts(),
+        fetchBookings(true, currentPage, pageSize),
+      ]);
     } catch (error) {
       console.error("Error handling no-show:", error);
       showApiError("Lỗi khi xử lý đơn hàng");
@@ -833,12 +881,14 @@ export default function ManageAcceptedBookings() {
         return;
       }
       showApiSuccess("Cập nhật trạng thái hợp đồng thành công");
-      await fetchBookings(true);
+
+      // Fetch lại CẢ HAI
+      await Promise.all([
+        fetchStatusCounts(),
+        fetchBookings(true, currentPage, pageSize),
+      ]);
     } catch (error: any) {
-      console.error("Error updating contract status:", error);
-      showApiError(
-        error?.response?.data?.message || "Lỗi khi cập nhật trạng thái hợp đồng"
-      );
+      showApiError(error);
     } finally {
       setLoading(false);
     }
@@ -1212,7 +1262,10 @@ export default function ManageAcceptedBookings() {
       );
       showApiSuccess(res.data?.message || "Tất toán hợp đồng thành công");
       setOpen(false);
-      await fetchBookings(true);
+      await Promise.all([
+        fetchStatusCounts(),
+        fetchBookings(true, currentPage, pageSize),
+      ]);
     } catch {
       showApiError("Lỗi khi tất toán hợp đồng. Vui lòng thử lại sau.");
     } finally {
@@ -1301,11 +1354,13 @@ export default function ManageAcceptedBookings() {
     return (currentStep / totalSteps) * 100;
   };
 
-  // Tab items for status filtering
   const tabItems = [
     {
       key: "ALL",
-      label: `Tất cả (${paginationInfo.totalElements})`,
+      label: `Tất cả (${Object.values(statusCounts).reduce(
+        (a, b) => a + b,
+        0
+      )})`,
       children: null,
     },
     {
@@ -1313,8 +1368,7 @@ export default function ManageAcceptedBookings() {
       label: (
         <span className="flex items-center gap-2">
           <CheckCircleOutlined />
-          Chờ giao xe ({bookings.filter((b) => b.status === "CONFIRMED").length}
-          )
+          Chờ giao xe ({statusCounts.CONFIRMED || 0})
         </span>
       ),
       children: null,
@@ -1324,7 +1378,7 @@ export default function ManageAcceptedBookings() {
       label: (
         <span className="flex items-center gap-2">
           <CarOutlined />
-          Đã giao xe ({bookings.filter((b) => b.status === "DELIVERED").length})
+          Đã giao xe ({statusCounts.DELIVERED || 0})
         </span>
       ),
       children: null,
@@ -1334,8 +1388,7 @@ export default function ManageAcceptedBookings() {
       label: (
         <span className="flex items-center gap-2">
           <UserOutlined />
-          Khách đã nhận (
-          {bookings.filter((b) => b.status === "RECEIVED_BY_CUSTOMER").length})
+          Khách đã nhận ({statusCounts.RECEIVED_BY_CUSTOMER || 0})
         </span>
       ),
       children: null,
@@ -1345,7 +1398,7 @@ export default function ManageAcceptedBookings() {
       label: (
         <span className="flex items-center gap-2">
           <RollbackOutlined />
-          Đã trả xe ({bookings.filter((b) => b.status === "RETURNED").length})
+          Đã trả xe ({statusCounts.RETURNED || 0})
         </span>
       ),
       children: null,
