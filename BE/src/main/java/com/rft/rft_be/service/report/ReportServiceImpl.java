@@ -828,11 +828,12 @@ public class ReportServiceImpl implements ReportService {
                 dto.setAppealEvidenceUrl(appeal.getEvidenceUrl());
             }
         }
+        String userId = report.getReportedId();
 
         // Đếm số cờ hiện tại
-//        long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
-//                userId, "STAFF_REPORT", UserReport.Status.APPROVED);
-//        dto.setCurrentFlagCount(flagCount);
+        long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
+                userId, "STAFF_REPORT", UserReport.Status.APPROVED);
+        dto.setCurrentFlagCount(flagCount);
 
         return dto;
     }

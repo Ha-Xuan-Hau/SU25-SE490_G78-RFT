@@ -130,6 +130,12 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:wallet",
           label: "Ví của tôi",
         },
+        {
+          key: "reports",
+          path: "/provider/my-reports",
+          icon: "mdi:chart-box",
+          label: "Lịch sử vi phạm",
+        },
       ],
     },
     {
@@ -152,12 +158,6 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           path: "/provider/manage-penalties",
           icon: "mdi:pencil-box-multiple",
           label: "Quy định thuê xe",
-        },
-        {
-          key: "reports",
-          path: "/profile/my-reports",
-          icon: "mdi:chart-box",
-          label: "Lịch sử vi phạm",
         },
       ],
     },
