@@ -1,28 +1,42 @@
-// utils/dateHelper.ts
-import dayjs, { type Dayjs } from "@/utils/dayjs";
+import dayjs, { type Dayjs, VN_TZ } from "@/utils/dayjs";
 
-export const formatDateFromAPI = (dateString: string): Dayjs => {
-  // Assume API trả về UTC, convert về VN timezone
-  return dayjs(dateString).tz("Asia/Ho_Chi_Minh");
+export const parseArrayDate = (dateArray: number[]): Dayjs => {
+  const [year, month, day, hour = 0, minute = 0, second = 0] = dateArray;
+
+  // Tạo Date object với VN timezone context
+  // month - 1 vì Date constructor cũng dùng 0-indexed month
+  const date = new Date(year, month - 1, day, hour, minute, second);
+
+  // Parse date này như VN time
+  return dayjs.tz(date, VN_TZ);
 };
 
-export const formatDateToAPI = (date: string | Date | Dayjs): string => {
-  // Convert từ VN timezone về UTC để gửi lên API
-  return dayjs(date).tz("Asia/Ho_Chi_Minh").utc().format();
+// Convert Dayjs object sang array format để gửi lên API
+export const toArrayDate = (date: Dayjs): number[] => {
+  const vnDate = date.tz(VN_TZ);
+  return [
+    vnDate.year(),
+    vnDate.month() + 1, // Chuyển từ 0-11 sang 1-12
+    vnDate.date(),
+    vnDate.hour(),
+    vnDate.minute(),
+  ];
 };
 
-export const getCurrentTimeVN = (): Dayjs => {
-  return dayjs().tz("Asia/Ho_Chi_Minh");
+// Parse input từ API
+export const formatDateFromAPI = (dateInput: string | number[]): Dayjs => {
+  if (Array.isArray(dateInput)) {
+    return parseArrayDate(dateInput);
+  }
+  // Nếu là string UTC
+  return dayjs.utc(dateInput).tz(VN_TZ);
 };
 
-// Thêm các helper functions khác nếu cần
-export const formatDisplay = (
-  date: string | Date | Dayjs,
-  format: string = "DD/MM/YYYY HH:mm"
-): string => {
-  return dayjs(date).tz("Asia/Ho_Chi_Minh").format(format);
-};
-
-export const isToday = (date: string | Date | Dayjs): boolean => {
-  return dayjs(date).tz("Asia/Ho_Chi_Minh").isSame(getCurrentTimeVN(), "day");
+// Format để gửi lên API
+export const formatDateToAPI = (
+  date: string | Date | Dayjs
+): number[] | string => {
+  const dayjsDate = dayjs(date).tz(VN_TZ);
+  // Return array format
+  return toArrayDate(dayjsDate);
 };

@@ -31,45 +31,37 @@ const getCurrentVNTime = (): Dayjs => {
 export const parseBackendTime = (
   timeData: string | number[] | Dayjs
 ): Dayjs => {
-  // Force VN timezone cho mọi trường hợp
-
   if (dayjs.isDayjs(timeData)) {
-    // Nếu đã là Dayjs, ensure nó ở VN timezone
-    return timeData.tz(VN_TZ);
+    // Đảm bảo đã ở timezone VN
+    return timeData.tz("Asia/Ho_Chi_Minh");
   }
 
   if (Array.isArray(timeData)) {
-    const [year, month, day, hour = 0, minute = 0, second = 0] = timeData;
+    const [year, month, day, hour = 0, minute = 0] = timeData;
 
-    // QUAN TRỌNG: Tạo date string với timezone offset
-    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(
-      day
-    ).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(
-      minute
-    ).padStart(2, "0")}:${String(second).padStart(2, "0")}+07:00`;
+    // Method 1: Dùng Date constructor (RECOMMENDED)
+    const date = new Date(year, month - 1, day, hour, minute, 0);
+    return dayjs.tz(date, "Asia/Ho_Chi_Minh");
 
-    // Parse với timezone
-    return dayjs(dateStr).tz(VN_TZ);
+    // Method 2: Dùng string format (ALTERNATIVE)
+    // const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+    // return dayjs.tz(dateString, "Asia/Ho_Chi_Minh");
+
+    // Method 3: Parse as array với dayjs constructor
+    // return dayjs([year, month - 1, day, hour, minute, 0, 0]).tz("Asia/Ho_Chi_Minh");
   }
 
-  if (typeof timeData === "string") {
-    // Nếu không có timezone info, assume là VN time
-    if (
-      !timeData.includes("Z") &&
-      !timeData.includes("+") &&
-      !timeData.includes("-")
-    ) {
-      // Thêm +07:00 vào string
-      const cleanTime = timeData.replace(" ", "T");
-      return dayjs(`${cleanTime}+07:00`).tz(VN_TZ);
-    }
-
-    // Có timezone info -> parse và convert
-    return dayjs(timeData).tz(VN_TZ);
+  // Parse string và convert về VN timezone
+  // Nếu string có timezone info (Z hoặc +00:00) thì parse as UTC trước
+  if (
+    typeof timeData === "string" &&
+    (timeData.includes("Z") || timeData.includes("+00:00"))
+  ) {
+    return dayjs.utc(timeData).tz("Asia/Ho_Chi_Minh");
   }
 
-  // Fallback
-  return dayjs().tz(VN_TZ);
+  // String không có timezone, assume là local time
+  return dayjs(timeData).tz("Asia/Ho_Chi_Minh");
 };
 
 /**
