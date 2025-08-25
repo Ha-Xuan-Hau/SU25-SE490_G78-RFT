@@ -283,11 +283,11 @@ export const checkBufferTimeConflict = (
 
       // CASE 1: New booking SAU existing booking
       // Kiểm tra: newStart phải cách bookingEnd ít nhất 5h
-      const gapAfterExisting = newStartDate.diff(bookingEnd, "hour", true);
+      const gapAfterExisting = vnNewStartDate.diff(bookingEnd, "hour", true);
 
       // CASE 2: New booking TRƯỚC existing booking
       // Kiểm tra: newEnd phải cách bookingStart ít nhất 5h
-      const gapBeforeExisting = bookingStart.diff(newEndDate, "hour", true);
+      const gapBeforeExisting = bookingStart.diff(vnNewEndDate, "hour", true);
 
       // Conflict nếu khoảng cách < 5h (ở cả 2 phía)
       if (
@@ -421,7 +421,7 @@ export const isDateDisabled = (
 
       // Đánh dấu các giờ bị chặn trong ngày hiện tại
       for (let hour = 0; hour < 24; hour++) {
-        const checkTime = date.hour(hour).minute(0).second(0);
+        const checkTime = vnDate.hour(hour).minute(0).second(0);
         const checkTimeEnd = checkTime.add(1, "hour");
 
         // Kiểm tra overlap với khoảng bị chặn (đã bao gồm cả buffer 2 phía)
@@ -522,7 +522,7 @@ export const createDisabledTimeFunction = (
     const today = dayjs().tz("Asia/Ho_Chi_Minh");
     const isToday = vnCurrent.isSame(today, "day");
     const currentHour = today.hour();
-    const selectedDateStr = current.format("YYYY-MM-DD");
+    const selectedDateStr = vnCurrent.format("YYYY-MM-DD");
 
     // Disable past hours for today
     if (isToday) {

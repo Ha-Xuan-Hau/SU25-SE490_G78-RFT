@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    TZ: "Asia/Ho_Chi_Minh",
+  },
+  experimental: {
+    // Đảm bảo server components cũng dùng đúng timezone
+    serverComponentsExternalPackages: ["dayjs"],
+  },
   images: {
     remotePatterns: [
       {
