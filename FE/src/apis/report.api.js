@@ -198,3 +198,10 @@ export const rejectAppeal = async (appealId) => {
     const response = await apiClient.put(`/reports/appeal/${appealId}/reject`);
     return response.data;
 };
+
+
+//get my staff reports
+export const getMyStaffReports = async () => {
+    const response = await apiClient.get('/reports/my-staff-reports');
+    return response.data;
+};
