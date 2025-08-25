@@ -200,7 +200,7 @@ public class ReportServiceImpl implements ReportService {
         }
     }
 
-    //đang set mỗi 1h
+    //đang set mỗi 1h - auto approve staff report if having no appeal
     @Scheduled(fixedDelay = 3600000)
     @Transactional
     public void autoApproveExpiredFlags() {

@@ -69,7 +69,7 @@ export default function OrderIncomeCard({ statistics }: OrderIncomeCardProps) {
         <div className="flex items-center gap-3">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Thu nhập & Đơn hàng
+              Doanh số & Đơn hàng
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Tháng này
@@ -110,7 +110,7 @@ export default function OrderIncomeCard({ statistics }: OrderIncomeCardProps) {
           {formatCurrency(monthlyRevenue)}
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Tổng thu nhập tháng này
+          Tổng Doanh số tháng này
         </p>
       </div>
 
