@@ -171,6 +171,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         for (Vehicle.VehicleType type : Vehicle.VehicleType.values()) {
             var statusMap = vehicleTypeMap.getOrDefault(type, new java.util.HashMap<>());
             long active = statusMap.getOrDefault(Vehicle.Status.AVAILABLE, 0L);
+            long pending = statusMap.getOrDefault(Vehicle.Status.PENDING, 0L);
+            long suspended = statusMap.getOrDefault(Vehicle.Status.SUSPENDED, 0L);
             long total = statusMap.values().stream().mapToLong(Long::longValue).sum();
             long providers = vehicleTypeProviderMap.getOrDefault(type, 0L);
             
@@ -178,6 +180,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                     .type(type.name())
                     .active(active)
                     .total(total)
+                    .pending(pending)
+                    .suspended(suspended)
                     .providers(providers)
                     .build());
         }
