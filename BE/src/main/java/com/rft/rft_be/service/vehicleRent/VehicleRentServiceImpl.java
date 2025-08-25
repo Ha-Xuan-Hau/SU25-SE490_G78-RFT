@@ -1738,17 +1738,20 @@ public class VehicleRentServiceImpl implements VehicleRentService {
             }
         }
 
-        // 4. Lấy thống kê FinalContract theo Contract status trong tháng hiện tại (1 lần gọi)
+        // 4. Lấy thống kê booking theo status DELIVERED và RECEIVED_BY_CUSTOMER
+        List<Booking.Status> rentingStatuses = List.of(Booking.Status.DELIVERED, Booking.Status.RECEIVED_BY_CUSTOMER);
+        Long totalRentingContracts = bookingRepository.countByProviderIdAndStatusIn(userId, rentingStatuses);
+        
+        // Lấy thống kê FinalContract theo Contract status trong tháng hiện tại (1 lần gọi)
         List<Object[]> finalContractStatusCounts = finalContractRepository.countFinalContractsByProviderAndStatusInCurrentMonth(userId);
         
         // Xử lý dữ liệu FinalContract status
-        Long totalRentingContracts = 0L, totalFinishedContracts = 0L, totalCancelledContracts = 0L;
+        Long totalFinishedContracts = 0L, totalCancelledContracts = 0L;
         for (Object[] result : finalContractStatusCounts) {
             Contract.Status status = (Contract.Status) result[0];
             Long count = (Long) result[1];
             
             switch (status) {
-                case RENTING -> totalRentingContracts = count;
                 case FINISHED -> totalFinishedContracts = count;
                 case CANCELLED -> totalCancelledContracts = count;
             }

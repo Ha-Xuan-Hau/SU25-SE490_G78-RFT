@@ -159,6 +159,17 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:history",
           label: "Lịch sử đặt xe",
         },
+        // Chỉ hiện "Lịch sử vi phạm" nếu là USER
+        ...(isUser
+          ? [
+              {
+                key: "reports",
+                path: "/profile/my-reports",
+                icon: "mdi:chart-box",
+                label: "Lịch sử vi phạm",
+              },
+            ]
+          : []),
       ],
     },
   ];

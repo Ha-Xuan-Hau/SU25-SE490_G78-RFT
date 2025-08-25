@@ -1,12 +1,12 @@
 "use client";
 import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getMultipleMetrics, detectGroupBy } from "@/apis/provider.api";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
-
 interface MetricConfig {
   id: string;
   label: string;
@@ -57,8 +57,8 @@ const METRIC_CONFIGS: Record<string, MetricConfig> = {
     formatter: (value) => `${Math.round(value)} khách`,
     yAxisSide: "left",
   },
-  successBooking: {
-    id: "successBooking",
+  successBookings: {
+    id: "successBookingss",
     label: "Đơn thành công",
     color: "#EF4444",
     formatter: (value) => `${Math.round(value)} đơn`,
@@ -108,145 +108,155 @@ const getTimeFrame = (startDate: string, endDate: string) => {
   }
 };
 
-const generateMockData = (
-  startDate: string,
-  endDate: string,
-  selectedMetrics: string[],
-  timeFrame: "hourly" | "daily" | "weekly" | "monthly"
-): DataPoint[] => {
-  const data: DataPoint[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+// const generateMockData = (
+//   startDate: string,
+//   endDate: string,
+//   selectedMetrics: string[],
+//   timeFrame: "hourly" | "daily" | "weekly" | "monthly"
+// ): DataPoint[] => {
+//   const data: DataPoint[] = [];
+//   const start = new Date(startDate);
+//   const end = new Date(endDate);
 
-  if (timeFrame === "hourly") {
-    // Generate hourly data for each day
-    const currentDate = new Date(start);
-    while (currentDate <= end) {
-      for (let hour = 0; hour < 24; hour += 8) {
-        const point: DataPoint = {
-          timestamp: new Date(currentDate.setHours(hour)),
-        };
-        selectedMetrics.forEach((metricId) => {
-          if (metricId.includes("revenue")) {
-            point[metricId] = Math.random() * 5000000 + 1000000;
-          } else if (metricId === "conversionRate") {
-            point[metricId] = Math.random() * 30 + 70;
-          } else {
-            point[metricId] = Math.floor(Math.random() * 50 + 10);
-          }
-        });
-        data.push(point);
-      }
-      currentDate.setDate(currentDate.getDate() + 1);
-      currentDate.setHours(0);
-    }
-  } else if (timeFrame === "daily") {
-    // Generate daily data
-    const currentDate = new Date(start);
-    while (currentDate <= end) {
-      const point: DataPoint = {
-        timestamp: new Date(currentDate),
-      };
-      selectedMetrics.forEach((metricId) => {
-        if (metricId.includes("revenue")) {
-          point[metricId] = Math.random() * 10000000 + 2000000;
-        } else if (metricId === "conversionRate") {
-          point[metricId] = Math.random() * 20 + 75;
-        } else {
-          point[metricId] = Math.floor(Math.random() * 100 + 20);
-        }
-      });
-      data.push(point);
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-  } else if (timeFrame === "weekly") {
-    // Generate weekly data (mỗi tuần)
-    const currentDate = new Date(start);
-    // Điều chỉnh về thứ 2 đầu tuần
-    const dayOfWeek = currentDate.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7;
-    currentDate.setDate(currentDate.getDate() + daysToMonday);
+//   if (timeFrame === "hourly") {
+//     // Generate hourly data for each day
+//     const currentDate = new Date(start);
+//     while (currentDate <= end) {
+//       for (let hour = 0; hour < 24; hour += 8) {
+//         const point: DataPoint = {
+//           timestamp: new Date(currentDate.setHours(hour)),
+//         };
+//         selectedMetrics.forEach((metricId) => {
+//           if (metricId.includes("revenue")) {
+//             point[metricId] = Math.random() * 5000000 + 1000000;
+//           } else if (metricId === "conversionRate") {
+//             point[metricId] = Math.random() * 30 + 70;
+//           } else {
+//             point[metricId] = Math.floor(Math.random() * 50 + 10);
+//           }
+//         });
+//         data.push(point);
+//       }
+//       currentDate.setDate(currentDate.getDate() + 1);
+//       currentDate.setHours(0);
+//     }
+//   } else if (timeFrame === "daily") {
+//     // Generate daily data
+//     const currentDate = new Date(start);
+//     while (currentDate <= end) {
+//       const point: DataPoint = {
+//         timestamp: new Date(currentDate),
+//       };
+//       selectedMetrics.forEach((metricId) => {
+//         if (metricId.includes("revenue")) {
+//           point[metricId] = Math.random() * 10000000 + 2000000;
+//         } else if (metricId === "conversionRate") {
+//           point[metricId] = Math.random() * 20 + 75;
+//         } else {
+//           point[metricId] = Math.floor(Math.random() * 100 + 20);
+//         }
+//       });
+//       data.push(point);
+//       currentDate.setDate(currentDate.getDate() + 1);
+//     }
+//   } else if (timeFrame === "weekly") {
+//     // Generate weekly data (mỗi tuần)
+//     const currentDate = new Date(start);
+//     // Điều chỉnh về thứ 2 đầu tuần
+//     const dayOfWeek = currentDate.getDay();
+//     const daysToMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7;
+//     currentDate.setDate(currentDate.getDate() + daysToMonday);
 
-    while (currentDate <= end) {
-      const point: DataPoint = {
-        timestamp: new Date(currentDate),
-      };
-      selectedMetrics.forEach((metricId) => {
-        if (metricId.includes("revenue")) {
-          point[metricId] = Math.random() * 70000000 + 14000000; // Tổng tuần
-        } else if (metricId === "conversionRate") {
-          point[metricId] = Math.random() * 20 + 75;
-        } else {
-          point[metricId] = Math.floor(Math.random() * 700 + 140); // Tổng tuần
-        }
-      });
-      data.push(point);
-      currentDate.setDate(currentDate.getDate() + 7); // Nhảy sang tuần tiếp theo
-    }
-  } else {
-    // Generate monthly data
-    const currentDate = new Date(start);
-    currentDate.setDate(1);
-    while (currentDate <= end) {
-      const point: DataPoint = {
-        timestamp: new Date(currentDate),
-      };
-      selectedMetrics.forEach((metricId) => {
-        if (metricId.includes("revenue")) {
-          point[metricId] = Math.random() * 300000000 + 50000000;
-        } else if (metricId === "conversionRate") {
-          point[metricId] = Math.random() * 15 + 80;
-        } else {
-          point[metricId] = Math.floor(Math.random() * 3000 + 500);
-        }
-      });
-      data.push(point);
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-  }
+//     while (currentDate <= end) {
+//       const point: DataPoint = {
+//         timestamp: new Date(currentDate),
+//       };
+//       selectedMetrics.forEach((metricId) => {
+//         if (metricId.includes("revenue")) {
+//           point[metricId] = Math.random() * 70000000 + 14000000; // Tổng tuần
+//         } else if (metricId === "conversionRate") {
+//           point[metricId] = Math.random() * 20 + 75;
+//         } else {
+//           point[metricId] = Math.floor(Math.random() * 700 + 140); // Tổng tuần
+//         }
+//       });
+//       data.push(point);
+//       currentDate.setDate(currentDate.getDate() + 7); // Nhảy sang tuần tiếp theo
+//     }
+//   } else {
+//     // Generate monthly data
+//     const currentDate = new Date(start);
+//     currentDate.setDate(1);
+//     while (currentDate <= end) {
+//       const point: DataPoint = {
+//         timestamp: new Date(currentDate),
+//       };
+//       selectedMetrics.forEach((metricId) => {
+//         if (metricId.includes("revenue")) {
+//           point[metricId] = Math.random() * 300000000 + 50000000;
+//         } else if (metricId === "conversionRate") {
+//           point[metricId] = Math.random() * 15 + 80;
+//         } else {
+//           point[metricId] = Math.floor(Math.random() * 3000 + 500);
+//         }
+//       });
+//       data.push(point);
+//       currentDate.setMonth(currentDate.getMonth() + 1);
+//     }
+//   }
 
-  return data;
-};
+//   return data;
+// };
 
 const formatXAxisLabel = (
   timestamp: Date,
   timeFrame: "hourly" | "daily" | "weekly" | "monthly"
 ): string => {
   if (timeFrame === "hourly") {
-    const hour = timestamp.getHours();
-    const day = timestamp.getDate();
-    const month = timestamp.getMonth() + 1;
-    // Format rõ ràng hơn
-    return `${day}/${month} - ${hour}:00`;
+    // Lấy giờ UTC thay vì giờ local
+    const hour = timestamp.getUTCHours(); // Dùng getUTCHours thay vì getHours
+    const day = timestamp.getUTCDate(); // Dùng getUTCDate thay vì getDate
+    const month = timestamp.getUTCMonth() + 1; // Dùng getUTCMonth thay vì getMonth
+
+    // Format với khung giờ
+    let timeRange = "";
+    if (hour === 0) {
+      timeRange = "0-8h";
+    } else if (hour === 8) {
+      timeRange = "8-16h";
+    } else if (hour === 16) {
+      timeRange = "16-24h";
+    } else {
+      timeRange = `${hour}:00`;
+    }
+
+    return `${day}/${month} ${timeRange}`;
   } else if (timeFrame === "daily") {
-    const day = timestamp.getDate();
-    const month = timestamp.getMonth() + 1;
-    // Hiển thị cả tháng để rõ ràng hơn
+    const day = timestamp.getUTCDate();
+    const month = timestamp.getUTCMonth() + 1;
     return `${day}/${month}`;
   } else if (timeFrame === "weekly") {
-    const day = timestamp.getDate();
-    const month = timestamp.getMonth() + 1;
+    const day = timestamp.getUTCDate();
+    const month = timestamp.getUTCMonth() + 1;
     const weekOfMonth = Math.ceil(day / 7);
-    // Format ngắn gọn hơn
-    return `T${weekOfMonth} (${day}/${month})`;
+    return `Tuần ${weekOfMonth} (${day}/${month})`;
   } else {
     const monthNames = [
-      "T1",
-      "T2",
-      "T3",
-      "T4",
-      "T5",
-      "T6",
-      "T7",
-      "T8",
-      "T9",
-      "T10",
-      "T11",
-      "T12",
+      "Tháng 1",
+      "Tháng 2",
+      "Tháng 3",
+      "Tháng 4",
+      "Tháng 5",
+      "Tháng 6",
+      "Tháng 7",
+      "Tháng 8",
+      "Tháng 9",
+      "Tháng 10",
+      "Tháng 11",
+      "Tháng 12",
     ];
-    const year = timestamp.getFullYear();
-    // Thêm năm nếu cần
-    return `${monthNames[timestamp.getMonth()]}/${year}`;
+    const year = timestamp.getUTCFullYear();
+    return `${monthNames[timestamp.getUTCMonth()]}/${year}`;
   }
 };
 
@@ -254,17 +264,58 @@ export default function DynamicStatisticsChart({
   startDate,
   endDate,
   selectedMetrics,
-  data,
+  data: propData, // Đổi tên để tránh conflict
 }: DynamicStatisticsChartProps) {
   const timeFrame = getTimeFrame(startDate, endDate);
+
+  const [data, setData] = useState<DataPoint[]>(propData || []);
+  const [loading, setLoading] = useState(false);
+
+  // Thêm useEffect để fetch data từ API
+  useEffect(() => {
+    const fetchData = async () => {
+      if (selectedMetrics.length === 0) return;
+
+      try {
+        setLoading(true);
+        const groupBy = detectGroupBy(startDate, endDate);
+        const chartData = await getMultipleMetrics(
+          startDate,
+          endDate,
+          selectedMetrics,
+          groupBy
+        );
+
+        setData(chartData);
+      } catch (error) {
+        console.error("Error fetching chart data:", error);
+        // Handle error - có thể thêm toast notification ở đây
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Chỉ fetch nếu không có propData
+    if (!propData) {
+      fetchData();
+    }
+  }, [startDate, endDate, selectedMetrics, propData]);
+
+  // Update data khi propData thay đổi
+  useEffect(() => {
+    if (propData && propData.length > 0) {
+      setData(propData);
+    }
+  }, [propData]);
 
   // Generate or use provided data
   const chartData = useMemo(() => {
     if (data && data.length > 0) {
       return data;
     }
-    return generateMockData(startDate, endDate, selectedMetrics, timeFrame);
-  }, [startDate, endDate, selectedMetrics, timeFrame, data]);
+    // Nếu không có data và đang loading, return empty array
+    return [];
+  }, [data]);
 
   // Prepare categories and series
   const categories = chartData.map((point) =>
@@ -647,14 +698,22 @@ export default function DynamicStatisticsChart({
 
       {/* Chart container */}
       <div className="h-[350px] sm:h-[400px] lg:h-[450px] xl:h-[500px] 2xl:h-[550px]">
-        {selectedMetrics.length > 0 ? (
+        {loading ? (
+          // Loading state
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              <p className="mt-2 text-sm text-gray-500">Đang tải dữ liệu...</p>
+            </div>
+          </div>
+        ) : selectedMetrics.length > 0 && chartData.length > 0 ? (
           <ReactApexChart
             options={options}
             series={series}
             type="line"
             height="100%"
           />
-        ) : (
+        ) : selectedMetrics.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-400">
             <div className="text-center">
               <svg
@@ -673,6 +732,26 @@ export default function DynamicStatisticsChart({
               <p className="mt-2 text-sm">
                 Vui lòng chọn ít nhất một chỉ số để hiển thị
               </p>
+            </div>
+          </div>
+        ) : (
+          // No data state
+          <div className="flex items-center justify-center h-full text-gray-400">
+            <div className="text-center">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-300"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                />
+              </svg>
+              <p className="mt-2 text-sm">Không có dữ liệu</p>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@ interface TodoWork {
   toDeliverCount: number; // số đơn phải giao hôm nay
   toReceiveCount: number; // số đơn nhận lại hôm nay
   cancelledCount: number; // số đơn hủy hôm nay
+  resolvedCount: number;
 }
 
 interface UserProfileCardProps {
@@ -14,6 +15,7 @@ export default function UserProfileCard({ todoWork }: UserProfileCardProps) {
   const toDeliverCount = todoWork?.toDeliverCount || 0;
   const toReceiveCount = todoWork?.toReceiveCount || 0;
   const cancelledCount = todoWork?.cancelledCount || 0;
+  const resolvedCount = todoWork?.resolvedCount || 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -21,7 +23,7 @@ export default function UserProfileCard({ todoWork }: UserProfileCardProps) {
       <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="flex flex-col">
           <span className="text-md font-semibold text-gray-900 dark:text-white">
-            Tổng đơn hôm nay
+            Đơn cần xử lý hôm nay
           </span>
           <h4 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
             {totalOrders}
@@ -57,10 +59,10 @@ export default function UserProfileCard({ todoWork }: UserProfileCardProps) {
       <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="flex flex-col">
           <span className="text-md font-semibold text-gray-900 dark:text-white">
-            Đơn hủy hôm nay
+            Đơn đã xử lý hôm nay
           </span>
           <h4 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-            {cancelledCount}
+            {resolvedCount}
           </h4>
         </div>
       </div>

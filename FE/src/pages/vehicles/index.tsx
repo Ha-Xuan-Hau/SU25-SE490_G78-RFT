@@ -213,6 +213,26 @@ const ListVehiclePage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20  shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
+                Danh sách xe
+              </h1>
+            </div>
+
+            {/* Mobile Filter Button */}
+            <button
+              onClick={() => setShowMobileFilter(true)}
+              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              <span>Lọc</span>
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="container mx-auto px-4 py-6">
         <div className="flex gap-6">
           {/* Desktop Filter Sidebar */}

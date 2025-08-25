@@ -1,6 +1,5 @@
-// pages/provider/dashboard/_component/analytics-dashboard.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import DynamicStatisticsChart from "./dynamic-statistics-chart";
@@ -9,6 +8,9 @@ import dayjs, { Dayjs } from "dayjs";
 import { RangePickerProps } from "antd/es/date-picker";
 import { Download } from "lucide-react";
 import { Select } from "antd";
+import { getMonthlyStatistics, calculateGrowthRate } from "@/apis/provider.api";
+import { message } from "antd";
+import { showApiError } from "@/utils/toast.utils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -35,6 +37,32 @@ interface MetricItem {
   tooltip?: string;
 }
 
+interface MonthlyStatistics {
+  month: number;
+  year: number;
+  totalCustomersWithFinalContract: number;
+  customersWithCompletedContracts: number;
+  totalRevenueFromFinalContracts: number;
+  revenueFromCompletedContracts: number;
+  averageRevenuePerCustomer: number;
+  totalFinalContracts: number;
+  completedFinalContracts: number;
+  cancelledFinalContracts: number;
+}
+
+interface ComparisonData {
+  current: MonthlyStatistics;
+  previous?: MonthlyStatistics;
+  growthRates: {
+    customers: number;
+    revenue: number;
+    orders: number;
+    successCustomers: number;
+    successRevenue: number;
+    avgRevenue: number;
+  };
+}
+
 // Constants
 const COLORS = {
   primary: "#4682A9",
@@ -59,7 +87,7 @@ const ALL_ORDERS_METRICS: MetricItem[] = [
 
 const SUCCESS_ORDERS_METRICS: MetricItem[] = [
   { id: "successCustomers", label: "Khách hàng", color: COLORS.primary },
-  { id: "successBooking", label: "Đơn đặt xe", color: COLORS.secondary },
+  { id: "successBookings", label: "Đơn đặt xe", color: COLORS.secondary },
   { id: "successRevenue", label: "Doanh số", color: COLORS.quaternary },
   {
     id: "avgRevenue",
@@ -129,16 +157,141 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     [Dayjs | null, Dayjs | null]
   >([dayjs(dateConfig.default.startDate), dayjs(dateConfig.default.endDate)]);
 
-  // Data processing
-  const analyticsData = {
-    customers: data?.customers || 0,
-    revenue: data?.revenue || 0,
-    successCustomerss: data?.successCustomerss || 0,
-    successRevenue: data?.successRevenue || 0,
-    avgRevenue: data?.avgRevenue || 0,
-    successfulOrders: data?.successfulOrders || 15,
-    cancelledOrders: data?.cancelledOrders || 3,
+  // Thêm states mới cho monthly statistics
+  const [monthlyData, setMonthlyData] = useState<ComparisonData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchMonthlyStatistics();
+  }, [selectedMonth]);
+
+  const fetchMonthlyStatistics = async () => {
+    try {
+      setLoading(true);
+      const currentYear = new Date().getFullYear();
+
+      // Fetch current month
+      const currentMonthData = await getMonthlyStatistics(
+        selectedMonth,
+        currentYear
+      );
+
+      // Fetch previous month
+      let previousMonthData = null;
+      let previousMonth = selectedMonth - 1;
+      let previousYear = currentYear;
+
+      if (previousMonth === 0) {
+        previousMonth = 12;
+        previousYear = currentYear - 1;
+      }
+
+      try {
+        previousMonthData = await getMonthlyStatistics(
+          previousMonth,
+          previousYear
+        );
+      } catch (error) {
+        console.log("No data for previous month");
+      }
+
+      // Calculate growth rates với xử lý chia cho 0
+      const growthRates = {
+        customers: previousMonthData?.totalCustomersWithFinalContract
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.totalCustomersWithFinalContract,
+                previousMonthData.totalCustomersWithFinalContract
+              )
+            )
+          : currentMonthData.totalCustomersWithFinalContract > 0
+          ? 100
+          : 0,
+        revenue: previousMonthData?.totalRevenueFromFinalContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.totalRevenueFromFinalContracts,
+                previousMonthData.totalRevenueFromFinalContracts
+              )
+            )
+          : currentMonthData.totalRevenueFromFinalContracts > 0
+          ? 100
+          : 0,
+        orders: previousMonthData?.totalFinalContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.totalFinalContracts,
+                previousMonthData.totalFinalContracts
+              )
+            )
+          : currentMonthData.totalFinalContracts > 0
+          ? 100
+          : 0,
+        successCustomers: previousMonthData?.customersWithCompletedContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.customersWithCompletedContracts,
+                previousMonthData.customersWithCompletedContracts
+              )
+            )
+          : currentMonthData.customersWithCompletedContracts > 0
+          ? 100
+          : 0,
+        successRevenue: previousMonthData?.revenueFromCompletedContracts
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.revenueFromCompletedContracts,
+                previousMonthData.revenueFromCompletedContracts
+              )
+            )
+          : currentMonthData.revenueFromCompletedContracts > 0
+          ? 100
+          : 0,
+        avgRevenue: previousMonthData?.averageRevenuePerCustomer
+          ? Number(
+              calculateGrowthRate(
+                currentMonthData.averageRevenuePerCustomer,
+                previousMonthData.averageRevenuePerCustomer
+              )
+            )
+          : currentMonthData.averageRevenuePerCustomer > 0
+          ? 100
+          : 0,
+      };
+
+      setMonthlyData({
+        current: currentMonthData,
+        previous: previousMonthData,
+        growthRates,
+      });
+    } catch (error) {
+      showApiError(error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Data processing - sử dụng data từ API thay vì mock data
+  const analyticsData = monthlyData
+    ? {
+        customers: monthlyData.current.totalCustomersWithFinalContract || 0,
+        revenue: monthlyData.current.totalRevenueFromFinalContracts || 0,
+        successCustomerss:
+          monthlyData.current.customersWithCompletedContracts || 0,
+        successRevenue: monthlyData.current.revenueFromCompletedContracts || 0,
+        avgRevenue: monthlyData.current.averageRevenuePerCustomer || 0,
+        successfulOrders: monthlyData.current.completedFinalContracts || 0,
+        cancelledOrders: monthlyData.current.cancelledFinalContracts || 0,
+      }
+    : {
+        customers: 0,
+        revenue: 0,
+        successCustomerss: 0,
+        successRevenue: 0,
+        avgRevenue: 0,
+        successfulOrders: 0,
+        cancelledOrders: 0,
+      };
 
   const totalOrders =
     analyticsData.successfulOrders + analyticsData.cancelledOrders;
@@ -205,8 +358,6 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
 
   const handleMonthChange = (value: number) => {
     setSelectedMonth(value);
-    // TODO: Gọi API để lấy data của tháng được chọn
-    console.log(`Selected month: ${value}`);
   };
 
   const handleMetricToggle = (metricId: string) => {
@@ -229,6 +380,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     borderColor,
     titleColor,
     isRevenue = false,
+    growthRate = 0,
   }: {
     title: string;
     value: number;
@@ -236,6 +388,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     borderColor: string;
     titleColor: string;
     isRevenue?: boolean;
+    growthRate?: number;
   }) => (
     <div
       className="rounded-lg p-6 border transition-colors hover:border-opacity-40"
@@ -249,9 +402,31 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           {title}
         </p>
         <p className="text-3xl font-bold text-gray-900">
-          {isRevenue ? `₫ ${formatNumber(value)}` : formatNumber(value)}
+          {loading ? (
+            <span className="inline-block animate-pulse bg-gray-200 rounded w-32 h-8"></span>
+          ) : isRevenue ? (
+            `₫ ${formatNumber(value)}`
+          ) : (
+            formatNumber(value)
+          )}
         </p>
-        <p className="text-xs text-gray-500">so với thời gian trước: 0.00%</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">So với tháng trước:</span>
+          {growthRate !== 0 && (
+            <span
+              className={`text-xs font-semibold ${
+                growthRate > 0
+                  ? "text-green-600"
+                  : growthRate < 0
+                  ? "text-red-600"
+                  : "text-gray-500"
+              }`}
+            >
+              {growthRate > 0 ? "↑" : growthRate < 0 ? "↓" : ""}{" "}
+              {Math.abs(growthRate)}%
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -324,10 +499,14 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                 size="large"
                 style={{ minWidth: 150 }}
                 placeholder="Chọn tháng"
+                loading={loading}
               />
             </div>
 
-            <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
+            <button
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+              disabled={loading}
+            >
               <Download className="w-4 h-4" />
               Xuất báo cáo
             </button>
@@ -351,17 +530,19 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                 <MetricCard
                   title="Khách hàng"
                   value={analyticsData.customers}
-                  bgColor={`${COLORS.primary}0D`}
+                  bgColor={`linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.secondary}0D 100%)`}
                   borderColor={`${COLORS.primary}33`}
                   titleColor={COLORS.primary}
+                  growthRate={monthlyData?.growthRates.customers || 0}
                 />
                 <MetricCard
                   title="Doanh số"
                   value={analyticsData.revenue}
-                  bgColor={`${COLORS.secondary}0D`}
+                  bgColor={`linear-gradient(135deg, ${COLORS.secondary}1A 0%, ${COLORS.primary}0D 100%)`}
                   borderColor={`${COLORS.secondary}33`}
                   titleColor={COLORS.secondary}
                   isRevenue
+                  growthRate={monthlyData?.growthRates.revenue || 0}
                 />
               </div>
             </div>
@@ -384,6 +565,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   bgColor={`linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.secondary}0D 100%)`}
                   borderColor={`${COLORS.primary}33`}
                   titleColor={COLORS.primary}
+                  growthRate={monthlyData?.growthRates.successCustomers || 0}
                 />
                 <MetricCard
                   title="Doanh số"
@@ -392,6 +574,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   borderColor={`${COLORS.secondary}33`}
                   titleColor={COLORS.secondary}
                   isRevenue
+                  growthRate={monthlyData?.growthRates.successRevenue || 0}
                 />
                 <MetricCard
                   title="Doanh số trên mỗi khách hàng"
@@ -400,6 +583,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   borderColor={COLORS.warningBorder}
                   titleColor="#f59e0b"
                   isRevenue
+                  growthRate={monthlyData?.growthRates.avgRevenue || 0}
                 />
               </div>
             </div>
@@ -526,7 +710,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                   </div>
                 </div>
 
-                <div
+                {/* <div
                   className="pt-4 border-t"
                   style={{ borderColor: `${COLORS.primary}33` }}
                 >
@@ -541,7 +725,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                       {successRate}%
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

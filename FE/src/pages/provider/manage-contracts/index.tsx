@@ -130,6 +130,31 @@ export default function ManageContracts() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+  };
+
+  const formatDateTime = (dateValue: string | number[]) => {
+    try {
+      if (Array.isArray(dateValue)) {
+        const [year, month, day, hour, minute] = dateValue;
+        const date = new Date(year, month - 1, day, hour, minute || 0);
+        return date.toLocaleString("vi-VN");
+      }
+      if (typeof dateValue === "string") {
+        const date = new Date(dateValue);
+        return date.toLocaleString("vi-VN");
+      }
+      return "Invalid date";
+    } catch (error) {
+      console.error("Error formatting date:", error, dateValue);
+      return "Invalid date";
+    }
+  };
+
   // API calls - Fetch contracts
   const fetchContracts = useCallback(
     async (forceRefresh = false) => {
@@ -210,16 +235,34 @@ export default function ManageContracts() {
     }
   }, [fetchContracts, providerLoading]);
 
+  // Helper function để tìm kiếm an toàn
+  const searchInContract = (
+    contract: ContractData,
+    searchTerm: string
+  ): boolean => {
+    const searchLower = searchTerm.toLowerCase().trim();
+
+    // Danh sách các trường cần tìm kiếm
+    const searchFields = [
+      contract.bookingId,
+      contract.userName,
+      contract.userEmail,
+      contract.userPhone,
+      contract.vehicleLicensePlate,
+      formatDateTime(contract.bookingStartTime),
+      formatDateTime(contract.bookingEndTime),
+    ];
+
+    // Kiểm tra xem có trường nào match không
+    return searchFields.some((field) =>
+      (field || "").toLowerCase().includes(searchLower)
+    );
+  };
+
   // Filter contracts based on active tab and search text
   const getFilteredContracts = () => {
     let filtered = contracts;
-    // if (activeTab === "processing") {
-    //   filtered = contracts.filter(
-    //     (contract) => contract.status === "PROCESSING"
-    //   );
-    // } else if (activeTab === "renting") {
-    //   filtered = contracts.filter((contract) => contract.status === "RENTING");
-    // } else
+
     if (activeTab === "finished") {
       filtered = contracts.filter((contract) => contract.status === "FINISHED");
     } else if (activeTab === "cancelled") {
@@ -227,23 +270,20 @@ export default function ManageContracts() {
         (contract) => contract.status === "CANCELLED"
       );
     } else if (activeTab === "all") {
-      // ✅ Sắp xếp theo createdAt cho tab "all"
       filtered = [...contracts].sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA; // Mới nhất trước (DESC)
+        return dateB - dateA;
       });
     }
 
     // Filter by search text
     if (searchText.trim()) {
-      const searchLower = searchText.toLowerCase().trim();
-      filtered = filtered.filter(
-        (contract) =>
-          contract.userName.toLowerCase().includes(searchLower) ||
-          contract.vehicleLicensePlate.toLowerCase().includes(searchLower)
+      filtered = filtered.filter((contract) =>
+        searchInContract(contract, searchText)
       );
     }
+
     return filtered;
   };
 
@@ -298,31 +338,6 @@ export default function ManageContracts() {
       const url = `/booking-detail/${contract.bookingId}`;
       window.open(url, "_blank"); // Mở tab mới
       // Hoặc dùng router.push(url) nếu muốn chuyển trang hiện tại
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-  };
-
-  const formatDateTime = (dateValue: string | number[]) => {
-    try {
-      if (Array.isArray(dateValue)) {
-        const [year, month, day, hour, minute] = dateValue;
-        const date = new Date(year, month - 1, day, hour, minute || 0);
-        return date.toLocaleString("vi-VN");
-      }
-      if (typeof dateValue === "string") {
-        const date = new Date(dateValue);
-        return date.toLocaleString("vi-VN");
-      }
-      return "Invalid date";
-    } catch (error) {
-      console.error("Error formatting date:", error, dateValue);
-      return "Invalid date";
     }
   };
 
@@ -495,7 +510,7 @@ export default function ManageContracts() {
         {/* Search Input and Tabs */}
         <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <Input.Search
-            placeholder="Tìm kiếm theo tên khách hàng hoặc biển số xe..."
+            placeholder="Tìm kiếm theo mã đơn, tên, email, SĐT, biển số xe hoặc thời gian..."
             allowClear
             onSearch={handleSearch}
             onChange={(e) => handleSearch(e.target.value)}

@@ -13,6 +13,4 @@ public class ProviderTodaySummaryResponse {
     private int toReceiveCount;    // số đơn nhận lại hôm nay (dựa timeBookingEnd)
     private int cancelledCount;    // số đơn hủy hôm nay
     private int resolvedCount;     // = total - 3 cái trên
-
-
 }
