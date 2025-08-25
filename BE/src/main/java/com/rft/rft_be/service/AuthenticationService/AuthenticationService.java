@@ -26,6 +26,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
 import java.io.IOException;
@@ -156,7 +158,7 @@ public class AuthenticationService {
         String template;
         try {
             ClassPathResource resource = new ClassPathResource("templates/otp_template.html");
-            template = new String(resource.getInputStream().readAllBytes());
+            template = new String(resource.getInputStream().readAllBytes() ,StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }
@@ -174,7 +176,7 @@ public class AuthenticationService {
         String template;
         try {
             ClassPathResource resource = new ClassPathResource("templates/otp_register_template.html");
-            template = new String(resource.getInputStream().readAllBytes());
+            template = new String(resource.getInputStream().readAllBytes() ,StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }
