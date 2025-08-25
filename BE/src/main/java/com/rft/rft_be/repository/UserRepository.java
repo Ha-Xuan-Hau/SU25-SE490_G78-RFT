@@ -55,4 +55,8 @@ public interface UserRepository extends JpaRepository<User, String> {
     long countByRoleAndCreatedAtBetween(@Param("role") User.Role role,
                                         @Param("from") LocalDateTime from,
                                         @Param("to") LocalDateTime to);
+
+    // Dashboard aggregation queries
+    @Query("SELECT u.role, COUNT(u) FROM User u GROUP BY u.role")
+    List<Object[]> countByRoleGroup();
 }

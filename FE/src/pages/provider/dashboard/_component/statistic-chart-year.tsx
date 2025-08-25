@@ -12,10 +12,12 @@ interface StatisticsChartProps {
     orderCount: number;
     revenue: number;
   }>;
+  year?: number; // Thêm prop year để hiển thị
 }
 
 export default function StatisticsChartYear({
   monthlyData,
+  year = new Date().getFullYear(), // Default là năm hiện tại
 }: StatisticsChartProps) {
   // Map tháng tiếng Anh sang số tháng
   const monthToNumber: Record<string, number> = {
@@ -46,18 +48,18 @@ export default function StatisticsChartYear({
 
   // Luôn hiển thị 12 tháng
   const months = [
-    "T1",
-    "T2",
-    "T3",
-    "T4",
-    "T5",
-    "T6",
-    "T7",
-    "T8",
-    "T9",
-    "T10",
-    "T11",
-    "T12",
+    "Tháng 1",
+    "Tháng 2",
+    "Tháng 3",
+    "Tháng 4",
+    "Tháng 5",
+    "Tháng 6",
+    "Tháng 7",
+    "Tháng 8",
+    "Tháng 9",
+    "Tháng 10",
+    "Tháng 11",
+    "Tháng 12",
   ];
 
   // Khởi tạo arrays cho orders và revenue
@@ -75,6 +77,10 @@ export default function StatisticsChartYear({
     });
   }
 
+  // Tính tổng để hiển thị summary
+  const totalOrders = orders.reduce((a, b) => a + b, 0);
+  const totalRevenue = revenue.reduce((a, b) => a + b, 0);
+
   // Tính max value để set ticks phù hợp
   const maxOrders = Math.max(...orders, 10);
   const maxRevenue = Math.max(...revenue, 1000000);
@@ -86,7 +92,7 @@ export default function StatisticsChartYear({
       horizontalAlign: "right",
       fontSize: "11px",
       markers: {
-        size: 8, // Sửa lỗi: dùng size thay vì width/height
+        size: 8,
         offsetX: 0,
         offsetY: 0,
       },
@@ -189,7 +195,7 @@ export default function StatisticsChartYear({
     },
     yaxis: [
       {
-        // Y-axis cho số đơn (bên trái)
+        // Y-axis cho Số đơn thành công (bên trái)
         min: 0,
         max: Math.ceil(maxOrders / 10) * 10 || 10,
         tickAmount: 3,
@@ -203,11 +209,15 @@ export default function StatisticsChartYear({
           },
         },
         title: {
-          text: undefined, // Ẩn title để tiết kiệm không gian
+          text: "Đơn thành công",
+          style: {
+            fontSize: "11px",
+            color: "#6B7280",
+          },
         },
       },
       {
-        // Y-axis cho doanh thu (bên phải)
+        // Y-axis cho Doanh số (bên phải)
         opposite: true,
         min: 0,
         max: Math.ceil(maxRevenue / 1000000) * 1000000 || 1000000,
@@ -229,7 +239,11 @@ export default function StatisticsChartYear({
           },
         },
         title: {
-          text: undefined, // Ẩn title để tiết kiệm không gian
+          text: "Doanh số",
+          style: {
+            fontSize: "11px",
+            color: "#6B7280",
+          },
         },
       },
     ],
@@ -268,58 +282,48 @@ export default function StatisticsChartYear({
 
   const series = [
     {
-      name: "Số đơn",
+      name: "Số đơn thành công",
       data: orders,
       type: "area" as const,
     },
     {
-      name: "Doanh thu",
+      name: "Doanh số",
       data: revenue,
       type: "area" as const,
     },
   ];
 
-  // Tính tổng để hiển thị summary
-  const totalOrders = orders.reduce((a, b) => a + b, 0);
-  const totalRevenue = revenue.reduce((a, b) => a + b, 0);
-
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      {/* Header với summary */}
+      {/* Header với summary - UPDATED */}
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-            Biểu đồ thống kê theo năm
+            Biểu đồ đơn thành công năm {year}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Theo dõi xu hướng 12 tháng
+            Theo dõi Đơn thành công và doanh số theo tháng
           </p>
         </div>
 
-        {/* Mini summary */}
-        {/* <div className="flex gap-4">
-          <div className="text-right">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Tổng đơn</p>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+        {/* Summary statistics */}
+        <div className="flex gap-4 text-xs">
+          <div>
+            <span className="text-gray-500">Tổng đơn thành công:</span>
+            <span className="ml-1 font-semibold text-blue-600">
               {totalOrders}
-            </p>
+            </span>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Tổng thu</p>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-              {totalRevenue >= 1000000000
-                ? (totalRevenue / 1000000000).toFixed(1) + "B"
-                : totalRevenue >= 1000000
-                ? (totalRevenue / 1000000).toFixed(1) + "M"
-                : totalRevenue >= 1000
-                ? (totalRevenue / 1000).toFixed(0) + "K"
-                : totalRevenue}
-            </p>
+          <div>
+            <span className="text-gray-500">Tổng doanh số:</span>
+            <span className="ml-1 font-semibold text-green-600">
+              {totalRevenue.toLocaleString("vi-VN")}₫
+            </span>
           </div>
-        </div> */}
+        </div>
       </div>
 
-      {/* Chart container - Thu nhỏ chiều cao */}
+      {/* Chart container */}
       <div className="h-[200px] sm:h-[220px] lg:h-[240px] xl:h-[260px]">
         <ReactApexChart
           options={options}
@@ -334,13 +338,13 @@ export default function StatisticsChartYear({
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
           <span className="text-xs text-gray-600 dark:text-gray-400">
-            Số đơn
+            Số đơn thành công
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 bg-green-500 rounded-full"></span>
           <span className="text-xs text-gray-600 dark:text-gray-400">
-            Doanh thu
+            Doanh số
           </span>
         </div>
       </div>

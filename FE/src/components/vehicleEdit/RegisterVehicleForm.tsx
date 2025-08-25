@@ -21,7 +21,7 @@ import {
 } from "../../types/registerVehicleForm";
 import { useUserState } from "../../recoils/user.state";
 import useLocalStorage from "../../hooks/useLocalStorage";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCar,
   updateCar,
@@ -71,10 +71,14 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
   // Thêm state cho toggle loading
   const [toggleLoading, setToggleLoading] = useState(false);
 
+  const queryClient = useQueryClient();
+
   const vehicleDetail = useQuery({
     queryFn: () => getUserVehicleById(vehicleId),
     queryKey: ["GET_VEHICLE", vehicleId],
     enabled: !!vehicleId,
+    refetchOnWindowFocus: false, // Tránh refetch không cần thiết
+    staleTime: 0, // Data luôn được coi là stale
   });
 
   const [extraRule, setExtraRule] = useState<ExtraRule>({});
@@ -155,16 +159,18 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
         try {
           const result = await toggleVehicleStatus(vehicleId);
 
-          // Kiểm tra response từ backend
           if (result.success === false) {
-            // showApiError sẽ tự động lấy message từ result
             showApiError(result, `Không thể ${actionText}`);
             return;
           }
 
+          // ✅ THÊM ĐOẠN NÀY: Invalidate query để refetch data mới
+          await queryClient.invalidateQueries({
+            queryKey: ["GET_VEHICLE", vehicleId],
+          });
+
           showSuccess(result.message || `Đã ${actionText} thành công`);
 
-          // Refresh data và đóng modal
           if (onStatusChanged) {
             onStatusChanged();
           }
@@ -176,7 +182,6 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
           }
         } catch (error) {
           console.error("Toggle error:", error);
-          // showApiError sẽ tự động extract message từ error
           showApiError(error, `Không thể ${actionText}`);
         } finally {
           setToggleLoading(false);
@@ -923,6 +928,14 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
               });
             }
 
+            // ✅ THÊM ĐOẠN NÀY: Invalidate queries sau khi update thành công
+            await Promise.all([
+              queryClient.invalidateQueries({
+                queryKey: ["GET_VEHICLE", vehicleId],
+              }),
+              queryClient.invalidateQueries({ queryKey: ["USER_VEHICLES"] }),
+            ]);
+
             showSuccess("Cập nhật thông tin xe thành công");
           }
 
@@ -1362,32 +1375,30 @@ const RegisterVehicleForm: React.FC<RegisterVehicleFormProps> = ({
                 </div>
 
                 {/* Nút ẩn/hiện xe - nằm riêng bên phải */}
-                {vehicleId &&
-                  (vehicleDetail.data?.data?.status === "AVAILABLE" ||
-                    vehicleDetail.data?.data?.status === "SUSPENDED") && (
-                    <Button
-                      size="small"
-                      danger={vehicleDetail.data?.data?.status === "AVAILABLE"}
-                      type={
-                        vehicleDetail.data?.data?.status === "SUSPENDED"
-                          ? "primary"
-                          : "default"
-                      }
-                      loading={toggleLoading}
-                      onClick={handleToggleStatus}
-                      icon={
-                        vehicleDetail.data?.data?.status === "SUSPENDED" ? (
-                          <EyeOutlined />
-                        ) : (
-                          <EyeInvisibleOutlined />
-                        )
-                      }
-                    >
-                      {vehicleDetail.data?.data?.status === "SUSPENDED"
-                        ? "Đưa vào hoạt động"
-                        : "Tạm dừng hoạt động"}
-                    </Button>
-                  )}
+                {(vehicleDetail.data?.data?.status === "AVAILABLE" ||
+                  vehicleDetail.data?.data?.status === "SUSPENDED") && (
+                  <Button
+                    danger={vehicleDetail.data?.data?.status === "AVAILABLE"}
+                    type={
+                      vehicleDetail.data?.data?.status === "SUSPENDED"
+                        ? "primary"
+                        : "default"
+                    }
+                    loading={toggleLoading}
+                    onClick={handleToggleStatus}
+                    icon={
+                      vehicleDetail.data?.data?.status === "SUSPENDED" ? (
+                        <EyeOutlined />
+                      ) : (
+                        <EyeInvisibleOutlined />
+                      )
+                    }
+                  >
+                    {vehicleDetail.data?.data?.status === "SUSPENDED"
+                      ? "Đưa vào hoạt động"
+                      : "Tạm dừng hoạt động"}
+                  </Button>
+                )}
               </div>
             }
             className="mb-4"

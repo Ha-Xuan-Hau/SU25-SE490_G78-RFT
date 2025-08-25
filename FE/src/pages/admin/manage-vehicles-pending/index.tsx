@@ -12,6 +12,7 @@ import {
   Card,
   Typography,
   Avatar,
+  Spin,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { SearchOutlined, EyeOutlined, UserOutlined } from "@ant-design/icons";
@@ -96,12 +97,17 @@ interface Vehicle {
   extraFeeRule?: ExtraFeeRule;
 }
 
+type VehicleType = "CAR" | "MOTORBIKE" | "BICYCLE";
+
 export default function VehiclePendingPage() {
-  const [activeTab, setActiveTab] = useState("CAR");
+  const [activeTab, setActiveTab] = useState<VehicleType>("CAR");
   const [searchText, setSearchText] = useState("");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false); // Loading state riêng cho batch actions
   const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
+  const [currentPage, setCurrentPage] = useState(1); // State để control pagination
+
   const [vehicleDetailModal, setVehicleDetailModal] = useState<{
     open: boolean;
     vehicle: Vehicle | null;
@@ -109,32 +115,59 @@ export default function VehiclePendingPage() {
     open: false,
     vehicle: null,
   });
+
   const [pendingStats, setPendingStats] = useState({
     car: 0,
     motorbike: 0,
     bicycle: 0,
   });
+
   const [confirmAction, setConfirmAction] = useState<
     "APPROVE_ONE" | "APPROVE_BATCH" | "REJECT_ONE" | "REJECT_BATCH" | null
-  >(null); // Cập nhật loại xác nhận
+  >(null);
+
   const [rejectReason, setRejectReason] = useState("");
 
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadPendingStats();
-    loadPendingVehicles();
-  }, [activeTab]); // Load vehicles when the active tab changes
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
-  // Fetch Pending Vehicles
-  const loadPendingVehicles = async () => {
+  // Fetch Pending Vehicles với search
+  const loadPendingVehicles = async (
+    page = 1,
+    pageSize = 10,
+    search = searchText,
+    tab = activeTab
+  ) => {
     setLoading(true);
     try {
-      const response = await getPendingVehicles({ type: activeTab });
-      setVehicles(response.content); // Adjust based on the API response structure
+      const params: any = {
+        type: tab,
+        page: page - 1, // 0-indexed
+        size: pageSize,
+      };
+
+      // Thêm search params nếu có
+      if (search && search.trim()) {
+        params.search = search.trim();
+      }
+
+      const response = await getPendingVehicles(params);
+
+      setVehicles(response.content || []);
+      setPagination({
+        current: (response.currentPage || 0) + 1,
+        pageSize: pageSize,
+        total: response.totalItems || 0,
+      });
+      setCurrentPage((response.currentPage || 0) + 1);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
-      showApiError("Có lỗi xảy ra khi lấy danh sách xe chờ duyệt."); // Show error message
+      showApiError("Có lỗi xảy ra khi lấy danh sách xe chờ duyệt.");
     } finally {
       setLoading(false);
     }
@@ -147,8 +180,42 @@ export default function VehiclePendingPage() {
       setPendingStats(response);
     } catch (error) {
       console.error("Error fetching pending stats:", error);
-      showApiError("Có lỗi xảy ra khi lấy thống kê xe chờ duyệt."); // Show error message
     }
+  };
+
+  // Initial load
+  useEffect(() => {
+    loadPendingStats();
+    loadPendingVehicles(1, pagination.pageSize, "", activeTab);
+  }, []);
+
+  // Handle tab change - Reset pagination khi chuyển tab
+  const handleTabChange = (key: string) => {
+    if (key === "CAR" || key === "MOTORBIKE" || key === "BICYCLE") {
+      setActiveTab(key);
+      setSearchText(""); // Clear search
+      setSelectedVehicles([]); // Clear selections
+      setCurrentPage(1); // Reset page
+      loadPendingVehicles(1, pagination.pageSize, "", key);
+    }
+  };
+
+  // Handle search
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    setCurrentPage(1); // Reset to page 1
+    loadPendingVehicles(1, pagination.pageSize, value, activeTab);
+  };
+
+  // Handle table change (pagination, filters, sorter)
+  const handleTableChange = (newPagination: any) => {
+    setCurrentPage(newPagination.current);
+    loadPendingVehicles(
+      newPagination.current,
+      newPagination.pageSize,
+      searchText,
+      activeTab
+    );
   };
 
   // Fetch Vehicle Details
@@ -158,7 +225,7 @@ export default function VehiclePendingPage() {
       return response;
     } catch (error) {
       console.error("Error fetching vehicle details:", error);
-      showApiError("Có lỗi xảy ra khi lấy thông tin xe."); // Show error message
+      showApiError("Có lỗi xảy ra khi lấy thông tin xe.");
     }
   };
 
@@ -167,75 +234,73 @@ export default function VehiclePendingPage() {
     setVehicleDetailModal({ open: true, vehicle: vehicleDetails });
   };
 
-  // Update Vehicle Status
-  const updateVehicleStatusAPI = async (
-    vehicleId: string,
-    status: string,
-    rejectReason?: string
-  ) => {
-    try {
-      await updateVehicleStatus(vehicleId, status, rejectReason);
-      showApiSuccess("Cập nhật trạng thái xe thành công.");
-      // Xóa các dòng reload ở đây vì sẽ được gọi từ hàm cha
-      // loadPendingStats();
-      // loadPendingVehicles();
-    } catch (error) {
-      console.error("Error updating vehicle status:", error);
-      showApiError("Có lỗi xảy ra khi cập nhật trạng thái xe.");
-      throw error; // Throw error để hàm cha biết có lỗi xảy ra
-    }
-  };
-  // const handleApprove = async (vehicleId: string) => {
-  //   await updateVehicleStatusAPI(vehicleId, "AVAILABLE"); // Duyệt xe
-  // };
-
-  // const handleReject = async (vehicleId: string) => {
-  //   await updateVehicleStatusAPI(vehicleId, "UNAVAILABLE", rejectReason); // Từ chối xe
-  //   setRejectReason(""); // Clear reason after rejection
-  // };
-
+  // Approve single vehicle
   const handleApprove = async (vehicleId: string) => {
     setLoading(true);
     try {
-      await updateVehicleStatusAPI(vehicleId, "AVAILABLE");
-      // Đảm bảo reload dữ liệu sau khi cập nhật thành công
-      await Promise.all([loadPendingStats(), loadPendingVehicles()]);
+      await updateVehicleStatus(vehicleId, "AVAILABLE");
+      showApiSuccess("Duyệt xe thành công.");
+
+      // Reload data
+      await Promise.all([
+        loadPendingStats(),
+        loadPendingVehicles(
+          currentPage,
+          pagination.pageSize,
+          searchText,
+          activeTab
+        ),
+      ]);
+
+      // Close modal
+      setVehicleDetailModal({ open: false, vehicle: null });
+    } catch (error) {
+      console.error("Error approving vehicle:", error);
+      showApiError("Có lỗi xảy ra khi duyệt xe.");
     } finally {
       setLoading(false);
+      setConfirmAction(null);
     }
   };
 
+  // Reject single vehicle
   const handleReject = async (vehicleId: string) => {
+    if (!rejectReason.trim()) {
+      showApiError("Vui lòng nhập lý do từ chối.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await updateVehicleStatusAPI(vehicleId, "UNAVAILABLE", rejectReason);
+      await updateVehicleStatus(vehicleId, "UNAVAILABLE", rejectReason);
+      showApiSuccess("Từ chối xe thành công.");
       setRejectReason("");
-      // Đảm bảo reload dữ liệu sau khi cập nhật thành công
-      await Promise.all([loadPendingStats(), loadPendingVehicles()]);
+
+      // Reload data
+      await Promise.all([
+        loadPendingStats(),
+        loadPendingVehicles(
+          currentPage,
+          pagination.pageSize,
+          searchText,
+          activeTab
+        ),
+      ]);
+
+      // Close modal
+      setVehicleDetailModal({ open: false, vehicle: null });
+    } catch (error) {
+      console.error("Error rejecting vehicle:", error);
+      showApiError("Có lỗi xảy ra khi từ chối xe.");
     } finally {
       setLoading(false);
+      setConfirmAction(null);
     }
   };
 
-  const filteredData = vehicles.filter((item) => {
-    const matchesSearch =
-      item.thumb.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.userName.toLowerCase().includes(searchText.toLowerCase()) ||
-      (item.licensePlate &&
-        item.licensePlate.toLowerCase().includes(searchText.toLowerCase()));
-    return matchesSearch;
-  });
-
-  // Handle Checkbox Change
-  const handleCheckboxChange = (vehicle: Vehicle) => {
-    if (selectedVehicles.includes(vehicle)) {
-      setSelectedVehicles(selectedVehicles.filter((v) => v.id !== vehicle.id));
-    } else {
-      setSelectedVehicles([...selectedVehicles, vehicle]);
-    }
-  };
-
+  // Batch approve
   const handleBatchApprove = async () => {
+    setBatchLoading(true);
     try {
       await updateMultipleVehicleStatuses(
         selectedVehicles.map((vehicle) => ({
@@ -243,61 +308,99 @@ export default function VehiclePendingPage() {
           status: "AVAILABLE",
         }))
       );
-      loadPendingStats(); // Reload stats after updating
-      showApiSuccess("Duyệt thành công các xe đã chọn."); // Show success message
-      loadPendingVehicles(); // Reload vehicles after updating
+
+      showApiSuccess(`Đã duyệt thành công ${selectedVehicles.length} xe.`);
+      setSelectedVehicles([]); // Clear selections
+
+      // Reload data
+      await Promise.all([
+        loadPendingStats(),
+        loadPendingVehicles(
+          currentPage,
+          pagination.pageSize,
+          searchText,
+          activeTab
+        ),
+      ]);
     } catch (error) {
-      showApiError("Có lỗi xảy ra khi duyệt xe."); // Show error message
-      console.error("Error updating multiple vehicle statuses:", error);
+      console.error("Error batch approving:", error);
+      showApiError("Có lỗi xảy ra khi duyệt xe.");
     } finally {
-      setSelectedVehicles([]); // Clear selections after approval
+      setBatchLoading(false);
+      setConfirmAction(null);
     }
   };
 
+  // Batch reject
   const handleBatchReject = async () => {
-    if (rejectReason) {
-      try {
-        await updateMultipleVehicleStatuses(
-          selectedVehicles.map((vehicle) => ({
-            vehicleId: vehicle.id,
-            status: "UNAVAILABLE",
-            rejectReason,
-          }))
-        );
-        loadPendingStats(); // Reload stats after updating
-        showApiSuccess("Từ chối thành công các xe đã chọn."); // Show success message
-        loadPendingVehicles(); // Reload vehicles after updating
-      } catch (error) {
-        showApiError("Có lỗi xảy ra khi từ chối xe."); // Show error message
-        console.error("Error updating multiple vehicle statuses:", error);
-      } finally {
-        setRejectReason(""); // Clear reason after rejection
-        setSelectedVehicles([]); // Clear selections after rejection
-      }
-    } else {
-      showApiError("Vui lòng nhập lý do từ chối."); // Show error if no reason is provided
+    if (!rejectReason.trim()) {
+      showApiError("Vui lòng nhập lý do từ chối.");
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      await updateMultipleVehicleStatuses(
+        selectedVehicles.map((vehicle) => ({
+          vehicleId: vehicle.id,
+          status: "UNAVAILABLE",
+          rejectReason,
+        }))
+      );
+
+      showApiSuccess(`Đã từ chối ${selectedVehicles.length} xe.`);
+      setRejectReason("");
+      setSelectedVehicles([]); // Clear selections
+
+      // Reload data
+      await Promise.all([
+        loadPendingStats(),
+        loadPendingVehicles(
+          currentPage,
+          pagination.pageSize,
+          searchText,
+          activeTab
+        ),
+      ]);
+    } catch (error) {
+      console.error("Error batch rejecting:", error);
+      showApiError("Có lỗi xảy ra khi từ chối xe.");
+    } finally {
+      setBatchLoading(false);
+      setConfirmAction(null);
     }
   };
 
+  // Filter data cho search local (không cần nếu search từ API)
+  const filteredData = vehicles; // Không filter local nữa vì đã search từ API
+
+  // Handle Checkbox Change
+  const handleCheckboxChange = (vehicle: Vehicle) => {
+    if (selectedVehicles.find((v) => v.id === vehicle.id)) {
+      setSelectedVehicles(selectedVehicles.filter((v) => v.id !== vehicle.id));
+    } else {
+      setSelectedVehicles([...selectedVehicles, vehicle]);
+    }
+  };
+
+  // Update checkbox indeterminate state
   useEffect(() => {
-    const currentTabVehicles = filteredData.filter(
-      (v) => v.vehicleType === activeTab
-    );
     const isIndeterminate =
-      selectedVehicles.length > 0 &&
-      selectedVehicles.length < currentTabVehicles.length;
+      selectedVehicles.length > 0 && selectedVehicles.length < vehicles.length;
 
     if (selectAllCheckboxRef.current) {
       selectAllCheckboxRef.current.indeterminate = isIndeterminate;
     }
-  }, [selectedVehicles, filteredData, activeTab]); // Columns for the vehicle table
+  }, [selectedVehicles, vehicles]);
 
+  // Columns definition
   const carColumns: ColumnsType<Vehicle> = [
     {
       title: "STT",
       key: "index",
       width: 60,
-      render: (_, __, index) => index + 1,
+      render: (_, __, index) =>
+        (pagination.current - 1) * pagination.pageSize + index + 1,
       align: "center",
     },
     {
@@ -307,36 +410,16 @@ export default function VehiclePendingPage() {
             ref={selectAllCheckboxRef}
             type="checkbox"
             checked={
-              filteredData.filter((v) => v.vehicleType === activeTab).length >
-                0 &&
-              selectedVehicles.length ===
-                filteredData.filter((v) => v.vehicleType === activeTab).length
+              vehicles.length > 0 && selectedVehicles.length === vehicles.length
             }
             onChange={(e) => {
-              const currentTabVehicles = filteredData.filter(
-                (v) => v.vehicleType === activeTab
-              );
               if (e.target.checked) {
-                // Chọn tất cả xe trong tab hiện tại
-                const newSelected = [...selectedVehicles];
-                currentTabVehicles.forEach((vehicle) => {
-                  if (!newSelected.find((v) => v.id === vehicle.id)) {
-                    newSelected.push(vehicle);
-                  }
-                });
-                setSelectedVehicles(newSelected);
+                setSelectedVehicles(vehicles);
               } else {
-                // Bỏ chọn tất cả xe trong tab hiện tại
-                setSelectedVehicles(
-                  selectedVehicles.filter(
-                    (selected) =>
-                      !currentTabVehicles.find(
-                        (current) => current.id === selected.id
-                      )
-                  )
-                );
+                setSelectedVehicles([]);
               }
             }}
+            disabled={batchLoading}
           />
           <span className="text-xs">Chọn</span>
         </div>
@@ -348,22 +431,11 @@ export default function VehiclePendingPage() {
           type="checkbox"
           checked={selectedVehicles.some((v) => v.id === record.id)}
           onChange={() => handleCheckboxChange(record)}
+          disabled={batchLoading}
         />
       ),
       align: "center",
     },
-    // {
-    //   title: "Chọn",
-    //   key: "select",
-    //   render: (_, record) => (
-    //     <input
-    //       type="checkbox"
-    //       checked={selectedVehicles.includes(record)}
-    //       onChange={() => handleCheckboxChange(record)}
-    //     />
-    //   ),
-    //   align: "center",
-    // },
     {
       title: "Hình ảnh",
       key: "image",
@@ -406,7 +478,6 @@ export default function VehiclePendingPage() {
           },
         ]
       : []),
-
     {
       title: "Chủ xe",
       key: "owner",
@@ -421,11 +492,8 @@ export default function VehiclePendingPage() {
       title: "Trạng thái",
       key: "status",
       render: (_, record) => (
-        <Tag
-          color={record.status === "PENDING" ? "orange" : "red"}
-          className="rounded-full px-3 py-1"
-        >
-          {record.status === "PENDING" ? "Chưa duyệt" : "Lỗi"}
+        <Tag color="orange" className="rounded-full px-3 py-1">
+          Chờ duyệt
         </Tag>
       ),
     },
@@ -439,6 +507,7 @@ export default function VehiclePendingPage() {
           icon={<EyeOutlined />}
           size="small"
           onClick={() => handleViewDetails(record)}
+          disabled={batchLoading}
         >
           Xem chi tiết
         </Button>
@@ -449,12 +518,31 @@ export default function VehiclePendingPage() {
 
   return (
     <div className="space-y-6">
+      {/* Loading overlay khi batch processing */}
+      <Spin
+        spinning={batchLoading}
+        size="large"
+        tip="Đang xử lý..."
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(255, 255, 255, 0.8)",
+          zIndex: 9999,
+          display: batchLoading ? "flex" : "none",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      />
+
       <div>
         <Title level={2} className="!mb-2">
-          Quản lý phương tiện
+          Duyệt phương tiện
         </Title>
         <p className="text-gray-600">
-          Xem và giám sát tất cả phương tiện trong hệ thống
+          Xem và duyệt các phương tiện đang chờ xử lý
         </p>
       </div>
 
@@ -468,22 +556,26 @@ export default function VehiclePendingPage() {
               size="large"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
+              onSearch={handleSearch}
+              disabled={loading || batchLoading}
             />
           </div>
           <div className="flex gap-4">
             <Button
               type="primary"
               onClick={() => setConfirmAction("APPROVE_BATCH")}
-              disabled={selectedVehicles.length === 0}
+              disabled={selectedVehicles.length === 0 || batchLoading}
+              loading={batchLoading && confirmAction === "APPROVE_BATCH"}
             >
-              Duyệt hàng loạt
+              Duyệt hàng loạt ({selectedVehicles.length})
             </Button>
             <Button
               danger
               onClick={() => setConfirmAction("REJECT_BATCH")}
-              disabled={selectedVehicles.length === 0}
+              disabled={selectedVehicles.length === 0 || batchLoading}
+              loading={batchLoading && confirmAction === "REJECT_BATCH"}
             >
-              Từ chối hàng loạt
+              Từ chối hàng loạt ({selectedVehicles.length})
             </Button>
           </div>
         </div>
@@ -492,11 +584,23 @@ export default function VehiclePendingPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={[
-            { key: "CAR", label: `Xe ô tô (${pendingStats.car})` },
-            { key: "MOTORBIKE", label: `Xe máy (${pendingStats.motorbike})` },
-            { key: "BICYCLE", label: `Xe đạp (${pendingStats.bicycle})` },
+            {
+              key: "CAR",
+              label: `Xe ô tô (${pendingStats.car})`,
+              disabled: loading || batchLoading,
+            },
+            {
+              key: "MOTORBIKE",
+              label: `Xe máy (${pendingStats.motorbike})`,
+              disabled: loading || batchLoading,
+            },
+            {
+              key: "BICYCLE",
+              label: `Xe đạp (${pendingStats.bicycle})`,
+              disabled: loading || batchLoading,
+            },
           ]}
           className="px-6 pt-4"
         />
@@ -504,144 +608,79 @@ export default function VehiclePendingPage() {
         <div className="px-6 pb-6">
           <Table
             columns={carColumns}
-            dataSource={filteredData.filter((v) => v.vehicleType === activeTab)}
+            dataSource={filteredData}
             loading={loading}
             rowKey="id"
             pagination={{
-              pageSize: 10,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} của ${total} xe`,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              disabled: batchLoading,
             }}
+            onChange={handleTableChange}
             scroll={{ x: 800 }}
             className="border-0"
           />
         </div>
       </div>
 
-      {/* Vehicle Detail Modal */}
+      {/* Vehicle Detail Modal - giữ nguyên */}
       <VehicleDetailModal
         open={vehicleDetailModal.open}
         vehicle={vehicleDetailModal.vehicle}
         onClose={() => setVehicleDetailModal({ open: false, vehicle: null })}
-        onApprove={() => setConfirmAction("APPROVE_ONE")} // Mở modal xác nhận duyệt cho một xe
-        onReject={() => setConfirmAction("REJECT_ONE")} // Mở modal xác nhận từ chối cho một xe
+        onApprove={() => setConfirmAction("APPROVE_ONE")}
+        onReject={() => setConfirmAction("REJECT_ONE")}
       />
 
       {/* Confirmation Modals */}
-      {/* <Modal
-        title="Xác nhận duyệt xe"
-        open={
-          confirmAction === "APPROVE_ONE" || confirmAction === "APPROVE_BATCH"
-        }
-        onCancel={() => setConfirmAction(null)}
-        footer={[
-          <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Hủy
-          </Button>,
-          <Button
-            key="approve"
-            type="primary"
-            onClick={() => {
-              if (
-                confirmAction === "APPROVE_ONE" &&
-                vehicleDetailModal.vehicle
-              ) {
-                handleApprove(vehicleDetailModal.vehicle.id);
-                setConfirmAction(null);
-                setVehicleDetailModal({ open: false, vehicle: null }); // Đóng modal chi tiết
-              } else {
-                handleBatchApprove();
-                setConfirmAction(null); // Đóng modal xác nhận
-              }
-            }}
-          >
-            Duyệt
-          </Button>,
-        ]}
-      >
-        <p>
-          Bạn có chắc chắn muốn duyệt{" "}
-          {confirmAction === "APPROVE_ONE" ? "xe này" : "các xe đã chọn"} không?
-        </p>
-      </Modal>
-
-      <Modal
-        title="Từ chối xe"
-        open={
-          confirmAction === "REJECT_ONE" || confirmAction === "REJECT_BATCH"
-        }
-        onCancel={() => setConfirmAction(null)}
-        footer={[
-          <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Hủy
-          </Button>,
-          <Button
-            key="confirm"
-            type="primary"
-            onClick={() => {
-              if (
-                confirmAction === "REJECT_ONE" &&
-                vehicleDetailModal.vehicle
-              ) {
-                handleReject(vehicleDetailModal.vehicle.id);
-                setConfirmAction(null);
-                setVehicleDetailModal({ open: false, vehicle: null }); // Đóng modal chi tiết
-              } else {
-                handleBatchReject();
-                setConfirmAction(null); // Đóng modal xác nhận
-              }
-            }}
-            disabled={!rejectReason}
-          >
-            Từ chối
-          </Button>,
-        ]}
-      >
-        <p>Nhập lý do từ chối:</p>
-        <Input.TextArea
-          rows={4}
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="Nhập lý do..."
-        />
-      </Modal> */}
-
       <Modal
         title="Xác nhận duyệt xe"
         open={
           confirmAction === "APPROVE_ONE" || confirmAction === "APPROVE_BATCH"
         }
-        onCancel={() => setConfirmAction(null)}
-        zIndex={2000} // Thêm dòng này để modal xác nhận hiển thị trên modal chi tiết
+        onCancel={() => !loading && !batchLoading && setConfirmAction(null)}
+        zIndex={2000}
+        closable={!loading && !batchLoading}
+        maskClosable={false}
         footer={[
-          <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Đóng
+          <Button
+            key="cancel"
+            onClick={() => setConfirmAction(null)}
+            disabled={loading || batchLoading}
+          >
+            Hủy
           </Button>,
           <Button
             key="approve"
             type="primary"
-            loading={loading}
+            loading={confirmAction === "APPROVE_ONE" ? loading : batchLoading}
             onClick={async () => {
               if (
                 confirmAction === "APPROVE_ONE" &&
                 vehicleDetailModal.vehicle
               ) {
                 await handleApprove(vehicleDetailModal.vehicle.id);
-                setConfirmAction(null);
-                setVehicleDetailModal({ open: false, vehicle: null });
               } else {
                 await handleBatchApprove();
-                setConfirmAction(null);
               }
             }}
           >
-            Duyệt
+            Xác nhận duyệt
           </Button>,
         ]}
       >
         <p>
           Bạn có chắc chắn muốn duyệt{" "}
-          {confirmAction === "APPROVE_ONE" ? "xe này" : "các xe đã chọn"} không?
+          {confirmAction === "APPROVE_ONE"
+            ? "xe này"
+            : `${selectedVehicles.length} xe đã chọn`}{" "}
+          không?
         </p>
       </Modal>
 
@@ -650,48 +689,57 @@ export default function VehiclePendingPage() {
         open={
           confirmAction === "REJECT_ONE" || confirmAction === "REJECT_BATCH"
         }
-        onCancel={() => setConfirmAction(null)}
-        zIndex={2000} // Thêm dòng này
+        onCancel={() => !loading && !batchLoading && setConfirmAction(null)}
+        zIndex={2000}
+        closable={!loading && !batchLoading}
+        maskClosable={false}
         footer={[
-          <Button key="cancel" onClick={() => setConfirmAction(null)}>
-            Đóng
+          <Button
+            key="cancel"
+            onClick={() => setConfirmAction(null)}
+            disabled={loading || batchLoading}
+          >
+            Hủy
           </Button>,
           <Button
             key="confirm"
             type="primary"
-            loading={loading}
+            danger
+            loading={confirmAction === "REJECT_ONE" ? loading : batchLoading}
             onClick={async () => {
               if (
                 confirmAction === "REJECT_ONE" &&
                 vehicleDetailModal.vehicle
               ) {
                 await handleReject(vehicleDetailModal.vehicle.id);
-                setConfirmAction(null);
-                setVehicleDetailModal({ open: false, vehicle: null });
               } else {
                 await handleBatchReject();
-                setConfirmAction(null);
               }
             }}
-            disabled={!rejectReason}
+            disabled={!rejectReason.trim()}
           >
-            Từ chối
+            Xác nhận từ chối
           </Button>,
         ]}
       >
-        <p>Nhập lý do từ chối:</p>
+        <p className="mb-3">
+          {confirmAction === "REJECT_ONE"
+            ? "Nhập lý do từ chối xe này:"
+            : `Nhập lý do từ chối ${selectedVehicles.length} xe đã chọn:`}
+        </p>
         <Input.TextArea
           rows={4}
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="Nhập lý do..."
+          placeholder="Nhập lý do từ chối..."
+          disabled={loading || batchLoading}
         />
       </Modal>
     </div>
   );
 }
 
-// VehicleDetailModal Component
+// VehicleDetailModal Component - giữ nguyên
 const VehicleDetailModal: React.FC<{
   open: boolean;
   vehicle: Vehicle | null;
@@ -748,6 +796,7 @@ const VehicleDetailModal: React.FC<{
         </Button>,
       ]}
       width="95vw"
+      destroyOnClose
       // ✅ CÁCH 2: Sửa style và bodyStyle để loại bỏ scroll riêng
       style={{
         maxWidth: "1200px",
@@ -755,13 +804,6 @@ const VehicleDetailModal: React.FC<{
         maxHeight: "calc(100vh - 40px)",
         overflow: "visible",
       }}
-      // ✅ QUAN TRỌNG: Loại bỏ bodyStyle có scroll riêng
-      bodyStyle={{
-        overflow: "visible",
-        maxHeight: "none",
-        padding: "24px",
-      }}
-      // ✅ Thêm modalRender để control scroll
       modalRender={(modal) => (
         <div style={{ overflow: "visible" }}>{modal}</div>
       )}

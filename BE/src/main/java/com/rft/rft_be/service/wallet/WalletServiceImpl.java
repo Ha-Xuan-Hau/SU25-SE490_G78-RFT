@@ -315,7 +315,7 @@ public class WalletServiceImpl implements WalletService {
         try {
             WalletTransaction.Status newStatus = WalletTransaction.Status.valueOf(status.toUpperCase());
 
-            // ✅ Nếu từ chối → hoàn tiền lại
+            // Nếu từ chối → hoàn tiền lại
             if (newStatus == WalletTransaction.Status.REJECTED) {
                 wallet.setBalance(wallet.getBalance().add(tx.getAmount()));
                 walletRepository.save(wallet);
@@ -323,13 +323,13 @@ public class WalletServiceImpl implements WalletService {
 
             tx.setStatus(newStatus);
 
-            // ✅ Gán nhân viên xử lý
+            // Gán nhân viên xử lý
             User staff = userRepository.findById(staffId)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên cho userId: " + staffId));
             tx.setUser(staff);
             tx.setUpdatedAt(LocalDateTime.now());
 
-            // ✅ Gửi thông báo cho user
+            //Gửi thông báo cho user
             User user = wallet.getUser();
             String formattedAmount = NumberFormat.getCurrencyInstance(new Locale("vi", "VN")).format(dto.getAmount());
             String message = (newStatus == WalletTransaction.Status.APPROVED)

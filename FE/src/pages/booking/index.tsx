@@ -198,6 +198,9 @@ const BookingPage: React.FC = () => {
     [vehicleId: string]: ExistingBooking[];
   }>({});
 
+  const [showPaymentConfirmModal, setShowPaymentConfirmModal] =
+    useState<boolean>(false);
+
   // State cho tính khoảng cách
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [isCalculatingDistance, setIsCalculatingDistance] =
@@ -2665,7 +2668,7 @@ const BookingPage: React.FC = () => {
                       size="large"
                       block
                       className="h-14 bg-red-500 hover:bg-red-600 border-red-500 font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-                      onClick={handlePayment}
+                      onClick={() => setShowPaymentConfirmModal(true)}
                       loading={submitting}
                       disabled={
                         paymentMethod === "WALLET" &&
@@ -2742,6 +2745,120 @@ const BookingPage: React.FC = () => {
                 <div className="text-gray-600">
                   Vui lòng chọn phương thức thanh toán khác hoặc nạp thêm tiền
                   vào ví.
+                </div>
+              </div>
+            </Modal>
+            {/* Modal xác nhận thanh toán */}
+            <Modal
+              title={
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gray-800">
+                    Xác nhận thanh toán
+                  </div>
+                </div>
+              }
+              open={showPaymentConfirmModal}
+              onCancel={() => setShowPaymentConfirmModal(false)}
+              footer={null}
+              width={500}
+            >
+              <div className="py-4">
+                {/* Icon */}
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-blue-500 text-2xl">💳</span>
+                </div>
+
+                {/* Thông tin thanh toán */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Mã đơn hàng:</span>
+                      <span className="font-mono font-semibold">
+                        #{bookingData.id}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Phương thức:</span>
+                      <span className="font-semibold text-gray-800">
+                        {paymentMethod === "WALLET" ? "Ví RFT" : "VNPay"}
+                      </span>
+                    </div>
+
+                    {paymentMethod === "WALLET" && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Số dư ví:</span>
+                        <span className="font-semibold text-gray-800">
+                          {walletBalance.toLocaleString("vi-VN")}₫
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="border-t border-gray-200 pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-800 text-lg">
+                          Tổng thanh toán:
+                        </span>
+                        <span className="font-bold text-red-500 text-xl">
+                          {bookingData.totalCost.toLocaleString("vi-VN")}₫
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Thông báo */}
+                <div className="text-center mb-6">
+                  <p className="text-gray-600 text-sm">
+                    {paymentMethod === "WALLET"
+                      ? "Số tiền sẽ được trừ trực tiếp từ ví RFT của bạn"
+                      : "Bạn sẽ được chuyển đến trang thanh toán VNPay"}
+                  </p>
+                </div>
+
+                {/* Lưu ý */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
+                  <div className="flex items-start gap-2">
+                    <span className="text-yellow-600 text-lg">⚠️</span>
+                    <div className="text-yellow-800 text-sm">
+                      <div className="font-medium mb-1">Lưu ý quan trọng:</div>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>
+                          Vui lòng kiểm tra kỹ thông tin trước khi thanh toán
+                        </li>
+                        {paymentMethod === "VNPAY" && (
+                          <li>
+                            Không đóng trình duyệt khi đang thanh toán qua VNPay
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    size="large"
+                    block
+                    onClick={() => setShowPaymentConfirmModal(false)}
+                    className="flex-1"
+                  >
+                    Quay lại
+                  </Button>
+                  <Button
+                    type="primary"
+                    size="large"
+                    block
+                    className="flex-1 bg-red-500 hover:bg-red-600 border-red-500 font-semibold"
+                    onClick={() => {
+                      setShowPaymentConfirmModal(false);
+                      handlePayment();
+                    }}
+                    loading={submitting}
+                  >
+                    Xác nhận thanh toán
+                  </Button>
                 </div>
               </div>
             </Modal>

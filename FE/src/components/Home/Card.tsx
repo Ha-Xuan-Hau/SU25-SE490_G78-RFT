@@ -40,11 +40,13 @@ const VehicleCard: React.FC<{ item: Vehicle }> = ({ item }) => {
         <div className="p-4 flex-1 flex flex-col">
           <div className="mb-3">
             <Link href={`/vehicles/${id}`}>
-              <h3 className="text-lg font-medium text-black dark:text-white duration-300 group-hover:text-primary line-clamp-2 mb-1">
+              {/* THAY ĐỔI: Thêm min-height để giữ chiều cao cố định cho 2 dòng */}
+              <h3 className="text-lg font-medium text-black dark:text-white duration-300 group-hover:text-primary line-clamp-2 mb-1 min-h-[3.5rem]">
                 {thumb}
               </h3>
             </Link>
-            <p className="text-sm font-normal text-black/50 dark:text-white/50 line-clamp-1">
+            {/* Địa chỉ cũng cần min-height để đồng nhất */}
+            <p className="text-sm font-normal text-black/50 dark:text-white/50 line-clamp-1 min-h-[1.25rem]">
               {address}
             </p>
           </div>

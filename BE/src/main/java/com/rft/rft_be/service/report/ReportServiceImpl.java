@@ -16,6 +16,8 @@ import com.rft.rft_be.service.admin.AdminUserService;
 import com.rft.rft_be.service.mail.EmailSenderService;
 import com.rft.rft_be.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -200,7 +202,7 @@ public class ReportServiceImpl implements ReportService {
         }
     }
 
-    //đang set mỗi 1h
+    //đang set mỗi 1h - auto approve staff report if having no appeal
     @Scheduled(fixedDelay = 3600000)
     @Transactional
     public void autoApproveExpiredFlags() {
@@ -217,6 +219,42 @@ public class ReportServiceImpl implements ReportService {
                 reportRepo.save(flag);
                 checkAndExecuteBan(flag.getReportedId());
             }
+        }
+    }
+
+
+    @Scheduled(fixedDelay = 3600000) // Chạy mỗi 1 giờ
+    @Transactional
+    public void autoApproveAppealsAfterDeadline() {
+        // Lấy các STAFF_REPORT đã quá 24h và vẫn PENDING
+        LocalDateTime deadline = LocalDateTime.now().minusHours(24);
+        List<UserReport> expiredFlags = reportRepo.findByTypeAndStatusAndCreatedAtBefore(
+                "STAFF_REPORT", UserReport.Status.PENDING, deadline);
+
+        for (UserReport flag : expiredFlags) {
+            // Tìm appeal cho flag này
+            List<UserReport> appeals = reportRepo.findByReportedIdAndType(
+                    flag.getId(), "APPEAL");
+
+            if (!appeals.isEmpty()) {
+                // Có appeal và đã quá 24h mà chưa xử lý
+                UserReport appeal = appeals.get(0); // Thường chỉ có 1 appeal
+
+                if (appeal.getStatus() == UserReport.Status.PENDING) {
+                    // Auto APPROVE appeal (user thắng)
+                    appeal.setStatus(UserReport.Status.APPROVED);
+                    reportRepo.save(appeal);
+
+                    // Auto REJECT staff report
+                    flag.setStatus(UserReport.Status.REJECTED);
+                    reportRepo.save(flag);
+
+                    // Log
+                    System.out.println("Auto-approved appeal " + appeal.getId() +
+                            " and rejected flag " + flag.getId() + " (24h timeout with pending appeal)");
+                }
+            }
+            // Nếu không có appeal, method autoApproveExpiredFlags đã xử lý
         }
     }
 
@@ -734,6 +772,68 @@ public class ReportServiceImpl implements ReportService {
         dto.setTotal(total);
         dto.setPending(pending);
         dto.setProcessed(processed);
+        return dto;
+    }
+
+    @Override
+    public Page<StaffReportDTO> getStaffReportsByUserId(String userId, Pageable pageable) {
+        // Lấy STAFF_REPORT của user với phân trang
+        Page<UserReport> staffReportsPage = reportRepo.findByReportedIdAndTypeOrderByCreatedAtDesc(
+                userId, "STAFF_REPORT", pageable);
+
+        // Nếu cần lấy cả reports của vehicles (phức tạp hơn)
+        // Cách 1: Query riêng
+        List<String> targetIds = new ArrayList<>();
+        targetIds.add(userId);
+
+        // Lấy vehicle IDs của user
+        List<Vehicle> userVehicles = vehicleRepo.findByUserId(userId);
+        targetIds.addAll(userVehicles.stream()
+                .map(Vehicle::getId)
+                .collect(Collectors.toList()));
+
+        // Query với IN clause
+        Page<UserReport> reportsPage = reportRepo.findByReportedIdInAndTypeOrderByCreatedAtDesc(
+                targetIds, "STAFF_REPORT", pageable);
+
+        // Convert to DTO
+        return reportsPage.map(this::convertToStaffReportDTO);
+    }
+
+    private StaffReportDTO convertToStaffReportDTO(UserReport report) {
+        StaffReportDTO dto = new StaffReportDTO();
+        dto.setId(report.getId());
+        dto.setReason(report.getReason());
+        dto.setStatus(report.getStatus().toString());
+        dto.setCreatedAt(report.getCreatedAt());
+        dto.setReporterName(report.getReporter().getFullName());
+
+        // Check deadline và appeal status
+        LocalDateTime deadline = report.getCreatedAt().plusHours(24);
+        dto.setAppealDeadline(deadline);
+        dto.setCanAppeal(LocalDateTime.now().isBefore(deadline) &&
+                report.getStatus() == UserReport.Status.PENDING);
+
+        // Check có appeal không
+        boolean hasAppeal = reportRepo.existsAppealByReporterAndFlag(
+                report.getReportedId(), report.getId());
+        dto.setHasAppealed(hasAppeal);
+
+        if (hasAppeal) {
+            List<UserReport> appeals = reportRepo.findByReportedIdAndType(report.getId(), "APPEAL");
+            if (!appeals.isEmpty()) {
+                UserReport appeal = appeals.get(0);
+                dto.setAppealStatus(appeal.getStatus().toString());
+                dto.setAppealReason(appeal.getReason());
+                dto.setAppealEvidenceUrl(appeal.getEvidenceUrl());
+            }
+        }
+
+        // Đếm số cờ hiện tại
+//        long flagCount = reportRepo.countByReportedIdAndTypeAndStatus(
+//                userId, "STAFF_REPORT", UserReport.Status.APPROVED);
+//        dto.setCurrentFlagCount(flagCount);
+
         return dto;
     }
 }

@@ -875,14 +875,14 @@ export default function UserRegisterVehicle() {
         </div>
       ) : groupList.length > 0 ? (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden relative">
-          {refreshLoading && (
+          {/* {refreshLoading && (
             <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
               <div className="bg-white p-4 rounded-lg shadow-lg flex items-center">
                 <Spin size="small" className="mr-2" />
                 <span>Đang cập nhật...</span>
               </div>
             </div>
-          )}
+          )} */}
           <Table
             columns={columns}
             dataSource={groupList}
@@ -1338,59 +1338,6 @@ export default function UserRegisterVehicle() {
         </div>
       </Modal>
 
-      {/* Modal đăng ký xe */}
-      {/* <Modal
-        open={registerVehicleModal}
-        title={
-          editVehicleId &&
-          typeof editVehicleId === "string" &&
-          editVehicleId.startsWith("GROUP-")
-            ? "Chỉnh sửa"
-            : editVehicleId
-            ? "Cập nhật thông tin xe"
-            : "Đăng ký xe mới"
-        }
-        width={1400}
-        style={{ top: 20 }}
-        destroyOnClose
-        footer={null}
-        onCancel={() => setRegisterVehicleModal(false)}
-        confirmLoading={false}
-      >
-        <Spin
-          spinning={editVehicleId ? isLoading : false}
-          tip="Đang tải thông tin xe..."
-        >
-          <RegisterVehicleForm
-            vehicleId={
-              editVehicleId &&
-              typeof editVehicleId === "string" &&
-              editVehicleId.startsWith("GROUP-")
-                ? undefined
-                : editVehicleId || undefined
-            }
-            groupEdit={
-              editVehicleId &&
-              typeof editVehicleId === "string" &&
-              editVehicleId.startsWith("GROUP-")
-                ? groupDetail
-                : undefined
-            }
-            onOk={() => {
-              setRegisterVehicleModal(false);
-              fetchGroupVehicles(activeType);
-              setTimeout(() => {
-                window.location.reload();
-              }, 1000);
-            }}
-            // Thêm callback mới cho việc thay đổi status
-            onStatusChanged={() => {
-              fetchGroupVehicles(activeType); // Refresh data ngay lập tức
-            }}
-          />
-        </Spin>
-      </Modal> */}
-
       {/* Chỉ giữ lại Modal này */}
       <Modal
         open={registerVehicleModal}
@@ -1439,9 +1386,9 @@ export default function UserRegisterVehicle() {
               setRegisterVehicleModal(false);
               setSimilarVehicleData(null);
               fetchGroupVehicles(activeType);
-              setTimeout(() => {
-                window.location.reload();
-              }, 1000);
+              // setTimeout(() => {
+              //   window.location.reload();
+              // }, 1000);
             }}
             onStatusChanged={() => {
               fetchGroupVehicles(activeType);

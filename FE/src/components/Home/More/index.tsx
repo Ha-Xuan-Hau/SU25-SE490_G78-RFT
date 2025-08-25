@@ -4,11 +4,8 @@ const More: React.FC = () => {
   return (
     <section id="features" className="py-16">
       <div className="container max-w-8xl mx-auto px-5 2xl:px-0">
-        <div className="mb-16 flex flex-col gap-3 ">
-          <div className="flex gap-2.5 items-center justify-center"></div>
-          <h2 className="text-40 lg:text-52 font-medium text-black dark:text-white text-center tracking-tight leading-11 mb-2">
-            Ưu điểm của RFT
-          </h2>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-center">Ưu điểm của RFT</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {/* Feature 1 */}
@@ -16,17 +13,15 @@ const More: React.FC = () => {
             <div className="mb-6 relative w-60 h-60">
               <Image
                 src="/more1.svg"
-                alt="Lái xe an toàn cùng RFT"
+                alt="Lái xe an toàn"
                 fill
                 className="object-contain"
                 unoptimized={true}
               />
             </div>
-            <h1 className="text-4xl font-bold mb-3">Lái xe an toàn cùng RFT</h1>
-            <p className="text-xl text-gray-600">
-              Chuyến đi trên RFT được bảo vệ với Gói bảo hiểm thuê xe từ lái từ
-              MIC & VNI. Khách thuê sẽ chi bồi thường tối đa 2.000.000VNĐ trong
-              trường hợp có sự cố ngoài ý muốn.
+            <h3 className="text-2xl font-bold mb-3">Lái xe an toàn</h3>
+            <p className="text-base text-gray-600">
+              Đảm bảo xe trong hệ thống đều phải đăng ký bảo hiểm.
             </p>
           </div>
 
@@ -41,11 +36,9 @@ const More: React.FC = () => {
                 unoptimized={true}
               />
             </div>
-            <h1 className="text-4xl font-bold mb-3">An tâm đặt xe</h1>
-            <p className="text-xl text-gray-600">
-              Không tính phí huỷ chuyến trong vòng 1h sau khi thanh toán giữ
-              chỗ. Hoàn tiền giữ chỗ và bồi thường 100% nếu chủ xe huỷ chuyến
-              trong vòng 7 ngày trước chuyến đi.
+            <h3 className="text-2xl font-bold mb-3">An tâm đặt xe</h3>
+            <p className="text-base text-gray-600">
+              Hủy chuyến linh hoạt, hoàn tiền 100% nếu chủ xe hủy chuyến.
             </p>
           </div>
 
@@ -60,10 +53,9 @@ const More: React.FC = () => {
                 unoptimized={true}
               />
             </div>
-            <h1 className="text-4xl font-bold mb-3">Thủ tục đơn giản</h1>
-            <p className="text-xl text-gray-600">
-              Chỉ cần có CCCD gắn chip (Hoặc Passport) & Giấy phép lái xe là bạn
-              đã đủ điều kiện thuê xe trên Mioto.
+            <h3 className="text-2xl font-bold mb-3">Thủ tục đơn giản</h3>
+            <p className="text-base text-gray-600">
+              Chỉ cần CCCD gắn chip và Giấy phép lái xe để thuê xe.
             </p>
           </div>
 
@@ -78,10 +70,9 @@ const More: React.FC = () => {
                 unoptimized={true}
               />
             </div>
-            <h1 className="text-4xl font-bold mb-3">Thanh toán dễ dàng</h1>
-            <p className="text-xl text-gray-600">
-              Đa dạng hình thức thanh toán: ATM, thẻ Visa & Ví điện tử (Momo,
-              VnPay, ZaloPay).
+            <h3 className="text-2xl font-bold mb-3">Thanh toán dễ dàng</h3>
+            <p className="text-base text-gray-600">
+              Đa dạng hình thức: ATM, Visa, Momo, VnPay, ZaloPay.
             </p>
           </div>
 
@@ -96,11 +87,8 @@ const More: React.FC = () => {
                 unoptimized={true}
               />
             </div>
-            <h1 className="text-4xl font-bold mb-3">Giao xe tận nơi</h1>
-            <p className="text-xl text-gray-600">
-              Bạn có thể lựa chọn giao xe tận nhà/sân bay... Phí tính kiểm chỉ
-              từ 15k/km.
-            </p>
+            <h3 className="text-2xl font-bold mb-3">Giao xe tận nơi</h3>
+            <p className="text-base text-gray-600">Hỗ trợ giao xe tận nơi</p>
           </div>
 
           {/* Feature 6 */}
@@ -114,10 +102,10 @@ const More: React.FC = () => {
                 unoptimized={true}
               />
             </div>
-            <h1 className="text-4xl font-bold mb-3">Dòng xe đa dạng</h1>
-            <p className="text-xl text-gray-600">
-              Hơn 100 dòng xe cho bạn tùy ý lựa chọn: Mini, Sedan, CUV, SUV,
-              MPV, Bán tải.
+            <h3 className="text-2xl font-bold mb-3">Dòng xe đa dạng</h3>
+            <p className="text-base text-gray-600">
+              Đa dạng loại xe: Mini, Sedan, CUV, SUV, MPV, Bán tải tới xe côn,
+              xe ga, xe số và các loại xe đạp.
             </p>
           </div>
         </div>
