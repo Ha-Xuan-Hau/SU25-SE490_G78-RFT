@@ -1,3 +1,4 @@
+import useLocalStorage from "@/hooks/useLocalStorage";
 import { Building, Car, Clock, Edit2, MapPin, Phone } from "lucide-react";
 import { useRouter } from "next/dist/client/components/navigation";
 
@@ -9,6 +10,10 @@ export default function BusinessRegistrationCard({
   statistics,
 }: BusinessRegistrationCardProps) {
   const router = useRouter();
+  const [providerProfile, , clearProviderProfile] = useLocalStorage(
+    "user_profile",
+    ""
+  );
   // Format giờ làm việc
   const formatWorkingHours = () => {
     if (statistics?.openTime && statistics?.closeTime) {
@@ -82,13 +87,15 @@ export default function BusinessRegistrationCard({
               Thông tin đăng ký kinh doanh
             </h3>
           </div>
-          <button
-            onClick={() => router.push("/become-provider")}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-          >
-            <Edit2 className="w-4 h-4" />
-            Chỉnh sửa
-          </button>
+          {providerProfile?.status !== "TEMP_BANNED" && (
+            <button
+              onClick={() => router.push("/become-provider")}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              Chỉnh sửa
+            </button>
+          )}
         </div>
 
         <div className="flex items-center mb-5">

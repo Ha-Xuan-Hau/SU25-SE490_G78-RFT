@@ -153,25 +153,33 @@ export const ProviderLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:file-document",
           label: "Hợp đồng thuê xe",
         },
-        {
-          key: "final-contracts",
-          path: "/provider/manage-penalties",
-          icon: "mdi:pencil-box-multiple",
-          label: "Quy định thuê xe",
-        },
+        ...(providerProfile?.status === "TEMP_BANNED"
+          ? []
+          : [
+              {
+                key: "final-contracts",
+                path: "/provider/manage-penalties",
+                icon: "mdi:pencil-box-multiple",
+                label: "Quy định thuê xe",
+              },
+            ]),
       ],
     },
-    {
-      title: "Quản lý xe",
-      items: [
-        {
-          key: "vehicles",
-          path: "/provider/manage-vehicles",
-          icon: "mdi:car-multiple",
-          label: "Xe của tôi",
-        },
-      ],
-    },
+    ...(providerProfile?.status === "TEMP_BANNED"
+      ? []
+      : [
+          {
+            title: "Quản lý xe",
+            items: [
+              {
+                key: "vehicles",
+                path: "/provider/manage-vehicles",
+                icon: "mdi:car-multiple",
+                label: "Xe của tôi",
+              },
+            ],
+          },
+        ]),
   ];
 
   return (
