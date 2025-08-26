@@ -25,6 +25,8 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Link from "next/link";
 import { AuthPopup } from "@/components/AuthPopup";
+import locale from "antd/locale/vi_VN";
+import { ConfigProvider } from "antd";
 
 import {
   calculateRentalDuration,
@@ -469,17 +471,27 @@ export default function VehicleDetail() {
   // DatePicker handlers
   const handleDateChange: RangePickerProps["onChange"] = async (values) => {
     if (values && values[0] && values[1]) {
+      console.log("Raw DatePicker values:", {
+        start: values[0].format(),
+        end: values[1].format(),
+        startTz: values[0].tz?.(),
+        endTz: values[1].tz?.(),
+      });
+
+      // Force parse với timezone VN bằng cách lấy local time
       const startDate = dayjs.tz(
-        values[0].format("YYYY-MM-DD HH:mm:ss"),
-        "YYYY-MM-DD HH:mm:ss",
+        `${values[0].format("YYYY-MM-DD")} ${values[0].format("HH:mm:ss")}`,
         VN_TZ
       );
       const endDate = dayjs.tz(
-        values[1].format("YYYY-MM-DD HH:mm:ss"),
-        "YYYY-MM-DD HH:mm:ss",
+        `${values[1].format("YYYY-MM-DD")} ${values[1].format("HH:mm:ss")}`,
         VN_TZ
       );
 
+      console.log("Parsed with VN timezone:", {
+        start: startDate.format(),
+        end: endDate.format(),
+      });
       // Validate phút phải là 00 hoặc 30
       const startMinute = startDate.minute();
       const endMinute = endDate.minute();
@@ -764,21 +776,22 @@ export default function VehicleDetail() {
                   </h3>
 
                   <div className="w-full">
-                    <DateRangePicker
-                      showTime={{
-                        format: "HH:mm",
-                        minuteStep: 30,
-                      }}
-                      format="DD-MM-YYYY HH:mm"
-                      disabledTime={disabledRangeTime}
-                      disabledDate={disabledDateFunction}
-                      className="w-full"
-                      onChange={handleDateChange}
-                      value={formattedDates}
-                      placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
-                      allowClear={true}
-                      defaultOpenValue={dayjs().minute(0).second(0)}
-                    />
+                    <ConfigProvider locale={locale}>
+                      <DateRangePicker
+                        showTime={{
+                          format: "HH:mm",
+                          minuteStep: 30,
+                          defaultValue: [dayjs().tz(VN_TZ), dayjs().tz(VN_TZ)],
+                        }}
+                        format="DD-MM-YYYY HH:mm"
+                        disabledTime={disabledRangeTime}
+                        disabledDate={disabledDateFunction}
+                        className="w-full"
+                        onChange={handleDateChange}
+                        value={formattedDates}
+                        placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                      />
+                    </ConfigProvider>
 
                     {validationMessage && (
                       <p className="text-red-500 text-sm mt-1">
