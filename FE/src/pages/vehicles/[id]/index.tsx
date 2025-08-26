@@ -1305,9 +1305,8 @@ export default function VehicleDetail() {
                 )}
               </div>
             </div>
-
             {/* Bảng phụ phí phát sinh - Mobile */}
-            {vehicle?.vehicleType === "CAR" && (
+            {vehicle?.vehicleType === "CAR" && vehicle?.extraFeeRule && (
               <div className="lg:hidden mt-6 bg-white rounded-xl shadow p-4 sm:p-6 border border-gray-200">
                 <h3 className="text-base sm:text-lg font-bold mb-4 text-gray-700">
                   Phụ phí có thể phát sinh
@@ -1630,7 +1629,7 @@ export default function VehicleDetail() {
             )}
 
             {/* Bảng phụ phí phát sinh - Desktop */}
-            {vehicle?.vehicleType === "CAR" && (
+            {vehicle?.vehicleType === "CAR" && vehicle?.extraFeeRule && (
               <div className="mt-8 bg-white rounded-xl shadow p-6 border border-gray-200">
                 <h3 className="text-lg font-bold mb-4 text-gray-700">
                   Phụ phí có thể phát sinh
