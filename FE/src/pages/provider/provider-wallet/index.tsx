@@ -790,6 +790,7 @@ export default function ProviderWalletsPage() {
                 },
               }),
             ]}
+            extra="Giới hạn 1 lần rút là 10.000.000 VNĐ, nhập quá sẽ tự chuyển thành 10.000.000 VNĐ"
           >
             <InputNumber
               min={10000}
