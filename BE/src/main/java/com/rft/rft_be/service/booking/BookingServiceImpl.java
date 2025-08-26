@@ -97,6 +97,13 @@ public class BookingServiceImpl implements BookingService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Một hoặc nhiều xe không tồn tại.");
         }
 
+        User provider = vehicles.get(0).getUser();
+        if (provider.getStatus() == User.Status.TEMP_BANNED || provider.getStatus() == User.Status.INACTIVE){
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Tài khoản chủ xe đã bị khóa, không thể đặt xe này"
+            );
+        }
+
         // Kiểm tra tất cả cùng 1 chủ xe
         String providerId = vehicles.get(0).getUser().getId();
         for (Vehicle v : vehicles) {
