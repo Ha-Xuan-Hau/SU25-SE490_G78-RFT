@@ -21,7 +21,6 @@ import java.time.format.DateTimeFormatter;
 public class EmailSenderService {
 
     private final JavaMailSender mailSender;
-    private static final String TEMPLATE_PATH = "src/main/resources/templates/";
 
     public EmailSenderService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
