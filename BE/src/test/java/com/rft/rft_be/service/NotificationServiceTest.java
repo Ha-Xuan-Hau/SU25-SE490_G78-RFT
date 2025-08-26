@@ -400,7 +400,7 @@ class NotificationServiceTest {
         when(notificationRepository.save(any(Notification.class))).thenReturn(testNotification);
 
         // Act
-        notificationService.notifyPaymentCompleted("user-123", "booking-123", 1000.0);
+        notificationService.notifyPaymentCompleted("user-123", "provider-456", "booking-123", 1000.0);
 
         // Assert
         verify(notificationRepository).save(any(Notification.class));
