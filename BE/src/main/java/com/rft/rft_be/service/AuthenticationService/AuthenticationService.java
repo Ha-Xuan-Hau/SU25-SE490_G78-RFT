@@ -16,6 +16,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +26,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
 import java.io.IOException;
@@ -154,7 +157,8 @@ public class AuthenticationService {
 
         String template;
         try {
-            template = Files.readString(Path.of("src/main/resources/templates/otp_template.html"));
+            ClassPathResource resource = new ClassPathResource("templates/otp_template.html");
+            template = new String(resource.getInputStream().readAllBytes() ,StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }
@@ -171,7 +175,8 @@ public class AuthenticationService {
 
         String template;
         try {
-            template = Files.readString(Path.of("src/main/resources/templates/otp_register_template.html"));
+            ClassPathResource resource = new ClassPathResource("templates/otp_register_template.html");
+            template = new String(resource.getInputStream().readAllBytes() ,StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }

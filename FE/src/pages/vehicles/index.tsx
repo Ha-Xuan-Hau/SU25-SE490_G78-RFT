@@ -7,6 +7,7 @@ import VehicleListing from "./_components/VehicleList";
 import type { VehicleFilters, Vehicle } from "@/types/vehicle";
 import { Filter, ChevronUp } from "lucide-react";
 import { Drawer } from "antd";
+import { useSearchParams } from "next/navigation";
 
 interface PaginationInfo {
   totalElements: number;
@@ -21,12 +22,15 @@ interface AdvancedSearchState {
 }
 
 const ListVehiclePage = () => {
+  const searchParams = useSearchParams();
+  const cityFromUrl = searchParams.get("city");
+
   const [filters, setFilters] = useState<VehicleFilters>({
     vehicleType: undefined,
     maxRating: undefined,
     shipToAddress: false,
     hasDriver: false,
-    city: undefined,
+    city: cityFromUrl ? decodeURIComponent(cityFromUrl) : undefined,
     district: undefined,
     ward: undefined,
     minPrice: 0,
@@ -52,6 +56,8 @@ const ListVehiclePage = () => {
 
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const [hasInitialSearch, setHasInitialSearch] = useState(false);
 
   // Handle scroll to top button visibility
   useEffect(() => {
@@ -185,10 +191,19 @@ const ListVehiclePage = () => {
       try {
         const { basicSearchVehicles } = await import("@/apis/vehicle.api");
 
-        const result = await basicSearchVehicles({
-          page: 0,
-          size: 12,
-        });
+        // Nếu có city từ URL, search với city đó
+        const searchParams = cityFromUrl
+          ? {
+              address: decodeURIComponent(cityFromUrl),
+              page: 0,
+              size: 12,
+            }
+          : {
+              page: 0,
+              size: 12,
+            };
+
+        const result = await basicSearchVehicles(searchParams);
 
         setVehicles(result.content || []);
         setPaginationInfo({
@@ -197,6 +212,15 @@ const ListVehiclePage = () => {
           currentPage: result.currentPage || 0,
           size: result.size || 12,
         });
+
+        // Lưu search params nếu có city
+        if (cityFromUrl) {
+          setAdvancedSearchState({
+            isAdvancedSearch: false,
+            searchParams: searchParams,
+          });
+          setHasInitialSearch(true);
+        }
       } catch (err) {
         console.error("Initial load error:", err);
         setErrorVehicles(
@@ -208,7 +232,7 @@ const ListVehiclePage = () => {
     };
 
     loadVehicles();
-  }, []);
+  }, [cityFromUrl]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -242,6 +266,7 @@ const ListVehiclePage = () => {
                 filters={filters}
                 setFilters={setFilters}
                 onSearchResults={handleSearchResults}
+                autoSearch={!!cityFromUrl}
               />
             </div>
           </aside>
@@ -276,6 +301,7 @@ const ListVehiclePage = () => {
           onSearchResults={handleSearchResults}
           isMobile={true}
           onClose={() => setShowMobileFilter(false)}
+          autoSearch={!!cityFromUrl}
         />
       </Drawer>
 

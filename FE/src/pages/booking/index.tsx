@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { debounce } from "lodash";
 
-// Icons removed for cleaner UI
 import {
   Button,
   Form,
@@ -18,15 +17,19 @@ import {
   AutoComplete,
 } from "antd";
 import Image from "next/image";
-import dayjs from "@/utils/dayjs";
-import { Dayjs } from "@/utils/dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import { RangePickerProps } from "antd/es/date-picker";
 import { translateENtoVI } from "@/lib/viDictionary";
+
+// Import date-tz utilities
+import { parseBackendTime, formatTimeForBackend, VN_TZ } from "@/utils/date-tz";
+import { format, parseISO, isValid, isBefore, isAfter } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
+
 import {
   calculateRentalDuration,
   calculateRentalPrice,
   formatRentalDuration,
-  formatTimeForBackend,
   RentalCalculation,
   checkBufferTimeConflict,
   createDisabledTimeFunction,
@@ -34,7 +37,6 @@ import {
   VehicleType,
   ExistingBooking,
   BUFFER_TIME_RULES,
-  parseBackendTime,
 } from "@/utils/booking.utils";
 
 // Import component Coupon
@@ -118,9 +120,8 @@ interface AvailabilityCheckResponse {
 // Component chính
 const BookingPage: React.FC = () => {
   const router = useRouter();
-  // Support both single and multiple vehicle booking via vehicleId param
   const { vehicleId, id } = router.query;
-  // Parse vehicleIds: can be string or comma-separated list
+
   let vehicleIds: string[] = [];
   if (vehicleId) {
     if (typeof vehicleId === "string") {
@@ -138,13 +139,13 @@ const BookingPage: React.FC = () => {
       vehicleIds = id;
     }
   }
-  // Quantity is always inferred from vehicleIds.length
+
   const [selectedQuantity, setSelectedQuantity] = useState(
     vehicleIds.length || 1
   );
+
   // State
   const [current, setCurrent] = useState<number>(0);
-  // For single booking, use first vehicleId; for multi, use array
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [multiVehicles, setMultiVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -160,7 +161,6 @@ const BookingPage: React.FC = () => {
   const [availableQuantity, setAvailableQuantity] = useState(1);
   const [withDriver, setWithDriver] = useState<boolean>(false);
 
-  //  Rental calculation states
   const [rentalCalculation, setRentalCalculation] =
     useState<RentalCalculation | null>(null);
   const [hourlyRate, setHourlyRate] = useState<number>(0);
@@ -168,7 +168,6 @@ const BookingPage: React.FC = () => {
     null
   );
 
-  //  Buffer time states
   const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>(
     []
   );
@@ -201,7 +200,6 @@ const BookingPage: React.FC = () => {
   const [showPaymentConfirmModal, setShowPaymentConfirmModal] =
     useState<boolean>(false);
 
-  // State cho tính khoảng cách
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [isCalculatingDistance, setIsCalculatingDistance] =
     useState<boolean>(false);
@@ -218,29 +216,24 @@ const BookingPage: React.FC = () => {
 
   const user = useUserValue() as User;
 
-  // Reset coupon state when component first mounts (page reload)
   useEffect(() => {
     setAmountDiscount(0);
     setSelectedCoupon(null);
   }, []);
 
-  // Tính hourly rate từ daily rate (daily rate / 12 giờ)
   useEffect(() => {
     if (vehicleIds.length === 1 && vehicle?.costPerDay) {
       setHourlyRate(Math.round(vehicle.costPerDay / 12));
     } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-      // Use the first vehicle's rate for multi-booking
       setHourlyRate(Math.round(multiVehicles[0].costPerDay / 12));
     }
   }, [vehicle?.costPerDay, multiVehicles, vehicleIds.join(",")]);
 
-  // Fetch vehicle data and handle query params
   useEffect(() => {
     const fetchVehicleData = async () => {
       if (!vehicleIds.length) return;
       setLoading(true);
 
-      // Khai báo bookingsByVehicle ở ngoài để có thể dùng trong toàn bộ function
       const bookingsByVehicle: { [key: string]: ExistingBooking[] } = {};
 
       try {
@@ -250,47 +243,44 @@ const BookingPage: React.FC = () => {
           const bookings = await getBookedSlotById(vehicleIds[0]);
           setExistingBookings(bookings);
         } else {
-          // Multi-vehicle booking - QUAN TRỌNG: Lưu bookings riêng cho từng xe
           const vehicles: Vehicle[] = [];
-          let allBookingsCombined: ExistingBooking[] = []; // Gộp TẤT CẢ bookings
+          let allBookingsCombined: ExistingBooking[] = [];
 
           for (const vid of vehicleIds) {
             const v = await getVehicleById(vid);
             vehicles.push(v);
             const bookings = await getBookedSlotById(vid);
 
-            // Lưu bookings riêng cho từng xe
             bookingsByVehicle[vid] = bookings;
-
-            // Gộp tất cả bookings lại để chặn
             allBookingsCombined = allBookingsCombined.concat(bookings);
           }
 
           setMultiVehicles(vehicles);
           setAllVehicleBookings(bookingsByVehicle);
-          // Set tất cả bookings đã gộp để dùng cho việc disable time
           setExistingBookings(allBookingsCombined);
         }
 
-        // Check for time parameters in URL
         const { pickupTime, returnTime } = router.query;
         if (pickupTime && returnTime) {
           const startDate = dayjs(pickupTime as string);
           const endDate = dayjs(returnTime as string);
           if (startDate.isValid() && endDate.isValid()) {
             setSelectedDates([startDate, endDate]);
-            const calculation = calculateRentalDuration(startDate, endDate);
+
+            // Convert to Date for calculation
+            const startDateJS = startDate.toDate();
+            const endDateJS = endDate.toDate();
+
+            const calculation = calculateRentalDuration(startDateJS, endDateJS);
             setRentalCalculation(calculation);
             setTotalDays(
               calculation.isHourlyRate ? 1 : calculation.billingDays
             );
 
-            // Kiểm tra buffer time conflict
             let hasConflict = false;
             let conflictMsg = "";
 
             if (vehicleIds.length === 1) {
-              // Lấy vehicle data mới nhất
               const vehicleData = await getVehicleById(vehicleIds[0]);
               if (vehicleData?.vehicleType) {
                 const vehicleType =
@@ -298,8 +288,8 @@ const BookingPage: React.FC = () => {
                 const bookings = await getBookedSlotById(vehicleIds[0]);
                 const conflictCheck = checkBufferTimeConflict(
                   vehicleType,
-                  startDate,
-                  endDate,
+                  startDateJS,
+                  endDateJS,
                   bookings
                 );
                 if (conflictCheck.hasConflict) {
@@ -309,8 +299,6 @@ const BookingPage: React.FC = () => {
                 }
               }
             } else {
-              // Multi-vehicle: check từng xe với bookings riêng của nó
-              // Lấy vehicles data mới nhất
               const vehicles: Vehicle[] = [];
               for (const vid of vehicleIds) {
                 const v = await getVehicleById(vid);
@@ -326,9 +314,9 @@ const BookingPage: React.FC = () => {
                     vData.vehicleType.toUpperCase() as VehicleType;
                   const conflictCheck = checkBufferTimeConflict(
                     vehicleType,
-                    startDate,
-                    endDate,
-                    bookingsByVehicle[vehicleId] // Dùng bookings riêng của từng xe
+                    startDateJS,
+                    endDateJS,
+                    bookingsByVehicle[vehicleId]
                   );
 
                   if (conflictCheck.hasConflict) {
@@ -362,7 +350,6 @@ const BookingPage: React.FC = () => {
         return;
       }
 
-      // Sử dụng vehicle đầu tiên hoặc từ multiVehicles
       const referenceVehicle =
         vehicle || (multiVehicles.length > 0 ? multiVehicles[0] : null);
 
@@ -371,16 +358,14 @@ const BookingPage: React.FC = () => {
         return;
       }
 
-      // Kiểm tra loại xe - chỉ cho phép xe máy và xe đạp
       if (referenceVehicle.vehicleType.toUpperCase() === "CAR") {
         showError("Tính năng chọn nhiều xe chỉ áp dụng cho xe máy và xe đạp");
         return;
       }
 
-      const from = selectedDates[0].format("YYYY-MM-DDTHH:mm:ss");
-      const to = selectedDates[1].format("YYYY-MM-DDTHH:mm:ss");
+      const from = formatTimeForBackend(selectedDates[0].toDate());
+      const to = formatTimeForBackend(selectedDates[1].toDate());
 
-      // Lấy số lượng khả dụng
       const quantity = await getAvailableThumbQuantity({
         thumb: referenceVehicle.thumb,
         providerId: referenceVehicle.userId,
@@ -388,7 +373,6 @@ const BookingPage: React.FC = () => {
         to,
       });
 
-      // Lấy danh sách xe khả dụng
       const vehicles = await getAvailableThumbList({
         thumb: referenceVehicle.thumb,
         providerId: referenceVehicle.userId,
@@ -398,10 +382,7 @@ const BookingPage: React.FC = () => {
 
       setAvailableQuantityForReselect(quantity);
       setAvailableVehicleList(vehicles);
-
-      // Pre-select current vehicles
       setNewSelectedVehicleIds(vehicleIds);
-
       setIsVehicleSelectModalOpen(true);
     } catch (error) {
       console.error("Error fetching available vehicles:", error);
@@ -415,34 +396,32 @@ const BookingPage: React.FC = () => {
     endDate: Dayjs,
     bookedSlots: ExistingBooking[]
   ): boolean => {
-    // Lấy booked slots cho xe này
     const vehicleBookedSlots = bookedSlots.filter(
       (slot) =>
         String(slot.id) === String(vehicleId) ||
-        String(slot.id) === String(vehicleId) // Fallback nếu structure khác
+        String(slot.id) === String(vehicleId)
     );
 
-    // Nếu không có booked slots thì xe available
     if (vehicleBookedSlots.length === 0) return true;
 
-    // Check conflict với từng booked slot
+    const startDateJS = startDate.toDate();
+    const endDateJS = endDate.toDate();
+
     for (const slot of vehicleBookedSlots) {
       const slotStart = parseBackendTime(slot.startDate);
       const slotEnd = parseBackendTime(slot.endDate);
 
-      // Check overlap: new booking overlaps with existing slot
       const hasOverlap =
-        startDate.isBefore(slotEnd) && endDate.isAfter(slotStart);
+        isBefore(startDateJS, slotEnd) && isAfter(endDateJS, slotStart);
 
       if (hasOverlap) {
-        return false; // Xe không available
+        return false;
       }
     }
 
-    return true; // Xe available
+    return true;
   };
 
-  // Function để check availability cho tất cả xe hiện tại
   const checkAllVehiclesAvailability = async () => {
     if (!selectedDates?.[0] || !selectedDates?.[1]) {
       setVehicleAvailabilityStatus({});
@@ -453,7 +432,6 @@ const BookingPage: React.FC = () => {
     const endDate = selectedDates[1];
 
     try {
-      // Lấy booked slots cho tất cả xe
       const allBookedSlotsPromises = vehicleIds.map(async (vehicleId) => {
         try {
           const slots = await getBookedSlotById(vehicleId);
@@ -469,13 +447,11 @@ const BookingPage: React.FC = () => {
 
       const allBookedSlotsResults = await Promise.all(allBookedSlotsPromises);
 
-      // Gộp tất cả booked slots
       const allBookedSlots: ExistingBooking[] = [];
       allBookedSlotsResults.forEach(({ slots }) => {
         allBookedSlots.push(...slots);
       });
 
-      // Check availability cho từng xe
       const statusMap: { [key: string]: boolean } = {};
       vehicleIds.forEach((vehicleId) => {
         const isAvailable = checkVehicleAvailabilityFromSlots(
@@ -489,18 +465,14 @@ const BookingPage: React.FC = () => {
 
       setVehicleAvailabilityStatus(statusMap);
 
-      // Show warning nếu có xe unavailable
       const unavailableVehicles = Object.entries(statusMap).filter(
         ([_, isAvailable]) => !isAvailable
       );
       if (unavailableVehicles.length > 0) {
-        // message.warning(
-        //   `Có ${unavailableVehicles.length} xe đã được đặt trong khoảng thời gian này. Vui lòng chọn lại xe hoặc thay đổi thời gian.`
-        // );
+        // Handle unavailable vehicles
       }
     } catch (error) {
       console.error("Error checking vehicles availability:", error);
-      // Fallback: mark all as available nếu có lỗi
       const statusMap: { [key: string]: boolean } = {};
       vehicleIds.forEach((vehicleId) => {
         statusMap[vehicleId] = true;
@@ -509,14 +481,11 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  // Function để handle việc chọn lại xe
   const handleVehicleReselect = () => {
     if (newSelectedVehicleIds.length === 0) {
-      //message.error("Vui lòng chọn ít nhất một xe");
       return;
     }
 
-    // Tạo URL mới với danh sách xe đã chọn
     const newVehicleIdsParam = newSelectedVehicleIds.join(",");
     const newBookingUrl = `/booking?vehicleId=${encodeURIComponent(
       newVehicleIdsParam
@@ -527,12 +496,9 @@ const BookingPage: React.FC = () => {
     )}`;
 
     setIsVehicleSelectModalOpen(false);
-
-    // Redirect to new URL
     window.location.href = newBookingUrl;
   };
 
-  // Reset coupon state when component mounts or when returning to step 0
   useEffect(() => {
     if (current === 0) {
       setAmountDiscount(0);
@@ -540,7 +506,6 @@ const BookingPage: React.FC = () => {
     }
   }, [current]);
 
-  // Fetch wallet balance
   useEffect(() => {
     const fetchWalletBalance = async () => {
       try {
@@ -558,20 +523,17 @@ const BookingPage: React.FC = () => {
     }
   }, [user]);
 
-  // Tạo booking khi hoàn tất bước 2
   const handleCreateBooking = async () => {
     try {
       setSubmitting(true);
       const formValues = await form.validateFields();
 
-      // Kiểm tra xem đã chọn thời gian chưa
       if (!selectedDates || !selectedDates[0] || !selectedDates[1]) {
         showError("Vui lòng chọn thời gian thuê xe");
         setSubmitting(false);
         return;
       }
 
-      // Kiểm tra thời gian bắt đầu phải ở tương lai
       const now = dayjs();
       if (selectedDates[0].isBefore(now)) {
         showError("Thời gian nhận xe phải sau thời điểm hiện tại");
@@ -579,42 +541,37 @@ const BookingPage: React.FC = () => {
         return;
       }
 
-      // Kiểm tra buffer time conflict một lần nữa trước khi tạo booking
+      const startDateJS = selectedDates[0].toDate();
+      const endDateJS = selectedDates[1].toDate();
+
       if (vehicle?.vehicleType) {
         const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
         const conflictCheck = checkBufferTimeConflict(
           vehicleType,
-          selectedDates[0],
-          selectedDates[1],
+          startDateJS,
+          endDateJS,
           existingBookings
         );
 
         if (conflictCheck.hasConflict) {
-          // message.error(
-          //   conflictCheck.message || "Có xung đột thời gian với booking khác"
-          // );
           setSubmitting(false);
           return;
         }
       }
 
-      // Race condition protection với retries
       const maxRetries = 3;
       let retryCount = 0;
 
-      const startTime = formatTimeForBackend(selectedDates[0]);
-      const endTime = formatTimeForBackend(selectedDates[1]);
+      const startTime = formatTimeForBackend(startDateJS);
+      const endTime = formatTimeForBackend(endDateJS);
 
       while (retryCount < maxRetries) {
         try {
-          // SỬA: Sử dụng vehicleIds từ URL params thay vì logic phức tạp
           let finalVehicleIds: string[] = [];
 
           if (vehicleIds.length > 0) {
-            // Đã có vehicleIds từ URL params, sử dụng trực tiếp
-            finalVehicleIds = vehicleIds.filter((id) => id && id.trim() !== ""); // Lọc bỏ null/empty
+            finalVehicleIds = vehicleIds.filter((id) => id && id.trim() !== "");
           } else {
-            // Fallback: sử dụng id từ query params
             const singleId =
               typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
             if (singleId) {
@@ -622,16 +579,12 @@ const BookingPage: React.FC = () => {
             }
           }
 
-          // Kiểm tra finalVehicleIds có hợp lệ không
           if (finalVehicleIds.length === 0) {
             showError("Không tìm thấy thông tin xe để đặt");
             setSubmitting(false);
             return;
           }
 
-          //console.log("Final vehicle IDs for booking:", finalVehicleIds);
-
-          // Double-check availability cho xe đầu tiên
           const firstVehicleId = finalVehicleIds[0];
           const lastMinuteCheck = (await checkAvailability(
             firstVehicleId,
@@ -643,11 +596,9 @@ const BookingPage: React.FC = () => {
             throw new Error("CONFLICT: Xe vừa được đặt bởi người khác");
           }
 
-          // Tính driver fee trước khi tạo booking request
           let calculatedDriverFee = 0;
           if (withDriver) {
             if (rentalCalculation?.isHourlyRate) {
-              // Tính driver fee theo giờ
               if (
                 vehicleIds.length === 1 &&
                 vehicle?.extraFeeRule?.hasHourlyRental
@@ -678,7 +629,6 @@ const BookingPage: React.FC = () => {
                 }, 0);
               }
             } else {
-              // Tính driver fee theo ngày
               if (vehicleIds.length === 1) {
                 calculatedDriverFee =
                   totalDays *
@@ -694,11 +644,10 @@ const BookingPage: React.FC = () => {
             }
           }
 
-          // Tạo booking request data
           const bookingRequestData = {
-            vehicleIds: finalVehicleIds, // Sử dụng finalVehicleIds đã được validate
-            timeBookingStart: formatTimeForBackend(selectedDates[0]),
-            timeBookingEnd: formatTimeForBackend(selectedDates[1]),
+            vehicleIds: finalVehicleIds,
+            timeBookingStart: formatTimeForBackend(startDateJS),
+            timeBookingEnd: formatTimeForBackend(endDateJS),
             fullname: formValues.fullname || user?.fullName || "",
             phoneNumber: formValues.phone,
             address:
@@ -709,23 +658,13 @@ const BookingPage: React.FC = () => {
                   "Nhận tại văn phòng",
             pickupMethod: costGetCar === 0 ? "office" : "delivery",
             couponId: selectedCoupon?.id || null,
-
-            // Penalty info từ vehicle
-            // penaltyType: (vehicle || multiVehicles[0])?.penaltyType,
-            // penaltyValue: (vehicle || multiVehicles[0])?.penaltyValue,
-            // minCancelHour: (vehicle || multiVehicles[0])?.minCancelHour,
-
-            // Penalty info từ vehicle
             penaltyId: (vehicle || multiVehicles[0])?.penalty?.id,
             penaltyType: (vehicle || multiVehicles[0])?.penalty?.penaltyType,
             penaltyValue: (vehicle || multiVehicles[0])?.penalty?.penaltyValue,
             minCancelHour: (vehicle || multiVehicles[0])?.penalty
               ?.minCancelHour,
-
             driverFee: calculatedDriverFee,
           };
-
-          //console.log("Creating booking with data:", bookingRequestData);
 
           const response = (await createBooking(
             bookingRequestData
@@ -733,12 +672,10 @@ const BookingPage: React.FC = () => {
 
           if (response.success && response.data) {
             setBookingData(response.data);
-            //message.success("Tạo đơn đặt xe thành công!");
             showApiSuccess(response.data.message || "Đơn đặt xe đã được tạo");
             setCurrent(1);
-            return; // Exit retry loop on success
+            return;
           } else {
-            // Check if it's a conflict error using the new isConflict flag
             if (response.isConflict || response.statusCode === 409) {
               throw new Error("CONFLICT: " + response.error);
             }
@@ -746,14 +683,12 @@ const BookingPage: React.FC = () => {
               try {
                 const errorData = JSON.parse(response.error);
                 if (errorData.errors) {
-                  // Lấy error message đầu tiên từ validation errors
                   const firstError = Object.values(errorData.errors)[0];
                   showApiError(firstError as string);
                 } else {
                   showApiError(response.error);
                 }
               } catch {
-                // Nếu không parse được JSON, hiển thị error gốc
                 showApiError(
                   response.error || "Có lỗi xảy ra khi tạo đơn đặt xe"
                 );
@@ -766,7 +701,6 @@ const BookingPage: React.FC = () => {
         } catch (error: unknown) {
           retryCount++;
 
-          // Handle conflict errors with retry
           const errorMessage =
             error instanceof Error ? error.message : String(error);
           const errorResponse = (
@@ -783,35 +717,18 @@ const BookingPage: React.FC = () => {
 
           if (isConflictError) {
             if (retryCount < maxRetries) {
-              // message.warning(
-              //   `Xe vừa được đặt bởi người khác. Đang thử lại... (Lần ${retryCount}/${maxRetries})`,
-              //   3
-              // );
-
-              // Wait với exponential backoff (1s, 2s, 4s)
               await new Promise((resolve) =>
                 setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1))
               );
               continue;
             } else {
-              // Final failure after all retries
-              // message.destroy(); // Clear any previous messages
-              // message.error({
-              //   content:
-              //     "❌ Xe đã được đặt bởi người khác! Vui lòng chọn thời gian khác.",
-              //   duration: 5,
-              //   style: { marginTop: "20vh" },
-              // });
               showError(
                 "Xe đã được đặt bởi người khác! Vui lòng chọn thời gian khác."
               );
-
-              setCurrent(0); // Back to time selection
+              setCurrent(0);
               return;
             }
           } else {
-            // Other errors
-            //console.error("Booking error:", error);
             showError(errorResponse?.data?.message || "Có lỗi khi tạo booking");
             return;
           }
@@ -822,59 +739,47 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  // Xử lý thanh toán
   const handlePayment = async () => {
     try {
       setSubmitting(true);
 
       if (!bookingData) {
-        //message.error("Không tìm thấy thông tin đơn đặt xe");
         return;
       }
 
       if (paymentMethod === "WALLET") {
-        // Kiểm tra số dư ví
         if (walletBalance < bookingData.totalCost) {
-          //.error("Số dư ví không đủ để thanh toán");
           return;
         }
 
-        // Thanh toán bằng ví
         const paymentResponse = (await payWithWallet(
           bookingData.id
         )) as PaymentResponse;
 
         if (paymentResponse.success) {
-          //message.success("Thanh toán ví thành công!");
-          setCurrent(2); // Chuyển đến kết quả thành công
+          setCurrent(2);
         } else {
-          //message.error(paymentResponse.error || "Lỗi thanh toán ví");
+          // Handle error
         }
       } else {
-        // Tạo link thanh toán VNPay, truyền thêm amount
         const paymentResponse = (await createVNPayPayment(
           bookingData.id,
           bookingData.totalCost
         )) as PaymentResponse;
 
         if (paymentResponse.success && paymentResponse.data?.paymentUrl) {
-          //message.info("Chuyển hướng đến VNPay...");
-          // Redirect to VNPay
           window.location.href = paymentResponse.data.paymentUrl;
         } else {
-          //message.error(paymentResponse.error || "Lỗi tạo link thanh toán");
+          // Handle error
         }
       }
     } catch (error: any) {
-      //console.error("Lỗi khi thanh toán:", error);
-      //message.error("Lỗi trong quá trình thanh toán");
       showApiError(error.message || "Lỗi trong quá trình thanh toán");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Function tính khoảng cách giao xe
   const calculateDeliveryDistance = async (customerAddress: string) => {
     if (!customerAddress || costGetCar !== 1) {
       setDeliveryDistance(null);
@@ -891,7 +796,6 @@ const BookingPage: React.FC = () => {
         (multiVehicles.length > 0 && multiVehicles[0].address) ||
         "Thạch Hòa, Thạch Thất, Hà Nội";
 
-      // Lấy tọa độ từ HERE Geocoding API
       const [officeCoords, customerCoords] = await Promise.all([
         fetch(
           `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(
@@ -917,7 +821,6 @@ const BookingPage: React.FC = () => {
       const customerLat = customerCoords.items[0].position.lat;
       const customerLng = customerCoords.items[0].position.lng;
 
-      // Tính khoảng cách thực tế qua HERE Routing API
       const routeResponse = await fetch(
         `https://router.hereapi.com/v8/routes?` +
           new URLSearchParams({
@@ -954,7 +857,6 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  // Function lấy gợi ý địa chỉ
   const getAddressSuggestions = async (query: string) => {
     if (query.length < 3) {
       setAddressSuggestions([]);
@@ -986,23 +888,20 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  // Xử lý thay đổi thời gian
   const selectTimeSlots: RangePickerProps["onChange"] = async (value) => {
     if (value && value[0] && value[1]) {
       const startDate = value[0] as Dayjs;
       const endDate = value[1] as Dayjs;
 
-      // Lưu dates đã chọn
       setSelectedDates([startDate, endDate]);
 
-      // Tính toán thời gian thuê mới
-      const calculation = calculateRentalDuration(startDate, endDate);
-      setRentalCalculation(calculation);
+      const startDateJS = startDate.toDate();
+      const endDateJS = endDate.toDate();
 
-      // Legacy compatibility
+      const calculation = calculateRentalDuration(startDateJS, endDateJS);
+      setRentalCalculation(calculation);
       setTotalDays(calculation.isHourlyRate ? 1 : calculation.billingDays);
 
-      // Kiểm tra buffer time conflict
       let hasConflict = false;
       let conflictMsg = "";
 
@@ -1013,8 +912,8 @@ const BookingPage: React.FC = () => {
             referenceVehicle.vehicleType.toUpperCase() as VehicleType;
           const conflictCheck = checkBufferTimeConflict(
             vehicleType,
-            startDate,
-            endDate,
+            startDateJS,
+            endDateJS,
             existingBookings
           );
 
@@ -1024,7 +923,6 @@ const BookingPage: React.FC = () => {
           }
         }
       } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-        // Multi-vehicle: check từng xe với bookings riêng của nó
         for (let i = 0; i < vehicleIds.length; i++) {
           const vehicleId = vehicleIds[i];
           const vData = multiVehicles[i];
@@ -1035,9 +933,9 @@ const BookingPage: React.FC = () => {
 
             const conflictCheck = checkBufferTimeConflict(
               vehicleType,
-              startDate,
-              endDate,
-              vehicleBookings // Dùng bookings riêng của từng xe để check
+              startDateJS,
+              endDateJS,
+              vehicleBookings
             );
 
             if (conflictCheck.hasConflict) {
@@ -1045,26 +943,22 @@ const BookingPage: React.FC = () => {
               conflictMsg = `Xe ${i + 1}: ${
                 conflictCheck.message || "Có xung đột thời gian"
               }`;
-              // Không break để có thể check hết tất cả xe
             }
           }
         }
       }
 
       setBufferConflictMessage(hasConflict ? conflictMsg : "");
-
-      // Check availability cho tất cả xe hiện tại
       await checkAllVehiclesAvailability();
 
       console.log("Rental calculation:", calculation);
     } else {
-      // Reset khi không có dates
       setSelectedDates(null);
       setVehicleAvailabilityStatus({});
       setBufferConflictMessage("");
     }
   };
-  // Xử lý coupon
+
   const handleApplyCoupon = (coupon: CouponType | null): void => {
     if (coupon) {
       setAmountDiscount(coupon.discount);
@@ -1075,12 +969,10 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  // Tính toán giá tiền theo logic mới
   let costPerDay = 0;
   if (vehicleIds.length === 1 && vehicle?.costPerDay) {
     costPerDay = vehicle.costPerDay;
   } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-    // Tổng hợp giá cho nhiều xe (cộng từng xe)
     costPerDay = multiVehicles.reduce((sum, v) => sum + (v.costPerDay || 0), 0);
   }
 
@@ -1090,7 +982,6 @@ const BookingPage: React.FC = () => {
       const basePrice =
         calculateRentalPrice(rentalCalculation, hourlyRate, costPerDay) *
         selectedQuantity;
-      // Add driver fee for hourly rental if applicable
       let driverFee = 0;
       if (
         withDriver &&
@@ -1107,7 +998,6 @@ const BookingPage: React.FC = () => {
       }
       subtotal = basePrice + driverFee;
     } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-      // Tính tổng giá cho từng xe
       subtotal = multiVehicles.reduce((sum, v) => {
         const rate = Math.round((v.costPerDay || 0) / 12);
         const basePrice = calculateRentalPrice(
@@ -1115,7 +1005,6 @@ const BookingPage: React.FC = () => {
           rate,
           v.costPerDay || 0
         );
-        // Add driver fee for multi-vehicle if applicable
         let driverFee = 0;
         if (
           withDriver &&
@@ -1135,7 +1024,6 @@ const BookingPage: React.FC = () => {
   } else {
     if (vehicleIds.length === 1) {
       const basePrice = totalDays * costPerDay * selectedQuantity;
-      // Add driver fee for daily rental if applicable
       let driverFee = 0;
       if (withDriver && vehicle?.extraFeeRule?.hasDriverOption) {
         driverFee =
@@ -1147,7 +1035,6 @@ const BookingPage: React.FC = () => {
     } else if (vehicleIds.length > 1 && multiVehicles.length > 0) {
       subtotal = multiVehicles.reduce((sum, v) => {
         const basePrice = totalDays * (v.costPerDay || 0);
-        // Add driver fee for multi-vehicle if applicable
         let driverFee = 0;
         if (withDriver && v?.extraFeeRule?.hasDriverOption) {
           driverFee = totalDays * (v.extraFeeRule.driverFeePerDay || 0);
@@ -1157,11 +1044,10 @@ const BookingPage: React.FC = () => {
     }
   }
 
-  const deliveryFee = 0; // Miễn phí giao xe
+  const deliveryFee = 0;
   const discountAmount = (subtotal * amountDiscount) / 100;
   const totalAmount = subtotal + deliveryFee - discountAmount;
 
-  // Update form when user data changes
   useEffect(() => {
     if (user && form) {
       form.setFieldsValue({
@@ -1178,7 +1064,6 @@ const BookingPage: React.FC = () => {
         return;
       }
 
-      // Chỉ fetch cho xe máy/xe đạp, không cho ô tô
       const referenceVehicle =
         vehicle || (multiVehicles.length > 0 ? multiVehicles[0] : null);
 
@@ -1187,7 +1072,6 @@ const BookingPage: React.FC = () => {
         return;
       }
 
-      // Kiểm tra loại xe - chỉ cho phép xe máy và xe đạp
       if (referenceVehicle.vehicleType.toUpperCase() === "CAR") {
         setAvailableQuantityForReselect(1);
         return;
@@ -1195,8 +1079,8 @@ const BookingPage: React.FC = () => {
 
       if (referenceVehicle?.thumb && referenceVehicle?.userId) {
         try {
-          const from = selectedDates[0].format("YYYY-MM-DDTHH:mm:ss");
-          const to = selectedDates[1].format("YYYY-MM-DDTHH:mm:ss");
+          const from = formatTimeForBackend(selectedDates[0].toDate());
+          const to = formatTimeForBackend(selectedDates[1].toDate());
 
           const quantity = await getAvailableThumbQuantity({
             thumb: referenceVehicle.thumb,
@@ -1219,11 +1103,9 @@ const BookingPage: React.FC = () => {
   }, [selectedDates, vehicle, multiVehicles]);
 
   useEffect(() => {
-    // Always sync selectedQuantity with vehicleIds.length
     setSelectedQuantity(vehicleIds.length || 1);
   }, [vehicleIds.join(",")]);
 
-  // Prepare default date values
   const { pickupTime, returnTime } = router.query;
   const defaultStartDate: Dayjs | null = pickupTime
     ? dayjs(pickupTime as string)
@@ -1232,57 +1114,87 @@ const BookingPage: React.FC = () => {
     ? dayjs(returnTime as string)
     : null;
 
-  // Tạo disabledTime và disabledDate functions sử dụng helper mới
-  // Nếu nhiều xe, lấy open/closeTime của xe đầu tiên
   const openTime = vehicle?.openTime || multiVehicles[0]?.openTime || "";
   const closeTime = vehicle?.closeTime || multiVehicles[0]?.closeTime || "";
 
   const disabledRangeTime = useMemo(() => {
-    // Kiểm tra nếu không có openTime/closeTime
     if (!openTime && !closeTime) {
-      // Trả về function không disable gì
-      return () => ({
-        disabledHours: () => [],
-        disabledMinutes: () => [],
-      });
+      return (current: Dayjs | null) => {
+        if (!current) {
+          return {
+            disabledHours: () => [],
+            disabledMinutes: () => [],
+          };
+        }
+        const dateValue = current.toDate();
+        return createDisabledTimeFunction(
+          "CAR",
+          [],
+          openTime,
+          closeTime
+        )(dateValue);
+      };
     }
 
-    // Với nhiều xe: dùng TẤT CẢ bookings đã gộp
     if (vehicleIds.length > 1 && multiVehicles.length > 0) {
       const vehicleType =
         multiVehicles[0].vehicleType.toUpperCase() as VehicleType;
 
-      // Dùng existingBookings đã chứa TẤT CẢ bookings của các xe
-      return createDisabledTimeFunction(
-        vehicleType,
-        existingBookings, // Đã gộp tất cả bookings
-        openTime,
-        closeTime
-      );
+      return (current: Dayjs | null) => {
+        if (!current) {
+          return {
+            disabledHours: () => [],
+            disabledMinutes: () => [],
+          };
+        }
+        const dateValue = current.toDate();
+        return createDisabledTimeFunction(
+          vehicleType,
+          existingBookings,
+          openTime,
+          closeTime
+        )(dateValue);
+      };
     }
 
-    // Single vehicle
     if (vehicleIds.length === 1 && vehicle?.vehicleType) {
       const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
-      return createDisabledTimeFunction(
-        vehicleType,
-        existingBookings,
-        openTime,
-        closeTime
-      );
+      return (current: Dayjs | null) => {
+        if (!current) {
+          return {
+            disabledHours: () => [],
+            disabledMinutes: () => [],
+          };
+        }
+        const dateValue = current.toDate();
+        return createDisabledTimeFunction(
+          vehicleType,
+          existingBookings,
+          openTime,
+          closeTime
+        )(dateValue);
+      };
     }
 
-    // Default fallback
-    return createDisabledTimeFunction(
-      "CAR",
-      [],
-      openTime || "00:00",
-      closeTime || "00:00"
-    );
+    return (current: Dayjs | null) => {
+      if (!current) {
+        return {
+          disabledHours: () => [],
+          disabledMinutes: () => [],
+        };
+      }
+      const dateValue = current.toDate();
+      return createDisabledTimeFunction(
+        "CAR",
+        [],
+        openTime || "00:00",
+        closeTime || "00:00"
+      )(dateValue);
+    };
   }, [
     vehicle?.vehicleType,
     multiVehicles,
-    existingBookings, // Đã chứa tất cả bookings khi multi-vehicle
+    existingBookings,
     openTime,
     closeTime,
     vehicleIds.join(","),
@@ -1292,34 +1204,30 @@ const BookingPage: React.FC = () => {
     return (current: Dayjs): boolean => {
       if (!current) return false;
 
-      // Kiểm tra nếu không có openTime/closeTime thì không disable
+      const currentDate = current.toDate();
+
       if (!openTime && !closeTime) {
-        // Chỉ disable ngày quá khứ
         const today = dayjs().startOf("day");
         return current.isBefore(today);
       }
 
-      // Với nhiều xe: dùng TẤT CẢ bookings đã gộp
       if (vehicleIds.length > 1 && multiVehicles.length > 0) {
-        // Lấy loại xe từ xe đầu tiên (giả sử tất cả xe cùng loại)
         const vehicleType =
           multiVehicles[0].vehicleType.toUpperCase() as VehicleType;
 
-        // Dùng existingBookings đã gộp TẤT CẢ bookings của các xe
         return isDateDisabled(
-          current,
+          currentDate,
           vehicleType,
-          existingBookings, // Đã chứa TẤT CẢ bookings
+          existingBookings,
           openTime,
           closeTime
         );
       }
 
-      // Single vehicle
       if (vehicleIds.length === 1 && vehicle?.vehicleType) {
         const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
         return isDateDisabled(
-          current,
+          currentDate,
           vehicleType,
           existingBookings,
           openTime,
@@ -1332,25 +1240,22 @@ const BookingPage: React.FC = () => {
   }, [
     vehicle?.vehicleType,
     multiVehicles,
-    existingBookings, // Đã chứa tất cả bookings khi multi-vehicle
+    existingBookings,
     openTime,
     closeTime,
     vehicleIds.join(","),
   ]);
 
-  // Debounced version để tránh gọi API quá nhiều
   const debouncedCalculateDistance = useMemo(
-    () => debounce(calculateDeliveryDistance, 1000), // Giảm từ 5000ms xuống 1000ms
-    [costGetCar, vehicle?.address, multiVehicles] // Thêm dependencies
+    () => debounce(calculateDeliveryDistance, 1000),
+    [costGetCar, vehicle?.address, multiVehicles]
   );
 
-  // Debounced version
   const debouncedGetAddressSuggestions = useMemo(
     () => debounce(getAddressSuggestions, 500),
     []
   );
 
-  // Reset địa chỉ khi thay đổi costGetCar
   useEffect(() => {
     if (costGetCar === 0) {
       setAddressInputValue("");
@@ -1360,7 +1265,6 @@ const BookingPage: React.FC = () => {
     }
   }, [costGetCar]);
 
-  // Cleanup khi component unmount
   useEffect(() => {
     return () => {
       if (debouncedCalculateDistance) {

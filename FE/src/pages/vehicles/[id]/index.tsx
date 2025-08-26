@@ -46,11 +46,12 @@ import { Comment as VehicleComment } from "@/types/vehicle";
 import { formatCurrency } from "@/lib/format-currency";
 import { RangePickerProps } from "antd/es/date-picker";
 
-import dayjs, { type Dayjs } from "@/utils/dayjs";
+import { format, parseISO, isValid } from "date-fns";
 
 // Ant Design Components
 import { Modal, message, Button as AntButton, Button } from "antd";
 import ReportButton from "@/components/ReportComponent";
+import dayjs, { Dayjs } from "dayjs";
 
 import {
   InfoCircleOutlined,
@@ -61,7 +62,7 @@ import {
 } from "@ant-design/icons";
 
 // --- Type definitions ---
-type RangeValue = [Dayjs | null, Dayjs | null] | null;
+type RangeValue = [Date | null, Date | null] | null;
 
 // --- Main Component ---
 export default function VehicleDetail() {
@@ -205,8 +206,8 @@ export default function VehicleDetail() {
   // Calculate price based on selected dates
   useEffect(() => {
     if (pickupDateTime && returnDateTime && vehicle?.costPerDay) {
-      const startDate = dayjs(pickupDateTime);
-      const endDate = dayjs(returnDateTime);
+      const startDate = parseISO(pickupDateTime.replace(" ", "T"));
+      const endDate = parseISO(returnDateTime.replace(" ", "T"));
 
       if (endDate <= startDate) {
         setRentalDurationDays(1);
@@ -240,8 +241,11 @@ export default function VehicleDetail() {
       console.log("Booked time slots:", bookedTimeSlots);
 
       const bookedRanges = bookedTimeSlots.map((slot) => {
-        const startDate = parseBackendTime(slot.startDate).format("YYYY-MM-DD");
-        const endDate = parseBackendTime(slot.endDate).format("YYYY-MM-DD");
+        const startDate = format(
+          parseBackendTime(slot.startDate),
+          "yyyy-MM-dd"
+        );
+        const endDate = format(parseBackendTime(slot.endDate), "yyyy-MM-dd");
         return `${startDate} đến ${endDate}`;
       });
 
@@ -263,33 +267,24 @@ export default function VehicleDetail() {
       ) {
         setIsModalCheckOpen(true);
       }
-      // else if (vehicle?.id && pickupDateTime && returnDateTime) {
-      //   // Only navigate if dates are selected by user
-      //   router.push({
-      //     pathname: `/booking/${vehicle.id}`,
-      //     query: {
-      //       pickupTime: pickupDateTime,
-      //       returnTime: returnDateTime,
-      //     },
-      //   });
-      // }
     }
   }, [
     user,
     isAuthPopupOpen,
     router,
     vehicle?.id,
+    vehicle?.vehicleType,
     pickupDateTime,
     returnDateTime,
   ]);
 
   // Format dates for DateRangePicker
   const formattedDates = useMemo(() => {
-    // Only use dates from state, not from URL
     if (!dates || !Array.isArray(dates) || dates.length !== 2) {
       return null;
     }
 
+    // Convert Date objects to Dayjs for Ant DatePicker
     const startDate = dates[0] ? dayjs(dates[0]) : null;
     const endDate = dates[1] ? dayjs(dates[1]) : null;
 
@@ -306,22 +301,53 @@ export default function VehicleDetail() {
 
   const disabledRangeTime = useMemo(() => {
     if (!vehicle?.vehicleType)
-      return createDisabledTimeFunction("CAR", [], openTime, closeTime);
-    return createDisabledTimeFunction(
-      vehicle.vehicleType.toUpperCase() as VehicleType,
-      bookedTimeSlots,
-      openTime,
-      closeTime
-    );
+      return (current: Dayjs | null) => {
+        if (!current) {
+          return {
+            disabledHours: () => [],
+            disabledMinutes: () => [],
+          };
+        }
+        // Convert Dayjs to Date for our function
+        const dateValue = current.toDate();
+        return createDisabledTimeFunction(
+          "CAR",
+          [],
+          openTime,
+          closeTime
+        )(dateValue);
+      };
+
+    return (current: Dayjs | null) => {
+      if (!current) {
+        return {
+          disabledHours: () => [],
+          disabledMinutes: () => [],
+        };
+      }
+      // Convert Dayjs to Date for our function
+      const dateValue = current.toDate();
+      return createDisabledTimeFunction(
+        vehicle.vehicleType.toUpperCase() as VehicleType,
+        bookedTimeSlots,
+        openTime,
+        closeTime
+      )(dateValue);
+    };
   }, [vehicle?.vehicleType, bookedTimeSlots, openTime, closeTime]);
 
   const disabledDateFunction = useMemo(() => {
     return (current: Dayjs): boolean => {
-      if (!current || !vehicle?.vehicleType) return false;
+      if (!current) return false;
+
+      // Convert Dayjs to Date
+      const currentDate = current.toDate();
+
+      if (!vehicle?.vehicleType) return false;
 
       const vehicleType = vehicle.vehicleType.toUpperCase() as VehicleType;
       return isDateDisabled(
-        current,
+        currentDate,
         vehicleType,
         bookedTimeSlots,
         openTime,
@@ -469,12 +495,18 @@ export default function VehicleDetail() {
   // DatePicker handlers
   const handleDateChange: RangePickerProps["onChange"] = async (values) => {
     if (values && values[0] && values[1]) {
-      const startDate = values[0] as Dayjs;
-      const endDate = values[1] as Dayjs;
+      // Clean milliseconds khi convert từ Dayjs sang Date
+      const startDate = values[0].toDate();
+      startDate.setMilliseconds(0);
+      startDate.setSeconds(0);
 
-      // Validate phút phải là 00 hoặc 30
-      const startMinute = startDate.minute();
-      const endMinute = endDate.minute();
+      const endDate = values[1].toDate();
+      endDate.setMilliseconds(0);
+      endDate.setSeconds(0);
+
+      // Validate phút
+      const startMinute = startDate.getMinutes();
+      const endMinute = endDate.getMinutes();
 
       if (startMinute !== 0 && startMinute !== 30) {
         message.error("Giờ nhận xe phải chọn phút :00 hoặc :30");
@@ -486,26 +518,27 @@ export default function VehicleDetail() {
         return;
       }
 
-      if (startDate.isSame(endDate, "minute")) {
+      // Thay thế isSame và isBefore của dayjs
+      if (startDate.getTime() === endDate.getTime()) {
         message.error("Giờ nhận xe và giờ trả xe không được trùng nhau");
         return;
       }
 
-      // Validate giờ trả phải sau giờ nhận
-      if (endDate.isBefore(startDate)) {
+      if (endDate < startDate) {
         message.error("Giờ trả xe phải sau giờ nhận xe");
         return;
       }
 
-      setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
-      setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));
+      // format dates
+      setPickupDateTime(format(startDate, "yyyy-MM-dd HH:mm"));
+      setReturnDateTime(format(endDate, "yyyy-MM-dd HH:mm"));
 
       // CHỈ gọi API lấy quantity cho xe máy và xe đạp, KHÔNG cho ô tô
       if (vehicle?.vehicleType && vehicle.vehicleType.toUpperCase() !== "CAR") {
         const thumb = vehicle?.thumb;
         const providerId = vehicle?.userId;
-        const from = startDate.format("YYYY-MM-DDTHH:mm:ss");
-        const to = endDate.format("YYYY-MM-DDTHH:mm:ss");
+        const from = format(startDate, "yyyy-MM-dd'T'HH:mm:ss");
+        const to = format(endDate, "yyyy-MM-dd'T'HH:mm:ss");
 
         try {
           const quantity = await getAvailableThumbQuantity({
@@ -564,7 +597,12 @@ export default function VehicleDetail() {
       setAvailableVehicles([]);
     }
 
-    updateDates(values);
+    // Convert values to Date array for updateDates
+    if (values && values[0] && values[1]) {
+      updateDates([values[0].toDate(), values[1].toDate()]);
+    } else {
+      updateDates(null);
+    }
   };
 
   // --- Render component ---
@@ -769,7 +807,6 @@ export default function VehicleDetail() {
                       value={formattedDates}
                       placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
                       allowClear={true}
-                      defaultOpenValue={dayjs().minute(0).second(0)}
                     />
 
                     {validationMessage && (
@@ -908,16 +945,16 @@ export default function VehicleDetail() {
                             const thumb = vehicle?.thumb;
                             const providerId = vehicle?.userId;
                             const from = pickupDateTime
-                              ? dayjs(
-                                  pickupDateTime,
-                                  "YYYY-MM-DD HH:mm"
-                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              ? format(
+                                  parseISO(pickupDateTime.replace(" ", "T")),
+                                  "yyyy-MM-dd'T'HH:mm:ss"
+                                )
                               : "";
                             const to = returnDateTime
-                              ? dayjs(
-                                  returnDateTime,
-                                  "YYYY-MM-DD HH:mm"
-                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              ? format(
+                                  parseISO(returnDateTime.replace(" ", "T")),
+                                  "yyyy-MM-dd'T'HH:mm:ss"
+                                )
                               : "";
                             const vehicles = await getAvailableThumbList({
                               thumb,
@@ -1268,9 +1305,8 @@ export default function VehicleDetail() {
                 )}
               </div>
             </div>
-
             {/* Bảng phụ phí phát sinh - Mobile */}
-            {vehicle?.vehicleType === "CAR" && (
+            {vehicle?.vehicleType === "CAR" && vehicle?.extraFeeRule && (
               <div className="lg:hidden mt-6 bg-white rounded-xl shadow p-4 sm:p-6 border border-gray-200">
                 <h3 className="text-base sm:text-lg font-bold mb-4 text-gray-700">
                   Phụ phí có thể phát sinh
@@ -1538,16 +1574,16 @@ export default function VehicleDetail() {
                             const thumb = vehicle?.thumb;
                             const providerId = vehicle?.userId;
                             const from = pickupDateTime
-                              ? dayjs(
-                                  pickupDateTime,
-                                  "YYYY-MM-DD HH:mm"
-                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              ? format(
+                                  parseISO(pickupDateTime.replace(" ", "T")),
+                                  "yyyy-MM-dd'T'HH:mm:ss"
+                                )
                               : "";
                             const to = returnDateTime
-                              ? dayjs(
-                                  returnDateTime,
-                                  "YYYY-MM-DD HH:mm"
-                                ).format("YYYY-MM-DDTHH:mm:ss")
+                              ? format(
+                                  parseISO(returnDateTime.replace(" ", "T")),
+                                  "yyyy-MM-dd'T'HH:mm:ss"
+                                )
                               : "";
                             const vehicles = await getAvailableThumbList({
                               thumb,
@@ -1593,7 +1629,7 @@ export default function VehicleDetail() {
             )}
 
             {/* Bảng phụ phí phát sinh - Desktop */}
-            {vehicle?.vehicleType === "CAR" && (
+            {vehicle?.vehicleType === "CAR" && vehicle?.extraFeeRule && (
               <div className="mt-8 bg-white rounded-xl shadow p-6 border border-gray-200">
                 <h3 className="text-lg font-bold mb-4 text-gray-700">
                   Phụ phí có thể phát sinh
