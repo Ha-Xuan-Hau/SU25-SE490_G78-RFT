@@ -3,6 +3,7 @@ package com.rft.rft_be.service.mail;
 import com.rft.rft_be.entity.User;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -57,7 +59,8 @@ public class EmailSenderService {
 
         String template;
         try {
-            template = Files.readString(Path.of(TEMPLATE_PATH + "two_flags_warning.html"));
+            ClassPathResource resource = new ClassPathResource("templates/two_flags_warning.html");
+            template = new String(resource.getInputStream().readAllBytes() , StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }
@@ -75,7 +78,8 @@ public class EmailSenderService {
 
         String template;
         try {
-            template = Files.readString(Path.of(TEMPLATE_PATH + "permanent_ban.html"));
+            ClassPathResource resource = new ClassPathResource("templates/permanent_ban.html");
+            template = new String(resource.getInputStream().readAllBytes() , StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException("Không thể đọc file template email", e);
         }
