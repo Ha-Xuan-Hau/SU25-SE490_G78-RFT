@@ -46,7 +46,7 @@ import { Comment as VehicleComment } from "@/types/vehicle";
 import { formatCurrency } from "@/lib/format-currency";
 import { RangePickerProps } from "antd/es/date-picker";
 
-import dayjs, { type Dayjs } from "@/utils/dayjs";
+import dayjs, { VN_TZ, type Dayjs } from "@/utils/dayjs";
 
 // Ant Design Components
 import { Modal, message, Button as AntButton, Button } from "antd";
@@ -469,8 +469,16 @@ export default function VehicleDetail() {
   // DatePicker handlers
   const handleDateChange: RangePickerProps["onChange"] = async (values) => {
     if (values && values[0] && values[1]) {
-      const startDate = values[0] as Dayjs;
-      const endDate = values[1] as Dayjs;
+      const startDate = dayjs.tz(
+        values[0].format("YYYY-MM-DD HH:mm:ss"),
+        "YYYY-MM-DD HH:mm:ss",
+        VN_TZ
+      );
+      const endDate = dayjs.tz(
+        values[1].format("YYYY-MM-DD HH:mm:ss"),
+        "YYYY-MM-DD HH:mm:ss",
+        VN_TZ
+      );
 
       // Validate phút phải là 00 hoặc 30
       const startMinute = startDate.minute();
