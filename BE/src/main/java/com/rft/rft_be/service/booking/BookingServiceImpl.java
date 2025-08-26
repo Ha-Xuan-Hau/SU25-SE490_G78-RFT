@@ -671,14 +671,20 @@ public class BookingServiceImpl implements BookingService {
         );
 
         // Check contract đang cho thuê (nếu là PROVIDER)
+        long rentingContracts = 0;
+        long processingContracts = 0;
         long activeContracts = 0;
         if (user.getRole() == User.Role.PROVIDER) {
-            activeContracts = contractRepository.countByProviderIdAndStatus(
+            rentingContracts = contractRepository.countByProviderIdAndStatus(
                     user.getId(),
                     Contract.Status.RENTING
             );
+            processingContracts = contractRepository.countByProviderIdAndStatus(
+                    user.getId(),
+                    Contract.Status.PROCESSING
+            );
         }
-
+        activeContracts = rentingContracts + processingContracts;
         // Nếu không còn booking/contract nào → chuyển sang INACTIVE
         if (unfinishedBookings == 0 && activeContracts == 0) {
             user.setStatus(User.Status.INACTIVE);
@@ -849,15 +855,18 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
-// PROVIDER: unfinished = các contract đang RENTING
+        // PROVIDER: unfinished = các contract đang RENTING + PROCESSING
         if (!booking.getBookingDetails().isEmpty()) {
             User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
             if (provider != null && provider.getStatus().equals(User.Status.TEMP_BANNED)) {
                 int rentingCount = contractRepository
                         .findByProviderIdAndStatus(provider.getId(), Contract.Status.RENTING)
                         .size();
-
-                if (rentingCount == 0) {
+                int processingCount = contractRepository
+                        .findByProviderIdAndStatus(provider.getId(), Contract.Status.PROCESSING)
+                        .size();
+                int unfinished =rentingCount + processingCount ;
+                if (unfinished == 0) {
                     provider.setStatus(User.Status.INACTIVE);
                     userRepository.save(provider);
                 }
