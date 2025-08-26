@@ -4,6 +4,11 @@ import dayjs, { type Dayjs, VN_TZ } from "@/utils/dayjs";
 
 dayjs.extend(duration);
 
+const ensureVNTimezone = (date: Dayjs): Dayjs => {
+  // Nếu date không có timezone info, parse lại với VN timezone
+  return date.tz ? date.tz(VN_TZ) : dayjs.tz(date.format(), VN_TZ);
+};
+
 /**
  * Helper function to parse time from backend LocalDateTime
  * Backend can send LocalDateTime as:
@@ -213,6 +218,10 @@ export const checkBufferTimeConflict = (
   conflictBookings: ExistingBooking[];
   message?: string;
 } => {
+  // Ensure dates are in VN timezone
+  const vnStartDate = ensureVNTimezone(newStartDate);
+  const vnEndDate = ensureVNTimezone(newEndDate);
+
   const conflictBookings: ExistingBooking[] = [];
   const directOverlapBookings: ExistingBooking[] = [];
   const bufferConflictBookings: ExistingBooking[] = [];
@@ -224,12 +233,12 @@ export const checkBufferTimeConflict = (
   const bufferRule = BUFFER_TIME_RULES[vehicleType];
 
   for (const booking of activeBookings) {
-    const bookingStart = parseBackendTime(booking.startDate);
-    const bookingEnd = parseBackendTime(booking.endDate);
+    const bookingStart = ensureVNTimezone(parseBackendTime(booking.startDate));
+    const bookingEnd = ensureVNTimezone(parseBackendTime(booking.endDate));
 
     // Kiểm tra overlap trực tiếp
     const hasDirectOverlap =
-      newStartDate.isBefore(bookingEnd) && newEndDate.isAfter(bookingStart);
+      vnStartDate.isBefore(bookingEnd) && vnEndDate.isAfter(bookingStart);
 
     if (hasDirectOverlap) {
       directOverlapBookings.push(booking);
@@ -242,10 +251,10 @@ export const checkBufferTimeConflict = (
       const bufferHours = bufferRule.hours;
 
       // CASE 1: New booking SAU existing booking
-      const gapAfterExisting = newStartDate.diff(bookingEnd, "hour", true);
+      const gapAfterExisting = vnStartDate.diff(bookingEnd, "hour", true);
 
       // CASE 2: New booking TRƯỚC existing booking
-      const gapBeforeExisting = bookingStart.diff(newEndDate, "hour", true);
+      const gapBeforeExisting = bookingStart.diff(vnEndDate, "hour", true);
 
       // Conflict nếu khoảng cách < 5h (ở cả 2 phía)
       if (
@@ -255,6 +264,14 @@ export const checkBufferTimeConflict = (
         bufferConflictBookings.push(booking);
         conflictBookings.push(booking);
       }
+
+      console.log("Timezone check:", {
+        serverTime: dayjs().format(),
+        vnTime: dayjs().tz(VN_TZ).format(),
+        newStartDate: newStartDate.format(),
+        bookingStart: bookingStart.format(),
+        diff: newStartDate.diff(bookingStart, "hour", true),
+      });
     }
   }
 
@@ -479,11 +496,14 @@ export const createDisabledTimeFunction = (
       };
     }
 
+    // Ensure current is in VN timezone
+    const vnCurrent = ensureVNTimezone(current);
+    const vnToday = ensureVNTimezone(dayjs());
+
     const disabledHours: number[] = [];
-    const today = dayjs();
-    const isToday = current.isSame(today, "day");
-    const currentHour = today.hour();
-    const selectedDateStr = current.format("YYYY-MM-DD");
+    const isToday = vnCurrent.isSame(vnToday, "day");
+    const currentHour = vnToday.hour();
+    const selectedDateStr = vnCurrent.format("YYYY-MM-DD");
 
     // Disable past hours for today
     if (isToday) {
