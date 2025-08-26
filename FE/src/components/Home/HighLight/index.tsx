@@ -4,6 +4,7 @@ import type React from "react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/router";
 
 const featuredLocations = [
   {
@@ -76,7 +77,13 @@ const featuredLocations = [
 const HighLight: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const router = useRouter();
 
+  const handleLocationClick = (locationName: string) => {
+    // Encode location name và chuyển đến trang vehicles với query param
+    const encodedLocation = encodeURIComponent(locationName);
+    router.push(`/vehicles?city=${encodedLocation}`);
+  };
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
       const scrollAmount = 280;
@@ -156,7 +163,11 @@ const HighLight: React.FC = () => {
             `}</style>
 
             {featuredLocations.map((location) => (
-              <div key={location.id} className="flex-none group cursor-pointer">
+              <div
+                key={location.id}
+                className="flex-none group cursor-pointer"
+                onClick={() => handleLocationClick(location.name)}
+              >
                 <div className="relative w-[240px] h-[185px] rounded-lg overflow-hidden">
                   <Image
                     src={location.image || "/placeholder.svg"}

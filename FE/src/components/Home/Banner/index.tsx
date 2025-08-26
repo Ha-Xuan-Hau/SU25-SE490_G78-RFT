@@ -1,12 +1,9 @@
 "use client";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
-import { useState } from "react";
 import Link from "next/link";
 
 const Banner: React.FC = () => {
-  const [activeService, setActiveService] = useState("self-drive");
-
   return (
     <section className="relative min-h-[600px] overflow-hidden">
       {/* Background Image */}
@@ -51,96 +48,55 @@ const Banner: React.FC = () => {
             {/* Service Options - Showcase style */}
             <div className="space-y-4 mb-6">
               {/* Self Drive Service */}
-              <div
-                className={`cursor-pointer rounded-lg border-2 p-4 transition-all duration-300 ${
-                  activeService === "self-drive"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-                }`}
-                onClick={() => setActiveService("self-drive")}
-              >
+              <div className="rounded-lg border-2 border-gray-200 p-4">
                 <div className="flex items-center gap-4">
-                  <div
-                    className={`p-3 rounded-full ${
-                      activeService === "self-drive"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
+                  <div className="p-3 rounded-full bg-blue-100 text-blue-600">
                     <Icon icon="mdi:car-key" width={24} height={24} />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-1">
-                      Xe Tự Lái
-                    </h3>
-                    <p className="text-sm text-gray-600">
+                    <h3 className="font-bold  text-gray-800 mb-1">Xe Tự Lái</h3>
+                    <p className="text-sm text-gray-600 mb-2">
                       Tự do lái xe theo lịch trình của bạn
                     </p>
+                    {/* Vehicle types for self-drive */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
+                        <Icon icon="mdi:car" width={12} />Ô tô
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
+                        <Icon icon="mdi:motorcycle" width={12} />
+                        Xe máy
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
+                        <Icon icon="mdi:bicycle" width={12} />
+                        Xe đạp
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Driver Service */}
-              <div
-                className={`cursor-pointer rounded-lg border-2 p-4 transition-all duration-300 ${
-                  activeService === "driver"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-                }`}
-                onClick={() => setActiveService("driver")}
-              >
+              <div className="rounded-lg border-2 border-gray-200 p-4">
                 <div className="flex items-center gap-4">
-                  <div
-                    className={`p-3 rounded-full ${
-                      activeService === "driver"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
+                  <div className="p-3 rounded-full bg-blue-100 text-blue-600">
                     <Icon icon="mdi:account-tie-hat" width={24} height={24} />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-1">
+                    <h3 className="font-bold text-gray-800 mb-1">
                       Xe Có Tài Xế
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 mb-2">
                       Thoải mái tận hưởng chuyến đi
                     </p>
+                    {/* Vehicle types for driver service */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
+                        <Icon icon="mdi:car" width={12} />Ô tô
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Vehicle Types Available */}
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <Icon
-                  icon="mdi:check-circle"
-                  className="text-green-500"
-                  width={16}
-                />
-                Loại xe có sẵn:
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {activeService === "self-drive" ? (
-                  <>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
-                      <Icon icon="mdi:car" width={14} />Ô tô
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
-                      <Icon icon="mdi:motorcycle" width={14} />
-                      Xe máy
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
-                      <Icon icon="mdi:bicycle" width={14} />
-                      Xe đạp
-                    </span>
-                  </>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
-                    <Icon icon="mdi:car" width={14} />Ô tô
-                  </span>
-                )}
               </div>
             </div>
 
