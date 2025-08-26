@@ -893,8 +893,8 @@ export default function UserRegisterVehicle() {
               current: page + 1,
               pageSize: size,
               total: totalElements,
-              showSizeChanger: true,
-              showQuickJumper: true,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               pageSizeOptions: ["5", "10", "20"],
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} nhóm xe`,

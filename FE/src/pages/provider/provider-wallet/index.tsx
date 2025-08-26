@@ -593,7 +593,8 @@ export default function ProviderWalletsPage() {
               rowKey="id"
               pagination={{
                 pageSize: 10,
-                showSizeChanger: true,
+                showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+                showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
                 showTotal: (total) => `Tổng cộng ${total} giao dịch`,
                 pageSizeOptions: ["10", "20", "50"],
               }}

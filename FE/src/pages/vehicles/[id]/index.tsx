@@ -44,12 +44,9 @@ import {
 import { Vehicle, VehicleFeature, VehicleImage } from "@/types/vehicle";
 import { Comment as VehicleComment } from "@/types/vehicle";
 import { formatCurrency } from "@/lib/format-currency";
-import dayjs, { Dayjs } from "dayjs";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { RangePickerProps } from "antd/es/date-picker";
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
+
+import dayjs, { type Dayjs } from "@/utils/dayjs";
 
 // Ant Design Components
 import { Modal, message, Button as AntButton, Button } from "antd";
@@ -489,6 +486,17 @@ export default function VehicleDetail() {
         return;
       }
 
+      if (startDate.isSame(endDate, "minute")) {
+        message.error("Giờ nhận xe và giờ trả xe không được trùng nhau");
+        return;
+      }
+
+      // Validate giờ trả phải sau giờ nhận
+      if (endDate.isBefore(startDate)) {
+        message.error("Giờ trả xe phải sau giờ nhận xe");
+        return;
+      }
+
       setPickupDateTime(startDate.format("YYYY-MM-DD HH:mm"));
       setReturnDateTime(endDate.format("YYYY-MM-DD HH:mm"));
 
@@ -761,6 +769,7 @@ export default function VehicleDetail() {
                       value={formattedDates}
                       placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
                       allowClear={true}
+                      defaultOpenValue={dayjs().minute(0).second(0)}
                     />
 
                     {validationMessage && (
@@ -773,15 +782,6 @@ export default function VehicleDetail() {
                         <p className="text-red-600 text-sm">
                           ⚠️ {bufferConflictMessage}
                         </p>
-                        {vehicle?.vehicleType && (
-                          <p className="text-gray-600 text-xs mt-1">
-                            {
-                              BUFFER_TIME_RULES[
-                                vehicle.vehicleType.toUpperCase() as VehicleType
-                              ]?.description
-                            }
-                          </p>
-                        )}
                       </div>
                     )}
                   </div>

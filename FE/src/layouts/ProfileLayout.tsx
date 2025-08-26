@@ -10,6 +10,7 @@ import { Icon } from "@iconify/react";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Avatar, Tooltip } from "antd";
+import { User } from "lucide-react";
 
 export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
@@ -112,7 +113,7 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
   // menuGroups - GIỮ NGUYÊN
   const menuGroups = [
     {
-      title: "Tài khoản cá nhân",
+      title: "Thông tin cá nhân",
       items: [
         {
           key: "profile",
@@ -120,44 +121,21 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
           icon: "mdi:account-circle",
           label: "Thông tin cá nhân",
         },
-        {
-          key: "change-password",
-          path: "/profile/change-password",
-          icon: "mdi:key-variant",
-          label: "Đổi mật khẩu",
-        },
-      ],
-    },
-    {
-      title: "Quản lý giấy tờ",
-      items: [
-        {
-          key: "driver-licenses",
-          path: "/profile/driver-licenses",
-          icon: "mdi:card-account-details",
-          label: "Giấy phép lái xe",
-        },
-      ],
-    },
-    {
-      title: "Tài chính & Giao dịch",
-      items: [
+        ...(userProfile?.status === "TEMP_BANNED"
+          ? []
+          : [
+              {
+                key: "change-password",
+                path: "/profile/change-password",
+                icon: "mdi:key-variant",
+                label: "Đổi mật khẩu",
+              },
+            ]),
         {
           key: "user-wallet",
           path: "/profile/wallets",
           icon: "mdi:wallet-outline",
           label: "Ví của tôi",
-        },
-      ],
-    },
-    {
-      title: "Lịch sử hoạt động",
-      items: [
-        {
-          key: "car-rental",
-          path: "/profile/booking-history",
-          icon: "mdi:history",
-          label: "Lịch sử đặt xe",
         },
         // Chỉ hiện "Lịch sử vi phạm" nếu là USER
         ...(isUser
@@ -170,6 +148,33 @@ export const ProfileLayout = ({ children }: { children: React.ReactNode }) => {
               },
             ]
           : []),
+      ],
+    },
+    ...(userProfile?.status === "TEMP_BANNED"
+      ? []
+      : [
+          {
+            title: "Quản lý giấy tờ",
+            items: [
+              {
+                key: "driver-licenses",
+                path: "/profile/driver-licenses",
+                icon: "mdi:card-account-details",
+                label: "Giấy phép lái xe",
+              },
+            ],
+          },
+        ]),
+
+    {
+      title: "Lịch sử hoạt động",
+      items: [
+        {
+          key: "car-rental",
+          path: "/profile/booking-history",
+          icon: "mdi:history",
+          label: "Lịch sử đặt xe",
+        },
       ],
     },
   ];

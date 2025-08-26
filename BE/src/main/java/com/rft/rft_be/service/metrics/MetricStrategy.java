@@ -6,5 +6,5 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface MetricStrategy {
-    MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame);
+    MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame, String providerId);
 }

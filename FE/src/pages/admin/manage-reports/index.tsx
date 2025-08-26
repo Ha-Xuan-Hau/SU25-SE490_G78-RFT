@@ -370,6 +370,21 @@ export default function UserReportsPage() {
         </div>
       ),
     },
+    // {
+    //   title: "Người báo cáo",
+    //   key: "reporter",
+    //   render: (record) => (
+    //     <div className="flex items-center gap-2">
+    //       <Avatar size="small" icon={<UserOutlined />} />
+    //       <div>
+    //         <div className="text-sm">{record.reporterName || "N/A"}</div>
+    //         <div className="text-xs text-gray-500">
+    //           {record.reporterEmail || ""}
+    //         </div>
+    //       </div>
+    //     </div>
+    //   ),
+    // },
     {
       title: "Loại báo cáo",
       key: "type",
@@ -379,14 +394,14 @@ export default function UserReportsPage() {
         </Tag>
       ),
     },
-    {
-      title: "Mã báo cáo",
-      dataIndex: "reportId",
-      key: "reportId",
-      render: (id) => (
-        <span className="font-mono text-xs">{id?.substring(0, 8)}...</span>
-      ),
-    },
+    // {
+    //   title: "Mã báo cáo",
+    //   dataIndex: "reportId",
+    //   key: "reportId",
+    //   render: (id) => (
+    //     <span className="font-mono text-xs">{id?.substring(0, 8)}...</span>
+    //   ),
+    // },
     {
       title: "Thao tác",
       key: "action",

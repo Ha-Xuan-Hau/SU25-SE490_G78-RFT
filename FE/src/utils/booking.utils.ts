@@ -1,11 +1,8 @@
-import dayjs, { Dayjs } from "dayjs";
 import duration from "dayjs/plugin/duration";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+import dayjs, { type Dayjs, VN_TZ } from "@/utils/dayjs";
 
 dayjs.extend(duration);
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
 
 /**
  * Helper function to parse time from backend LocalDateTime
@@ -21,21 +18,18 @@ export const parseBackendTime = (
   }
 
   if (Array.isArray(timeData)) {
-    // Handle array format: [year, month, day, hour, minute]
-    // Note: JavaScript month is 0-based, but backend sends 1-based month
     const [year, month, day, hour, minute] = timeData;
-    return dayjs()
-      .year(year)
-      .month(month - 1)
-      .date(day)
-      .hour(hour)
-      .minute(minute)
-      .second(0)
-      .millisecond(0);
+    // Tạo string format và parse với VN timezone
+    const dateString = `${year}-${String(month).padStart(2, "0")}-${String(
+      day
+    ).padStart(2, "0")} ${String(hour || 0).padStart(2, "0")}:${String(
+      minute || 0
+    ).padStart(2, "0")}:00`;
+    return dayjs.tz(dateString, VN_TZ); // ✅ Parse với VN timezone
   }
 
-  // Handle string format: "yyyy-MM-dd'T'HH:mm:ss"
-  return dayjs(timeData);
+  // Handle string format với VN timezone
+  return dayjs.tz(timeData, VN_TZ); // ✅ Parse với VN timezone
 };
 
 /**
@@ -86,12 +80,12 @@ export const BUFFER_TIME_RULES = {
   MOTORBIKE: {
     type: "HOURS" as const,
     hours: 5, // 5 tiếng buffer
-    description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
+    //description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
   },
   BICYCLE: {
     type: "HOURS" as const,
     hours: 5, // 5 tiếng buffer
-    description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
+    // description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
   },
 } as const;
 
@@ -132,8 +126,9 @@ export const calculateRentalDuration = (
 
   if (totalHours <= PRICING_RULES.HOURLY_THRESHOLD) {
     // Tính theo giờ + phút
-    const hours = Math.floor(totalHours);
-    const minutes = Math.round(totalMinutes % 60);
+    const totalMinutesExact = Math.floor(totalDuration.asMinutes());
+    const hours = Math.floor(totalMinutesExact / 60);
+    const minutes = totalMinutesExact % 60; // Sẽ cho kết quả chính xác
 
     result = {
       totalHours,
@@ -219,6 +214,9 @@ export const checkBufferTimeConflict = (
   message?: string;
 } => {
   const conflictBookings: ExistingBooking[] = [];
+  const directOverlapBookings: ExistingBooking[] = [];
+  const bufferConflictBookings: ExistingBooking[] = [];
+
   const activeBookings = existingBookings.filter(
     (booking) => booking.status !== "CANCELLED"
   );
@@ -234,6 +232,7 @@ export const checkBufferTimeConflict = (
       newStartDate.isBefore(bookingEnd) && newEndDate.isAfter(bookingStart);
 
     if (hasDirectOverlap) {
+      directOverlapBookings.push(booking);
       conflictBookings.push(booking);
       continue;
     }
@@ -243,11 +242,9 @@ export const checkBufferTimeConflict = (
       const bufferHours = bufferRule.hours;
 
       // CASE 1: New booking SAU existing booking
-      // Kiểm tra: newStart phải cách bookingEnd ít nhất 5h
       const gapAfterExisting = newStartDate.diff(bookingEnd, "hour", true);
 
       // CASE 2: New booking TRƯỚC existing booking
-      // Kiểm tra: newEnd phải cách bookingStart ít nhất 5h
       const gapBeforeExisting = bookingStart.diff(newEndDate, "hour", true);
 
       // Conflict nếu khoảng cách < 5h (ở cả 2 phía)
@@ -255,6 +252,7 @@ export const checkBufferTimeConflict = (
         (gapAfterExisting >= 0 && gapAfterExisting < bufferHours) ||
         (gapBeforeExisting >= 0 && gapBeforeExisting < bufferHours)
       ) {
+        bufferConflictBookings.push(booking);
         conflictBookings.push(booking);
       }
     }
@@ -262,10 +260,15 @@ export const checkBufferTimeConflict = (
 
   let message = "";
   if (conflictBookings.length > 0) {
-    if (bufferRule.type === "FULL_DAY") {
-      message = "Không khả dụng";
-    } else if ("hours" in bufferRule) {
-      message = `Phải cách nhau ít nhất ${bufferRule.hours} giờ giữa các chuyến thuê`;
+    // Ưu tiên thông báo overlap trực tiếp
+    if (directOverlapBookings.length > 0) {
+      message = "Xe đã được đặt trong khoảng thời gian này";
+    } else if (bufferConflictBookings.length > 0) {
+      if (bufferRule.type === "HOURS" && "hours" in bufferRule) {
+        message = `Phải cách nhau ít nhất ${bufferRule.hours} giờ giữa các chuyến thuê`;
+      }
+    } else if (bufferRule.type === "FULL_DAY") {
+      message = "Xe không khả dụng trong ngày này";
     }
   }
 

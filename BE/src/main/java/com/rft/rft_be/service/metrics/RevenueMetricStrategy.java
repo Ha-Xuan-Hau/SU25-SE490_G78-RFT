@@ -22,7 +22,7 @@ public class RevenueMetricStrategy implements MetricStrategy {
     private final FinalContractRepository finalContractRepository;
 
     @Override
-    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame) {
+    public MetricResponse calculate(List<LocalDateTime> timePoints, String metric, String timeFrame, String providerId) {
         List<DataPoint> dataPoints = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
         BigDecimal min = null;
@@ -32,7 +32,7 @@ public class RevenueMetricStrategy implements MetricStrategy {
             LocalDateTime periodStart = timePoints.get(i);
             LocalDateTime periodEnd = timePoints.get(i + 1);
 
-            BigDecimal value = calculateRevenue(periodStart, periodEnd, metric);
+            BigDecimal value = calculateRevenue(periodStart, periodEnd, metric, providerId);
 
             dataPoints.add(DataPoint.builder()
                     .timestamp(periodStart.format(DateTimeFormatter.ISO_DATE_TIME) + "Z")
@@ -63,18 +63,18 @@ public class RevenueMetricStrategy implements MetricStrategy {
                 .build();
     }
 
-    private BigDecimal calculateRevenue(LocalDateTime start, LocalDateTime end, String metric) {
+    private BigDecimal calculateRevenue(LocalDateTime start, LocalDateTime end, String metric, String providerId) {
         switch (metric) {
             case "revenue":
                 List<FinalContract> allContracts  =
-                        finalContractRepository.findByCreatedAtBetween(start, end);
+                        finalContractRepository.findByCreatedAtBetweenAndProvider(start, end, providerId);
                 return allContracts.stream()
                         .map(FinalContract::getCostSettlement)
                         .filter(cost -> cost != null)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
             case "successRevenue":  // THÊM MỚI - chỉ tính từ FinalContract completed
                 List<FinalContract> completedContracts =
-                        finalContractRepository.findCompletedByCreatedAtBetween(start, end);
+                        finalContractRepository.findCompletedByCreatedAtBetweenAndProvider(start, end, providerId);
                 return completedContracts.stream()
                         .map(FinalContract::getCostSettlement)
                         .filter(cost -> cost != null)

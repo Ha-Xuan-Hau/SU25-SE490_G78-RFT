@@ -29,6 +29,8 @@ interface VehicleTypeItem {
   type: string;
   active: number;
   total: number;
+  pending: number; // Thêm field pending
+  suspended: number; // Thêm field suspended
   providers?: number;
 }
 
@@ -218,11 +220,6 @@ export default function VehicleStatsCard() {
         </p>
         <div className="space-y-3">
           {vehicleTypes.map((vehicleType: VehicleTypeItem, index: number) => {
-            // Tính số xe đang chờ duyệt cho từng loại (ước tính)
-            const pendingForType = Math.round(
-              (vehicleType.total - vehicleType.active) * 0.7
-            );
-
             return (
               <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -247,9 +244,14 @@ export default function VehicleStatsCard() {
                     {vehicleType.total}
                   </p>
                   <div className="flex gap-1 justify-end">
-                    {pendingForType > 0 && (
+                    {vehicleType.pending > 0 && (
                       <span className="text-xs bg-yellow-100 text-yellow-700 px-1 rounded">
-                        {pendingForType} chờ duyệt
+                        {vehicleType.pending} chờ duyệt
+                      </span>
+                    )}
+                    {vehicleType.suspended > 0 && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-1 rounded">
+                        {vehicleType.suspended} tạm khóa
                       </span>
                     )}
                   </div>

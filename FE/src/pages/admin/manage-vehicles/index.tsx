@@ -558,8 +558,8 @@ export default function VehicleManagementPage() {
             pagination={{
               current: currentPage, // Control current page
               pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
+              showSizeChanger: false, // ✅ Tắt option chọn số lượng/trang
+              showQuickJumper: false, // ✅ Tắt ô nhập số trang (optional)
               onChange: handlePageChange, // Handle page change
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} xe`,
