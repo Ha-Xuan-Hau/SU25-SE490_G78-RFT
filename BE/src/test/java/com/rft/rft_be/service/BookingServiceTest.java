@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -668,22 +671,33 @@ public class BookingServiceTest {
     }
 
     @Test
-    void getBookingsByProviderIdAndStatus_validInput_shouldReturnList() {
+    void getBookingsByProviderIdAndStatus_validInput_shouldReturnPage() {
         Booking booking = Booking.builder().status(Booking.Status.CONFIRMED).build();
-        when(bookingRepository.findByProviderIdAndStatus("provider_001", Booking.Status.CONFIRMED))
-                .thenReturn(List.of(booking));
+
+        when(bookingRepository.findByProviderIdAndStatus(
+                eq("provider_001"),
+                eq(Booking.Status.CONFIRMED),
+                any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(booking)));
+
         when(bookingMapper.toDTO(booking)).thenReturn(new BookingDTO());
 
-        List<BookingDTO> result = bookingService.getBookingsByProviderIdAndStatus("provider_001", "CONFIRMED");
+        // ⚠️ Gọi service với đủ 3 tham số (thêm page)
+        Page<BookingDTO> result =
+                bookingService.getBookingsByProviderIdAndStatus("provider_001", "CONFIRMED", 0);
 
-        Assertions.assertThat(result).hasSize(1);
-        verify(bookingRepository).findByProviderIdAndStatus("provider_001", Booking.Status.CONFIRMED);
+        assertEquals(1, result.getContent().size());
+
+        verify(bookingRepository).findByProviderIdAndStatus(
+                eq("provider_001"),
+                eq(Booking.Status.CONFIRMED),
+                any(Pageable.class));
     }
 
     @Test
     void getBookingsByProviderIdAndStatus_invalidStatus_shouldThrow() {
         Assertions.assertThatThrownBy(() ->
-                        bookingService.getBookingsByProviderIdAndStatus("provider_001", "INVALID_STATUS")
+                        bookingService.getBookingsByProviderIdAndStatus("provider_001", "INVALID_STATUS", 0)
                 )
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Invalid booking status");
@@ -1059,7 +1073,7 @@ public class BookingServiceTest {
         bookingService.payBookingWithWallet("booking123", "token");
 
         assertEquals(Booking.Status.CONFIRMED, booking.getStatus());
-        verify(notificationService).notifyPaymentCompleted("renter123", "booking123", 500.0);
+        verify(notificationService).notifyPaymentCompleted(eq("renter123"), eq("booking123"), anyString(), eq(500.0));
     }
 
     @Test

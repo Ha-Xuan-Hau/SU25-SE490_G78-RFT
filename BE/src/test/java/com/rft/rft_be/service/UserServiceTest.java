@@ -14,6 +14,8 @@ import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.repository.DriverLicensRepository;
 import com.rft.rft_be.repository.UserRegisterVehicleRepository;
 import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.repository.WalletRepository;
+import com.rft.rft_be.service.otp.OtpService;
 import com.rft.rft_be.service.user.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,10 @@ public class UserServiceTest {
     @Mock
     private UserRegisterVehicleRepository userRegisterVehicleRepository;
     @Mock
+    private WalletRepository walletRepository;
+    @Mock
+    private OtpService otpService;
+    @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
     private UserMapper userMapper;
@@ -54,7 +60,9 @@ public class UserServiceTest {
                 userRepository,
                 passwordEncoder,
                 userMapper,
-                userRegisterVehicleRepository
+                userRegisterVehicleRepository,
+                walletRepository,
+                otpService
         );
     }
 
@@ -146,7 +154,6 @@ public class UserServiceTest {
         UserRegisterDTO dto = new UserRegisterDTO();
         dto.setEmail("test@example.com");
         dto.setPhone("0123456789");
-        dto.setAddress("Test Address");
         dto.setPassword("password");
 
         when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
@@ -154,7 +161,6 @@ public class UserServiceTest {
         User savedUser = new User();
         savedUser.setEmail(dto.getEmail());
         savedUser.setPhone(dto.getPhone());
-        savedUser.setAddress(dto.getAddress());
         savedUser.setPassword("hashed-password");
 
         when(passwordEncoder.encode("password")).thenReturn("hashed-password");

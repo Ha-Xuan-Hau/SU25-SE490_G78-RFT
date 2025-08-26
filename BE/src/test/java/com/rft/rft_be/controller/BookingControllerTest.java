@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -261,13 +262,19 @@ class BookingControllerTest {
         BookingDTO dto = new BookingDTO();
         dto.setId("b1");
 
-        Mockito.when(bookingService.getBookingsByProviderIdAndStatus("p1", "CANCELLED"))
-                .thenReturn(List.of(dto));
+        // Trả về Page thay vì List, và mock đủ 3 tham số
+        Mockito.when(bookingService.getBookingsByProviderIdAndStatus(
+                        Mockito.eq("p1"),
+                        Mockito.eq("CANCELLED"),
+                        Mockito.anyInt()))
+                .thenReturn(new PageImpl<>(List.of(dto)));
 
         mockMvc.perform(get("/api/bookings/provider/p1/status/CANCELLED")
-                        .header("Authorization", "Bearer mock-token"))
+                        .header("Authorization", "Bearer mock-token")
+                        .param("page", "0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("b1"));
+                // Nếu controller trả thẳng Page<?> ra JSON, Spring sẽ có field "content"
+                .andExpect(jsonPath("$.content[0].id").value("b1"));
     }
 
     @Test

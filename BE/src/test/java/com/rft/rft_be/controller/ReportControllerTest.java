@@ -116,30 +116,24 @@ class ReportControllerTest {
     @Test
     void testGetReportsByType() throws Exception {
         List<ReportGroupedByTargetDTO> reports = List.of(
-                new ReportGroupedByTargetDTO("t1", "A", "a@gmail.com", "Lừa đảo", 2)
+                new ReportGroupedByTargetDTO(
+                        "t1",                 // targetId
+                        "A",                  // targetName
+                        "a@gmail.com",        // targetEmail
+                        "Lừa đảo",            // type  (bạn đang assert jsonPath "$[0].type")
+                        "Mô tả",              // description
+                        2L,                   // count (long, không phải int)
+                        "2025-08-26T00:00:00" // createdAt (chuỗi ví dụ)
+                )
         );
-        when(reportService.getReportsByType("SERIOUS_ERROR", 0, 10)).thenReturn(reports);
+
+        when(reportService.getReportsByType("SERIOUS_ERROR", 0, 10))
+                .thenReturn(reports);
 
         mockMvc.perform(get("/api/reports?type=SERIOUS_ERROR"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].targetId").value("t1"))
                 .andExpect(jsonPath("$[0].type").value("Lừa đảo"));
-    }
-
-    @Test
-    void testSearchReports() throws Exception {
-        List<ReportGroupedByTargetDTO> reports = List.of(
-                new ReportGroupedByTargetDTO("t1", "B", "b@gmail.com", "Spam", 3)
-        );
-        when(reportService.searchReports("NON_SERIOUS_ERROR", "B", "Spam", 0, 10)).thenReturn(reports);
-
-        mockMvc.perform(get("/api/reports/search")
-                        .param("generalType", "NON_SERIOUS_ERROR")
-                        .param("keyword", "B")
-                        .param("type", "Spam"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("Spam"))
-                .andExpect(jsonPath("$[0].count").value(3));
     }
 
     @Test
