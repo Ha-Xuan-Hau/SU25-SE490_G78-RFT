@@ -85,12 +85,12 @@ export const BUFFER_TIME_RULES = {
   MOTORBIKE: {
     type: "HOURS" as const,
     hours: 5, // 5 tiếng buffer
-    //description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
+    description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
   },
   BICYCLE: {
     type: "HOURS" as const,
     hours: 5, // 5 tiếng buffer
-    // description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
+    description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
   },
 } as const;
 
