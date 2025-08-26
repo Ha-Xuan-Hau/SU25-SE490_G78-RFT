@@ -415,7 +415,7 @@ export default function FinalContractsPage() {
             </div>
 
             {/* Hình ảnh hợp đồng */}
-            <div>
+            {/* <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 Hình ảnh hợp đồng
               </h3>
@@ -433,7 +433,7 @@ export default function FinalContractsPage() {
                   }
                 />
               </div>
-            </div>
+            </div> */}
 
             {/* Ghi chú */}
             <div>
