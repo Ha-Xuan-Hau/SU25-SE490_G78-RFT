@@ -495,11 +495,16 @@ export default function VehicleDetail() {
   // DatePicker handlers
   const handleDateChange: RangePickerProps["onChange"] = async (values) => {
     if (values && values[0] && values[1]) {
-      // values từ Ant DatePicker là Dayjs objects, cần convert sang Date
+      // Clean milliseconds khi convert từ Dayjs sang Date
       const startDate = values[0].toDate();
-      const endDate = values[1].toDate();
+      startDate.setMilliseconds(0);
+      startDate.setSeconds(0);
 
-      // Validate phút phải là 00 hoặc 30
+      const endDate = values[1].toDate();
+      endDate.setMilliseconds(0);
+      endDate.setSeconds(0);
+
+      // Validate phút
       const startMinute = startDate.getMinutes();
       const endMinute = endDate.getMinutes();
 
