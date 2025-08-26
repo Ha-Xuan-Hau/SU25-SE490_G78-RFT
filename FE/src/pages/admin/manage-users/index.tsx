@@ -31,7 +31,7 @@ interface User {
   address: string;
   dateOfBirth: number[];
   role: "USER" | "PROVIDER";
-  status: "ACTIVE" | "INACTIVE" | "TEMP_BAN";
+  status: "ACTIVE" | "INACTIVE" | "TEMP_BANNED";
   profilePicture: string;
   createdAt: number[];
   updatedAt: number[];
@@ -241,7 +241,7 @@ export default function ManageUserPage() {
         return "success";
       case "INACTIVE":
         return "error";
-      case "TEMP_BAN":
+      case "TEMP_BANNED":
         return "warning";
       default:
         return "default";
@@ -254,7 +254,7 @@ export default function ManageUserPage() {
         return "Hoạt động";
       case "INACTIVE":
         return "Ngưng hoạt động";
-      case "TEMP_BAN":
+      case "TEMP_BANNED":
         return "Tạm khóa";
       default:
         return status;
@@ -417,7 +417,7 @@ export default function ManageUserPage() {
             >
               <Option value="ACTIVE">Hoạt động</Option>
               <Option value="INACTIVE">Ngưng hoạt động</Option>
-              <Option value="TEMP_BAN">Tạm khóa</Option>
+              <Option value="TEMP_BANNED">Tạm khóa</Option>
             </Select>
 
             <Space>
@@ -499,7 +499,7 @@ export default function ManageUserPage() {
           >
             Đóng
           </Button>,
-          ...(selectedUser?.status === "TEMP_BAN"
+          ...(selectedUser?.status === "TEMP_BANNED"
             ? [
                 <Button
                   key="toggle"
