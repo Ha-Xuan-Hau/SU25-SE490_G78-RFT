@@ -1,26 +1,8 @@
-import dayjs, { VN_TZ } from "./dayjs";
-import { Dayjs } from "./dayjs";
 import duration from "dayjs/plugin/duration";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+import dayjs, { type Dayjs, VN_TZ } from "@/utils/dayjs";
 
 dayjs.extend(duration);
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
-
-// Helper để đảm bảo timezone VN
-const ensureVNTimezone = (date: Dayjs): Dayjs => {
-  if (!date.isValid()) {
-    console.warn("Invalid date provided to ensureVNTimezone");
-    return dayjs().tz("Asia/Ho_Chi_Minh");
-  }
-  return date.tz("Asia/Ho_Chi_Minh");
-};
-
-// Helper để get current time ở VN
-const getCurrentVNTime = (): Dayjs => {
-  return dayjs().tz("Asia/Ho_Chi_Minh");
-};
 
 /**
  * Helper function to parse time from backend LocalDateTime
@@ -32,36 +14,22 @@ export const parseBackendTime = (
   timeData: string | number[] | Dayjs
 ): Dayjs => {
   if (dayjs.isDayjs(timeData)) {
-    // Đảm bảo đã ở timezone VN
-    return timeData.tz("Asia/Ho_Chi_Minh");
+    return timeData;
   }
 
   if (Array.isArray(timeData)) {
-    const [year, month, day, hour = 0, minute = 0] = timeData;
-
-    // Method 1: Dùng Date constructor (RECOMMENDED)
-    const date = new Date(year, month - 1, day, hour, minute, 0);
-    return dayjs.tz(date, "Asia/Ho_Chi_Minh");
-
-    // Method 2: Dùng string format (ALTERNATIVE)
-    // const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-    // return dayjs.tz(dateString, "Asia/Ho_Chi_Minh");
-
-    // Method 3: Parse as array với dayjs constructor
-    // return dayjs([year, month - 1, day, hour, minute, 0, 0]).tz("Asia/Ho_Chi_Minh");
+    const [year, month, day, hour, minute] = timeData;
+    // Tạo string format và parse với VN timezone
+    const dateString = `${year}-${String(month).padStart(2, "0")}-${String(
+      day
+    ).padStart(2, "0")} ${String(hour || 0).padStart(2, "0")}:${String(
+      minute || 0
+    ).padStart(2, "0")}:00`;
+    return dayjs.tz(dateString, VN_TZ); // ✅ Parse với VN timezone
   }
 
-  // Parse string và convert về VN timezone
-  // Nếu string có timezone info (Z hoặc +00:00) thì parse as UTC trước
-  if (
-    typeof timeData === "string" &&
-    (timeData.includes("Z") || timeData.includes("+00:00"))
-  ) {
-    return dayjs.utc(timeData).tz("Asia/Ho_Chi_Minh");
-  }
-
-  // String không có timezone, assume là local time
-  return dayjs(timeData).tz("Asia/Ho_Chi_Minh");
+  // Handle string format với VN timezone
+  return dayjs.tz(timeData, VN_TZ); // ✅ Parse với VN timezone
 };
 
 /**
@@ -69,8 +37,8 @@ export const parseBackendTime = (
  * Backend expects LocalDateTime in format "yyyy-MM-dd'T'HH:mm:ss" (Vietnam time)
  */
 export const formatTimeForBackend = (time: Dayjs): string => {
-  // Đảm bảo time ở timezone VN trước khi format
-  return time.tz("Asia/Ho_Chi_Minh").format("YYYY-MM-DDTHH:mm:ss");
+  // Format as ISO LocalDateTime without timezone (backend treats as Vietnam time)
+  return time.format("YYYY-MM-DDTHH:mm:ss");
 };
 
 /**
@@ -112,12 +80,12 @@ export const BUFFER_TIME_RULES = {
   MOTORBIKE: {
     type: "HOURS" as const,
     hours: 5, // 5 tiếng buffer
-    description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
+    //description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
   },
   BICYCLE: {
     type: "HOURS" as const,
     hours: 5, // 5 tiếng buffer
-    description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
+    // description: "Phải cách nhau ít nhất 5 tiếng giữa các chuyến",
   },
 } as const;
 
@@ -246,12 +214,12 @@ export const checkBufferTimeConflict = (
   message?: string;
 } => {
   const conflictBookings: ExistingBooking[] = [];
+  const directOverlapBookings: ExistingBooking[] = [];
+  const bufferConflictBookings: ExistingBooking[] = [];
+
   const activeBookings = existingBookings.filter(
     (booking) => booking.status !== "CANCELLED"
   );
-
-  const vnNewStartDate = ensureVNTimezone(newStartDate);
-  const vnNewEndDate = ensureVNTimezone(newEndDate);
 
   const bufferRule = BUFFER_TIME_RULES[vehicleType];
 
@@ -261,9 +229,10 @@ export const checkBufferTimeConflict = (
 
     // Kiểm tra overlap trực tiếp
     const hasDirectOverlap =
-      vnNewStartDate.isBefore(bookingEnd) && vnNewEndDate.isAfter(bookingStart);
+      newStartDate.isBefore(bookingEnd) && newEndDate.isAfter(bookingStart);
 
     if (hasDirectOverlap) {
+      directOverlapBookings.push(booking);
       conflictBookings.push(booking);
       continue;
     }
@@ -273,18 +242,17 @@ export const checkBufferTimeConflict = (
       const bufferHours = bufferRule.hours;
 
       // CASE 1: New booking SAU existing booking
-      // Kiểm tra: newStart phải cách bookingEnd ít nhất 5h
-      const gapAfterExisting = vnNewStartDate.diff(bookingEnd, "hour", true);
+      const gapAfterExisting = newStartDate.diff(bookingEnd, "hour", true);
 
       // CASE 2: New booking TRƯỚC existing booking
-      // Kiểm tra: newEnd phải cách bookingStart ít nhất 5h
-      const gapBeforeExisting = bookingStart.diff(vnNewEndDate, "hour", true);
+      const gapBeforeExisting = bookingStart.diff(newEndDate, "hour", true);
 
       // Conflict nếu khoảng cách < 5h (ở cả 2 phía)
       if (
         (gapAfterExisting >= 0 && gapAfterExisting < bufferHours) ||
         (gapBeforeExisting >= 0 && gapBeforeExisting < bufferHours)
       ) {
+        bufferConflictBookings.push(booking);
         conflictBookings.push(booking);
       }
     }
@@ -292,10 +260,15 @@ export const checkBufferTimeConflict = (
 
   let message = "";
   if (conflictBookings.length > 0) {
-    if (bufferRule.type === "FULL_DAY") {
-      message = "Không khả dụng";
-    } else if ("hours" in bufferRule) {
-      message = `Phải cách nhau ít nhất ${bufferRule.hours} giờ giữa các chuyến thuê`;
+    // Ưu tiên thông báo overlap trực tiếp
+    if (directOverlapBookings.length > 0) {
+      message = "Xe đã được đặt trong khoảng thời gian này";
+    } else if (bufferConflictBookings.length > 0) {
+      if (bufferRule.type === "HOURS" && "hours" in bufferRule) {
+        message = `Phải cách nhau ít nhất ${bufferRule.hours} giờ giữa các chuyến thuê`;
+      }
+    } else if (bufferRule.type === "FULL_DAY") {
+      message = "Xe không khả dụng trong ngày này";
     }
   }
 
@@ -317,12 +290,11 @@ export const isDateDisabled = (
   openTime: string,
   closeTime: string
 ): boolean => {
-  const vnDate = ensureVNTimezone(date);
-  const today = dayjs().tz("Asia/Ho_Chi_Minh").startOf("day");
-  const dateStr = vnDate.format("YYYY-MM-DD");
+  const today = dayjs().startOf("day");
+  const dateStr = date.format("YYYY-MM-DD");
 
   // Disable ngày trong quá khứ
-  if (vnDate.isBefore(today)) {
+  if (date.isBefore(today)) {
     return true;
   }
 
@@ -412,7 +384,7 @@ export const isDateDisabled = (
 
       // Đánh dấu các giờ bị chặn trong ngày hiện tại
       for (let hour = 0; hour < 24; hour++) {
-        const checkTime = vnDate.hour(hour).minute(0).second(0);
+        const checkTime = date.hour(hour).minute(0).second(0);
         const checkTimeEnd = checkTime.add(1, "hour");
 
         // Kiểm tra overlap với khoảng bị chặn (đã bao gồm cả buffer 2 phía)
@@ -508,12 +480,10 @@ export const createDisabledTimeFunction = (
     }
 
     const disabledHours: number[] = [];
-    // Đảm bảo current ở VN timezone
-    const vnCurrent = ensureVNTimezone(current);
-    const today = dayjs().tz("Asia/Ho_Chi_Minh");
-    const isToday = vnCurrent.isSame(today, "day");
+    const today = dayjs();
+    const isToday = current.isSame(today, "day");
     const currentHour = today.hour();
-    const selectedDateStr = vnCurrent.format("YYYY-MM-DD");
+    const selectedDateStr = current.format("YYYY-MM-DD");
 
     // Disable past hours for today
     if (isToday) {
