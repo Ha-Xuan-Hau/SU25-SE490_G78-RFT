@@ -321,12 +321,7 @@ export const VehicleRentalCard: React.FC<VehicleRentalCardProps> = ({
   const canRate = () => {
     const contractStatus = info?.contract?.status;
     const bookingStatus = info?.status;
-    const completedStatuses = [
-      "COMPLETED",
-      "Đã tất toán",
-      "RETURNED",
-      "Đã trả xe",
-    ];
+    const completedStatuses = ["COMPLETED", "Đã tất toán"];
 
     return (
       completedStatuses.includes(contractStatus || "") ||
