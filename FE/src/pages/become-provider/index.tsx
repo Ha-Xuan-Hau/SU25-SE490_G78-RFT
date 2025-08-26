@@ -453,14 +453,14 @@ const BecomeProviderPage = () => {
         <Paragraph>
           <strong>1. Quy định chung</strong>
           <br />
-          1.1. Người cho thuê xe (sau đây gọi là Người cung cấp) phải đảm bảo xe
-          cho thuê có đầy đủ giấy tờ hợp pháp.
+          1.1. Người cho thuê xe (sau đây gọi là Chủ xe) phải đảm bảo xe cho
+          thuê có đầy đủ giấy tờ hợp pháp.
           <br />
           1.2. Nhà cung cấp phải cung cấp thông tin chính xác về xe và các điều
           kiện cho thuê.
           <br />
           <br />
-          <strong>2. Trách nhiệm của nhà cung cấp</strong>
+          <strong>2. Trách nhiệm của chủ xe</strong>
           <br />
           2.1. Đảm bảo xe cho thuê trong tình trạng an toàn và vệ sinh.
           <br />
@@ -471,7 +471,7 @@ const BecomeProviderPage = () => {
           <br />
           <strong>3. Chính sách bảo hiểm và bồi thường</strong>
           <br />
-          3.1. Nhà cung cấp nên có bảo hiểm cho xe cho thuê.
+          3.1. Chủ xe nên có bảo hiểm cho xe cho thuê.
           <br />
           3.2. Trong trường hợp xảy ra tai nạn, hai bên sẽ giải quyết theo quy
           định của pháp luật và điều khoản bảo hiểm.
@@ -479,20 +479,23 @@ const BecomeProviderPage = () => {
           <br />
           <strong>4. Thông tin thanh toán</strong>
           <br />
-          4.1. Nền tảng sẽ chuyển tiền cho Nhà cung cấp trong vòng 24 giờ sau
-          khi giao dịch hoàn tất.
+          4.1. Nền tảng sẽ chuyển tiền cho chủ xe thông qua các yêu cầu rút tiền
+          do chủ xe tạo trên hệ thống.
           <br />
-          4.2. Các khoản phí và thuế liên quan sẽ được trừ trực tiếp trước khi
-          thanh toán.
+          4.2. Nền tảng hiện tại đang hoạt động phi lợi nhuận, chủ xe nhận 100%
+          hoa hồng sau mỗi giao dịch thành công trên hệ thống.
           <br />
           <br />
           <strong>5. Hủy bỏ và hoàn tiền</strong>
           <br />
-          5.1. Nhà cung cấp có thể bị phạt nếu hủy đơn đặt xe đã xác nhận mà
-          không có lý do chính đáng.
+          5.1. Chủ xe có thể bị phạt nếu hủy đơn đặt xe đã xác nhận mà không có
+          lý do chính đáng.
           <br />
           5.2. Các trường hợp hủy đơn và mức phạt được quy định cụ thể trong
           chính sách hủy đơn.
+          <br />
+          5.3. Mức phạt cho mỗi xe của chủ xe sẽ do chủ xe tạo trong phần Quy
+          định thuê xe, yêu cầu phải tạo trước khi tạo xe mới trên hệ thống.
           <br />
         </Paragraph>
       </div>

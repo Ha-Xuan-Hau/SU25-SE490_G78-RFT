@@ -340,12 +340,15 @@ public class AdminUserServiceImpl implements AdminUserService {
                     user.getId(),
                     Contract.Status.RENTING
             );
+            long processing = contractRepository.countByProviderIdAndStatus(
+                    user.getId(),
+                    Contract.Status.PROCESSING);
             long unfinished = bookingRepository.countUnfinishedByUserId(
                     user.getId(),
                     Booking.Status.COMPLETED,
                     Booking.Status.CANCELLED
             );
-            long activities = renting + unfinished;
+            long activities = renting + processing + unfinished;
             user.setStatus(activities > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
         } // STAFF/ADMIN: giữ nguyên
 
