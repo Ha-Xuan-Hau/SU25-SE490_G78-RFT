@@ -69,8 +69,12 @@ export const fetchUserProfile = async (
         // Check response structure
         const userData = response.data?.result || response.data;
 
-        if (userData?.status === "INACTIVE") {
+        if (userData.status === "INACTIVE") {
           throw new Error("ACCOUNT_DEACTIVATED");
+        }
+
+        if (userData.status === "TEMP_BANNED") {
+          throw new Error("ACCOUNT_TEMP_BANNED");
         }
 
         setUser(userData as User);
@@ -200,6 +204,42 @@ export const useUserState = (): [User | null, SetterOrUpdater<User | null>] => {
       }, 5000);
     };
 
+    const handleAccountTempBanned = (): void => {
+      // Prevent duplicate handling within 5 seconds
+      const now = Date.now();
+      if (now - lastDeactivationTime < 5000) {
+        console.log("Deactivation already handled recently, skipping...");
+        return;
+      }
+      lastDeactivationTime = now;
+
+      console.log("Account deactivated, logging out...");
+
+      // Clear user state
+      setUser(null);
+      setAccessToken(null);
+
+      // Clear localStorage
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      sessionStorage.clear();
+
+      // Show notification with unique ID to prevent duplicates
+      toast.error(
+        "Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ admin để biết thêm chi tiết.",
+        {
+          position: "top-center",
+          autoClose: 5000,
+          toastId: "account-temp-banned",
+        }
+      );
+
+      // Redirect to home
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 5000);
+    };
+
     const performStatusCheck = async (): Promise<void> => {
       try {
         const userData = await checkUserStatus(user.id);
@@ -208,6 +248,9 @@ export const useUserState = (): [User | null, SetterOrUpdater<User | null>] => {
 
         if (userData.status === "INACTIVE") {
           handleAccountDeactivated();
+        }
+        if (userData.status === "TEMP_BANNED") {
+          handleAccountTempBanned();
         }
       } catch (error: any) {
         if (error.message === "ACCOUNT_DEACTIVATED") {
