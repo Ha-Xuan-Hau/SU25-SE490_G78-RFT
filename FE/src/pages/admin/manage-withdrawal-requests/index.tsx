@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Typography,
   Table,
@@ -55,11 +55,11 @@ export default function WithdrawalRequestsPage() {
     "APPROVE" | "REJECT" | null
   >(null);
 
-  useEffect(() => {
-    loadWithdrawals();
-  }, []);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadWithdrawals = async (status?: string) => {
+  // ❌ XÓA loadWithdrawals cũ và thay bằng version mới
+  // ✅ THÊM: Wrap loadWithdrawals với useCallback
+  const loadWithdrawals = useCallback(async (status?: string) => {
     setLoading(true);
     try {
       const data = await getAllWithdrawals(status || "PENDING");
@@ -69,7 +69,38 @@ export default function WithdrawalRequestsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // ✅ THÊM: Function refresh data
+  const refreshData = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await loadWithdrawals();
+      showSuccess("Dữ liệu đã được cập nhật");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadWithdrawals]);
+
+  // ✅ THÊM: Listen to refresh event
+  useEffect(() => {
+    const handleRefreshEvent = (event: CustomEvent) => {
+      if (event.detail.eventType === "ADMIN_RELOAD_WITHDRAWAL_REQUESTS" ||
+          event.detail.eventType === "ADMIN_RELOAD_ALL") {
+        refreshData();
+      }
+    };
+
+    window.addEventListener('admin-data-refresh', handleRefreshEvent as EventListener);
+    return () => {
+      window.removeEventListener('admin-data-refresh', handleRefreshEvent as EventListener);
+    };
+  }, [refreshData]);
+
+  // ✅ THÊM: Initial load
+  useEffect(() => {
+    loadWithdrawals();
+  }, []);
 
   const handleViewDetails = (withdrawal: WithdrawalRequest) => {
     setSelectedWithdrawal(withdrawal);

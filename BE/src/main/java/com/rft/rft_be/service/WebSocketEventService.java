@@ -1,5 +1,6 @@
 package com.rft.rft_be.service;
 
+import com.rft.rft_be.constants.WebSocketEvents;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -93,5 +94,85 @@ public class WebSocketEventService {
         payload.put("newStatus", newStatus);
 
         sendToUser(userId, "STATUS_CHANGE", payload);
+    }
+
+    /**
+     * Reload Dashboard Admin
+     */
+    public void reloadAdminDashboard() {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "RELOAD");
+        payload.put("pageType", "DASHBOARD");
+        payload.put("timestamp", LocalDateTime.now());
+
+        sendToChannel("admin", WebSocketEvents.ADMIN_RELOAD_DASHBOARD, payload);
+        log.info("Sent reload event for admin dashboard");
+    }
+
+    /**
+     * Reload Vehicles Pending Page
+     */
+    public void reloadVehiclesPending() {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "RELOAD");
+        payload.put("pageType", "VEHICLES_PENDING");
+        payload.put("timestamp", LocalDateTime.now());
+
+        sendToChannel("admin", WebSocketEvents.ADMIN_RELOAD_VEHICLES_PENDING, payload);
+        log.info("Sent reload event for vehicles pending page");
+    }
+
+    /**
+     * Reload Withdrawal Requests Page
+     */
+    public void reloadWithdrawalRequests() {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "RELOAD");
+        payload.put("pageType", "WITHDRAWAL_REQUESTS");
+        payload.put("timestamp", LocalDateTime.now());
+
+        sendToChannel("admin", WebSocketEvents.ADMIN_RELOAD_WITHDRAWAL_REQUESTS, payload);
+        log.info("Sent reload event for withdrawal requests page");
+    }
+
+    /**
+     * Reload Reports Page
+     */
+    public void reloadReports() {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "RELOAD");
+        payload.put("pageType", "REPORTS");
+        payload.put("timestamp", LocalDateTime.now());
+
+        sendToChannel("admin", WebSocketEvents.ADMIN_RELOAD_REPORTS, payload);
+        log.info("Sent reload event for reports page");
+    }
+
+    /**
+     * Reload all admin pages at once
+     */
+    public void reloadAllAdminPages() {
+        reloadAdminDashboard();
+        reloadVehiclesPending();
+        reloadWithdrawalRequests();
+        reloadReports();
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "RELOAD_ALL");
+        payload.put("timestamp", LocalDateTime.now());
+        sendToChannel("admin", WebSocketEvents.ADMIN_RELOAD_ALL, payload);
+
+        log.info("Sent reload event for all admin pages");
+    }
+
+    public void reloadReportDetail(String reportId) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("action", "RELOAD");
+        payload.put("reportId", reportId);
+        payload.put("timestamp", LocalDateTime.now());
+
+        // Gửi đến admin channel
+        sendToChannel("admin", "ADMIN_RELOAD_REPORT_DETAIL", payload);
+        log.info("Sent reload event for report detail: {}", reportId);
     }
 }

@@ -6,6 +6,7 @@ import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.ExtraFeeRuleMapper;
 import com.rft.rft_be.mapper.VehicleMapper;
 import com.rft.rft_be.repository.*;
+import com.rft.rft_be.service.WebSocketEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,6 +47,8 @@ public class VehicleRentServiceImpl implements VehicleRentService {
     private final ExtraFeeRuleMapper extraFeeRuleMapper;
     private final UserRegisterVehicleRepository userRegisterVehicleRepository;
     private final FinalContractRepository finalContractRepository;
+
+    private final WebSocketEventService webSocketEventService;
 
     @Override
     public PageResponseDTO<VehicleGetDTO> getProviderCar(int page, int size, String sortBy, String sortDir) {
@@ -678,6 +681,10 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         // Fetch with brand and model for response
         Vehicle vehicleWithRelations = vehicleRepository.findByIdWithBrandAndModel(updatedVehicle.getId())
                 .orElse(updatedVehicle);
+        if(needApproval){
+            webSocketEventService.reloadVehiclesPending();
+        }
+        webSocketEventService.reloadAdminDashboard();
 
         log.info("[DEBUG] Cập nhật xe thành công: {}", vehicleId);
         return vehicleMapper.vehicleGet(vehicleWithRelations);
@@ -786,6 +793,7 @@ public class VehicleRentServiceImpl implements VehicleRentService {
         Vehicle updated = vehicleRepository.save(vehicle);
         Vehicle withRelations = vehicleRepository.findByIdWithBrandAndModel(updated.getId()).orElse(updated);
         log.info("[DEBUG] Đổi trạng thái AVAILABLE<->SUSPENDED thành công: {} -> {}", vehicleId, newStatus);
+        webSocketEventService.reloadAdminDashboard();
         return vehicleMapper.vehicleGet(withRelations);
     }
     @Override

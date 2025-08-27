@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef ,useCallback} from "react";
 import {
   Table,
   Tabs,
@@ -15,7 +15,7 @@ import {
   Spin,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { SearchOutlined, EyeOutlined, UserOutlined } from "@ant-design/icons";
+import { SearchOutlined, EyeOutlined, UserOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
   getPendingVehicles,
   getPendingStats,
@@ -107,6 +107,7 @@ export default function VehiclePendingPage() {
   const [batchLoading, setBatchLoading] = useState(false); // Loading state riêng cho batch actions
   const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
   const [currentPage, setCurrentPage] = useState(1); // State để control pagination
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [vehicleDetailModal, setVehicleDetailModal] = useState<{
     open: boolean;
@@ -136,22 +137,22 @@ export default function VehiclePendingPage() {
     total: 0,
   });
 
-  // Fetch Pending Vehicles với search
-  const loadPendingVehicles = async (
-    page = 1,
-    pageSize = 10,
-    search = searchText,
-    tab = activeTab
+  // ❌ XÓA loadPendingVehicles cũ và thay bằng version mới
+  // ✅ THÊM: Wrap loadPendingVehicles với useCallback
+  const loadPendingVehicles = useCallback(async (
+      page = pagination.current || 1,
+      pageSize = pagination.pageSize || 10,
+      search = searchText,
+      tab = activeTab
   ) => {
     setLoading(true);
     try {
       const params: any = {
         type: tab,
-        page: page - 1, // 0-indexed
+        page: page - 1,
         size: pageSize,
       };
 
-      // Thêm search params nếu có
       if (search && search.trim()) {
         params.search = search.trim();
       }
@@ -171,17 +172,55 @@ export default function VehiclePendingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, searchText]); // ✅ THÊM dependencies
 
-  // Fetch Pending Stats
-  const loadPendingStats = async () => {
+  // ❌ XÓA loadPendingStats cũ và thay bằng version mới
+  // ✅ THÊM: Wrap loadPendingStats với useCallback
+  const loadPendingStats = useCallback(async () => {
     try {
       const response = await getPendingStats();
       setPendingStats(response);
     } catch (error) {
       console.error("Error fetching pending stats:", error);
     }
-  };
+  }, []);
+
+  // ✅ THÊM: Function refresh data
+  const refreshData = useCallback(async () => {
+    console.log("🔄 Refreshing vehicle pending data...");
+    setIsRefreshing(true);
+
+    try {
+      await Promise.all([
+        loadPendingStats(),
+        loadPendingVehicles()
+      ]);
+
+      showApiSuccess("Dữ liệu đã được cập nhật");
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadPendingStats, loadPendingVehicles]);
+
+  // ✅ THÊM: Listen to refresh event
+  useEffect(() => {
+    const handleRefreshEvent = (event: CustomEvent) => {
+      console.log("📨 Received refresh event:", event.detail);
+
+      if (event.detail.eventType === "ADMIN_RELOAD_VEHICLES_PENDING" ||
+          event.detail.eventType === "ADMIN_RELOAD_ALL") {
+        refreshData();
+      }
+    };
+
+    window.addEventListener('admin-data-refresh', handleRefreshEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('admin-data-refresh', handleRefreshEvent as EventListener);
+    };
+  }, [refreshData]);
 
   // Initial load
   useEffect(() => {

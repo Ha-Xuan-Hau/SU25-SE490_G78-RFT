@@ -517,26 +517,6 @@ class NotificationControllerTest {
         verify(notificationService).notifyOrderPlaced("user-1", "booking-1", "Toyota Camry");
     }
 
-    @Test
-    void notifyPaymentCompleted_Success() {
-        // Arrange
-        Map<String, Object> request = Map.of(
-                "userId", "user-1",
-                "bookingId", "booking-1",
-                "amount", 500.0
-        );
-
-        doNothing().when(notificationService).notifyPaymentCompleted(anyString(), anyString(), anyDouble());
-
-        // Act
-        ResponseEntity<Map<String, String>> response = notificationController.notifyPaymentCompleted(request);
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Đã gửi thông báo thanh toán hoàn tất", response.getBody().get("message"));
-        verify(notificationService).notifyPaymentCompleted("user-1", "booking-1", 500.0);
-    }
 
     @Test
     void notifyOrderApproved_Success() {

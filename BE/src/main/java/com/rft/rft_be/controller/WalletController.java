@@ -3,6 +3,7 @@ import com.rft.rft_be.dto.wallet.*;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.service.WebSocketEventService;
 import com.rft.rft_be.service.wallet.WalletService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import java.util.Map;
 public class WalletController {
     private final WalletService walletService;
     private final UserRepository userRepository;
+    private final WebSocketEventService webSocketEventService;
     @GetMapping("/account")
     public ResponseEntity<WalletDTO> getWallet(@RequestParam String userId) {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -66,6 +68,8 @@ public class WalletController {
         }
         try {
             WalletTransactionDTO response = walletService.createWithdrawal(dto);
+            webSocketEventService.reloadWithdrawalRequests();
+            webSocketEventService.reloadAdminDashboard();
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -86,6 +90,8 @@ public class WalletController {
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String userIdToken = authentication.getToken().getClaim("userId");
         walletService.cancelWithdrawalAsUser(id, userId);
+        webSocketEventService.reloadWithdrawalRequests();
+        webSocketEventService.reloadAdminDashboard();
         return ResponseEntity.ok().build();
     }
 
@@ -108,6 +114,8 @@ public class WalletController {
         String staffId = authentication.getToken().getClaim("userId");
 
         walletService.updateWithdrawalStatus(id, status, staffId);
+        webSocketEventService.reloadWithdrawalRequests();
+        webSocketEventService.reloadAdminDashboard();
         return ResponseEntity.ok().build();
     }
 

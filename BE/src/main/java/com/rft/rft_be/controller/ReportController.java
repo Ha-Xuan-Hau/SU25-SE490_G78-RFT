@@ -4,6 +4,7 @@ import com.rft.rft_be.dto.report.*;
 import com.rft.rft_be.entity.User;
 import com.rft.rft_be.entity.UserReport;
 import com.rft.rft_be.repository.UserRepository;
+import com.rft.rft_be.service.WebSocketEventService;
 import com.rft.rft_be.service.report.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ public class ReportController {
 
     private final ReportService reportService;
     private final UserRepository userRepo;
+    private final WebSocketEventService webSocketEventService;
 
     /**
      * API tạo mới một báo cáo.
@@ -44,6 +46,8 @@ public class ReportController {
         User reporter = userRepo.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         reportService.report(reporter, request);
+        webSocketEventService.reloadAdminDashboard();
+        webSocketEventService.reloadReports();
         return ResponseEntity.ok().build();
     }
 
@@ -127,6 +131,8 @@ public class ReportController {
             reportService.rejectAllReports(targetId, type);
         }
 
+        webSocketEventService.reloadAdminDashboard();
+        webSocketEventService.reloadReports();
         return ResponseEntity.ok().build();
     }
 
@@ -184,6 +190,7 @@ public class ReportController {
         response.put("staffReportId", staffReportId);
         response.put("targetId", finalTargetId);
 
+        webSocketEventService.reloadReports();
         return ResponseEntity.ok(response);
     }
 
@@ -197,6 +204,8 @@ public class ReportController {
 //        }
 
         reportService.processAppealDecision(id, true);
+        webSocketEventService.reloadAdminDashboard();
+        webSocketEventService.reloadReports();
         return ResponseEntity.ok().build();
     }
 
@@ -210,6 +219,8 @@ public class ReportController {
 //        }
 
         reportService.processAppealDecision(id, false);
+        webSocketEventService.reloadAdminDashboard();
+        webSocketEventService.reloadReports();
         return ResponseEntity.ok().build();
     }
 
