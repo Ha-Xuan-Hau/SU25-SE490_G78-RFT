@@ -12,6 +12,7 @@ import {
   Row,
   Col,
   Select,
+  Image,
 } from "antd";
 import {
   UserOutlined,
@@ -34,6 +35,7 @@ import {
   getWardsByDistrictCode,
   GeoUnit,
 } from "@/lib/vietnam-geo-data";
+import { UploadSingleImage } from "./uploadImage/UploadSingleImage";
 
 // Custom DateInput Component
 const CustomDateInput: React.FC<{
@@ -254,6 +256,15 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
   const [selectedWard, setSelectedWard] = useState<string>("");
   const [detailAddress, setDetailAddress] = useState<string>("");
+
+  const [uploadKey, setUploadKey] = useState<number>(0);
+
+  // Reset uploadKey khi modal được mở
+  useEffect(() => {
+    if (openEditModal) {
+      setUploadKey(0); // Reset key về 0 mỗi khi mở modal
+    }
+  }, [openEditModal]);
 
   // Thêm useEffect để parse địa chỉ hiện tại
   useEffect(() => {
@@ -551,9 +562,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     <Modal
       title="Cập Nhật Thông Tin"
       open={openEditModal}
-      onCancel={handleCancleEditModal}
+      onCancel={() => {
+        setUploadKey(0); // Reset key khi đóng modal
+        handleCancleEditModal();
+      }}
       footer={null}
-      width={700} // Tăng width một chút
+      width={700}
       centered
     >
       <Form
@@ -565,54 +579,75 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
       >
         {/* Phần upload ảnh ở giữa */}
         <div className="flex justify-center mb-6">
-          <Upload
-            name="avatar"
-            listType="picture"
-            showUploadList={false}
-            action=""
-            beforeUpload={beforeUpload}
-            onChange={handleChange}
-            className="cursor-pointer"
-          >
-            <div className="text-center">
-              <div className="mb-3 relative inline-block">
-                {imageLoading ? (
-                  <div className="w-[120px] h-[120px] rounded-full border-2 border-gray-300 flex items-center justify-center bg-gray-100">
-                    <LoadingOutlined style={{ fontSize: 30 }} />
+          <div className="text-center">
+            <div className="mb-3 relative inline-block">
+              {/* Avatar hiển thị - giữ nguyên */}
+              {imageLoading ? (
+                <div className="w-[120px] h-[120px] rounded-full border-2 border-gray-300 flex items-center justify-center bg-gray-100">
+                  <LoadingOutlined style={{ fontSize: 30 }} />
+                </div>
+              ) : imageUrl ? (
+                <div className="relative">
+                  <Image
+                    src={imageUrl}
+                    alt="Avatar"
+                    className="w-[120px] h-[120px] rounded-full object-cover border-2 border-gray-300"
+                    preview={true}
+                    style={{
+                      width: 120,
+                      height: 120,
+                      objectFit: "cover",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-20 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                    <CameraOutlined style={{ fontSize: 30, color: "white" }} />
                   </div>
-                ) : imageUrl ? (
-                  <div className="relative">
-                    <img
-                      src={imageUrl}
-                      alt="Avatar"
-                      className="w-[120px] h-[120px] rounded-full object-cover border-2 border-gray-300"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-20 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <CameraOutlined
-                        style={{ fontSize: 30, color: "white" }}
-                      />
-                    </div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="w-[120px] h-[120px] rounded-full border-2 border-gray-300 border-dashed flex items-center justify-center bg-gray-50">
+                    <UserOutlined style={{ fontSize: 60, color: "#bfbfbf" }} />
                   </div>
-                ) : (
-                  <div className="relative">
-                    <div className="w-[120px] h-[120px] rounded-full border-2 border-gray-300 border-dashed flex items-center justify-center bg-gray-50">
-                      <UserOutlined
-                        style={{ fontSize: 60, color: "#bfbfbf" }}
-                      />
-                    </div>
-                    <div className="absolute inset-0 bg-black bg-opacity-10 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <CameraOutlined
-                        style={{ fontSize: 30, color: "white" }}
-                      />
-                    </div>
+                  <div className="absolute inset-0 bg-black bg-opacity-10 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <CameraOutlined style={{ fontSize: 30, color: "white" }} />
                   </div>
-                )}
-              </div>
-              <div className="text-blue-500 hover:text-blue-700">
+                </div>
+              )}
+            </div>
+
+            {/* Nút "Thay đổi ảnh" */}
+            <div className="relative">
+              <div
+                className="text-blue-500 hover:text-blue-700 cursor-pointer"
+                onClick={() => {
+                  // Luôn tăng key để force re-mount component
+                  setUploadKey((prev) => prev + 1);
+                }}
+              >
                 Thay đổi ảnh
               </div>
+
+              {/* UploadSingleImage ẩn */}
+              <div
+                className="absolute inset-0 w-full h-full overflow-hidden"
+                style={{ opacity: 0 }}
+              >
+                <UploadSingleImage
+                  key={`upload-${uploadKey}-${openEditModal}`} // Thêm openEditModal vào key
+                  value=""
+                  onChange={(url) => {
+                    if (url) {
+                      setImageUrl(url);
+                      setImageLoading(false);
+                      // Tăng key sau khi upload thành công để lần sau click sẽ có component mới
+                      setUploadKey((prev) => prev + 1);
+                    }
+                  }}
+                />
+              </div>
             </div>
-          </Upload>
+          </div>
         </div>
 
         <Row gutter={16}>

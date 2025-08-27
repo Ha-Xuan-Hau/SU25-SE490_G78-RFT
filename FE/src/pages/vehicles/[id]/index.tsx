@@ -1179,6 +1179,45 @@ export default function VehicleDetail() {
             )}
 
             {/* User reviews */}
+
+            <div className="py-3 sm:py-5 my-4 sm:my-6 border-t border-dark/10 dark:border-white/20">
+              {/* Owner info */}
+              {vehicle?.userName && (
+                <Link
+                  href={`/shop/${vehicle?.userId}`}
+                  className="inline-flex items-center gap-4 hover:opacity-80 transition-opacity"
+                >
+                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-200">
+                    {vehicle?.userProfilePicture ? (
+                      <Image
+                        src={vehicle.userProfilePicture}
+                        alt={vehicle.userName}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Icon
+                          icon="mdi:account"
+                          className="text-gray-400"
+                          width={32}
+                          height={32}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-base text-gray-500 dark:text-gray-400">
+                      Chủ xe
+                    </p>
+                    <p className="text-xl sm:text-2xl font-semibold text-dark dark:text-white hover:text-primary transition-colors">
+                      {vehicle.userName}
+                    </p>
+                  </div>
+                </Link>
+              )}
+            </div>
             <div className="py-6 sm:py-10 my-6 sm:my-10 border-y border-dark/10 dark:border-white/20">
               <h3 className="text-xl sm:text-2xl font-medium mb-6">
                 Đánh giá từ người dùng

@@ -17,6 +17,22 @@ export async function getAvailableVehicles() {
     }
 }
 
+export async function getVehiclesByUserId(userId) {
+    try {
+        const response = await apiClient.request({
+            method: 'GET',
+            url: `/vehicles/user/${userId}`,
+        });
+
+        const data = response.data;
+        // Trả về array của vehicles
+        return Array.isArray(data) ? data : data.content || data.items || data.data || [];
+    } catch (error) {
+        // console.error("Error fetching user vehicles:", error);
+        throw error;
+    }
+}
+
 export async function getVehiclesByTypeAndStatus(vehicleType, status) {
     try {
         const response = await apiClient.request({
