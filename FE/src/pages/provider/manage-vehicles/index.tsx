@@ -92,7 +92,7 @@ export default function UserRegisterVehicle() {
 
   const [activeType, setActiveType] = useState<string>("");
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(5);
+  const [size, setSize] = useState(10);
   const [groupList, setGroupList] = useState<VehicleGroup[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
