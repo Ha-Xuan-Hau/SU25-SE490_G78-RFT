@@ -1,4 +1,3 @@
-// recoils/notificationState.ts
 import { atom } from "recoil";
 import { NotificationItem } from "@/apis/notification.api";
 
