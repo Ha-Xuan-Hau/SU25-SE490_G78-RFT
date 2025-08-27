@@ -28,4 +28,11 @@ public class WebSocketEvents {
     // System Events
     public static final String SYSTEM_ALERT = "SYSTEM_ALERT";
     public static final String SYSTEM_MAINTENANCE = "SYSTEM_MAINTENANCE";
+
+    // Thêm các events mới cho admin
+    public static final String ADMIN_RELOAD_DASHBOARD = "ADMIN_RELOAD_DASHBOARD";
+    public static final String ADMIN_RELOAD_VEHICLES_PENDING = "ADMIN_RELOAD_VEHICLES_PENDING";
+    public static final String ADMIN_RELOAD_WITHDRAWAL_REQUESTS = "ADMIN_RELOAD_WITHDRAWAL_REQUESTS";
+    public static final String ADMIN_RELOAD_REPORTS = "ADMIN_RELOAD_REPORTS";
+    public static final String ADMIN_RELOAD_ALL = "ADMIN_RELOAD_ALL";
 }

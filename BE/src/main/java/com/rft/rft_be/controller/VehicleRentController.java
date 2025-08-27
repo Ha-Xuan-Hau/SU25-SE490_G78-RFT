@@ -3,6 +3,7 @@ package com.rft.rft_be.controller;
 import com.rft.rft_be.dto.vehicle.vehicleRent.*;
 import com.rft.rft_be.dto.vehicle.*;
 
+import com.rft.rft_be.service.WebSocketEventService;
 import com.rft.rft_be.service.vehicleRent.VehicleRentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public class VehicleRentController {
 
     private final VehicleRentService vehicleRentService;
+    private final WebSocketEventService webSocketEventService;
 
 
 //    @GetMapping("/my-car")
@@ -55,6 +57,8 @@ public class VehicleRentController {
 
         try {
             VehicleGetDTO vehicle = vehicleRentService.createVehicle( request);
+            webSocketEventService.reloadAdminDashboard();
+            webSocketEventService.reloadVehiclesPending();
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponseDTO.success("Vehicle registered successfully", vehicle));
         } catch (Exception e) {
@@ -86,6 +90,8 @@ public class VehicleRentController {
             }
             
             List<VehicleGetDTO> data = vehicleRentService.toggleVehicleSuspendedBulk(vehicleIds);
+            webSocketEventService.reloadAdminDashboard();
+            webSocketEventService.reloadVehiclesPending();
             return ResponseEntity.ok(ApiResponseDTO.success("Chuyển trạng thái hàng loạt thành công cho " + data.size() + " xe", data));
         } catch (Exception e) {
             log.error("Lỗi bulk toggle status: {}", e.getMessage(), e);
@@ -165,6 +171,7 @@ public class VehicleRentController {
 
         try {
             VehicleGetDTO vehicle = vehicleRentService.toggleVehicleStatus( vehicleId);
+            webSocketEventService.reloadAdminDashboard();
             return ResponseEntity.ok(ApiResponseDTO.success("Đã chuyển đổi trạng thái xe thành công", vehicle));
         } catch (Exception e) {
             log.error("Lỗi khi chuyển đổi trạng thái xe: {} cho người dùng: {}", vehicleId, e);
@@ -179,6 +186,7 @@ public class VehicleRentController {
 
         try {
             VehicleGetDTO vehicle = vehicleRentService.toggleVehicleSuspended(vehicleId);
+            webSocketEventService.reloadAdminDashboard();
             return ResponseEntity.ok(ApiResponseDTO.success("Đã chuyển đổi trạng thái thành công", vehicle));
         } catch (Exception e) {
             log.error("Lỗi khi chuyển trạng thái cho xe {}: {}", vehicleId, e.getMessage());
@@ -190,6 +198,8 @@ public class VehicleRentController {
     public ResponseEntity<?> registerBulk(@Valid @RequestBody VehicleRentCreateDTO dto){
         try {
             VehicleGetDTO createdVehicle = vehicleRentService.createVehicle(dto);
+            webSocketEventService.reloadAdminDashboard();
+            webSocketEventService.reloadVehiclesPending();
             return ResponseEntity.status(HttpStatus.CREATED).body(createdVehicle);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
@@ -205,6 +215,8 @@ public class VehicleRentController {
     public ResponseEntity<ApiResponseDTO<List<VehicleGetDTO>>> createMotorbie_Bicycle(@Valid @RequestBody VehicleRentCreateDTO request) {
         try {
             List<VehicleGetDTO> vehicle = vehicleRentService.createMotorbie_Bicycle(request);
+            webSocketEventService.reloadAdminDashboard();
+            webSocketEventService.reloadVehiclesPending();
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponseDTO.success("Tạo xe thành công", vehicle));
         } catch (Exception e) {

@@ -1,6 +1,6 @@
 // app/admin/dashboard/page.tsx
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import StatsCard from "./_component/StatsCard";
 import ActiveUsersCard from "./_component/ActiveUsersCard";
@@ -33,17 +33,33 @@ export default function AdminDashboard() {
     loading: true,
   });
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchAllData = async () => {
-    await Promise.all([
-      fetchTotalBookings(),
-      fetchWithdrawalPending(),
-      fetchVehicleStats(),
-    ]);
-  };
+  // useEffect(() => {
+  //   fetchAllData();
+  // }, []);
+  //
+  // const fetchAllData = async () => {
+  //   await Promise.all([
+  //     fetchTotalBookings(),
+  //     fetchWithdrawalPending(),
+  //     fetchVehicleStats(),
+  //   ]);
+  // };
+
+  // ✅ THÊM: Wrap fetchAllData với useCallback
+  const fetchAllData = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        fetchTotalBookings(),
+        fetchWithdrawalPending(),
+        fetchVehicleStats(),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
   const fetchVehicleStats = async () => {
     try {
@@ -105,6 +121,28 @@ export default function AdminDashboard() {
       setWithdrawalPending((prev) => ({ ...prev, loading: false }));
     }
   };
+
+  // ✅ THÊM: Listen to refresh event
+  useEffect(() => {
+    const handleRefreshEvent = (event: CustomEvent) => {
+      if (event.detail.eventType === "ADMIN_RELOAD_DASHBOARD" ||
+          event.detail.eventType === "ADMIN_RELOAD_ALL") {
+        console.log("📊 Dashboard refreshing data...");
+        fetchAllData();
+      }
+    };
+
+    window.addEventListener('admin-data-refresh', handleRefreshEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('admin-data-refresh', handleRefreshEvent as EventListener);
+    };
+  }, [fetchAllData]);
+
+  // ✅ THÊM: Initial load
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
   const calculateGrowthPercentage = () => {
     if (totalBookings.previous === 0 && totalBookings.current === 0) {

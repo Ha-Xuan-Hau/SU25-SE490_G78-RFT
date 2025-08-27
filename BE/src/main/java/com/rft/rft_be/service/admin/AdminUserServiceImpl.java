@@ -2,12 +2,9 @@ package com.rft.rft_be.service.admin;
 
 import com.rft.rft_be.dto.admin.*;
 import com.rft.rft_be.dto.user.UserDetailDTO;
-import com.rft.rft_be.entity.Contract;
-import com.rft.rft_be.entity.User;
-import com.rft.rft_be.entity.Booking;
+import com.rft.rft_be.entity.*;
 import com.rft.rft_be.mapper.UserMapper;
 import com.rft.rft_be.repository.*;
-import com.rft.rft_be.entity.WalletTransaction;
 import com.rft.rft_be.service.otp.OtpService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -347,6 +344,20 @@ public class AdminUserServiceImpl implements AdminUserService {
             );
             long activities = renting + unfinished;
             user.setStatus(activities > 0 ? User.Status.TEMP_BANNED : User.Status.INACTIVE);
+
+            List<Vehicle> userVehicles = vehicleRepository.findByUserId(user.getId());
+            if (!userVehicles.isEmpty()) {
+                for (Vehicle vehicle : userVehicles) {
+                    // Chỉ chuyển các xe đang AVAILABLE hoặc PENDING về INACTIVE
+                    if (vehicle.getStatus() == Vehicle.Status.AVAILABLE ||
+                            vehicle.getStatus() == Vehicle.Status.PENDING) {
+                        vehicle.setStatus(Vehicle.Status.UNAVAILABLE);
+                    }
+                }
+
+                // Bulk save để tối ưu performance
+                vehicleRepository.saveAll(userVehicles);
+            }
         } // STAFF/ADMIN: giữ nguyên
 
         userRepository.save(user);
