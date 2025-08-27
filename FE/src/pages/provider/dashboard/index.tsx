@@ -59,7 +59,7 @@ export default function ProviderDashboard() {
   const renderGeneralTab = () => (
     <div className="h-full flex flex-col gap-4 lg:gap-6">
       {/* Top section - 4 Cards in one row */}
-      <UserProfileCard todoWork={todoWork} />
+      {/* <UserProfileCard todoWork={todoWork} /> */}
 
       {/* Second section */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
