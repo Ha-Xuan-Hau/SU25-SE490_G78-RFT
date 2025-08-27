@@ -10,8 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -318,6 +316,7 @@ public class VehicleRentController {
      * @return ProviderStatisticsDTO chứa thông tin thống kê
      */
     @GetMapping("/statistics")
+    @PreAuthorize("hasRole('PROVIDER')")
     public ResponseEntity<?> getProviderStatistics() {
         try {
             log.info("Nhận yêu cầu lấy thống kê provider");
@@ -338,6 +337,7 @@ public class VehicleRentController {
      * @return MonthlyStatisticsDTO chứa thông tin thống kê theo tháng
      */
     @GetMapping("/statistics/monthly")
+    @PreAuthorize("hasRole('PROVIDER')")
     public ResponseEntity<?> getMonthlyStatistics(
             @RequestParam int month,
             @RequestParam int year) {
