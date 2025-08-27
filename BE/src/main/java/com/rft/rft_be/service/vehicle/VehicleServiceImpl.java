@@ -91,7 +91,7 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public List<VehicleGetDTO> getVehiclesByUserId(String userId) {
-        List<Vehicle> vehicles = vehicleRepository.findByUserId(userId);
+        List<Vehicle> vehicles = vehicleRepository.findAvailableVehiclesByUserId(userId);
         return vehicles.stream()
                 .map(vehicleMapper::vehicleGet)
                 .collect(Collectors.toList());

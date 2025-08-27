@@ -31,6 +31,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String>, JpaSp
     @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId")
     List<Vehicle> findByUserId(@Param("userId") String userId);
 
+    @Query("SELECT v FROM Vehicle v WHERE v.user.id = :userId AND v.status = 'AVAILABLE'")
+    List<Vehicle> findAvailableVehiclesByUserId(@Param("userId") String userId);
+
+
     Optional<Vehicle> findByLicensePlate(String licensePlate);
 
     boolean existsByLicensePlate(String licensePlate);

@@ -1,4 +1,3 @@
-// UploadImage.tsx
 import { Image, Spin, Upload, message } from "antd";
 import { CloudUploadOutlined } from "@ant-design/icons";
 import axios from "axios";
@@ -32,7 +31,7 @@ export const UploadImage = ({ onChange }: UploadImageProps) => {
     setLoading(true);
 
     try {
-      // ✅ Bước 1: Đọc base64 từ file TRƯỚC
+      // Bước 1: Đọc base64 từ file TRƯỚC
       const base64String = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -40,10 +39,10 @@ export const UploadImage = ({ onChange }: UploadImageProps) => {
         reader.readAsDataURL(file);
       });
 
-      // ✅ Bước 2: Phân tích với Google Vision
+      // Bước 2: Phân tích với Google Vision
       const analysisResult = await analyzeImageFromBase64(base64String);
 
-      // ✅ Bước 3: Nếu hợp lệ, mới upload lên Cloudinary
+      // Bước 3: Nếu hợp lệ, mới upload lên Cloudinary
       if (analysisResult.licenseNumber && analysisResult.licenseClass) {
         const formData = new FormData();
         formData.append("file", file);
@@ -55,7 +54,7 @@ export const UploadImage = ({ onChange }: UploadImageProps) => {
           },
         });
 
-        // ✅ Sử dụng secure_url
+        // Sử dụng secure_url
         const imageUrl = data?.secure_url || data?.url;
         setImage(imageUrl);
 
@@ -87,7 +86,7 @@ export const UploadImage = ({ onChange }: UploadImageProps) => {
       requests: [
         {
           image: {
-            content: base64String.split(",")[1], // Lấy phần base64
+            content: base64String.split(",")[1],
           },
           features: [
             {

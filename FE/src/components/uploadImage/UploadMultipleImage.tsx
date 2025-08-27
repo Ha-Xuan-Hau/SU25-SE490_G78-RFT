@@ -237,17 +237,25 @@ export const UploadMultipleImage = ({
       const hasVehicleLabel = labels.some((label) => {
         const description = label.description.toLowerCase();
         return (
-          vehicleKeywords.some((keyword) =>
-            description.includes(keyword.toLowerCase())
-          ) && label.score > 0.5
-        ); // Chỉ chấp nhận nhãn có độ tin cậy > 50%
+          vehicleKeywords.some((keyword) => {
+            // Tạo regex với word boundary
+            const regex = new RegExp(`\\b${keyword.toLowerCase()}\\b`);
+            return regex.test(description);
+          }) && label.score > 0.5
+        );
       });
 
       // Kiểm tra đối tượng từ Object Localization
+      // const hasVehicleObject = objects.some((obj) => {
+      //   const name = obj.name.toLowerCase();
+      //   return vehicleKeywords.some((keyword) =>
+      //     name.includes(keyword.toLowerCase())
+      //   );
+      // });
       const hasVehicleObject = objects.some((obj) => {
         const name = obj.name.toLowerCase();
-        return vehicleKeywords.some((keyword) =>
-          name.includes(keyword.toLowerCase())
+        return vehicleKeywords.some(
+          (keyword) => name === keyword.toLowerCase()
         );
       });
 
@@ -316,10 +324,15 @@ export const UploadMultipleImage = ({
         try {
           // Kiểm tra xem có phải ảnh xe không
           const isVehicle = await isVehicleImage(file);
+          //console.log(`File ${file.name} - isVehicle:`, isVehicle);
+
           if (!isVehicle) {
+            //console.log(`REJECTING ${file.name}`);
             errors.push(`"${file.name}" không phải là ảnh xe!`);
             continue;
           }
+
+          //console.log(`UPLOADING ${file.name}`);
 
           // Upload lên Cloudinary
           const formData = new FormData();

@@ -102,6 +102,14 @@ export const UploadSingleImage = ({
               },
               {
                 type: "LABEL_DETECTION",
+                maxResults: 20, // Tăng lên để có nhiều label hơn
+              },
+              {
+                type: "OBJECT_LOCALIZATION", // Thêm để phát hiện object
+                maxResults: 10,
+              },
+              {
+                type: "TEXT_DETECTION", // Phát hiện text trong ảnh
                 maxResults: 10,
               },
             ],
@@ -116,64 +124,85 @@ export const UploadSingleImage = ({
 
       const result = response.data.responses[0];
 
+      // 1. Check Safe Search
       if (result.safeSearchAnnotation) {
         const safeSearch = result.safeSearchAnnotation;
-
         const checks = {
           adult: safeSearch.adult,
           violence: safeSearch.violence,
           racy: safeSearch.racy,
-          medical: safeSearch.medical,
-          spoof: safeSearch.spoof,
         };
 
         for (const [type, level] of Object.entries(checks)) {
-          if (level === "LIKELY" || level === "VERY_LIKELY") {
+          if (
+            level === "LIKELY" ||
+            level === "VERY_LIKELY" ||
+            level === "POSSIBLE"
+          ) {
             console.log(`Rejected due to ${type}: ${level}`);
             return false;
           }
         }
       }
 
+      // 2. Check Labels
       if (result.labelAnnotations) {
-        const dangerousLabels = [
-          "weapon",
-          "gun",
-          "rifle",
-          "pistol",
-          "firearm",
-          "knife",
-          "sword",
-          "violence",
-          "blood",
-          "gore",
-          "death",
-          "killing",
-          "murder",
-          "drug",
-          "narcotic",
-          "cocaine",
-          "heroin",
-          "marijuana",
-          "nude",
-          "nudity",
-          "sexual",
-          "porn",
-          "erotic",
-        ];
+        // Chỉ check label có confidence > 60%
+        const highConfidenceLabels = result.labelAnnotations
+          .filter((label: any) => label.score > 0.6)
+          .map((label: any) => label.description.toLowerCase());
 
-        const detectedLabels = result.labelAnnotations.map((label: any) =>
-          label.description.toLowerCase()
-        );
+        console.log("Detected labels:", highConfidenceLabels);
 
         const hasDangerousContent = dangerousLabels.some((dangerous) =>
-          detectedLabels.some((detected: string) =>
-            detected.includes(dangerous)
-          )
+          highConfidenceLabels.some((detected: string) => {
+            // Check exact word match
+            const words = detected.split(/[\s,.-]+/);
+            if (words.includes(dangerous)) return true;
+
+            // Check với word boundary
+            const regex = new RegExp(`\\b${dangerous}\\b`, "i");
+            return regex.test(detected);
+          })
         );
 
         if (hasDangerousContent) {
-          console.log("Rejected due to dangerous labels:", detectedLabels);
+          console.log("Rejected due to dangerous labels");
+          return false;
+        }
+      }
+
+      // 3. Check Objects
+      if (result.localizedObjectAnnotations) {
+        const objects = result.localizedObjectAnnotations.map((obj: any) =>
+          obj.name.toLowerCase()
+        );
+
+        console.log("Detected objects:", objects);
+
+        const dangerousObjects = ["gun", "weapon", "knife", "rifle", "pistol"];
+        const hasDangerousObject = objects.some((obj: string) =>
+          dangerousObjects.some((dangerous) => obj.includes(dangerous))
+        );
+
+        if (hasDangerousObject) {
+          console.log("Rejected due to dangerous objects");
+          return false;
+        }
+      }
+
+      // 4. Check Text (nếu có text về vũ khí)
+      if (result.textAnnotations && result.textAnnotations.length > 0) {
+        const detectedText =
+          result.textAnnotations[0].description.toLowerCase();
+        const dangerousWords = ["gun", "weapon", "kill", "death", "drug"];
+
+        const hasDangerousText = dangerousWords.some((word) =>
+          detectedText.includes(word)
+        );
+
+        if (hasDangerousText) {
+          console.log("Rejected due to dangerous text");
           return false;
         }
       }
@@ -181,9 +210,100 @@ export const UploadSingleImage = ({
       return true;
     } catch (error) {
       console.error("Error validating image:", error);
-      return true;
+      return false; // Return false để an toàn hơn
     }
   };
+
+  const dangerousLabels = [
+    // Vũ khí súng
+    "weapon",
+    "gun",
+    "rifle",
+    "pistol",
+    "firearm",
+    "revolver",
+    "shotgun",
+    "machine gun",
+    "assault rifle",
+    "sniper",
+    "ammunition",
+    "bullet",
+    "trigger",
+    "barrel",
+    "magazine",
+    "holster",
+    "shooting",
+    "gunshot",
+    "armed",
+    "military",
+    "combat",
+    "warfare",
+    "artillery",
+    "explosive",
+    "grenade",
+    "bomb",
+
+    // Vũ khí lạnh
+    "knife",
+    "sword",
+    "blade",
+    "dagger",
+    "machete",
+    "axe",
+    "spear",
+    "arrow",
+    "bow",
+
+    // Bạo lực
+    "violence",
+    "blood",
+    "gore",
+    "death",
+    "killing",
+    "murder",
+    "assault",
+    "fight",
+    "injury",
+    "wound",
+    "torture",
+
+    // Ma túy
+    "drug",
+    "narcotic",
+    "cocaine",
+    "heroin",
+    "marijuana",
+    "cannabis",
+    "meth",
+    "pill",
+    "syringe",
+    "injection",
+
+    // NSFW
+    "nude",
+    "nudity",
+    "naked",
+    "sexual",
+    "porn",
+    "pornography",
+    "erotic",
+    "adult",
+    "xxx",
+    "sex",
+    "breast",
+    "genital",
+
+    // Khác
+    "tobacco",
+    "cigarette",
+    "smoking",
+    "alcohol",
+    "beer",
+    "wine",
+    "liquor",
+    "gambling",
+    "casino",
+  ];
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
