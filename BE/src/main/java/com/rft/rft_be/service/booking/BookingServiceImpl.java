@@ -97,6 +97,13 @@ public class BookingServiceImpl implements BookingService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Một hoặc nhiều xe không tồn tại.");
         }
 
+        User provider = vehicles.get(0).getUser();
+        if (provider.getStatus() == User.Status.TEMP_BANNED || provider.getStatus() == User.Status.INACTIVE){
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Tài khoản chủ xe đã bị khóa, không thể đặt xe này"
+            );
+        }
+
         // Kiểm tra tất cả cùng 1 chủ xe
         String providerId = vehicles.get(0).getUser().getId();
         for (Vehicle v : vehicles) {
@@ -207,9 +214,27 @@ public class BookingServiceImpl implements BookingService {
 
         bookingCleanupTask.scheduleCleanup(booking.getId());
 
-        String vehicleNames = vehicles.stream()
-                .map(Vehicle::getThumb)
+//        String vehicleNames = vehicles.stream()
+//                .map(Vehicle::getThumb)
+//                .collect(Collectors.joining(", "));
+
+        // Đếm số lượng mỗi loại xe
+        Map<String, Long> vehicleCountMap = vehicles.stream()
+                .collect(Collectors.groupingBy(
+                        Vehicle::getThumb,  // hoặc getName() tùy thuộc vào field bạn muốn dùng
+                        Collectors.counting()
+                ));
+
+        // Format thành chuỗi "số lượng x tên xe"
+        String vehicleNames = vehicleCountMap.entrySet().stream()
+                .map(entry -> {
+                    long count = entry.getValue();
+                    String name = entry.getKey();
+                    return count > 1 ? count + " x " + name : name;
+                })
                 .collect(Collectors.joining(", "));
+
+        // Ví dụ output: "2 x Xe máy, 3 x Ô tô 4 chỗ"
         notificationService.notifyOrderPlaced(userId, booking.getId(), vehicleNames);
         notificationService.notifyProviderReceivedBooking(providerId, booking.getId(), vehicleNames);
 
@@ -671,14 +696,20 @@ public class BookingServiceImpl implements BookingService {
         );
 
         // Check contract đang cho thuê (nếu là PROVIDER)
+        long rentingContracts = 0;
+        long processingContracts = 0;
         long activeContracts = 0;
         if (user.getRole() == User.Role.PROVIDER) {
-            activeContracts = contractRepository.countByProviderIdAndStatus(
+            rentingContracts = contractRepository.countByProviderIdAndStatus(
                     user.getId(),
                     Contract.Status.RENTING
             );
+            processingContracts = contractRepository.countByProviderIdAndStatus(
+                    user.getId(),
+                    Contract.Status.PROCESSING
+            );
         }
-
+        activeContracts = rentingContracts + processingContracts;
         // Nếu không còn booking/contract nào → chuyển sang INACTIVE
         if (unfinishedBookings == 0 && activeContracts == 0) {
             user.setStatus(User.Status.INACTIVE);
@@ -855,15 +886,18 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
-// PROVIDER: unfinished = các contract đang RENTING
+        // PROVIDER: unfinished = các contract đang RENTING + PROCESSING
         if (!booking.getBookingDetails().isEmpty()) {
             User provider = booking.getBookingDetails().get(0).getVehicle().getUser();
             if (provider != null && provider.getStatus().equals(User.Status.TEMP_BANNED)) {
                 int rentingCount = contractRepository
                         .findByProviderIdAndStatus(provider.getId(), Contract.Status.RENTING)
                         .size();
-
-                if (rentingCount == 0) {
+                int processingCount = contractRepository
+                        .findByProviderIdAndStatus(provider.getId(), Contract.Status.PROCESSING)
+                        .size();
+                int unfinished =rentingCount + processingCount ;
+                if (unfinished == 0) {
                     provider.setStatus(User.Status.INACTIVE);
                     userRepository.save(provider);
                 }

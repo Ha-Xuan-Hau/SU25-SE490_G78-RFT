@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   env: {
     TZ: "Asia/Ho_Chi_Minh",
   },
+  serverRuntimeConfig: {
+    timeZone: "Asia/Ho_Chi_Minh",
+  },
   images: {
     remotePatterns: [
       {

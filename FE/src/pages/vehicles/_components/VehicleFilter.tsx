@@ -1,7 +1,7 @@
 // @/app/vehicles/_components/VehicleFilter.tsx
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import {
   Car,
@@ -45,6 +45,7 @@ interface VehicleFilterProps {
   ) => void;
   isMobile?: boolean;
   onClose?: () => void;
+  autoSearch?: boolean;
 }
 
 interface GeoUnit {
@@ -60,6 +61,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
   onSearchResults,
   isMobile = false,
   onClose,
+  autoSearch = false,
 }) => {
   const [provinces, setProvinces] = useState<GeoUnit[]>([]);
   const [districts, setDistricts] = useState<GeoUnit[]>([]);
@@ -269,6 +271,19 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
     }
   };
 
+  // Auto search khi có city được set từ URL
+  useEffect(() => {
+    if (autoSearch && filters.city && !hasSearched.current) {
+      hasSearched.current = true;
+      // Delay một chút để đảm bảo UI đã render
+      setTimeout(() => {
+        handleBasicSearch();
+      }, 100);
+    }
+  }, [filters.city, autoSearch]);
+
+  const hasSearched = useRef(false);
+
   // const resetFilters = useCallback(() => {
   //   setFilters({
   //     vehicleType: undefined,
@@ -287,7 +302,7 @@ const VehicleFilter: React.FC<VehicleFilterProps> = ({
   //   onSearchResults([], false, null, undefined, false, {});
   // }, [setFilters, onSearchResults]);
   const resetFilters = useCallback(() => {
-    window.location.reload();
+    window.location.href = window.location.pathname;
   }, []);
 
   // Load geographic data
