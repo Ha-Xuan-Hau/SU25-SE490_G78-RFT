@@ -214,9 +214,27 @@ public class BookingServiceImpl implements BookingService {
 
         bookingCleanupTask.scheduleCleanup(booking.getId());
 
-        String vehicleNames = vehicles.stream()
-                .map(Vehicle::getThumb)
+//        String vehicleNames = vehicles.stream()
+//                .map(Vehicle::getThumb)
+//                .collect(Collectors.joining(", "));
+
+        // Đếm số lượng mỗi loại xe
+        Map<String, Long> vehicleCountMap = vehicles.stream()
+                .collect(Collectors.groupingBy(
+                        Vehicle::getThumb,  // hoặc getName() tùy thuộc vào field bạn muốn dùng
+                        Collectors.counting()
+                ));
+
+        // Format thành chuỗi "số lượng x tên xe"
+        String vehicleNames = vehicleCountMap.entrySet().stream()
+                .map(entry -> {
+                    long count = entry.getValue();
+                    String name = entry.getKey();
+                    return count > 1 ? count + " x " + name : name;
+                })
                 .collect(Collectors.joining(", "));
+
+        // Ví dụ output: "2 x Xe máy, 3 x Ô tô 4 chỗ"
         notificationService.notifyOrderPlaced(userId, booking.getId(), vehicleNames);
         notificationService.notifyProviderReceivedBooking(providerId, booking.getId(), vehicleNames);
 
