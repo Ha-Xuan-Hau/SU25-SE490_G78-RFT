@@ -84,6 +84,10 @@ export const fetchProviderProfile = async (
               throw new Error("ACCOUNT_DEACTIVATED");
             }
 
+            if (userData.status === "TEMP_BANNED") {
+              throw new Error("ACCOUNT_TEMP_BANNED");
+            }
+
             setProvider(userData as Provider);
             return userData as Provider;
           } else {
@@ -240,6 +244,40 @@ export const useProviderState = (): [
       }, 5000);
     };
 
+    const handleProviderTempBanned = (): void => {
+      // Prevent duplicate handling within 5 seconds
+      const now = Date.now();
+      if (now - lastProviderDeactivationTime < 5000) {
+        console.log(
+          "Provider deactivation already handled recently, skipping..."
+        );
+        return;
+      }
+      lastProviderDeactivationTime = now;
+
+      console.log("Provider account deactivated, logging out...");
+
+      // Clear provider state
+      setProvider(null);
+      setAccessToken(null);
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      sessionStorage.clear();
+
+      toast.error(
+        "Tài khoản chủ xe của bạn đã bị tạm khóa. Vui lòng liên hệ admin để biết thêm chi tiết.",
+        {
+          position: "top-center",
+          autoClose: 5000,
+          toastId: "provider-temp-banned",
+        }
+      );
+
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 5000);
+    };
+
     const performStatusCheck = async (): Promise<void> => {
       try {
         const providerData = await checkProviderStatus(provider.id);
@@ -252,6 +290,9 @@ export const useProviderState = (): [
           providerData.role !== "PROVIDER"
         ) {
           handleProviderDeactivated();
+        }
+        if (providerData.status === "TEMP_BANNED") {
+          handleProviderTempBanned();
         }
       } catch (error: any) {
         if (error.message === "ACCOUNT_DEACTIVATED") {
